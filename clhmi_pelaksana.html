@@ -15,15 +15,15 @@
         input, select, textarea { width: 100%; padding: 14px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box; font-size: 16px; margin-bottom: 10px; }
         .btn { width: 100%; padding: 16px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s; }
         .btn-primary { background: var(--primary); color: #fff; }
-        .btn-primary:disabled { background: #94a3b8; }
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
+        .btn-primary:disabled { background: #94a3b8; opacity: 0.7; }
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; min-height: 250px; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         td { padding: 12px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
         .category { background: #f1f5f9; color: var(--primary); font-weight: 800; font-size: 13px; text-transform: uppercase; padding: 10px; }
         .item-text { font-size: 14px; font-weight: 600; color: #1e293b; display: block; }
-        .note-box { display: none; margin-top: 8px; background: #fff5f5; border: 1px solid #feb2b2; height: 60px; }
-        .canvas-box { border: 2px solid #cbd5e1; border-radius: 10px; background: #fff; margin-top: 10px; touch-action: none; }
-        canvas { display: block; width: 100%; height: 200px; }
+        .note-box { display: none; margin-top: 8px; background: #fff5f5; border: 1px solid #feb2b2; height: 60px; font-size: 12px; }
+        .canvas-box { border: 2px solid #cbd5e1; border-radius: 10px; background: #fff; margin-top: 10px; touch-action: none; overflow: hidden; }
+        canvas { display: block; width: 100%; height: 200px; cursor: crosshair; }
         .info-box { background: #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; border-left: 4px solid var(--primary); }
     </style>
 </head>
@@ -55,7 +55,7 @@
 
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px">
                 <b>✍️ Tanda Tangan Pelaksana:</b>
-                <button type="button" onclick="clearCanvas()" style="color:red; background:none; border:none; font-weight:bold;">HAPUS</button>
+                <button type="button" onclick="clearCanvas()" style="color:red; background:none; border:none; font-weight:bold; cursor:pointer;">HAPUS</button>
             </div>
             <div class="canvas-box">
                 <canvas id="canvas"></canvas>
@@ -68,11 +68,12 @@
     </div>
 </div>
 
+
+
 <script>
 // KONFIGURASI SUPABASE
 const supabaseUrl = "https://dsyvlavphvrdidmodokd.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E
-";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
 const sb = supabase.createClient(supabaseUrl, supabaseKey);
 
 let html5QrCode, machine = null, masterItems = [];
@@ -82,8 +83,8 @@ async function initApp(){
     const nama = document.getElementById("nama_pelaksana").value;
     if(!nama) return alert("Silakan isi nama pelaksana!");
 
-    // Load Master Item dari DB agar sinkron
-    const { data, error } = await sb.from('clhmi_items').select('*').eq('aktif', true).order('urutan');
+    // Load Master Item
+    const { data, error } = await sb.from('clhmi_items').select('*').order('urutan');
     if(error) return alert("Gagal ambil item: " + error.message);
     masterItems = data;
 
@@ -91,25 +92,38 @@ async function initApp(){
     document.getElementById("sec_scan").style.display = "block";
     
     html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess);
+    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess)
+    .catch(err => alert("Kamera Error: " + err));
 }
 
 // SCAN BERHASIL
 async function onScanSuccess(decodedText) {
-    await html5QrCode.stop();
-    
-    // Cari mesin di DB (machine_id menggunakan UUID)
-    const { data, error } = await sb.from("clhmi_machine")
-        .select("*").eq("merk_mesin", decodedText.trim()).eq("aktif", true).single();
+    try {
+        await html5QrCode.stop();
+        
+        // Pencarian Mesin Flexibel: Bisa pakai ID (UUID) atau Nama Mesin
+        let query = sb.from("clhmi_machine").select("*");
+        
+        // Cek apakah decodedText adalah UUID atau Nama
+        if (decodedText.length > 30) {
+            query = query.eq("id", decodedText.trim());
+        } else {
+            query = query.eq("merk_mesin", decodedText.trim());
+        }
 
-    if(error || !data) {
-        alert("MESIN TIDAK TERDAFTAR!");
-        location.reload();
-        return;
+        const { data, error } = await query.single();
+
+        if(error || !data) {
+            alert("MESIN TIDAK TERDAFTAR!\nHasil Scan: " + decodedText);
+            location.reload();
+            return;
+        }
+
+        machine = data;
+        renderForm();
+    } catch (e) {
+        console.error(e);
     }
-
-    machine = data;
-    renderForm();
 }
 
 // TAMPILKAN FORM
@@ -179,57 +193,62 @@ canvas.addEventListener("touchmove", (e) => { if(!isDrawing) return; const p = g
 
 function clearCanvas() { ctx.clearRect(0,0,canvas.width,canvas.height); }
 
-// SIMPAN KE DATABASE (UPSERT)
+// SIMPAN KE DATABASE
 document.getElementById("clForm").onsubmit = async (e) => {
     e.preventDefault();
     const signature = canvas.toDataURL();
-    if(signature.length < 3000) return alert("Harap isi tanda tangan!");
+    
+    // Validasi Tanda Tangan (Cek apakah canvas kosong)
+    if(signature.length < 2000) return alert("Harap isi tanda tangan!");
 
     const btn = document.getElementById("btnSimpan");
     btn.disabled = true; btn.innerText = "SEDANG MENYIMPAN...";
 
     const now = new Date();
     const namaPelaksana = document.getElementById("nama_pelaksana").value;
+    const bln = now.getMonth() + 1;
+    const thn = now.getFullYear();
 
-    // 1. Simpan Header (clhmi) - UPSERT agar tidak dobel per bulan
-    const { data: header, error: errH } = await sb.from("clhmi").upsert({
-        machine_id: machine.id,
-        merk_mesin: machine.merk_mesin,
-        tonage: machine.tonage,
-        serial_no: machine.serial_no,
-        tahun: now.getFullYear(),
-        bulan: now.getMonth() + 1,
-        paraf: signature,
-        created_by: namaPelaksana,
-        status_form: "submitted"
-    }, { onConflict: "machine_id,bulan,tahun" }).select().single();
+    try {
+        // 1. Simpan Header (clhmi)
+        // Note: Pastikan di Supabase sudah ada CONSTRAINT UNIQUE (machine_id, bulan, tahun)
+        const { data: header, error: errH } = await sb.from("clhmi").upsert({
+            machine_id: machine.id,
+            merk_mesin: machine.merk_mesin,
+            tonage: machine.tonage,
+            serial_no: machine.serial_no,
+            tahun: thn,
+            bulan: bln,
+            paraf: signature,
+            created_by: namaPelaksana,
+            status_form: "submitted",
+            updated_at: new Date()
+        }, { onConflict: 'machine_id,bulan,tahun' }).select().single();
 
-    if(errH) {
-        alert("Gagal simpan header: " + errH.message);
-        btn.disabled = false; return;
-    }
+        if(errH) throw new Error("Header: " + errH.message);
 
-    // 2. Siapkan Detail (clhmi_results)
-    const detailRows = masterItems.map(item => ({
-        clhmi_id: header.id,
-        item_id: item.id,
-        item_code: item.item_kode,
-        status: document.getElementById("st_"+item.id).value,
-        note: document.getElementById("note_"+item.id).value || null,
-        diisi_oleh: namaPelaksana,
-        tanggal_cek: now.toISOString().split('T')[0]
-    }));
+        // 2. Siapkan Detail (clhmi_results)
+        const detailRows = masterItems.map(item => ({
+            clhmi_id: header.id,
+            item_id: item.id,
+            status: document.getElementById("st_"+item.id).value,
+            note: document.getElementById("note_"+item.id).value || null,
+            tanggal_cek: now.toISOString().split('T')[0]
+        }));
 
-    // 3. Bersihkan detail lama (jika ada) & Insert yang baru
-    await sb.from("clhmi_results").delete().eq("clhmi_id", header.id);
-    const { error: errD } = await sb.from("clhmi_results").insert(detailRows);
+        // 3. Bersihkan detail tgl yang sama agar tidak duplikat & Insert
+        await sb.from("clhmi_results").delete().eq("clhmi_id", header.id).eq("tanggal_cek", now.toISOString().split('T')[0]);
+        const { error: errD } = await sb.from("clhmi_results").insert(detailRows);
 
-    if(errD) {
-        alert("Gagal simpan detail: " + errD.message);
-        btn.disabled = false;
-    } else {
+        if(errD) throw new Error("Detail: " + errD.message);
+
         alert("✅ Checklist Berhasil Disimpan!");
         location.reload();
+
+    } catch (err) {
+        alert("Gagal Simpan: " + err.message);
+        btn.disabled = false;
+        btn.innerText = "SIMPAN CHECKLIST";
     }
 };
 </script>
