@@ -3,287 +3,214 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CLHMI - Pelaksana</title>
+    <title>CLHMI Pelaksana - Digital Form</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root {
-            --primary: #003366;
-            --accent: #ffcc00;
-            --bg: #f4f7f9;
-            --ok: #2e7d32;
-            --ng: #d32f2f;
-        }
-        body { margin: 0; font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: #333; }
-        .card { max-width: 900px; margin: 10px auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.1); overflow: hidden; }
-        .header { background: var(--primary); color: #fff; padding: 20px; text-align: center; font-weight: bold; font-size: 1.2rem; }
+        :root { --primary: #1e293b; --accent: #2563eb; --success: #16a34a; --danger: #dc2626; --bg: #f8fafc; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--primary); }
+        .container { max-width: 800px; margin: 0 auto; padding: 10px; }
+        .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; }
+        .form-header { background: var(--primary); color: #fff; padding: 20px; text-align: center; border-bottom: 4px solid var(--accent); }
         .section { padding: 20px; }
-        input, select, textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box; font-size: 16px; }
-        .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s; }
-        .btn-primary { background: var(--primary); color: #fff; }
-        .btn-primary:hover { background: #002244; }
-        #reader { width: 100%; background: #000; border-radius: 12px; overflow: hidden; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: left; }
-        th { background: #f1f5f9; font-size: 14px; }
-        .category { background: #f1f5f9; color: var(--primary); font-weight: bold; }
-        .note { display: none; margin-top: 8px; background: #fff5f5; border-color: #feb2b2; height: 60px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.85rem; }
         
-        .canvas-container { position: relative; margin-top: 10px; border: 2px dashed #cbd5e1; border-radius: 10px; background: #fafafa; }
-        canvas { display: block; width: 100%; height: 200px; touch-action: none; cursor: crosshair; }
-        .canvas-tools { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; }
+        .cat-header { background: #e2e8f0; font-weight: bold; padding: 10px; color: var(--accent); text-transform: uppercase; font-size: 0.8rem; }
+        td { padding: 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
         
-        .info-box { background: #eef2f6; padding: 15px; border-radius: 10px; margin-bottom: 15px; font-size: 14px; border-left: 5px solid var(--primary); }
-        .loading { text-align: center; padding: 20px; color: var(--primary); font-weight: bold; }
+        .item-label { font-weight: 600; display: block; margin-bottom: 2px; }
+        .item-method { font-size: 0.75rem; color: #64748b; font-style: italic; display: block; }
+        
+        select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: bold; }
+        .ng-input { display: none; margin-top: 10px; border: 1px solid #fca5a5; background: #fff1f2; padding: 8px; border-radius: 6px; width: 100%; box-sizing: border-box; }
+        
+        canvas { border: 2px dashed #cbd5e1; border-radius: 8px; background: #fafafa; width: 100%; height: 180px; margin-top: 10px; touch-action: none; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        #reader { border-radius: 12px; overflow: hidden; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <div class="header">CHECKLIST HARIAN MESIN INJECTION</div>
-    
-    <div class="section" id="login">
-        <h3>👷 Nama Pelaksana</h3>
-        <input id="nama_pelaksana" placeholder="Masukkan nama lengkap">
-        <br><br>
-        <button class="btn btn-primary" onclick="startScan()">SCAN QR MESIN</button>
-    </div>
-
-    <div class="section" id="scan" style="display:none">
-        <div id="reader"></div>
-        <p style="text-align:center; color:#64748b">Arahkan kamera ke QR Code (Merk Mesin)</p>
-        <button class="btn" onclick="location.reload()" style="background:#ccc">Batal</button>
-    </div>
-
-    <div class="section" id="form" style="display:none">
-        <div class="info-box">
-            <b>UNIT:</b> <span id="m_name"></span> | 
-            <b>TONNAGE:</b> <span id="m_ton"></span><br>
-            <b>SERIAL:</b> <span id="m_serial"></span><br>
-            <b>PELAKSANA:</b> <span id="m_user"></span>
+<div class="container">
+    <div class="card">
+        <div class="form-header">
+            <h2 style="margin:0">FORM CHECKLIST MESIN</h2>
+            <small>Injection Molding Daily Maintenance</small>
         </div>
 
-        <form id="clForm">
-            <div id="loadingItems" class="loading">Memuat daftar pengecekan...</div>
-            <table id="tableForm" style="display:none">
-                <thead>
-                    <tr><th>Item & Standar</th><th style="width: 80px;">Status</th></tr>
-                </thead>
-                <tbody id="tbody"></tbody>
-            </table>
+        <div class="section" id="step-login">
+            <label style="display:block; margin-bottom:8px; font-weight:bold">Nama Pelaksana</label>
+            <input type="text" id="nama_pelaksana" style="width:100%; padding:12px; box-sizing:border-box; border-radius:8px; border:1px solid #ccc" placeholder="Contoh: Budi Santoso">
+            <button class="btn btn-primary" style="margin-top:20px" onclick="startScanner()">📸 SCAN QR MESIN</button>
+        </div>
 
-            <h4>✍️ Paraf Digital</h4>
-            <div class="canvas-container">
-                <canvas id="canvas"></canvas>
+        <div class="section" id="step-scan" style="display:none">
+            <div id="reader"></div>
+            <button class="btn" style="background:#64748b; color:#fff; margin-top:10px" onclick="location.reload()">BATAL</button>
+        </div>
+
+        <div class="section" id="step-form" style="display:none">
+            <div class="info-grid">
+                <div><strong>MESIN:</strong> <span id="m_merk"></span></div>
+                <div><strong>SERIAL:</strong> <span id="m_serial"></span></div>
+                <div><strong>TONNAGE:</strong> <span id="m_ton"></span></div>
+                <div><strong>USER:</strong> <span id="m_user"></span></div>
             </div>
-            <div class="canvas-tools">
-                <small style="color: #666">*Goreskan tanda tangan di atas</small>
-                <button type="button" onclick="clearCanvas()" style="background:none; border:none; color:var(--ng); font-weight:bold; cursor:pointer">
-                    Hapus Paraf
-                </button>
-            </div>
-            
-            <br><br>
-            <button class="btn btn-primary" id="btnSubmit" type="submit">SIMPAN CHECKLIST</button>
-        </form>
+
+            <form id="clForm">
+                <table>
+                    <tbody id="checklist-body"></tbody>
+                </table>
+
+                <div style="margin-top:25px">
+                    <label style="font-weight:bold">✍️ Paraf Pelaksana</label>
+                    <canvas id="canvas"></canvas>
+                    <button type="button" onclick="clearCanvas()" style="background:none; border:none; color:red; cursor:pointer; font-size:0.8rem">Hapus Paraf</button>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="btnSubmit" style="margin-top:20px">SIMPAN CHECKLIST</button>
+            </form>
+        </div>
     </div>
 </div>
 
 <script>
-/* CONFIG SUPABASE */
 const supabaseUrl = "https://dsyvlavphvrdidmodokd.supabase.co";
 const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
 const sb = supabase.createClient(supabaseUrl, supabaseKey);
 
 let html5QrCode;
-let machine = null;
-let currentItems = [];
+let machineData = null;
+let checklistItems = [];
 
-/* 1. AMBIL ITEM DARI TABEL clhmi_items */
-async function buildItems(){
-    const { data, error } = await sb.from("clhmi_items")
-        .select("*")
-        .eq("aktif", true)
-        .order("urutan", { ascending: true });
+// Start Scanner
+function startScanner() {
+    if(!document.getElementById("nama_pelaksana").value) return alert("Isi nama dahulu!");
+    document.getElementById("step-login").style.display = "none";
+    document.getElementById("step-scan").style.display = "block";
+    html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess);
+}
 
-    if(error) {
-        alert("Gagal memuat item: " + error.message);
-        return;
-    }
-
-    currentItems = data;
-    const tb = document.getElementById("tbody");
-    let h = "";
+async function onScanSuccess(text) {
+    html5QrCode.stop();
+    const { data, error } = await sb.from("clhmi_machine").select("*").eq("merk_mesin", text.trim()).single();
+    if(error || !data) return alert("Mesin tidak terdaftar!");
     
-    // Grouping by Kategori
-    const groups = data.reduce((acc, item) => {
-        (acc[item.kategori] = acc[item.kategori] || []).push(item);
-        return acc;
-    }, {});
+    machineData = data;
+    loadForm();
+}
 
-    for (const cat in groups) {
-        h += `<tr class="category"><td colspan="2">${cat}</td></tr>`;
-        groups[cat].forEach(i => {
-            h += `
+async function loadForm() {
+    document.getElementById("step-scan").style.display = "none";
+    document.getElementById("step-form").style.display = "block";
+    
+    document.getElementById("m_merk").innerText = machineData.merk_mesin;
+    document.getElementById("m_serial").innerText = machineData.serial_no;
+    document.getElementById("m_ton").innerText = machineData.tonage;
+    document.getElementById("m_user").innerText = document.getElementById("nama_pelaksana").value;
+
+    const { data: items } = await sb.from("clhmi_items").select("*").eq("aktif", true).order("urutan", { ascending: true });
+    checklistItems = items;
+
+    let html = "";
+    let lastCat = "";
+    items.forEach(item => {
+        if(item.kategori !== lastCat) {
+            lastCat = item.kategori;
+            html += `<tr><td colspan="2" class="cat-header">${lastCat}</td></tr>`;
+        }
+        html += `
             <tr>
-                <td>${i.nama_pengecekan}<br><small style="color:#666">Kode: ${i.item_kode}</small>
-                    <textarea class="note" id="note_${i.id}" placeholder="Jelaskan detail NG..."></textarea>
-                </td>
                 <td>
-                    <select id="st_${i.id}" onchange="chg('${i.id}',this)">
+                    <span class="item-label">${item.nama_pengecekan}</span>
+                    <span class="item-method">Metode: ${item.item_kode}</span>
+                    <textarea class="ng-input" id="note_${item.id}" placeholder="Tulis alasan NG..."></textarea>
+                </td>
+                <td style="width:80px">
+                    <select id="st_${item.id}" onchange="checkStatus('${item.id}', this)">
                         <option value="OK">OK</option>
                         <option value="NG">NG</option>
                         <option value="NA">NA</option>
                     </select>
                 </td>
             </tr>`;
-        });
-    }
-    tb.innerHTML = h;
-    document.getElementById("loadingItems").style.display = "none";
-    document.getElementById("tableForm").style.display = "table";
-}
-
-function chg(id, el){
-    document.getElementById("note_"+id).style.display = el.value === "NG" ? "block" : "none";
-}
-
-/* 2. QR SCANNER */
-function startScan(){
-    const nama = document.getElementById("nama_pelaksana").value;
-    if(!nama) return alert("Isi nama pelaksana dahulu!");
-    
-    document.getElementById("login").style.display = "none";
-    document.getElementById("scan").style.display = "block";
-    html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start({facingMode: "environment"}, {fps: 10, qrbox: 250}, onScan);
-}
-
-async function onScan(text){
-    html5QrCode.stop();
-    // Cari mesin berdasarkan merk_mesin sesuai data di QR
-    const {data, error} = await sb.from("clhmi_machine").select("*").eq("merk_mesin", text.trim()).eq("aktif", true).single();
-    
-    if(error || !data) {
-        alert("MESIN TIDAK TERDAFTAR: " + text);
-        location.reload();
-        return;
-    }
-
-    machine = data;
-    document.getElementById("scan").style.display = "none";
-    document.getElementById("form").style.display = "block";
-    document.getElementById("m_name").innerText = data.merk_mesin;
-    document.getElementById("m_serial").innerText = data.serial_no;
-    document.getElementById("m_ton").innerText = data.tonage;
-    document.getElementById("m_user").innerText = document.getElementById("nama_pelaksana").value;
-    
-    buildItems();
+    });
+    document.getElementById("checklist-body").innerHTML = html;
     initCanvas();
 }
 
-/* 3. CANVAS LOGIC */
+function checkStatus(id, el) {
+    const note = document.getElementById("note_" + id);
+    note.style.display = (el.value === "NG") ? "block" : "none";
+    el.style.color = (el.value === "NG") ? "red" : (el.value === "OK" ? "green" : "black");
+}
+
+// Canvas Paraf
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 let drawing = false;
 
-function initCanvas(){
+function initCanvas() {
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
-    ctx.strokeStyle = "#003366";
     ctx.lineWidth = 3;
     ctx.lineCap = "round";
+    ctx.strokeStyle = "#1e293b";
 }
 
-function getPos(e) {
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x: clientX - rect.left, y: clientY - rect.top };
-}
+canvas.addEventListener("mousedown", startDraw);
+canvas.addEventListener("mousemove", draw);
+window.addEventListener("mouseup", stopDraw);
+canvas.addEventListener("touchstart", (e) => { startDraw(e.touches[0]); e.preventDefault(); });
+canvas.addEventListener("touchmove", (e) => { draw(e.touches[0]); e.preventDefault(); });
+canvas.addEventListener("touchend", stopDraw);
 
-function startDrawing(e) {
-    drawing = true;
-    const pos = getPos(e);
-    ctx.beginPath();
-    ctx.moveTo(pos.x, pos.y);
-    if(e.type === 'touchstart') e.preventDefault();
-}
-
-function drawMove(e) {
-    if (!drawing) return;
-    const pos = getPos(e);
-    ctx.lineTo(pos.x, pos.y);
-    ctx.stroke();
-    if(e.type === 'touchmove') e.preventDefault();
-}
-
-function stopDrawing() { drawing = false; }
-
-canvas.addEventListener("mousedown", startDrawing);
-canvas.addEventListener("mousemove", drawMove);
-window.addEventListener("mouseup", stopDrawing);
-canvas.addEventListener("touchstart", startDrawing, {passive: false});
-canvas.addEventListener("touchmove", drawMove, {passive: false});
-canvas.addEventListener("touchend", stopDrawing);
-
+function startDraw(e) { drawing = true; ctx.beginPath(); ctx.moveTo(e.clientX - canvas.getBoundingClientRect().left, e.clientY - canvas.getBoundingClientRect().top); }
+function draw(e) { if(!drawing) return; ctx.lineTo(e.clientX - canvas.getBoundingClientRect().left, e.clientY - canvas.getBoundingClientRect().top); ctx.stroke(); }
+function stopDraw() { drawing = false; }
 function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
-/* 4. SUBMIT KE SUPABASE */
+// Submit
 document.getElementById("clForm").onsubmit = async (e) => {
     e.preventDefault();
     const btn = document.getElementById("btnSubmit");
-    const img = canvas.toDataURL();
-    
-    if(img.length < 2500) return alert("Silakan bubuhkan paraf dahulu!");
-    
+    const sig = canvas.toDataURL();
+    if(sig.length < 2000) return alert("Tanda tangan dulu!");
+
     btn.disabled = true;
-    btn.innerText = "Menyimpan...";
+    btn.innerText = "MENYIMPAN...";
 
     const now = new Date();
-    const pelaksana = document.getElementById("nama_pelaksana").value;
-
-    // A. Insert Header (clhmi)
     const { data: hdr, error: e1 } = await sb.from("clhmi").insert([{
-        machine_id: machine.id,
-        merk_mesin: machine.merk_mesin,
-        tonage: machine.tonage,
-        serial_no: machine.serial_no,
+        machine_id: machineData.id,
+        merk_mesin: machineData.merk_mesin,
+        tonage: machineData.tonage,
+        serial_no: machineData.serial_no,
         tahun: now.getFullYear(),
         bulan: now.getMonth() + 1,
-        pelaksana: pelaksana,
-        paraf: img,
-        status_form: 'approved' // Otomatis approved jika pelaksana langsung isi
+        tanggal_isi: now.toISOString().split('T')[0],
+        pelaksana: document.getElementById("nama_pelaksana").value,
+        paraf: sig
     }]).select().single();
 
-    if (e1) {
-        alert("Error Simpan Header: " + e1.message);
-        btn.disabled = false;
-        return;
-    }
+    if(e1) { alert("Error Simpan: " + e1.message); btn.disabled = false; return; }
 
-    // B. Persiapkan Data Detail (clhmi_results)
-    const rows = currentItems.map(item => ({
+    const details = checklistItems.map(item => ({
         clhmi_id: hdr.id,
         item_id: item.id,
         item_code: item.item_kode,
         status: document.getElementById("st_" + item.id).value,
-        note: document.getElementById("note_" + item.id).value || null,
         catatan_item: document.getElementById("note_" + item.id).value || null,
-        diisi_oleh: pelaksana,
-        tanggal_cek: now.toISOString().split('T')[0]
+        tanggal_cek: now.toISOString().split('T')[0],
+        diisi_oleh: document.getElementById("nama_pelaksana").value
     }));
 
-    // C. Insert Detail
-    const { error: e2 } = await sb.from("clhmi_results").insert(rows);
-
-    if (e2) {
-        alert("Error Simpan Detail: " + e2.message);
-        btn.disabled = false;
-    } else {
-        alert("✅ Checklist Berhasil Disimpan!");
-        location.reload();
-    }
+    const { error: e2 } = await sb.from("clhmi_results").insert(details);
+    if(e2) alert("Gagal Simpan Detail: " + e2.message);
+    else { alert("✅ Berhasil Disimpan!"); location.reload(); }
 };
 </script>
 </body>
