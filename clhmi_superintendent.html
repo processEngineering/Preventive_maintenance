@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Superintendent - Final Approval CLHMI</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #6f42c1; --dark: #003366; --bg: #f4f7f6; --danger: #dc3545; --success: #28a745; --slate: #64748b; }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #1e293b; }
+        .card { background: #fff; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 600px; margin: auto; overflow: hidden; border: 1px solid #e2e8f0; }
+        .header { background: var(--primary); color: white; padding: 25px 15px; text-align: center; border-bottom: 5px solid #5a32a3; }
+        .header h1 { margin: 0; font-size: 18px; text-transform: uppercase; }
+        
+        .section-title { padding: 12px 15px; background: #f8fafc; font-size: 11px; font-weight: bold; color: var(--slate); text-transform: uppercase; border-bottom: 1px solid #e2e8f0; }
+        .list-item { padding: 18px 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
+        .list-item:hover { background: #f9f7ff; }
+
+        .approval-box { padding: 15px; margin-bottom: 20px; border-radius: 12px; }
+        .report-section { background: #f8fafc; padding: 12px; border-radius: 8px; border-left: 4px solid #cbd5e1; margin-bottom: 10px; }
+        .coord-section { background: #fffbeb; padding: 12px; border-radius: 8px; border-left: 4px solid #f59e0b; }
+        
+        .label-pro { font-weight: 700; font-size: 11px; color: var(--dark); display: block; margin-bottom: 4px; text-transform: uppercase; }
+        .val-text { font-size: 14px; margin-bottom: 8px; color: #334155; }
+
+        #detail-section { display: none; padding: 20px; }
+        input { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; }
+        .canvas-wrapper { border: 2px solid var(--primary); border-radius: 10px; background: #fff; margin-bottom: 8px; }
+        canvas { width: 100%; height: 180px; display: block; touch-action: none; }
+        
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-approve { background: var(--primary); color: white; }
+        .btn-approve:disabled { background: #cbd5e1; cursor: not-allowed; }
+        .btn-back { background: transparent; color: #64748b; margin-top: 10px; border: 1px solid #e2e8f0; }
+        .badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; color: white; margin-left: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="header">
+        <h1>FINAL APPROVAL SUPERINTENDENT</h1>
+        <p style="margin:5px 0 0; font-size:12px; opacity:0.8">Pengesahan Akhir CLHMI Injection</p>
+    </div>
+
+    <div id="list-section">
+        <div class="section-title">Antrian Pengesahan Akhir</div>
+        <div id="queue-container"><div style="padding:40px; text-align:center; color:#94a3b8;">🔄 Memuat laporan terverifikasi...</div></div>
+    </div>
+
+    <div id="detail-section">
+        <div class="approval-box">
+            <div class="report-section">
+                <span class="label-pro">1. Resume Laporan Pelaksana</span>
+                <div id="res-mesin" class="val-text" style="font-weight:800; font-size:16px;"></div>
+                <div id="res-pelaksana" class="val-text"></div>
+                <div id="res-tanggal" style="font-size:12px; color:var(--slate);"></div>
+            </div>
+
+            <div class="coord-section">
+                <span class="label-pro">2. Verifikasi Koordinator</span>
+                <div id="res-coord-name" class="val-text" style="font-weight:700;"></div>
+                <div id="res-coord-note" style="background:#fff; padding:8px; border-radius:5px; border:1px solid #fde68a; font-size:13px;"></div>
+            </div>
+        </div>
+
+        <label class="label-pro">Nama Superintendent:</label>
+        <input type="text" id="nama_superintendent" oninput="validateForm()" placeholder="Masukkan Nama Lengkap">
+        
+        <label class="label-pro">Paraf Otorisasi Final:</label>
+        <div class="canvas-wrapper"><canvas id="canvas"></canvas></div>
+        <button type="button" onclick="clearCanvas()" style="background:none; border:none; color:var(--danger); font-size:11px; font-weight:bold; cursor:pointer; margin-bottom:15px;">HAPUS PARAF</button>
+
+        <button id="btn-submit" class="btn btn-approve" onclick="submitFinal()" disabled>SAHKAN LAPORAN (LOCK)</button>
+        <button class="btn btn-back" onclick="location.reload()">KEMBALI</button>
+    </div>
+</div>
+
+<script>
+    const _URL = "https://duljhawudstjxibhuenv.supabase.co";
+    const _KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1bGpoYXd1ZHN0anhpYmh1ZW52Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3ODI2NDksImV4cCI6MjA4MTM1ODY0OX0.R9s6oNlJjF_K89frPmWkXxcOBlO1IJL6nXwxqNV1jiQ";
+    const sb = supabase.createClient(_URL, _KEY);
+    
+    let activeHdr = null, drawing = false, hasParaf = false;
+    const cvs = document.getElementById("canvas"), ctx = cvs.getContext("2d");
+
+    // 1. LOAD DATA DARI TABEL clhmi YANG STATUSNYA 'approved'
+    async function loadQueue() {
+        const { data, error } = await sb.from('clhmi')
+            .select('*, clhmi_results(status)')
+            .eq('status_form', 'approved') // Hanya yang sudah di-acc koordinator
+            .order('updated_at', { ascending: false });
+
+        const container = document.getElementById("queue-container");
+        container.innerHTML = "";
+
+        if (!data || data.length === 0) {
+            container.innerHTML = `<div style="padding:60px; text-align:center; color:#94a3b8;">✅ Tidak ada antrian pengesahan.</div>`;
+            return;
+        }
+
+        data.forEach(item => {
+            const hasNG = item.clhmi_results.some(r => r.status === 'NG');
+            const div = document.createElement("div");
+            div.className = "list-item";
+            div.onclick = () => showDetail(item);
+            div.innerHTML = `
+                <div style="flex:1">
+                    <div style="font-weight:800; color:var(--dark);">${item.merk_mesin} 
+                        ${hasNG ? '<span class="badge" style="background:red">NG</span>' : '<span class="badge" style="background:green">OK</span>'}
+                    </div>
+                    <small style="color:#64748b">Verified by: ${item.approved_by}</small>
+                </div>
+                <div style="margin-left:15px; color:#e2e8f0;">❯</div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function showDetail(item) {
+        activeHdr = item;
+        document.getElementById("list-section").style.display = "none";
+        document.getElementById("detail-section").style.display = "block";
+        
+        document.getElementById("res-mesin").innerText = item.merk_mesin + " (" + item.serial_no + ")";
+        document.getElementById("res-pelaksana").innerText = "Pelaksana: " + item.created_by;
+        document.getElementById("res-tanggal").innerText = "Tanggal Submit: " + new Date(item.created_at).toLocaleString('id-ID');
+        document.getElementById("res-coord-name").innerText = "Koordinator: " + item.approved_by;
+        document.getElementById("res-coord-note").innerText = item.catatan_umum || "Tidak ada catatan tambahan dari koordinator.";
+
+        initCanvas();
+    }
+
+    // CANVAS LOGIC
+    function initCanvas() {
+        const r = cvs.getBoundingClientRect();
+        cvs.width = r.width; cvs.height = r.height;
+        ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.strokeStyle = "#6f42c1";
+
+        const getXY = (e) => {
+            const rect = cvs.getBoundingClientRect();
+            const x = e.touches ? e.touches[0].clientX : e.clientX;
+            const y = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: x - rect.left, y: y - rect.top };
+        };
+
+        const start = (e) => { drawing = true; ctx.beginPath(); const p = getXY(e); ctx.moveTo(p.x, p.y); };
+        const move = (e) => { if(!drawing) return; const p = getXY(e); ctx.lineTo(p.x, p.y); ctx.stroke(); hasParaf = true; validateForm(); };
+        const stop = () => drawing = false;
+
+        cvs.addEventListener("mousedown", start); cvs.addEventListener("mousemove", move); window.addEventListener("mouseup", stop);
+        cvs.addEventListener("touchstart", (e) => { start(e); e.preventDefault(); }, {passive: false});
+        cvs.addEventListener("touchmove", (e) => { move(e); e.preventDefault(); }, {passive: false});
+        cvs.addEventListener("touchend", stop);
+    }
+
+    function clearCanvas() { ctx.clearRect(0, 0, cvs.width, cvs.height); hasParaf = false; validateForm(); }
+
+    function validateForm() {
+        const nama = document.getElementById("nama_superintendent").value.trim();
+        const btn = document.getElementById("btn-submit");
+        btn.disabled = !(nama.length > 2 && hasParaf);
+    }
+
+    // 2. SIMPAN APPROVAL FINAL (LOCK DATA)
+    async function submitFinal() {
+        const img = cvs.toDataURL();
+        const btn = document.getElementById("btn-submit");
+        btn.disabled = true;
+        btn.innerText = "⏳ Mengunci Data...";
+
+        // Kita bisa menyimpan paraf superintendent ke kolom baru atau kolom catatan
+        // Di sini kita asumsikan status berubah menjadi 'finalized'
+        const { error } = await sb.from('clhmi').update({
+            status_form: 'finalized', // Status Akhir
+            updated_at: new Date().toISOString()
+            // Jika ada kolom khusus paraf superintendent, tambahkan di sini
+        }).eq('id', activeHdr.id);
+
+        if(!error) {
+            alert("✅ LAPORAN TELAH DISAHKAN & DIKUNCI.");
+            location.reload();
+        } else {
+            alert("Gagal: " + error.message);
+            btn.disabled = false;
+        }
+    }
+
+    window.onload = loadQueue;
+</script>
+</body>
+</html>
