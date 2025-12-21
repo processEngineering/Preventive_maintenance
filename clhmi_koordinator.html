@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --primary: #ffcc00; --dark: #003366; --bg: #f0f2f5; --danger: #dc3545; --success: #28a745; --slate: #64748b; }
+        :root { --primary: #ffcc00; --dark: #003366; --bg: #f0f2f5; --danger: #dc3535; --success: #28a745; --slate: #64748b; }
         body { font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #1e293b; }
         .card { background: #fff; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 600px; margin: auto; overflow: hidden; border: 1px solid #e2e8f0; }
         .header { background: var(--dark); color: var(--primary); padding: 25px 15px; text-align: center; border-bottom: 5px solid var(--primary); }
@@ -42,7 +42,7 @@
     </div>
 
     <div id="list-section">
-        <div class="section-title">Antrian Verifikasi</div>
+        <div class="section-title">Antrian Verifikasi Terupdate</div>
         <div id="queue-container"><div style="padding:40px; text-align:center">🔄 Mengecek database...</div></div>
     </div>
 
@@ -83,14 +83,13 @@
     let activeHdr = null, drawing = false, hasParaf = false;
     const cvs = document.getElementById("canvas"), ctx = cvs.getContext("2d");
 
-    // FUNGSI 1: AMBIL ANTRIAN (Hanya status_form = 'submitted')
+    // REVISI: Mengambil SEMUA data yang belum 'approved' (termasuk draft/submitted/null)
     async function loadQueue() {
         const container = document.getElementById("queue-container");
         
-        // Perhatikan: Mengambil kolom sesuai tabel clhmi Anda
         const { data, error } = await sb.from('clhmi')
             .select('id, merk_mesin, serial_no, pelaksana, status_form, created_at, clhmi_results(status)')
-            .eq('status_form', 'submitted')
+            .neq('status_form', 'approved') // Tampilkan semua kecuali yang sudah di-approve
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -105,14 +104,14 @@
         }
 
         data.forEach(item => {
-            const hasNG = item.clhmi_results.some(r => r.status === 'NG');
+            const hasNG = item.clhmi_results && item.clhmi_results.some(r => r.status === 'NG');
             const div = document.createElement("div");
             div.className = "list-item";
             div.onclick = () => initScanFlow(item);
             div.innerHTML = `
                 <div style="flex:1">
                     <b>${item.merk_mesin}</b><br>
-                    <small>S/N: ${item.serial_no} | Pelaksana: ${item.pelaksana || item.created_by}</small>
+                    <small>S/N: ${item.serial_no} | Pelaksana: ${item.pelaksana || 'Tanpa Nama'}</small>
                 </div>
                 <div class="status-indicator" style="color:${hasNG ? 'var(--danger)' : 'var(--success)'}">
                     <div class="dot ${hasNG ? 'dot-ng' : 'dot-ok'}"></div>
@@ -123,7 +122,6 @@
         });
     }
 
-    // FUNGSI 2: SCAN QR
     function initScanFlow(item) {
         activeHdr = item;
         document.getElementById("list-section").style.display = "none";
@@ -141,10 +139,9 @@
         });
     }
 
-    // FUNGSI 3: AMBIL DETAIL
     async function fetchDetails() {
         const { data } = await sb.from('clhmi_results')
-            .select('*, clhmi_items(nama_pengecekan)')
+            .select('*')
             .eq('clhmi_id', activeHdr.id);
         
         renderDetail(data);
@@ -157,25 +154,26 @@
         const hasNG = results.some(r => r.status === 'NG');
         document.getElementById("summary-area").innerHTML = `
             <h3 style="color:${hasNG ? 'red' : 'green'}">${hasNG ? '⚠️ TEMUAN NG' : '✅ KONDISI OK'}</h3>
-            <p>Mesin: ${activeHdr.merk_mesin} | Pelaksana: ${activeHdr.pelaksana || activeHdr.created_by}</p>
+            <p>Mesin: ${activeHdr.merk_mesin} | Pelaksana: ${activeHdr.pelaksana || 'Pelaksana'}</p>
         `;
 
         let html = '<div class="section-title">Item Bermasalah / Catatan:</div>';
+        if(results.length === 0) html += '<p style="padding:15px; font-size:12px; color:gray">Tidak ada detail data.</p>';
+        
         results.forEach(r => {
-            if(r.status === 'NG' || r.note) {
+            if(r.status === 'NG' || r.catatan_item) {
                 html += `
                 <div class="item-row">
-                    <span>${r.clhmi_items?.nama_pengecekan || 'Item '+r.item_id}</span>
+                    <span>Item ${r.item_id}</span>
                     <span class="${r.status === 'NG' ? 'badge-ng' : 'badge-ok'}">${r.status}</span>
                 </div>
-                <div style="font-size:11px; color:gray; margin-bottom:10px">Ket: ${r.note || '-'}</div>`;
+                <div style="font-size:11px; color:gray; margin-bottom:10px">Ket: ${r.catatan_item || '-'}</div>`;
             }
         });
         document.getElementById("items-area").innerHTML = html;
         initCanvas();
     }
 
-    // FUNGSI 4: TANDA TANGAN
     function initCanvas() {
         const r = cvs.getBoundingClientRect();
         cvs.width = r.width; cvs.height = r.height;
@@ -194,18 +192,17 @@
     }
 
     function clearCanvas() { ctx.clearRect(0,0,cvs.width,cvs.height); hasParaf = false; validateForm(); }
+    
     function validateForm() {
         const n = document.getElementById("nama_koordinator").value.trim();
         document.getElementById("btn-submit").disabled = !(n.length > 2 && hasParaf);
     }
 
-    // FUNGSI 5: UPDATE DATABASE
     async function submitApproval() {
         const btn = document.getElementById("btn-submit");
         btn.disabled = true;
         btn.innerText = "⏳ Menyimpan...";
 
-        // Sesuai kolom di tabel clhmi Anda
         const updateData = {
             approved_by: document.getElementById("nama_koordinator").value,
             approved_at: new Date().toISOString(),
