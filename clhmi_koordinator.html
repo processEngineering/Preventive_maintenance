@@ -14,6 +14,7 @@
         .header h1 { margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; }
         .section-title { padding: 12px 15px; background: #f8fafc; font-size: 11px; font-weight: bold; color: var(--slate); text-transform: uppercase; border-bottom: 1px solid #e2e8f0; }
         .list-item { padding: 18px 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
+        .list-item:active { background: #f8fafc; }
         .status-indicator { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 11px; }
         .dot { width: 8px; height: 8px; border-radius: 50%; }
         .dot-ok { background-color: var(--success); }
@@ -29,11 +30,11 @@
         .badge-ng { color: white; background: var(--danger); padding: 2px 6px; border-radius: 4px; font-weight: bold; }
         .badge-ok { color: white; background: var(--success); padding: 2px 6px; border-radius: 4px; font-weight: bold; }
         .canvas-wrapper { border: 2px solid #adb5bd; border-radius: 10px; background: #fff; margin-bottom: 8px; }
-        canvas { width: 100%; height: 160px; touch-action: none; display: block; }
-        input, textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 15px; box-sizing: border-box; }
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        canvas { width: 100%; height: 160px; touch-action: none; display: block; cursor: crosshair; }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 15px; box-sizing: border-box; font-size: 16px; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-main { background: var(--dark); color: #fff; }
-        .btn-main:disabled { background: #cbd5e1; }
+        .btn-main:disabled { background: #cbd5e1; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -41,7 +42,7 @@
 <div class="card">
     <div class="header">
         <h1>VERIFIKASI KOORDINATOR</h1>
-        <p>Approval Checklist Harian Mesin (CLHMI)</p>
+        <p style="margin: 5px 0 0; font-size: 12px; opacity: 0.8;">Approval Checklist Harian Mesin (CLHMI)</p>
     </div>
 
     <div id="list-section">
@@ -55,7 +56,7 @@
             <div id="target-machine-name" style="font-size: 22px; font-weight: 900; color: var(--dark);"></div>
         </div>
         <div id="reader"></div>
-        <button class="btn" onclick="location.reload()" style="background:#eee">BATAL</button>
+        <button class="btn" onclick="location.reload()" style="background:#eee; margin-top: 10px;">BATAL</button>
     </div>
 
     <div id="detail-section">
@@ -64,65 +65,70 @@
         
         <div style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0;">
             <label style="font-weight:bold; font-size:12px;">NAMA KOORDINATOR:</label>
-            <input type="text" id="nama_koordinator" oninput="validateForm()" placeholder="Input Nama">
+            <input type="text" id="nama_koordinator" oninput="validateForm()" placeholder="Input Nama Lengkap">
             
             <label style="font-weight:bold; font-size:12px;">CATATAN VERIFIKASI:</label>
-            <textarea id="catatan_umum" oninput="validateForm()" placeholder="Tambahkan catatan jika perlu..."></textarea>
+            <textarea id="catatan_umum" oninput="validateForm()" placeholder="Berikan catatan perbaikan jika ada NG..."></textarea>
 
             <label style="font-weight:bold; font-size:12px;">PARAF DIGITAL:</label>
             <div class="canvas-wrapper"><canvas id="canvas"></canvas></div>
-            <button onclick="clearCanvas()" style="color:var(--danger); background:none; border:none; font-size:11px; font-weight:bold; cursor:pointer; margin-bottom:15px;">HAPUS PARAF</button>
+            <button onclick="clearCanvas()" style="color:var(--danger); background:none; border:none; font-size:11px; font-weight:bold; cursor:pointer; margin-bottom:15px; padding: 5px;">HAPUS PARAF</button>
 
             <button id="btn-submit" class="btn btn-main" onclick="submitApproval()" disabled>APPROVE & SELESAI</button>
         </div>
+        <button class="btn" onclick="location.reload()" style="background:none; color: var(--slate); font-size: 12px; margin-top: 10px;">Kembali ke Daftar</button>
     </div>
 </div>
 
 <script>
+    // Konfigurasi Supabase (Token dibersihkan dari spasi)
     const _URL = "https://dsyvlavphvrdidmodokd.supabase.co";
-    const _KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E
-
-";
+    const _KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E".trim();
     const sb = supabase.createClient(_URL, _KEY);
     
     let activeHdr = null, activeResults = [], html5QrCode, drawing = false, hasParaf = false;
     const cvs = document.getElementById("canvas"), ctx = cvs.getContext("2d");
 
-    // 1. LOAD ANTRIAN DARI TABEL clhmi
+    // 1. LOAD ANTRIAN
     async function loadQueue() {
         const container = document.getElementById("queue-container");
-        // Ambil data yang statusnya 'submitted'
-        const { data, error } = await sb.from('clhmi')
-            .select('*, clhmi_results(status)')
-            .eq('status_form', 'submitted')
-            .order('created_at', { ascending: false });
+        try {
+            const { data, error } = await sb.from('clhmi')
+                .select('*, clhmi_results(status)')
+                .eq('status_form', 'submitted')
+                .order('created_at', { ascending: false });
 
-        container.innerHTML = "";
-        if (!data || data.length === 0) {
-            container.innerHTML = `<div class="empty-state">✅ Tidak ada antrian approval.</div>`;
-            return;
+            if (error) throw error;
+
+            container.innerHTML = "";
+            if (!data || data.length === 0) {
+                container.innerHTML = `<div class="empty-state">✅ Tidak ada antrian approval.</div>`;
+                return;
+            }
+
+            data.forEach(item => {
+                const hasNG = item.clhmi_results.some(r => r.status === 'NG');
+                const div = document.createElement("div");
+                div.className = "list-item";
+                div.onclick = () => initScanFlow(item);
+                div.innerHTML = `
+                    <div style="flex:1">
+                        <b>${item.merk_mesin}</b><br>
+                        <small>S/N: ${item.serial_no || '-'} | Pelaksana: ${item.created_by}</small>
+                    </div>
+                    <div class="status-indicator" style="color:${hasNG ? 'var(--danger)' : 'var(--success)'}">
+                        <div class="dot ${hasNG ? 'dot-ng' : 'dot-ok'}"></div>
+                        ${hasNG ? 'NG FOUND' : 'OK'}
+                    </div>
+                    <div style="margin-left:10px; color: #ccc">❯</div>`;
+                container.appendChild(div);
+            });
+        } catch (err) {
+            container.innerHTML = `<div class="empty-state" style="color:red">Gagal memuat data: ${err.message}</div>`;
         }
-
-        data.forEach(item => {
-            const hasNG = item.clhmi_results.some(r => r.status === 'NG');
-            const div = document.createElement("div");
-            div.className = "list-item";
-            div.onclick = () => initScanFlow(item);
-            div.innerHTML = `
-                <div style="flex:1">
-                    <b>${item.merk_mesin}</b><br>
-                    <small>S/N: ${item.serial_no} | Pelaksana: ${item.created_by}</small>
-                </div>
-                <div class="status-indicator" style="color:${hasNG ? 'var(--danger)' : 'var(--success)'}">
-                    <div class="dot ${hasNG ? 'dot-ng' : 'dot-ok'}"></div>
-                    ${hasNG ? 'NG FOUND' : 'OK'}
-                </div>
-                <div style="margin-left:10px">❯</div>`;
-            container.appendChild(div);
-        });
     }
 
-    // 2. SCAN QR MESIN UNTUK VERIFIKASI FISIK
+    // 2. SCAN QR FISIK
     function initScanFlow(item) {
         activeHdr = item;
         document.getElementById("list-section").style.display = "none";
@@ -130,21 +136,32 @@
         document.getElementById("target-machine-name").innerText = item.merk_mesin;
 
         html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, async (text) => {
-            if(text.trim() === activeHdr.merk_mesin) { 
-                await html5QrCode.stop(); 
-                fetchDetails(); 
-            } else { 
-                alert("QR Tidak Cocok! Scan QR yang ada di mesin " + activeHdr.merk_mesin); 
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 20, qrbox: { width: 250, height: 250 } }, 
+            async (text) => {
+                // Bandingkan hasil scan dengan Merk Mesin
+                if(text.trim().toLowerCase() === activeHdr.merk_mesin.trim().toLowerCase()) { 
+                    await html5QrCode.stop(); 
+                    fetchDetails(); 
+                } else { 
+                    alert("QR SALAH! Anda harus men-scan QR di mesin " + activeHdr.merk_mesin); 
+                }
             }
-        }).catch(err => alert("Kamera error: " + err));
+        ).catch(err => alert("Izin kamera ditolak atau error: " + err));
     }
 
     // 3. AMBIL DETAIL PENGECEKAN
     async function fetchDetails() {
+        // Ambil hasil dan join dengan master item untuk mendapatkan deskripsi
         const { data, error } = await sb.from('clhmi_results')
             .select('*, clhmi_items(nama_pengecekan)')
             .eq('clhmi_id', activeHdr.id);
+        
+        if (error) {
+            alert("Gagal mengambil detail: " + error.message);
+            return;
+        }
         
         activeResults = data;
         renderDetail();
@@ -160,21 +177,20 @@
         area.style.borderColor = hasNG ? "var(--danger)" : "var(--success)";
         
         area.innerHTML = `
-            <h3 style="margin:0; color:${hasNG ? 'var(--danger)' : 'var(--success)'}">${hasNG ? '⚠️ TEMUAN NG' : '✅ KONDISI OK'}</h3>
-            <p style="font-size:12px; margin:5px 0;">Unit: ${activeHdr.merk_mesin} | Pelaksana: ${activeHdr.created_by}</p>
+            <h3 style="margin:0; color:${hasNG ? 'var(--danger)' : 'var(--success)'}">${hasNG ? '⚠️ DITEMUKAN TEMUAN NG' : '✅ KONDISI MESIN OK'}</h3>
+            <p style="font-size:12px; margin:5px 0;">Unit: <b>${activeHdr.merk_mesin}</b> | Pelaksana: ${activeHdr.created_by}</p>
         `;
 
-        let itemsHtml = '<div class="section-title">Detail Temuan:</div>';
+        let itemsHtml = '<div class="section-title">Detail Hasil Pengecekan:</div>';
         activeResults.forEach(r => {
-            if(r.status === 'NG' || r.note) {
-                itemsHtml += `
-                    <div class="item-row">
-                        <span>${r.clhmi_items.nama_pengecekan}</span>
-                        <span class="${r.status === 'NG' ? 'badge-ng' : 'badge-ok'}">${r.status}</span>
-                    </div>
-                    <div style="font-size:11px; color:var(--slate); margin-bottom:10px;">Ket: ${r.note || '-'}</div>
-                `;
-            }
+            // Tampilkan semua data, atau prioritaskan yang NG dan Ber-catatan
+            itemsHtml += `
+                <div class="item-row">
+                    <span>${r.clhmi_items?.nama_pengecekan || 'Item '+r.item_id}</span>
+                    <span class="${r.status === 'NG' ? 'badge-ng' : 'badge-ok'}">${r.status}</span>
+                </div>
+                ${r.note ? `<div style="font-size:11px; color:var(--slate); margin-bottom:10px; padding-left: 5px;">📝 Catatan: ${r.note}</div>` : ''}
+            `;
         });
         document.getElementById("items-area").innerHTML = itemsHtml;
         initCanvas();
@@ -187,21 +203,34 @@
         ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.strokeStyle = "#003366";
 
         const start = (e) => { drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); };
-        const move = (e) => { if(!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); hasParaf = true; validateForm(); };
+        const move = (e) => { 
+            if(!drawing) return; 
+            const p = getPos(e); 
+            ctx.lineTo(p.x, p.y); 
+            ctx.stroke(); 
+            hasParaf = true; 
+            validateForm(); 
+        };
         const stop = () => { drawing = false; };
+        
         function getPos(e) {
             const rect = cvs.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             return { x: clientX - rect.left, y: clientY - rect.top };
         }
+
         cvs.addEventListener("mousedown", start); cvs.addEventListener("mousemove", move); window.addEventListener("mouseup", stop);
         cvs.addEventListener("touchstart", (e) => { start(e); e.preventDefault(); }, {passive: false});
         cvs.addEventListener("touchmove", (e) => { move(e); e.preventDefault(); }, {passive: false});
         cvs.addEventListener("touchend", stop);
     }
 
-    function clearCanvas() { ctx.clearRect(0, 0, cvs.width, cvs.height); hasParaf = false; validateForm(); }
+    function clearCanvas() { 
+        ctx.clearRect(0, 0, cvs.width, cvs.height); 
+        hasParaf = false; 
+        validateForm(); 
+    }
 
     function validateForm() {
         const nama = document.getElementById("nama_koordinator").value.trim();
@@ -209,17 +238,21 @@
         submitBtn.disabled = !(nama.length > 2 && hasParaf);
     }
 
-    // 5. SUBMIT APPROVAL KE TABEL clhmi
+    // 5. SUBMIT KE DATABASE
     async function submitApproval() {
         const btn = document.getElementById("btn-submit");
+        const nama = document.getElementById("nama_koordinator").value;
+        
+        if(!confirm("Apakah Anda yakin data sudah sesuai?")) return;
+
         btn.disabled = true;
-        btn.innerText = "⏳ Memproses...";
+        btn.innerText = "⏳ Menyimpan Approval...";
 
         const payload = {
-            approved_by: document.getElementById("nama_koordinator").value,
+            approved_by: nama,
             approved_at: new Date().toISOString(),
             catatan_umum: document.getElementById("catatan_umum").value,
-            status_form: 'approved' // Ubah status jadi approved
+            status_form: 'approved' 
         };
 
         const { error } = await sb.from('clhmi').update(payload).eq('id', activeHdr.id);
@@ -230,6 +263,7 @@
         } else {
             alert("❌ GAGAL: " + error.message);
             btn.disabled = false;
+            btn.innerText = "APPROVE & SELESAI";
         }
     }
 
