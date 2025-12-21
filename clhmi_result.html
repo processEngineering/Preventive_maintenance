@@ -24,16 +24,16 @@
         .bg-gray { background-color: #dfdfdf; font-weight: bold; text-align: left; padding-left: 5px; }
         .col-nama { text-align: left; width: 140px; padding-left: 3px; }
         .col-std { width: 100px; text-align: left; font-size: 6pt; }
-        .st-ok { color: green; font-weight: bold; }
         .st-ng { color: white; font-weight: bold; background: #e21c1c; }
         
         /* Signature Grid 1-31 */
-        .sig-cell { height: 35px; padding: 0 !important; vertical-align: middle; background: #fff; }
+        .sig-cell { height: 38px; padding: 0 !important; vertical-align: middle; background: #fff; position: relative; }
         .sig-img { max-height: 30px; max-width: 24px; mix-blend-mode: multiply; display: block; margin: auto; }
+        .signed-tag { font-size: 4pt; color: #003366; font-style: italic; position: absolute; bottom: 1px; width: 100%; text-align: center; }
         
         /* Footer Box */
-        .footer-box { border: 1px solid black; height: 110px; vertical-align: top; position: relative; padding: 5px; text-align: center; }
-        .sig-super-img { height: 65px; mix-blend-mode: multiply; display: block; margin: 5px auto; }
+        .footer-box { border: 1px solid black; height: 100px; vertical-align: top; position: relative; padding: 5px; text-align: center; }
+        .sig-super-img { height: 60px; mix-blend-mode: multiply; display: block; margin: 5px auto; }
 
         .no-print { background: #003366; color: white; padding: 10px; margin-bottom: 10px; border-radius: 5px; display: flex; gap: 10px; align-items: center; }
         @media print { .no-print { display: none; } body { background: white; padding: 0; } .sheet { box-shadow: none; width: 100%; } }
@@ -107,12 +107,7 @@
     <table style="border:none; margin-top: 10px;">
         <tr>
             <td width="60%" style="border:none; text-align: left; vertical-align: top; line-height: 1.4;">
-                <b>Catatan :</b><br>
-                (*) : Isi kolom laporan ceklist jika unit ini ada dimesin ini<br>
-                (**) : Diisi angka jam kerja mesin / running hour yang ada dimesin<br><br>
-                <b>Beri tanda :</b><br>
-                √ : Bila item yang diperiksa baik, sesuai standar<br>
-                X : Bila terjadi penyimpangan / kerusakan pada item yang diperiksa
+                <b>Catatan :</b> √ : OK | X : NG
             </td>
             <td width="40%" style="border:none;">
                 <div class="footer-box">
@@ -132,29 +127,16 @@
 
     async function initFilter() {
         const { data: machines } = await sb.from('clhmi_machine').select('*').order('merk_mesin');
-        if(machines) {
-            machines.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m.id;
-                opt.textContent = `${m.merk_mesin} (${m.serial_no})`;
-                document.getElementById('machine-select').appendChild(opt);
-            });
-        }
-
-        const months = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-        months.forEach((m, i) => {
-            const opt = document.createElement('option');
-            opt.value = i + 1;
-            opt.textContent = m;
-            document.getElementById('month-select').appendChild(opt);
+        machines?.forEach(m => {
+            let opt = new Option(`${m.merk_mesin} (${m.serial_no})`, m.id);
+            document.getElementById('machine-select').add(opt);
         });
 
+        const months = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+        months.forEach((m, i) => document.getElementById('month-select').add(new Option(m, i+1)));
+
         const year = new Date().getFullYear();
-        for(let y=year; y>=year-2; y--) {
-            const opt = document.createElement('option');
-            opt.value = y; opt.textContent = y;
-            document.getElementById('year-select').appendChild(opt);
-        }
+        for(let y=year; y>=year-2; y--) document.getElementById('year-select').add(new Option(y, y));
 
         let h = "";
         for(let i=1; i<=31; i++) h += `<th width="24">${i}</th>`;
@@ -167,26 +149,21 @@
         const thn = document.getElementById('year-select').value;
         if(!mId) return;
 
-        // Clean Grid
+        // Reset All Grid
         for(let i=1; i<=31; i++) {
             document.getElementById(`p-sig-${i}`).innerHTML = "";
             document.getElementById(`k-sig-${i}`).innerHTML = "";
         }
 
-        // Fetch Data
         const { data: header } = await sb.from('clhmi').select('*').eq('machine_id', mId).eq('bulan', bln).eq('tahun', thn).maybeSingle();
         const { data: master } = await sb.from('clhmi_items').select('*').order('urutan');
         const { data: results } = header ? await sb.from('clhmi_results').select('*').eq('clhmi_id', header.id) : {data:[]};
 
-        if(!header) { 
-            alert("Data untuk periode ini belum tersedia."); 
-            return; 
-        }
+        if(!header) { alert("Data tidak ditemukan."); return; }
 
-        // Fill Header Info
-        document.getElementById('out-merk').innerText = header.merk_mesin || '-';
-        document.getElementById('out-sn').innerText = header.serial_no || '-';
-        document.getElementById('out-ton').innerText = header.tonage || '-';
+        document.getElementById('out-merk').innerText = header.merk_mesin;
+        document.getElementById('out-sn').innerText = header.serial_no;
+        document.getElementById('out-ton').innerText = header.tonage;
         document.getElementById('out-bln').innerText = document.getElementById('month-select').options[bln-1].text;
         document.getElementById('out-thn').innerText = thn;
 
@@ -203,42 +180,36 @@
             let rowHtml = `<tr><td>${m.item_kode||''}</td><td class="col-nama">${m.nama_pengecekan}</td><td class="col-std">${m.standar||'-'}</td>`;
             for(let d=1; d<=31; d++) {
                 const find = results.find(r => r.item_id === m.id && parseInt(r.tanggal_cek.split('-')[2]) === d);
-                let cellClass = find?.status === 'NG' ? 'st-ng' : '';
-                let symbol = find ? (find.status === 'OK' ? '√' : 'X') : '';
-                rowHtml += `<td class="${cellClass}">${symbol}</td>`;
+                rowHtml += `<td class="${find?.status==='NG'?'st-ng':''}">${find ? (find.status==='OK'?'√':'X') : ''}</td>`;
             }
             tbody.innerHTML += rowHtml + "</tr>";
         });
 
-        // RENDER PARAF HARIAN (PELAKSANA & KOORDINATOR)
+        // RENDER PARAF HARIAN
         for(let d=1; d<=31; d++) {
             const hasActivity = results.some(r => parseInt(r.tanggal_cek.split('-')[2]) === d);
-            
             if(hasActivity) {
-                // Tampilkan Paraf Pelaksana jika ada
+                // Pelaksana
                 if(header.paraf) {
-                    document.getElementById(`p-sig-${d}`).innerHTML = `<img src="${header.paraf}" class="sig-img">`;
+                    document.getElementById(`p-sig-${d}`).innerHTML = `<img src="${header.paraf}" class="sig-img"><div class="signed-tag">Signed</div>`;
                 }
-                
-                // Tampilkan Paraf Koordinator (Ditampilkan jika status sudah approved/finalized)
-                if((header.status_form === 'approved' || header.status_form === 'finalized') && header.paraf_coord) {
-                    document.getElementById(`k-sig-${d}`).innerHTML = `<img src="${header.paraf_coord}" class="sig-img">`;
+                // Koordinator (diambil dari kolom paraf_coord)
+                if(header.status_form !== 'draft' && header.status_form !== 'submitted' && header.paraf_coord) {
+                    document.getElementById(`k-sig-${d}`).innerHTML = `<img src="${header.paraf_coord}" class="sig-img"><div class="signed-tag">Verified</div>`;
                 }
             }
         }
 
-        // FOOTER SUPERINTENDENT (FINAL APPROVAL)
-        if(header.status_form === 'finalized') {
-            document.getElementById('out-name-super').innerText = header.approved_by || "SUPERINTENDENT";
-            // Cek paraf_super (kolom khusus untuk tanda tangan Superintendent)
-            if(header.paraf_super) {
-                 document.getElementById('out-sig-super').innerHTML = `<img src="${header.paraf_super}" class="sig-super-img">`;
-            } else {
-                 document.getElementById('out-sig-super').innerHTML = "<br><i style='color:#ccc'>Signed Digitally</i>";
-            }
+        // FOOTER SUPERINTENDENT (diambil dari kolom paraf_super)
+        const outSigSuper = document.getElementById('out-sig-super');
+        const outNameSuper = document.getElementById('out-name-super');
+
+        if(header.status_form === 'finalized' && header.paraf_super) {
+            outSigSuper.innerHTML = `<img src="${header.paraf_super}" class="sig-super-img"><div style="font-size:6pt; font-style:italic;">Digitally Approved by Superintendent</div>`;
+            outNameSuper.innerText = header.approved_by || "SUPERINTENDENT";
         } else {
-            document.getElementById('out-sig-super').innerHTML = "";
-            document.getElementById('out-name-super').innerText = "-";
+            outSigSuper.innerHTML = "<br><br><span style='color:#ccc; font-style:italic;'>Belum Disahkan</span>";
+            outNameSuper.innerText = "-";
         }
     }
 
