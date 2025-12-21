@@ -84,15 +84,20 @@
     let activeHdr = null, drawing = false, hasParaf = false;
     const cvs = document.getElementById("canvas"), ctx = cvs.getContext("2d");
 
-    // 1. LOAD DATA DARI TABEL clhmi YANG STATUSNYA 'approved'
     async function loadQueue() {
+        // PERBAIKAN: Memastikan kolom pelaksana ikut dipanggil
         const { data, error } = await sb.from('clhmi')
             .select('*, clhmi_results(status)')
-            .eq('status_form', 'approved') // Hanya yang sudah di-acc koordinator
+            .eq('status_form', 'approved')
             .order('updated_at', { ascending: false });
 
         const container = document.getElementById("queue-container");
         container.innerHTML = "";
+
+        if (error) {
+            container.innerHTML = `<div style="padding:20px; color:red">Error: ${error.message}</div>`;
+            return;
+        }
 
         if (!data || data.length === 0) {
             container.innerHTML = `<div style="padding:60px; text-align:center; color:#94a3b8;">✅ Tidak ada antrian pengesahan.</div>`;
@@ -100,7 +105,7 @@
         }
 
         data.forEach(item => {
-            const hasNG = item.clhmi_results.some(r => r.status === 'NG');
+            const hasNG = item.clhmi_results && item.clhmi_results.some(r => r.status === 'NG');
             const div = document.createElement("div");
             div.className = "list-item";
             div.onclick = () => showDetail(item);
@@ -109,7 +114,7 @@
                     <div style="font-weight:800; color:var(--dark);">${item.merk_mesin} 
                         ${hasNG ? '<span class="badge" style="background:red">NG</span>' : '<span class="badge" style="background:green">OK</span>'}
                     </div>
-                    <small style="color:#64748b">Verified by: ${item.approved_by}</small>
+                    <small style="color:#64748b">Verified by: ${item.approved_by || 'Unknown'}</small>
                 </div>
                 <div style="margin-left:15px; color:#e2e8f0;">❯</div>
             `;
@@ -122,16 +127,18 @@
         document.getElementById("list-section").style.display = "none";
         document.getElementById("detail-section").style.display = "block";
         
-        document.getElementById("res-mesin").innerText = item.merk_mesin + " (" + item.serial_no + ")";
-        document.getElementById("res-pelaksana").innerText = "Pelaksana: " + item.created_by;
-        document.getElementById("res-tanggal").innerText = "Tanggal Submit: " + new Date(item.created_at).toLocaleString('id-ID');
-        document.getElementById("res-coord-name").innerText = "Koordinator: " + item.approved_by;
+        document.getElementById("res-mesin").innerText = item.merk_mesin + " (" + (item.serial_no || '-') + ")";
+        
+        // PERBAIKAN: Menggunakan item.pelaksana agar tidak muncul NULL
+        document.getElementById("res-pelaksana").innerText = "Pelaksana: " + (item.pelaksana || "Nama tidak tercatat");
+        
+        document.getElementById("res-tanggal").innerText = "Tanggal Isi: " + new Date(item.created_at).toLocaleString('id-ID');
+        document.getElementById("res-coord-name").innerText = "Koordinator: " + (item.approved_by || "-");
         document.getElementById("res-coord-note").innerText = item.catatan_umum || "Tidak ada catatan tambahan dari koordinator.";
 
         initCanvas();
     }
 
-    // CANVAS LOGIC
     function initCanvas() {
         const r = cvs.getBoundingClientRect();
         cvs.width = r.width; cvs.height = r.height;
@@ -162,19 +169,16 @@
         btn.disabled = !(nama.length > 2 && hasParaf);
     }
 
-    // 2. SIMPAN APPROVAL FINAL (LOCK DATA)
     async function submitFinal() {
-        const img = cvs.toDataURL();
         const btn = document.getElementById("btn-submit");
         btn.disabled = true;
         btn.innerText = "⏳ Mengunci Data...";
 
-        // Kita bisa menyimpan paraf superintendent ke kolom baru atau kolom catatan
-        // Di sini kita asumsikan status berubah menjadi 'finalized'
         const { error } = await sb.from('clhmi').update({
-            status_form: 'finalized', // Status Akhir
+            status_form: 'finalized', // Status Akhir Terkunci
+            // Disimpan ke catatan_umum atau kolom khusus jika ada:
+            catatan_umum: activeHdr.catatan_umum + " | Final Approval by: " + document.getElementById("nama_superintendent").value,
             updated_at: new Date().toISOString()
-            // Jika ada kolom khusus paraf superintendent, tambahkan di sini
         }).eq('id', activeHdr.id);
 
         if(!error) {
