@@ -3,238 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CLHMI - Pelaksana (Rev-00)</title>
+    <title>CLHMI - Pelaksana</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --primary: #003366; --accent: #ffcc00; --bg: #f4f7f9; --ok: #2e7d32; --ng: #d32f2f; }
-        body { margin: 0; font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: #333; }
-        .card { max-width: 600px; margin: 0 auto; background: #fff; min-height: 100vh; box-shadow: 0 0 20px rgba(0,0,0,.1); }
-        .header { background: var(--primary); color: #fff; padding: 20px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 100; border-bottom: 4px solid var(--accent); }
-        .section { padding: 20px; }
-        input, select, textarea { width: 100%; padding: 14px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box; font-size: 16px; margin-bottom: 10px; }
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s; }
-        .btn-primary { background: var(--primary); color: #fff; }
-        .btn-primary:disabled { background: #94a3b8; }
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; border: 2px solid var(--primary); }
-        
-        /* Form Checklist Style */
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        .category-row { background: #e2e8f0; color: var(--primary); font-weight: bold; font-size: 14px; }
-        .category-row td { padding: 10px; border-top: 2px solid #cbd5e1; }
-        .item-row td { padding: 12px 8px; border-bottom: 1px solid #eee; }
-        .item-text { font-size: 14px; font-weight: 500; color: #1e293b; display: block; margin-bottom: 4px; }
-        .item-standar { font-size: 11px; color: #64748b; font-style: italic; display: block; margin-bottom: 8px; }
-        
-        .note-box { display: none; margin-top: 8px; background: #fff5f5; border: 1px solid #feb2b2; height: 60px; font-size: 13px; }
-        .canvas-box { border: 2px solid #cbd5e1; border-radius: 10px; background: #fff; margin-top: 10px; touch-action: none; }
-        canvas { display: block; width: 100%; height: 180px; }
-        .info-box { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; border: 1px solid #e2e8f0; border-left: 5px solid var(--primary); }
+        :root { --primary: #003366; --bg: #f4f7f9; }
+        body { margin: 0; font-family: sans-serif; background: var(--bg); color: #333; }
+        .container { max-width: 500px; margin: auto; background: white; min-height: 100vh; padding: 20px; box-sizing: border-box; }
+        .header { background: var(--primary); color: white; padding: 15px; text-align: center; font-weight: bold; margin: -20px -20px 20px -20px; border-bottom: 4px solid #ffcc00; }
+        #reader { width: 100%; border-radius: 10px; background: #000; margin-bottom: 10px; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .info-box { background: #fffde7; padding: 10px; border: 1px solid #ffd600; border-radius: 5px; font-size: 13px; margin-bottom: 15px; }
+        .item-card { border-bottom: 1px solid #eee; padding: 12px 0; }
+        select { width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc; background: #fff; font-size: 15px; }
+        canvas { border: 2px dashed #003366; width: 100%; height: 160px; background: #fff; margin-top: 10px; touch-action: none; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <div class="header">AF.SP 05.13 - CHECKLIST HARIAN</div>
+<div class="container">
+    <div class="header">AF.SP 05.13 REV-00 (PELAKSANA)</div>
 
-    <div class="section" id="sec_login">
-        <label><b>Nama Pelaksana (Mekanik):</b></label>
-        <input id="nama_pelaksana" type="text" placeholder="Ketik nama lengkap...">
-        <button class="btn btn-primary" onclick="initApp()">MULAI SCAN QR MESIN</button>
+    <div id="step_1">
+        <label><b>Nama Pelaksana:</b></label>
+        <input type="text" id="nama_user" style="width:100%; padding:12px; margin:10px 0; border:1px solid #ccc; border-radius:5px;" placeholder="Input Nama...">
+        <button class="btn btn-primary" onclick="startScan()">BUKA KAMERA SCAN</button>
     </div>
 
-    <div class="section" id="sec_scan" style="display:none">
+    <div id="step_2" style="display:none">
         <div id="reader"></div>
-        <p style="text-align:center; font-size:12px; color:#666;">Arahkan kamera ke QR Code di Mesin</p>
-        <button class="btn" onclick="location.reload()" style="background:#ef4444; color:white; margin-top:10px">BATAL</button>
+        <p id="scan_status" style="text-align:center; color: #666; font-size: 12px;">Mencari QR Code...</p>
+        <button class="btn" onclick="location.reload()" style="background:#ccc;">KEMBALI</button>
     </div>
 
-    <div class="section" id="sec_form" style="display:none">
+    <div id="step_3" style="display:none">
         <div class="info-box">
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 5px;">
-                <div><b>MESIN:</b> <span id="m_name"></span></div>
-                <div><b>TONAGE:</b> <span id="m_ton"></span></div>
-                <div><b>S/N:</b> <span id="m_serial"></span></div>
-                <div><b>USER:</b> <span id="m_user"></span></div>
-            </div>
+            <b>MESIN:</b> <span id="txt_mesin"></span><br>
+            <b>S/N:</b> <span id="txt_sn"></span> | <b>TON:</b> <span id="txt_ton"></span>
         </div>
+        
+        <form id="formChecklist">
+            <div id="list_items"></div>
+            
+            <p style="margin-top:20px;"><b>Paraf Pelaksana:</b></p>
+            <canvas id="sig-canvas"></canvas>
+            <button type="button" onclick="clearSig()" style="color:red; border:none; background:none; cursor:pointer;">[ Hapus Tanda Tangan ]</button>
 
-        <form id="clForm">
-            <table>
-                <tbody id="tbody">
-                    </tbody>
-            </table>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:30px">
-                <b>✍️ Paraf Pelaksana:</b>
-                <button type="button" onclick="clearCanvas()" style="color:red; background:none; border:none; font-weight:bold; font-size:12px;">[ HAPUS ]</button>
-            </div>
-            <div class="canvas-box">
-                <canvas id="canvas"></canvas>
-            </div>
-
-            <button class="btn btn-primary" type="submit" id="btnSimpan" style="margin-top:20px">SIMPAN PENGECEKAN</button>
-            <div style="height: 50px;"></div>
+            <button type="submit" class="btn btn-primary" id="btnSimpan" style="margin-top:20px; background: #2e7d32;">SIMPAN KE DATABASE</button>
         </form>
     </div>
 </div>
 
-
-
 <script>
-const supabaseUrl = "https://dsyvlavphvrdidmodokd.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
-const sb = supabase.createClient(supabaseUrl, supabaseKey);
+const _URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+const _KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+const sb = supabase.createClient(_URL, _KEY);
 
-let html5QrCode, machine = null, masterItems = [];
+let scanner, activeMachine, items = [];
 
-async function initApp(){
-    const nama = document.getElementById("nama_pelaksana").value;
-    if(!nama) return alert("Nama wajib diisi!");
+function startScan() {
+    if(!document.getElementById('nama_user').value) return alert("Isi nama pelaksana!");
+    document.getElementById('step_1').style.display = 'none';
+    document.getElementById('step_2').style.display = 'block';
 
-    // Load Items sesuai Dokumen AF.SP 05.13
-    const { data, error } = await sb.from('clhmi_items').select('*').order('urutan');
-    if(error) return alert("Gagal koneksi database.");
-    masterItems = data;
-
-    document.getElementById("sec_login").style.display = "none";
-    document.getElementById("sec_scan").style.display = "block";
-    
-    html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess);
+    scanner = new Html5Qrcode("reader");
+    scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, 
+        (text) => { 
+            document.getElementById('scan_status').innerText = "Berhasil! Mencocokkan data...";
+            scanner.stop().then(() => lookupMachine(text)); 
+        },
+        (err) => { /* ignore scan errors */ }
+    ).catch(err => alert("Kamera Error: " + err));
 }
 
-async function onScanSuccess(decodedText) {
-    await html5QrCode.stop();
-    
-    // Cari mesin berdasarkan Nama/Merk yang di-scan
-    const { data, error } = await sb.from("clhmi_machine")
-        .select("*").eq("merk_mesin", decodedText.trim()).single();
+async function lookupMachine(code) {
+    // PENCARIAN DUA ARAH: Cek ID (UUID) atau Nama Mesin
+    let query = sb.from('clhmi_machine').select('*');
+    if(code.length > 30) { query = query.eq('id', code.trim()); } 
+    else { query = query.eq('merk_mesin', code.trim()); }
+
+    const { data, error } = await query.single();
 
     if(error || !data) {
-        alert("MESIN TIDAK TERDAFTAR DI SISTEM!");
+        alert("MESIN TIDAK TERDAFTAR!\nQR Code terbaca: " + code);
         location.reload();
         return;
     }
-
-    machine = data;
-    renderForm();
+    activeMachine = data;
+    loadForm();
 }
 
-function renderForm() {
-    document.getElementById("sec_scan").style.display = "none";
-    document.getElementById("sec_form").style.display = "block";
-    
-    document.getElementById("m_name").innerText = machine.merk_mesin;
-    document.getElementById("m_serial").innerText = machine.serial_no;
-    document.getElementById("m_ton").innerText = machine.tonage;
-    document.getElementById("m_user").innerText = document.getElementById("nama_pelaksana").value;
+async function loadForm() {
+    const { data } = await sb.from('clhmi_items').select('*').order('urutan');
+    items = data;
 
     let html = "";
-    let currentCat = "";
-
-    masterItems.forEach(item => {
-        // Tampilkan Header Kategori (Mekanikal, Kebersihan, dll)
-        if(item.kategori !== currentCat){
-            html += `<tr class="category-row"><td colspan="2">${item.kategori}</td></tr>`;
-            currentCat = item.kategori;
-        }
-        
+    data.forEach(it => {
         html += `
-            <tr class="item-row">
-                <td>
-                    <span class="item-text">${item.item_kode || ''}. ${item.nama_pengecekan}</span>
-                    <span class="item-standar">Std: ${item.standar || '-'}</span>
-                    <textarea class="note-box" id="note_${item.id}" placeholder="Catatan kerusakan jika NG..."></textarea>
-                </td>
-                <td width="90">
-                    <select id="st_${item.id}" onchange="toggleNote('${item.id}', this.value)" style="margin-bottom:0">
-                        <option value="OK">√ (OK)</option>
-                        <option value="NG">X (NG)</option>
-                        <option value="NA">NA</option>
-                    </select>
-                </td>
-            </tr>`;
+            <div class="item-card">
+                <div style="font-size:14px; font-weight:bold;">${it.nama_pengecekan}</div>
+                <div style="font-size:11px; color:#666; margin-bottom:5px;">Standar: ${it.standar || '-'}</div>
+                <select id="status_${it.id}">
+                    <option value="OK">√ OK</option>
+                    <option value="NG">X NG</option>
+                </select>
+            </div>`;
     });
-    document.getElementById("tbody").innerHTML = html;
+    
+    document.getElementById('list_items').innerHTML = html;
+    document.getElementById('txt_mesin').innerText = activeMachine.merk_mesin;
+    document.getElementById('txt_sn').innerText = activeMachine.serial_no;
+    document.getElementById('txt_ton').innerText = activeMachine.tonage;
+    
+    document.getElementById('step_2').style.display = 'none';
+    document.getElementById('step_3').style.display = 'block';
+    
     initCanvas();
 }
 
-function toggleNote(id, val){
-    document.getElementById("note_"+id).style.display = (val === "NG") ? "block" : "none";
-}
-
-// SIGNATURE LOGIC
-const canvas = document.getElementById("canvas");
+// LOGIKA SIGNATURE (TOUCH SUPPORT)
+const canvas = document.getElementById("sig-canvas");
 const ctx = canvas.getContext("2d");
-let isDrawing = false;
+let drawing = false;
 
 function initCanvas() {
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
-    ctx.strokeStyle = "#000"; ctx.lineWidth = 2.5; ctx.lineCap = "round";
+    ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.strokeStyle = "#003366";
 }
 
 function getPos(e) {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.touches ? e.touches[0].clientX : e.clientX;
-    const y = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x: x - rect.left, y: y - rect.top };
+    const r = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - r.left, y: clientY - r.top };
 }
 
-canvas.addEventListener("touchstart", (e) => { isDrawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); }, {passive:false});
-canvas.addEventListener("touchmove", (e) => { if(!isDrawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); }, {passive:false});
-window.addEventListener("touchend", () => isDrawing = false);
+canvas.addEventListener("touchstart", (e) => { drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); }, {passive:false});
+canvas.addEventListener("touchmove", (e) => { if(!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); }, {passive:false});
+window.addEventListener("touchend", () => drawing = false);
 
-function clearCanvas() { ctx.clearRect(0,0,canvas.width,canvas.height); }
+function clearSig() { ctx.clearRect(0,0,canvas.width,canvas.height); }
 
-// SAVE DATA
-document.getElementById("clForm").onsubmit = async (e) => {
+// SIMPAN DATA
+document.getElementById('formChecklist').onsubmit = async (e) => {
     e.preventDefault();
-    const signature = canvas.toDataURL();
-    if(signature.length < 2500) return alert("Silakan tanda tangan terlebih dahulu!");
+    const sig = canvas.toDataURL();
+    if(sig.length < 2000) return alert("Silakan Paraf dulu!");
 
-    const btn = document.getElementById("btnSimpan");
-    btn.disabled = true; btn.innerText = "MENYIMPAN...";
+    const btn = document.getElementById('btnSimpan');
+    btn.disabled = true; btn.innerText = "Sedang Mengirim...";
 
     const now = new Date();
-    const tglString = now.toISOString().split('T')[0];
+    const tglCheck = now.toISOString().split('T')[0];
 
-    // 1. Upsert ke clhmi (Header Bulanan)
-    const { data: header, error: errH } = await sb.from("clhmi").upsert({
-        machine_id: machine.id,
-        merk_mesin: machine.merk_mesin,
-        tonage: machine.tonage,
-        serial_no: machine.serial_no,
-        tahun: now.getFullYear(),
-        bulan: now.getMonth() + 1,
-        paraf: signature,
-        created_by: document.getElementById("nama_pelaksana").value,
-        status_form: "submitted"
-    }, { onConflict: "machine_id,bulan,tahun" }).select().single();
+    try {
+        // 1. UPSERT HEADER (clhmi)
+        const { data: header, error: errH } = await sb.from('clhmi').upsert({
+            machine_id: activeMachine.id,
+            merk_mesin: activeMachine.merk_mesin,
+            serial_no: activeMachine.serial_no,
+            tonage: activeMachine.tonage,
+            bulan: now.getMonth() + 1,
+            tahun: now.getFullYear(),
+            paraf: sig,
+            created_by: document.getElementById('nama_user').value,
+            status_form: 'submitted'
+        }, { onConflict: 'machine_id,bulan,tahun' }).select().single();
 
-    if(errH) { alert("Error Header: " + errH.message); btn.disabled = false; return; }
+        if(errH) throw errH;
 
-    // 2. Insert ke clhmi_results (Detail Harian)
-    const detailRows = masterItems.map(item => ({
-        clhmi_id: header.id,
-        item_id: item.id,
-        status: document.getElementById("st_"+item.id).value,
-        note: document.getElementById("note_"+item.id).value || null,
-        tanggal_cek: tglString
-    }));
+        // 2. INSERT RESULTS (clhmi_results)
+        const results = items.map(it => ({
+            clhmi_id: header.id,
+            item_id: it.id,
+            status: document.getElementById('status_'+it.id).value,
+            tanggal_cek: tglCheck
+        }));
 
-    // Hapus data lama hari ini jika input ulang
-    await sb.from("clhmi_results").delete().eq("clhmi_id", header.id).eq("tanggal_cek", tglString);
-    const { error: errD } = await sb.from("clhmi_results").insert(detailRows);
+        // Hapus entri lama hari ini biar tidak duplikat
+        await sb.from('clhmi_results').delete().eq('clhmi_id', header.id).eq('tanggal_cek', tglCheck);
+        const { error: errD } = await sb.from('clhmi_results').insert(results);
 
-    if(errD) {
-        alert("Error Detail: " + errD.message);
-    } else {
-        alert("DATA BERHASIL DISIMPAN!");
+        if(errD) throw errD;
+
+        alert("SUKSES! Data berhasil masuk.");
         location.reload();
+    } catch (err) {
+        console.error(err);
+        alert("Gagal Simpan: " + err.message);
+        btn.disabled = false;
+        btn.innerText = "COBA SIMPAN LAGI";
     }
-};
+}
 </script>
 </body>
 </html>
