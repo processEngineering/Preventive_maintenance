@@ -27,14 +27,14 @@
         th, td { padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: left; }
         th { background: #f1f5f9; font-size: 14px; }
         .category { background: #f1f5f9; color: var(--primary); font-weight: bold; }
-        .note { display: none; margin-top: 8px; background: #fff5f5; border-color: #feb2b2; }
+        .note { display: none; margin-top: 8px; background: #fff5f5; border-color: #feb2b2; height: 60px; }
         
-        /* IMPROVED CANVAS STYLE */
         .canvas-container { position: relative; margin-top: 10px; border: 2px dashed #cbd5e1; border-radius: 10px; background: #fafafa; }
         canvas { display: block; width: 100%; height: 200px; touch-action: none; cursor: crosshair; }
         .canvas-tools { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
         
         .info-box { background: #eef2f6; padding: 15px; border-radius: 10px; margin-bottom: 15px; font-size: 14px; border-left: 5px solid var(--primary); }
+        .loading { text-align: center; padding: 20px; color: var(--primary); font-weight: bold; }
     </style>
 </head>
 <body>
@@ -51,7 +51,7 @@
 
     <div class="section" id="scan" style="display:none">
         <div id="reader"></div>
-        <p style="text-align:center; color:#64748b">Arahkan kamera ke QR Code mesin</p>
+        <p style="text-align:center; color:#64748b">Arahkan kamera ke QR Code (Merk Mesin)</p>
         <button class="btn" onclick="location.reload()" style="background:#ccc">Batal</button>
     </div>
 
@@ -64,7 +64,8 @@
         </div>
 
         <form id="clForm">
-            <table>
+            <div id="loadingItems" class="loading">Memuat daftar pengecekan...</div>
+            <table id="tableForm" style="display:none">
                 <thead>
                     <tr><th>Item & Standar</th><th style="width: 80px;">Status</th></tr>
                 </thead>
@@ -83,7 +84,7 @@
             </div>
             
             <br><br>
-            <button class="btn btn-primary" type="submit">SIMPAN CHECKLIST</button>
+            <button class="btn btn-primary" id="btnSubmit" type="submit">SIMPAN CHECKLIST</button>
         </form>
     </div>
 </div>
@@ -96,56 +97,62 @@ const sb = supabase.createClient(supabaseUrl, supabaseKey);
 
 let html5QrCode;
 let machine = null;
-let clhmi_id = null;
+let currentItems = [];
 
-const items = [
-    {cat:"1. MEKANIKAL", list:[
-        {id:"mek_a",txt:"Nozzle visual",std:"Radius tidak rusak, tidak meler"},
-        {id:"mek_b",txt:"Kebersihan Head Nozzle",std:"Tidak ada material menempel"},
-        {id:"mek_c",txt:"Check level oli mesin",std:"> Level garis tengah"},
-        {id:"mek_h",txt:"Check temperatur oli",std:"40 - 50°C"},
-        {id:"mek_i",txt:"Running hour (jam)",std:"Sesuai aktual mesin"}
-    ]},
-    {cat:"2. KEBERSIHAN DEBU", list:[
-        {id:"deb_a",txt:"Pintu & Kap Mesin",std:"Bersih tidak berdebu"},
-        {id:"deb_d",txt:"Panel mesin",std:"Bersih tidak berdebu"}
-    ]},
-    {cat:"3. KEBERSIHAN OLI", list:[
-        {id:"oli_a",txt:"Lantai & Bawah mesin",std:"Tidak ada ceceran oli"}
-    ]}
-];
+/* 1. AMBIL ITEM DARI TABEL clhmi_items */
+async function buildItems(){
+    const { data, error } = await sb.from("clhmi_items")
+        .select("*")
+        .eq("aktif", true)
+        .order("urutan", { ascending: true });
 
-/* BUILD FORM */
-function buildItems(){
+    if(error) {
+        alert("Gagal memuat item: " + error.message);
+        return;
+    }
+
+    currentItems = data;
     const tb = document.getElementById("tbody");
     let h = "";
-    items.forEach(g => {
-        h += `<tr class="category"><td colspan="2">${g.cat}</td></tr>`;
-        g.list.forEach(i => {
+    
+    // Grouping by Kategori
+    const groups = data.reduce((acc, item) => {
+        (acc[item.kategori] = acc[item.kategori] || []).push(item);
+        return acc;
+    }, {});
+
+    for (const cat in groups) {
+        h += `<tr class="category"><td colspan="2">${cat}</td></tr>`;
+        groups[cat].forEach(i => {
             h += `
             <tr>
-                <td>${i.txt}<br><small style="color:#666">${i.std}</small>
+                <td>${i.nama_pengecekan}<br><small style="color:#666">Kode: ${i.item_kode}</small>
                     <textarea class="note" id="note_${i.id}" placeholder="Jelaskan detail NG..."></textarea>
                 </td>
                 <td>
                     <select id="st_${i.id}" onchange="chg('${i.id}',this)">
                         <option value="OK">OK</option>
                         <option value="NG">NG</option>
+                        <option value="NA">NA</option>
                     </select>
                 </td>
             </tr>`;
         });
-    });
+    }
     tb.innerHTML = h;
+    document.getElementById("loadingItems").style.display = "none";
+    document.getElementById("tableForm").style.display = "table";
 }
 
 function chg(id, el){
     document.getElementById("note_"+id).style.display = el.value === "NG" ? "block" : "none";
 }
 
-/* QR SCANNER */
+/* 2. QR SCANNER */
 function startScan(){
-    if(!document.getElementById("nama_pelaksana").value) return alert("Isi nama pelaksana dahulu!");
+    const nama = document.getElementById("nama_pelaksana").value;
+    if(!nama) return alert("Isi nama pelaksana dahulu!");
+    
     document.getElementById("login").style.display = "none";
     document.getElementById("scan").style.display = "block";
     html5QrCode = new Html5Qrcode("reader");
@@ -154,12 +161,15 @@ function startScan(){
 
 async function onScan(text){
     html5QrCode.stop();
+    // Cari mesin berdasarkan merk_mesin sesuai data di QR
     const {data, error} = await sb.from("clhmi_machine").select("*").eq("merk_mesin", text.trim()).eq("aktif", true).single();
+    
     if(error || !data) {
-        alert("MESIN TIDAK TERDAFTAR");
+        alert("MESIN TIDAK TERDAFTAR: " + text);
         location.reload();
         return;
     }
+
     machine = data;
     document.getElementById("scan").style.display = "none";
     document.getElementById("form").style.display = "block";
@@ -167,23 +177,22 @@ async function onScan(text){
     document.getElementById("m_serial").innerText = data.serial_no;
     document.getElementById("m_ton").innerText = data.tonage;
     document.getElementById("m_user").innerText = document.getElementById("nama_pelaksana").value;
+    
     buildItems();
     initCanvas();
 }
 
-/* IMPROVED CANVAS LOGIC (TOUCH & MOUSE) */
+/* 3. CANVAS LOGIC */
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 let drawing = false;
 
 function initCanvas(){
-    const rect = canvas.getBoundingClientRect();
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
     ctx.strokeStyle = "#003366";
     ctx.lineWidth = 3;
     ctx.lineCap = "round";
-    ctx.lineJoin = "round";
 }
 
 function getPos(e) {
@@ -214,47 +223,67 @@ function stopDrawing() { drawing = false; }
 canvas.addEventListener("mousedown", startDrawing);
 canvas.addEventListener("mousemove", drawMove);
 window.addEventListener("mouseup", stopDrawing);
-
 canvas.addEventListener("touchstart", startDrawing, {passive: false});
 canvas.addEventListener("touchmove", drawMove, {passive: false});
 canvas.addEventListener("touchend", stopDrawing);
 
-function clearCanvas() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-}
+function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
-/* SUBMIT FORM */
+/* 4. SUBMIT KE SUPABASE */
 document.getElementById("clForm").onsubmit = async (e) => {
     e.preventDefault();
+    const btn = document.getElementById("btnSubmit");
     const img = canvas.toDataURL();
-    // Validasi apakah canvas kosong (panjang string base64 standar kosong biasanya < 2000)
+    
     if(img.length < 2500) return alert("Silakan bubuhkan paraf dahulu!");
+    
+    btn.disabled = true;
+    btn.innerText = "Menyimpan...";
 
-    const {data:hdr, error:e1} = await sb.from("clhmi").insert([{
+    const now = new Date();
+    const pelaksana = document.getElementById("nama_pelaksana").value;
+
+    // A. Insert Header (clhmi)
+    const { data: hdr, error: e1 } = await sb.from("clhmi").insert([{
         machine_id: machine.id,
-        pelaksana: document.getElementById("nama_pelaksana").value,
-        paraf: img
+        merk_mesin: machine.merk_mesin,
+        tonage: machine.tonage,
+        serial_no: machine.serial_no,
+        tahun: now.getFullYear(),
+        bulan: now.getMonth() + 1,
+        pelaksana: pelaksana,
+        paraf: img,
+        status_form: 'approved' // Otomatis approved jika pelaksana langsung isi
     }]).select().single();
 
-    if(e1) return alert("Error Header: " + e1.message);
+    if (e1) {
+        alert("Error Simpan Header: " + e1.message);
+        btn.disabled = false;
+        return;
+    }
 
-    let rows = [];
-    items.forEach(g => {
-        g.list.forEach(i => {
-            rows.push({
-                clhmi_id: hdr.id,
-                item_code: i.id,
-                status: document.getElementById("st_"+i.id).value,
-                note: document.getElementById("note_"+i.id).value || null
-            });
-        });
-    });
+    // B. Persiapkan Data Detail (clhmi_results)
+    const rows = currentItems.map(item => ({
+        clhmi_id: hdr.id,
+        item_id: item.id,
+        item_code: item.item_kode,
+        status: document.getElementById("st_" + item.id).value,
+        note: document.getElementById("note_" + item.id).value || null,
+        catatan_item: document.getElementById("note_" + item.id).value || null,
+        diisi_oleh: pelaksana,
+        tanggal_cek: now.toISOString().split('T')[0]
+    }));
 
-    const {error:e2} = await sb.from("clhmi_results").insert(rows);
-    if(e2) return alert("Error Detail: " + e2.message);
+    // C. Insert Detail
+    const { error: e2 } = await sb.from("clhmi_results").insert(rows);
 
-    alert("✅ Checklist Berhasil Disimpan!");
-    location.reload();
+    if (e2) {
+        alert("Error Simpan Detail: " + e2.message);
+        btn.disabled = false;
+    } else {
+        alert("✅ Checklist Berhasil Disimpan!");
+        location.reload();
+    }
 };
 </script>
 </body>
