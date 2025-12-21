@@ -3,106 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>INPUT CHECKLIST HARIAN - PELAKSANA</title>
+    <title>SCAN INPUT CHECKLIST - PELAKSANA</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #003366; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #003366; margin-bottom: 20px; font-size: 16pt; }
         
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; color: #333; }
-        select, input, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
-        
-        .item-card { background: #fafafa; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        .item-header { font-weight: bold; color: #0056b3; margin-bottom: 10px; display: block; }
-        .radio-group { display: flex; gap: 20px; margin-top: 5px; }
-        .radio-group label { font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 5px; }
-        
-        /* Signature Pad */
-        .sig-container { border: 2px dashed #ccc; background: #fff; margin-top: 10px; border-radius: 8px; position: relative; }
-        canvas { width: 100%; height: 200px; cursor: crosshair; }
-        .sig-action { text-align: right; margin-top: 5px; }
-        .btn-clear { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+        /* Scanner Box */
+        #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 15px; border: 2px solid #003366; }
+        .scan-btn { background: #003366; color: white; border: none; width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
 
-        .btn-submit { background: #28a745; color: white; border: none; width: 100%; padding: 15px; font-size: 11pt; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 20px; transition: 0.3s; }
-        .btn-submit:hover { background: #218838; }
+        .info-mesin-box { background: #e7f3ff; padding: 10px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #007bff; display: none; }
         
-        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 1000; justify-content: center; align-items: center; font-weight: bold; }
+        .item-card { background: #fff; border: 1px solid #ddd; padding: 12px; border-radius: 8px; margin-bottom: 10px; }
+        .radio-group { display: flex; gap: 20px; margin-top: 8px; }
+        .radio-group label { cursor: pointer; display: flex; align-items: center; gap: 5px; font-weight: bold; }
+        
+        .sig-container { border: 2px dashed #ccc; background: #fff; margin-top: 10px; border-radius: 8px; }
+        canvas { width: 100%; height: 180px; }
+        
+        .btn-submit { background: #28a745; color: white; border: none; width: 100%; padding: 15px; font-size: 12pt; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 20px; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
     </style>
 </head>
 <body>
 
-<div id="loading" class="loading-overlay">Memproses Data ke Supabase...</div>
+<div id="loading" class="loading-overlay">
+    <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 2s linear infinite;"></div>
+    <p>Menyimpan ke Database...</p>
+</div>
 
 <div class="container">
-    <h2>INPUT CHECKLIST MESIN (AF.SP 05.13)</h2>
-    
-    <div class="form-group">
-        <label>Pilih Mesin</label>
-        <select id="machine-id" onchange="loadChecklistItems()">
-            <option value="">-- Pilih Mesin --</option>
-        </select>
+    <h2>SCAN QR MESIN INJECTION</h2>
+
+    <button class="scan-btn" id="start-scan-btn" onclick="startScanner()">MULAI SCAN QR CODE</button>
+    <div id="reader"></div>
+
+    <div id="info-mesin" class="info-mesin-box">
+        <b id="txt-mesin">MESIN: -</b><br>
+        <small id="txt-sn">SN: -</small>
+        <input type="hidden" id="machine-id">
     </div>
 
     <div class="form-group">
-        <label>Tanggal Pengecekan</label>
-        <input type="date" id="tgl-cek">
+        <label><b>Tanggal Pengecekan:</b></label>
+        <input type="date" id="tgl-cek" style="width:100%; padding:8px; margin-top:5px; border-radius:5px; border:1px solid #ccc;">
     </div>
 
-    <hr>
+    <hr style="margin: 20px 0;">
 
     <div id="checklist-container">
-        <p style="text-align: center; color: #999;">Silakan pilih mesin terlebih dahulu...</p>
+        <p style="text-align: center; color: #888;">Silakan Scan QR Code pada mesin untuk memulainya.</p>
     </div>
 
-    <div class="form-group">
-        <label>Paraf Pelaksana (Coret di bawah)</label>
+    <div id="sig-section" style="display:none;">
+        <label><b>Paraf Pelaksana:</b></label>
         <div class="sig-container">
             <canvas id="sig-pad"></canvas>
         </div>
-        <div class="sig-action">
-            <button class="btn-clear" onclick="signaturePad.clear()">Hapus Coretan</button>
-        </div>
+        <button onclick="signaturePad.clear()" style="background:none; border:none; color:red; cursor:pointer; font-size:8pt; margin-top:5px;">[ Hapus Tanda Tangan ]</button>
+        
+        <button class="btn-submit" onclick="submitData()">SIMPAN CHECKLIST</button>
     </div>
-
-    <button class="btn-submit" onclick="submitData()">SIMPAN CHECKLIST HARIAN</button>
 </div>
 
 
 
 <script>
-    // KONFIGURASI SUPABASE BARU
+    // KONFIGURASI SUPABASE KAMU
     const _URL = "https://dsyvlavphvrdidmodokd.supabase.co";
     const _KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const sb = supabase.createClient(_URL, _KEY);
 
     let signaturePad;
+    let html5QrCode;
     const canvas = document.getElementById('sig-pad');
 
-    async function init() {
-        // Set default tanggal hari ini
+    function init() {
         document.getElementById('tgl-cek').value = new Date().toISOString().split('T')[0];
-        
-        // Load Daftar Mesin dari Tabel clhmi_machine
-        const { data: machines, error } = await sb.from('clhmi_machine').select('*').order('merk_mesin');
-        
-        if(error) {
-            console.error("Gagal load mesin:", error);
-            alert("Koneksi Supabase bermasalah. Cek URL/Key.");
-            return;
-        }
-
-        machines.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m.id;
-            opt.textContent = `${m.merk_mesin} - ${m.serial_no}`;
-            document.getElementById('machine-id').appendChild(opt);
-        });
-
-        // Setup Signature Pad
         signaturePad = new SignaturePad(canvas);
+        window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
     }
 
@@ -111,27 +94,62 @@
         canvas.width = canvas.offsetWidth * ratio;
         canvas.height = canvas.offsetHeight * ratio;
         canvas.getContext("2d").scale(ratio, ratio);
-        signaturePad.clear();
+    }
+
+    // FUNGSI SCANNER
+    function startScanner() {
+        document.getElementById('start-scan-btn').style.display = 'none';
+        html5QrCode = new Html5Qrcode("reader");
+        
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        
+        html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
+            // Asumsi isi QR Code adalah ID Mesin (UUID/ID)
+            processScannedMachine(decodedText);
+            html5QrCode.stop();
+            document.getElementById('reader').style.display = 'none';
+        }).catch((err) => {
+            console.error("Gagal Scan:", err);
+            alert("Kamera tidak ditemukan atau izin ditolak.");
+        });
+    }
+
+    async function processScannedMachine(machineId) {
+        // Ambil data mesin dari Supabase
+        const { data: mInfo, error } = await sb.from('clhmi_machine').eq('id', machineId).single();
+        
+        if(error || !mInfo) {
+            alert("QR Code tidak dikenal atau Mesin tidak terdaftar di Database!");
+            document.getElementById('start-scan-btn').style.display = 'block';
+            return;
+        }
+
+        // Tampilkan Info Mesin
+        document.getElementById('machine-id').value = mInfo.id;
+        document.getElementById('txt-mesin').innerText = "MESIN: " + mInfo.merk_mesin;
+        document.getElementById('txt-sn').innerText = "SN: " + mInfo.serial_no;
+        document.getElementById('info-mesin').style.display = 'block';
+        
+        // Load Item dan Tampilkan Form Tanda Tangan
+        loadChecklistItems();
+        document.getElementById('sig-section').style.display = 'block';
     }
 
     async function loadChecklistItems() {
         const container = document.getElementById('checklist-container');
-        container.innerHTML = "<i>Memuat daftar pengecekan...</i>";
+        container.innerHTML = "Memuat daftar pengecekan...";
 
-        const { data: items, error } = await sb.from('clhmi_items').select('*').order('urutan');
+        const { data: items } = await sb.from('clhmi_items').select('*').order('urutan');
         
-        if(error) return container.innerHTML = "Gagal memuat item.";
-
         container.innerHTML = "";
         items.forEach(item => {
             const card = document.createElement('div');
             card.className = 'item-card';
             card.innerHTML = `
-                <span class="item-header">${item.item_kode ? item.item_kode + '. ' : ''}${item.nama_pengecekan}</span>
-                <small style="color: #666; display:block; margin-bottom:5px;">Std: ${item.standar || '-'}</small>
+                <div style="font-size:9pt; font-weight:bold; color:#003366;">${item.nama_pengecekan}</div>
                 <div class="radio-group">
-                    <label><input type="radio" name="item-${item.id}" value="OK" checked> OK (√)</label>
-                    <label><input type="radio" name="item-${item.id}" value="NG"> NG (X)</label>
+                    <label style="color:green"><input type="radio" name="item-${item.id}" value="OK" checked> OK</label>
+                    <label style="color:red"><input type="radio" name="item-${item.id}" value="NG"> NG</label>
                 </div>
             `;
             container.appendChild(card);
@@ -141,9 +159,7 @@
     async function submitData() {
         const machineId = document.getElementById('machine-id').value;
         const tgl = document.getElementById('tgl-cek').value;
-
-        if (!machineId) return alert("Pilih Mesin!");
-        if (signaturePad.isEmpty()) return alert("Tanda tangan wajib diisi!");
+        if (signaturePad.isEmpty()) return alert("Wajib Tanda Tangan!");
 
         document.getElementById('loading').style.display = 'flex';
 
@@ -153,32 +169,22 @@
             const tahun = tglObj.getFullYear();
             const parafBase64 = signaturePad.toDataURL();
 
-            // 1. Ambil/Buat Header di tabel 'clhmi'
-            let { data: header } = await sb.from('clhmi')
-                .select('id')
-                .eq('machine_id', machineId).eq('bulan', bulan).eq('tahun', tahun)
-                .single();
+            // 1. Ambil/Cek Header
+            let { data: header } = await sb.from('clhmi').select('id').eq('machine_id', machineId).eq('bulan', bulan).eq('tahun', tahun).single();
 
             if (!header) {
                 const { data: mInfo } = await sb.from('clhmi_machine').eq('id', machineId).single();
-                const { data: newH, error: errH } = await sb.from('clhmi').insert([{
-                    machine_id: machineId,
-                    bulan: bulan,
-                    tahun: tahun,
-                    merk_mesin: mInfo.merk_mesin,
-                    serial_no: mInfo.serial_no,
-                    tonage: mInfo.tonage,
-                    paraf: parafBase64,
-                    status_form: 'submitted'
+                const { data: newH } = await sb.from('clhmi').insert([{
+                    machine_id: machineId, bulan, tahun,
+                    merk_mesin: mInfo.merk_mesin, serial_no: mInfo.serial_no, tonage: mInfo.tonage,
+                    paraf: parafBase64, status_form: 'submitted'
                 }]).select().single();
-                if(errH) throw errH;
                 header = newH;
             } else {
-                // Update paraf pelaksana terbaru
                 await sb.from('clhmi').update({ paraf: parafBase64 }).eq('id', header.id);
             }
 
-            // 2. Simpan Detail Hasil ke 'clhmi_results'
+            // 2. Simpan Results
             const itemInputs = document.querySelectorAll('input[type="radio"]:checked');
             const resultData = Array.from(itemInputs).map(input => ({
                 clhmi_id: header.id,
@@ -187,14 +193,10 @@
                 tanggal_cek: tgl
             }));
 
-            // Bersihkan data lama pada tanggal yang sama agar tidak double
             await sb.from('clhmi_results').delete().eq('clhmi_id', header.id).eq('tanggal_cek', tgl);
-            
-            // Simpan data baru
-            const { error: errRes } = await sb.from('clhmi_results').insert(resultData);
-            if (errRes) throw errRes;
+            await sb.from('clhmi_results').insert(resultData);
 
-            alert("Checklist Berhasil Disimpan!");
+            alert("Data Berhasil Disimpan!");
             location.reload();
 
         } catch (err) {
@@ -205,7 +207,10 @@
     }
 
     window.onload = init;
-    window.onresize = resizeCanvas;
 </script>
+
+<style>
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
 </body>
 </html>
