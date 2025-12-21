@@ -2,216 +2,239 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CLHMI Pelaksana - Digital Form</title>
+    <title>AF.SP 05.13 Rev-00 – FINAL PERFECT REPORT</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --primary: #1e293b; --accent: #2563eb; --success: #16a34a; --danger: #dc2626; --bg: #f8fafc; }
-        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--primary); }
-        .container { max-width: 800px; margin: 0 auto; padding: 10px; }
-        .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; }
-        .form-header { background: var(--primary); color: #fff; padding: 20px; text-align: center; border-bottom: 4px solid var(--accent); }
-        .section { padding: 20px; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.85rem; }
+        @page { size: A4 landscape; margin: 5mm; }
+        body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 7pt; margin: 0; padding: 10px; background: #f4f4f4; }
+        .sheet { background: white; padding: 5mm; margin: auto; width: 285mm; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+        td, th { border: 1px solid black; padding: 1px; text-align: center; }
         
-        table { width: 100%; border-collapse: collapse; }
-        .cat-header { background: #e2e8f0; font-weight: bold; padding: 10px; color: var(--accent); text-transform: uppercase; font-size: 0.8rem; }
-        td { padding: 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+        /* Header */
+        .header-table td { border: 2px solid black; height: 45px; font-weight: bold; }
+        .logo-img { height: 35px; }
         
-        .item-label { font-weight: 600; display: block; margin-bottom: 2px; }
-        .item-method { font-size: 0.75rem; color: #64748b; font-style: italic; display: block; }
+        /* Info */
+        .info-table { border: none; margin: 5px 0; }
+        .info-table td { border: none; text-align: left; padding: 0; font-size: 8pt; }
+        .dot-line { border-bottom: 1px dotted #000; min-width: 120px; display: inline-block; padding-left: 5px; font-weight: bold; }
+
+        /* Content */
+        .bg-gray { background-color: #dfdfdf; font-weight: bold; text-align: left; padding-left: 5px; }
+        .col-nama { text-align: left; width: 140px; padding-left: 3px; }
+        .col-std { width: 100px; text-align: left; font-size: 6pt; }
+        .st-ok { color: green; font-weight: bold; }
+        .st-ng { color: white; font-weight: bold; background: #e21c1c; }
         
-        select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: bold; }
-        .ng-input { display: none; margin-top: 10px; border: 1px solid #fca5a5; background: #fff1f2; padding: 8px; border-radius: 6px; width: 100%; box-sizing: border-box; }
+        /* Signature Grid 1-31 */
+        .sig-cell { height: 35px; padding: 0 !important; vertical-align: middle; background: #fff; }
+        .sig-img { max-height: 30px; max-width: 24px; mix-blend-mode: multiply; display: block; margin: auto; }
         
-        canvas { border: 2px dashed #cbd5e1; border-radius: 8px; background: #fafafa; width: 100%; height: 180px; margin-top: 10px; touch-action: none; }
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-primary { background: var(--accent); color: #fff; }
-        #reader { border-radius: 12px; overflow: hidden; }
+        /* Footer Box */
+        .footer-box { border: 1px solid black; height: 90px; vertical-align: top; position: relative; padding: 5px; text-align: center; }
+
+        .no-print { background: #003366; color: white; padding: 10px; margin-bottom: 10px; border-radius: 5px; display: flex; gap: 10px; align-items: center; }
+        @media print { .no-print { display: none; } body { background: white; padding: 0; } .sheet { box-shadow: none; width: 100%; } }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="card">
-        <div class="form-header">
-            <h2 style="margin:0">FORM CHECKLIST MESIN</h2>
-            <small>Injection Molding Daily Maintenance</small>
-        </div>
-
-        <div class="section" id="step-login">
-            <label style="display:block; margin-bottom:8px; font-weight:bold">Nama Pelaksana</label>
-            <input type="text" id="nama_pelaksana" style="width:100%; padding:12px; box-sizing:border-box; border-radius:8px; border:1px solid #ccc" placeholder="Contoh: Budi Santoso">
-            <button class="btn btn-primary" style="margin-top:20px" onclick="startScanner()">📸 SCAN QR MESIN</button>
-        </div>
-
-        <div class="section" id="step-scan" style="display:none">
-            <div id="reader"></div>
-            <button class="btn" style="background:#64748b; color:#fff; margin-top:10px" onclick="location.reload()">BATAL</button>
-        </div>
-
-        <div class="section" id="step-form" style="display:none">
-            <div class="info-grid">
-                <div><strong>MESIN:</strong> <span id="m_merk"></span></div>
-                <div><strong>SERIAL:</strong> <span id="m_serial"></span></div>
-                <div><strong>TONNAGE:</strong> <span id="m_ton"></span></div>
-                <div><strong>USER:</strong> <span id="m_user"></span></div>
-            </div>
-
-            <form id="clForm">
-                <table>
-                    <tbody id="checklist-body"></tbody>
-                </table>
-
-                <div style="margin-top:25px">
-                    <label style="font-weight:bold">✍️ Paraf Pelaksana</label>
-                    <canvas id="canvas"></canvas>
-                    <button type="button" onclick="clearCanvas()" style="background:none; border:none; color:red; cursor:pointer; font-size:0.8rem">Hapus Paraf</button>
-                </div>
-
-                <button type="submit" class="btn btn-primary" id="btnSubmit" style="margin-top:20px">SIMPAN CHECKLIST</button>
-            </form>
-        </div>
-    </div>
+<div class="no-print">
+    <b>PRINTER READY:</b>
+    <select id="machine-select"><option value="">Pilih Mesin...</option></select>
+    <select id="month-select"></select>
+    <select id="year-select"></select>
+    <button onclick="loadData()" style="padding:5px 15px; cursor:pointer; font-weight:bold;">TAMPILKAN DATA</button>
+    <button onclick="window.print()" style="padding:5px 15px; background: #28a745; color: white; cursor:pointer">CETAK KE PDF</button>
 </div>
 
-<script>
-const supabaseUrl = "https://dsyvlavphvrdidmodokd.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
-const sb = supabase.createClient(supabaseUrl, supabaseKey);
+<div class="sheet">
+    <table class="header-table">
+        <tr>
+            <td width="15%"><img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img"></td>
+            <td width="60%" style="font-size: 13pt;">CHECKLIST HARIAN MESIN INJECTION</td>
+            <td width="25%" style="text-align: left; font-size: 7pt; font-weight: normal; padding-left: 5px;">
+                No Dokumen : AF.SP 05.13.Rev-00<br>
+                Tgl Terbit : 02 Agustus 2024<br>
+                Halaman : 1/1<br>
+                Tanggal Revisi : -
+            </td>
+        </tr>
+    </table>
 
-let html5QrCode;
-let machineData = null;
-let checklistItems = [];
+    <table class="info-table">
+        <tr>
+            <td width="10%">MERK MESIN</td><td width="1%">:</td><td width="20%"><span id="out-merk" class="dot-line">-</span></td>
+            <td width="10%">SERIAL NO</td><td width="1%">:</td><td width="20%"><span id="out-sn" class="dot-line">-</span></td>
+            <td width="8%">BULAN</td><td width="1%">:</td><td width="10%"><span id="out-bln" class="dot-line">-</span></td>
+        </tr>
+        <tr>
+            <td>TONAGE</td><td>:</td><td><span id="out-ton" class="dot-line">-</span></td>
+            <td></td><td></td><td></td>
+            <td>TAHUN</td><td>:</td><td><span id="out-thn" class="dot-line">-</span></td>
+        </tr>
+    </table>
 
-// Start Scanner
-function startScanner() {
-    if(!document.getElementById("nama_pelaksana").value) return alert("Isi nama dahulu!");
-    document.getElementById("step-login").style.display = "none";
-    document.getElementById("step-scan").style.display = "block";
-    html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess);
-}
-
-async function onScanSuccess(text) {
-    html5QrCode.stop();
-    const { data, error } = await sb.from("clhmi_machine").select("*").eq("merk_mesin", text.trim()).single();
-    if(error || !data) return alert("Mesin tidak terdaftar!");
-    
-    machineData = data;
-    loadForm();
-}
-
-async function loadForm() {
-    document.getElementById("step-scan").style.display = "none";
-    document.getElementById("step-form").style.display = "block";
-    
-    document.getElementById("m_merk").innerText = machineData.merk_mesin;
-    document.getElementById("m_serial").innerText = machineData.serial_no;
-    document.getElementById("m_ton").innerText = machineData.tonage;
-    document.getElementById("m_user").innerText = document.getElementById("nama_pelaksana").value;
-
-    const { data: items } = await sb.from("clhmi_items").select("*").eq("aktif", true).order("urutan", { ascending: true });
-    checklistItems = items;
-
-    let html = "";
-    let lastCat = "";
-    items.forEach(item => {
-        if(item.kategori !== lastCat) {
-            lastCat = item.kategori;
-            html += `<tr><td colspan="2" class="cat-header">${lastCat}</td></tr>`;
-        }
-        html += `
+    <table>
+        <thead>
             <tr>
-                <td>
-                    <span class="item-label">${item.nama_pengecekan}</span>
-                    <span class="item-method">Metode: ${item.item_kode}</span>
-                    <textarea class="ng-input" id="note_${item.id}" placeholder="Tulis alasan NG..."></textarea>
-                </td>
-                <td style="width:80px">
-                    <select id="st_${item.id}" onchange="checkStatus('${item.id}', this)">
-                        <option value="OK">OK</option>
-                        <option value="NG">NG</option>
-                        <option value="NA">NA</option>
-                    </select>
-                </td>
-            </tr>`;
-    });
-    document.getElementById("checklist-body").innerHTML = html;
-    initCanvas();
-}
+                <th rowspan="2" width="20">No</th>
+                <th rowspan="2" class="col-nama">Jenis Pengecekan</th>
+                <th rowspan="2" class="col-std">Standard / Metode</th>
+                <th colspan="31">Tanggal</th>
+            </tr>
+            <tr id="date-row"></tr>
+        </thead>
+        <tbody id="main-body"></tbody>
+        <tbody>
+            <tr>
+                <td colspan="3" style="text-align: right; font-weight: bold; background: #f0f0f0; padding-right: 5px;">Paraf Pelaksana</td>
+                <script>
+                    for(let i=1; i<=31; i++) document.write(`<td class="sig-cell" id="p-sig-${i}"></td>`);
+                </script>
+            </tr>
+            <tr>
+                <td colspan="3" style="text-align: right; font-weight: bold; background: #f0f0f0; padding-right: 5px;">Paraf Koordinator</td>
+                <script>
+                    for(let i=1; i<=31; i++) document.write(`<td class="sig-cell" id="k-sig-${i}"></td>`);
+                </script>
+            </tr>
+        </tbody>
+    </table>
 
-function checkStatus(id, el) {
-    const note = document.getElementById("note_" + id);
-    note.style.display = (el.value === "NG") ? "block" : "none";
-    el.style.color = (el.value === "NG") ? "red" : (el.value === "OK" ? "green" : "black");
-}
+    <table style="border:none; margin-top: 10px;">
+        <tr>
+            <td width="60%" style="border:none; text-align: left; vertical-align: top; line-height: 1.4;">
+                <b>Catatan :</b><br>
+                (*) : Isi kolom laporan ceklist jika unit ini ada dimesin ini<br>
+                (**) : Diisi angka jam kerja mesin / running hour yang ada dimesin<br><br>
+                <b>Beri tanda :</b><br>
+                √ : Bila item yang diperiksa baik, sesuai standar<br>
+                X : Bila terjadi penyimpangan / kerusakan pada item yang diperiksa
+            </td>
+            <td width="40%" style="border:none;">
+                <div class="footer-box">
+                    DIKETAHUI<br>(SUPERINTENDENT)<br><br>
+                    <div id="out-sig-super"></div>
+                    <div id="out-name-super" style="position: absolute; bottom: 5px; width: 100%; font-weight: bold; text-decoration: underline;">-</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+</div>
 
-// Canvas Paraf
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-let drawing = false;
 
-function initCanvas() {
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-    ctx.lineWidth = 3;
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "#1e293b";
-}
 
-canvas.addEventListener("mousedown", startDraw);
-canvas.addEventListener("mousemove", draw);
-window.addEventListener("mouseup", stopDraw);
-canvas.addEventListener("touchstart", (e) => { startDraw(e.touches[0]); e.preventDefault(); });
-canvas.addEventListener("touchmove", (e) => { draw(e.touches[0]); e.preventDefault(); });
-canvas.addEventListener("touchend", stopDraw);
+<script>
+    const _URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+    const _KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+    const sb = supabase.createClient(_URL, _KEY);
 
-function startDraw(e) { drawing = true; ctx.beginPath(); ctx.moveTo(e.clientX - canvas.getBoundingClientRect().left, e.clientY - canvas.getBoundingClientRect().top); }
-function draw(e) { if(!drawing) return; ctx.lineTo(e.clientX - canvas.getBoundingClientRect().left, e.clientY - canvas.getBoundingClientRect().top); ctx.stroke(); }
-function stopDraw() { drawing = false; }
-function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+    async function initFilter() {
+        const { data: machines } = await sb.from('clhmi_machine').select('*').order('merk_mesin');
+        machines.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = `${m.merk_mesin} (${m.serial_no})`;
+            document.getElementById('machine-select').appendChild(opt);
+        });
 
-// Submit
-document.getElementById("clForm").onsubmit = async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById("btnSubmit");
-    const sig = canvas.toDataURL();
-    if(sig.length < 2000) return alert("Tanda tangan dulu!");
+        const months = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+        months.forEach((m, i) => {
+            const opt = document.createElement('option');
+            opt.value = i + 1;
+            opt.textContent = m;
+            document.getElementById('month-select').appendChild(opt);
+        });
 
-    btn.disabled = true;
-    btn.innerText = "MENYIMPAN...";
+        const year = new Date().getFullYear();
+        for(let y=year; y>=year-2; y--) {
+            const opt = document.createElement('option');
+            opt.value = y; opt.textContent = y;
+            document.getElementById('year-select').appendChild(opt);
+        }
 
-    const now = new Date();
-    const { data: hdr, error: e1 } = await sb.from("clhmi").insert([{
-        machine_id: machineData.id,
-        merk_mesin: machineData.merk_mesin,
-        tonage: machineData.tonage,
-        serial_no: machineData.serial_no,
-        tahun: now.getFullYear(),
-        bulan: now.getMonth() + 1,
-        tanggal_isi: now.toISOString().split('T')[0],
-        pelaksana: document.getElementById("nama_pelaksana").value,
-        paraf: sig
-    }]).select().single();
+        let h = "";
+        for(let i=1; i<=31; i++) h += `<th width="24">${i}</th>`;
+        document.getElementById('date-row').innerHTML = h;
+    }
 
-    if(e1) { alert("Error Simpan: " + e1.message); btn.disabled = false; return; }
+    async function loadData() {
+        const mId = document.getElementById('machine-select').value;
+        const bln = document.getElementById('month-select').value;
+        const thn = document.getElementById('year-select').value;
+        if(!mId) return;
 
-    const details = checklistItems.map(item => ({
-        clhmi_id: hdr.id,
-        item_id: item.id,
-        item_code: item.item_kode,
-        status: document.getElementById("st_" + item.id).value,
-        catatan_item: document.getElementById("note_" + item.id).value || null,
-        tanggal_cek: now.toISOString().split('T')[0],
-        diisi_oleh: document.getElementById("nama_pelaksana").value
-    }));
+        // Reset All Grid
+        for(let i=1; i<=31; i++) {
+            document.getElementById(`p-sig-${i}`).innerHTML = "";
+            document.getElementById(`k-sig-${i}`).innerHTML = "";
+        }
 
-    const { error: e2 } = await sb.from("clhmi_results").insert(details);
-    if(e2) alert("Gagal Simpan Detail: " + e2.message);
-    else { alert("✅ Berhasil Disimpan!"); location.reload(); }
-};
+        const { data: header } = await sb.from('clhmi').select('*').eq('machine_id', mId).eq('bulan', bln).eq('tahun', thn).single();
+        const { data: master } = await sb.from('clhmi_items').select('*').order('urutan');
+        const { data: results } = header ? await sb.from('clhmi_results').select('*').eq('clhmi_id', header.id) : {data:[]};
+
+        if(!header) { alert("Data tidak ditemukan untuk periode ini."); return; }
+
+        // Set Info
+        document.getElementById('out-merk').innerText = header.merk_mesin;
+        document.getElementById('out-sn').innerText = header.serial_no;
+        document.getElementById('out-ton').innerText = header.tonage;
+        document.getElementById('out-bln').innerText = document.getElementById('month-select').options[bln-1].text;
+        document.getElementById('out-thn').innerText = thn;
+
+        // Render Matrix Items
+        const tbody = document.getElementById('main-body');
+        tbody.innerHTML = "";
+        let currentCat = "";
+
+        master.forEach(m => {
+            if(m.kategori !== currentCat) {
+                tbody.innerHTML += `<tr><td colspan="34" class="bg-gray">${m.kategori}</td></tr>`;
+                currentCat = m.kategori;
+            }
+            let rowHtml = `<tr><td>${m.item_kode||''}</td><td class="col-nama">${m.nama_pengecekan}</td><td class="col-std">${m.standar||'-'}</td>`;
+            for(let d=1; d<=31; d++) {
+                const find = results.find(r => r.item_id === m.id && parseInt(r.tanggal_cek.split('-')[2]) === d);
+                rowHtml += `<td class="${find?.status==='NG'?'st-ng':''}">${find ? (find.status==='OK'?'√':'X') : ''}</td>`;
+            }
+            tbody.innerHTML += rowHtml + "</tr>";
+        });
+
+        // MAPPING SIGNATURE IMAGES PER DAY
+        for(let d=1; d<=31; d++) {
+            // Cek apakah ada aktivitas input di tanggal ini
+            const hasActivity = results.some(r => parseInt(r.tanggal_cek.split('-')[2]) === d);
+            
+            if(hasActivity) {
+                // Tampilkan Paraf Pelaksana dari database (Base64)
+                if(header.paraf) {
+                    document.getElementById(`p-sig-${d}`).innerHTML = `<img src="${header.paraf}" class="sig-img">`;
+                }
+                
+                // Tampilkan Paraf Koordinator dari database (Base64) 
+                // Syarat: Status sudah 'Verified' atau 'Finalized'
+                if(header.status_form !== 'submitted' && header.paraf_coord) {
+                    document.getElementById(`k-sig-${d}`).innerHTML = `<img src="${header.paraf_coord}" class="sig-img">`;
+                }
+            }
+        }
+
+        // FOOTER SUPERINTENDENT (FINAL APPROVAL)
+        if(header.status_form === 'finalized') {
+            document.getElementById('out-name-super').innerText = header.approved_by || "SUPERINTENDENT";
+            if(header.paraf_super) {
+                 document.getElementById('out-sig-super').innerHTML = `<img src="${header.paraf_super}" style="height:60px; mix-blend-mode: multiply;">`;
+            }
+        } else {
+            document.getElementById('out-sig-super').innerHTML = "";
+            document.getElementById('out-name-super').innerText = "-";
+        }
+    }
+
+    window.onload = initFilter;
 </script>
 </body>
 </html>
