@@ -3,118 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan Final Preventif - PT AKG</title>
+    <title>Laporan Preventif - PT AKG</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --border: #000; }
-        body { font-family: Arial, sans-serif; background: #f1f5f9; margin: 0; padding: 20px; font-size: 12px; }
-        .no-print { max-width: 800px; margin: 0 auto 20px auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
         
-        /* Layout Kertas A4 */
-        .report-paper { 
-            width: 210mm; min-height: 297mm; padding: 10mm; margin: auto; 
-            background: white; border: 1px solid #ddd; box-sizing: border-box;
+        body { font-family: 'Roboto', Arial, sans-serif; background: #525659; margin: 0; padding: 20px; }
+        
+        .no-print { 
+            max-width: 900px; margin: 0 auto 20px; background: #fff; padding: 15px; 
+            border-radius: 8px; display: flex; gap: 10px; align-items: center; 
         }
 
-        .header-table, .content-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        .header-table td, .content-table td, .content-table th { border: 1px solid var(--border); padding: 5px; }
-        
-        .title { text-align: center; font-weight: bold; font-size: 14px; }
-        .bg-gray { background: #e2e8f0; font-weight: bold; text-transform: uppercase; }
-        .text-center { text-align: center; }
-        
-        .sig-container { display: flex; justify-content: space-around; margin-top: 20px; text-align: center; }
-        .sig-box { width: 30%; }
-        .sig-img { height: 60px; object-fit: contain; margin: 5px 0; }
-        
-        select, button { padding: 10px; border-radius: 5px; border: 1px solid #ccc; cursor: pointer; }
-        button { background: #003366; color: white; border: none; font-weight: bold; }
+        /* Container Kertas A4 */
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 10mm;
+            margin: 10mm auto;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        td, th { border: 1px solid black; padding: 4px 8px; font-size: 10px; word-wrap: break-word; }
+
+        /* Header Style */
+        .logo-cell { text-align: center; width: 100px; }
+        .title-cell { text-align: center; font-size: 14px; font-weight: bold; width: 350px; }
+        .doc-info { font-size: 9px; }
+
+        /* Info Mesin Section */
+        .info-row td { border: 1px solid black; height: 20px; }
+        .label-cell { background-color: #f2f2f2; font-weight: bold; width: 15%; }
+        .value-cell { width: 35%; }
+
+        /* Main Content */
+        .header-bg { background-color: #d9d9d9; font-weight: bold; text-align: left; }
+        .center { text-align: center; }
+        .bold { font-weight: bold; }
+
+        /* Approval Section */
+        .approval-table { margin-top: -1px; }
+        .approval-table td { height: 100px; vertical-align: top; text-align: center; }
+        .sig-img { max-height: 60px; max-width: 100%; display: block; margin: 5px auto; }
+        .nama-ttd { font-weight: bold; text-decoration: underline; margin-top: 5px; display: block; }
 
         @media print {
-            body { background: white; padding: 0; }
+            body { background: none; padding: 0; }
             .no-print { display: none; }
-            .report-paper { border: none; width: 100%; padding: 0; }
+            .page { margin: 0; border: none; box-shadow: none; width: 100%; }
         }
     </style>
 </head>
 <body>
 
 <div class="no-print">
-    <h3>Pilih Laporan Mesin</h3>
-    <div style="display: flex; gap: 10px;">
-        <select id="select-log" style="flex: 1;">
-            <option value="">-- Loading Laporan Terbaru --</option>
-        </select>
-        <button onclick="loadDetailLaporan()">Tampilkan Laporan</button>
-        <button onclick="window.print()" style="background: #28a745;">Cetak / Save PDF</button>
-    </div>
+    <select id="select-log" style="padding: 8px; flex: 1; border-radius: 4px; border: 1px solid #ccc;">
+        <option value="">-- Pilih Laporan --</option>
+    </select>
+    <button onclick="loadReport()" style="padding: 8px 15px; background: #003366; color: white; border: none; border-radius: 4px; cursor: pointer;">Generate Laporan</button>
+    <button onclick="window.print()" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Cetak Ke PDF</button>
 </div>
 
-<div class="report-paper" id="report-content">
-    <table class="header-table">
+<div class="page" id="report-page">
+    <table>
         <tr>
-            <td rowspan="4" width="20%" class="text-center">
-                <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" style="width: 100px;">
+            <td rowspan="4" class="logo-cell">
+                <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" width="80">
             </td>
-            <td rowspan="4" class="title">PREVENTIF ROBOT & STAND LABEL BULANAN</td>
-            <td width="15%">No. Dokumen</td>
-            <td width="20%">: AF.SP 05.08.Rev-00</td>
+            <td rowspan="4" class="title-cell">PREVENTIF ROBOT & STAND LABEL BULANAN</td>
+            <td class="doc-info" width="80">No. Dokumen</td>
+            <td class="doc-info">: AF.SP 05.08.Rev-00</td>
         </tr>
         <tr>
-            <td>Tanggal Terbit</td>
-            <td>: 02 Agustus 2024</td>
+            <td class="doc-info">Tanggal Terbit</td>
+            <td class="doc-info">: 02 Agustus 2024</td>
         </tr>
         <tr>
-            <td>Halaman</td>
-            <td>: 1/1</td>
+            <td class="doc-info">Halaman</td>
+            <td class="doc-info">: 1/1</td>
         </tr>
         <tr>
-            <td>Tanggal Revisi</td>
-            <td>: -</td>
+            <td class="doc-info">Tanggal Revisi</td>
+            <td class="doc-info">: -</td>
         </tr>
     </table>
 
-    <table class="header-table">
-        <tr>
-            <td width="20%">MERK MESIN</td><td id="info-mesin" width="30%">-</td>
-            <td width="20%">TANGGAL</td><td id="info-tgl" width="30%">-</td>
+    <div style="height: 10px;"></div>
+
+    <table>
+        <tr class="info-row">
+            <td class="label-cell">MERK MESIN</td><td id="val-mesin" class="value-cell"></td>
+            <td class="label-cell">TARGET SELESAI</td><td class="value-cell">:</td>
+        </tr>
+        <tr class="info-row">
+            <td class="label-cell">TONAGE</td><td class="value-cell"></td>
+            <td class="label-cell">START JAM</td><td class="value-cell">:</td>
+        </tr>
+        <tr class="info-row">
+            <td class="label-cell">TANGGAL</td><td id="val-tgl" class="value-cell"></td>
+            <td class="label-cell">FINISH JAM</td><td class="value-cell">:</td>
+        </tr>
+        <tr class="info-row">
+            <td class="label-cell">TAHUN</td><td id="val-thn" class="value-cell"></td>
+            <td class="label-cell">RUNNING HOURS</td><td class="value-cell">:</td>
         </tr>
     </table>
 
-    <table class="content-table" id="table-checklist">
+    <div style="height: 10px;"></div>
+
+    <table>
         <thead>
-            <tr class="bg-gray">
-                <th width="5%">NO</th>
-                <th>ITEM CHECK</th>
-                <th width="25%">STANDARD</th>
-                <th width="10%">STATUS</th>
-                <th width="20%">KETERANGAN</th>
+            <tr style="background: #f2f2f2;">
+                <th width="30">NO</th>
+                <th width="200">ITEM</th>
+                <th width="150">STANDARD</th>
+                <th width="40">P1</th>
+                <th width="40">P2</th>
+                <th>KET/PEMAKAIAN SPAREPART</th>
             </tr>
         </thead>
-        <tbody id="body-checklist">
-            <tr><td colspan="5" class="text-center">Silakan pilih mesin terlebih dahulu</td></tr>
-        </tbody>
+        <tbody id="content-body">
+            </tbody>
     </table>
 
-    <div class="sig-container">
-        <div class="sig-box">
-            <div>Dibuat Oleh (Pelaksana)</div>
-            <img id="sig-pelaksana" class="sig-img" src="">
-            <div id="nama-pelaksana">.........</div>
-        </div>
-        <div class="sig-box">
-            <div>Diperiksa (Koordinator)</div>
-            <img id="sig-koordinator" class="sig-img" src="">
-            <div id="nama-koordinator">.........</div>
-            <div id="note-koordinator" style="font-size: 10px; font-style: italic;"></div>
-        </div>
-        <div class="sig-box">
-            <div>Disetujui (Superintendent)</div>
-            <img id="sig-superintendent" class="sig-img" src="">
-            <div id="nama-superintendent">.........</div>
-            <div id="note-superintendent" style="font-size: 10px; font-style: italic;"></div>
-        </div>
-    </div>
+    <table class="approval-table">
+        <tr>
+            <td width="33%">
+                Dibuat Oleh,<br>Pelaksana
+                <div style="height: 60px;">
+                    <img id="sig1" class="sig-img">
+                </div>
+                <span id="name1" class="nama-ttd"></span>
+            </td>
+            <td width="33%">
+                Diperiksa Oleh,<br>Koordinator
+                <div style="height: 60px;">
+                    <img id="sig2" class="sig-img">
+                </div>
+                <span id="name2" class="nama-ttd"></span>
+            </td>
+            <td width="34%">
+                Disetujui Oleh,<br>Superintendent
+                <div style="height: 60px;">
+                    <img id="sig3" class="sig-img">
+                </div>
+                <span id="name3" class="nama-ttd"></span>
+            </td>
+        </tr>
+    </table>
 </div>
 
 <script>
@@ -122,67 +160,72 @@
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-    async function fetchLogs() {
+    async function getList() {
         const { data } = await _sb.from('prslb_log').select('*, prslb_mesin(qr_code_id)').order('created_at', {ascending: false});
-        const select = document.getElementById('select-log');
-        select.innerHTML = '<option value="">-- Pilih Riwayat Laporan --</option>';
-        data.forEach(log => {
-            const date = new Date(log.created_at).toLocaleDateString('id-ID');
-            select.innerHTML += `<option value="${log.id}">${log.prslb_mesin.qr_code_id} - ${date} (${log.pelaksana_nama})</option>`;
+        const sel = document.getElementById('select-log');
+        data.forEach(x => {
+            const d = new Date(x.created_at).toLocaleDateString();
+            sel.innerHTML += `<option value="${x.id}">${x.prslb_mesin.qr_code_id} - ${d}</option>`;
         });
     }
 
-    async function loadDetailLaporan() {
-        const logId = document.getElementById('select-log').value;
-        if (!logId) return;
+    async function loadReport() {
+        const id = document.getElementById('select-log').value;
+        if(!id) return;
 
         const { data: log } = await _sb.from('prslb_log')
             .select('*, prslb_mesin(qr_code_id), prslb_result(*, prslb_items(*))')
-            .eq('id', logId)
-            .single();
+            .eq('id', id).single();
 
-        if (log) {
-            // Fill Info Header
-            document.getElementById('info-mesin').innerText = log.prslb_mesin.qr_code_id;
-            document.getElementById('info-tgl').innerText = new Date(log.created_at).toLocaleDateString('id-ID');
+        if(log) {
+            const tgl = new Date(log.created_at);
+            document.getElementById('val-mesin').innerText = ": " + log.prslb_mesin.qr_code_id;
+            document.getElementById('val-tgl').innerText = ": " + tgl.toLocaleDateString('id-ID');
+            document.getElementById('val-thn').innerText = ": " + tgl.getFullYear();
 
-            // Fill Checklist
-            const body = document.getElementById('body-checklist');
+            const body = document.getElementById('content-body');
             body.innerHTML = "";
             let currentCat = "";
-            let no = 1;
+            let idx = 1;
 
-            log.prslb_result.forEach(res => {
-                if (res.prslb_items.kategori !== currentCat) {
-                    currentCat = res.prslb_items.kategori;
-                    body.innerHTML += `<tr class="bg-gray"><td colspan="5">ITEM CHECK ${currentCat}</td></tr>`;
+            log.prslb_result.forEach(r => {
+                if(r.prslb_items.kategori !== currentCat) {
+                    currentCat = r.prslb_items.kategori;
+                    body.innerHTML += `<tr class="header-bg"><td colspan="6">ITEM CHECK ${currentCat}</td></tr>`;
                 }
+                
+                const isOK = r.status === 'OK' ? 'v' : '';
+                const isNG = r.status === 'NG' ? 'v' : '';
+                
                 body.innerHTML += `
                     <tr>
-                        <td class="text-center">${no++}</td>
-                        <td>${res.prslb_items.item_name}</td>
-                        <td>${res.prslb_items.standard}</td>
-                        <td class="text-center" style="font-weight:bold; color:${res.status==='NG'?'red':'green'}">${res.status}</td>
-                        <td>${res.keterangan || ''}</td>
+                        <td class="center">${idx++}</td>
+                        <td>${r.prslb_items.item_name}</td>
+                        <td>${r.prslb_items.standard}</td>
+                        <td class="center bold">${isOK}</td>
+                        <td class="center bold" style="color:red">${isNG}</td>
+                        <td>${r.keterangan || ''} ${log.koordinator_note && r.status === 'NG' ? ' | Note Koor: ' + log.koordinator_note : ''}</td>
                     </tr>
                 `;
             });
 
-            // Fill Signatures & Names
-            document.getElementById('sig-pelaksana').src = log.signature_pelaksana || "";
-            document.getElementById('nama-pelaksana').innerText = log.pelaksana_nama;
-
-            document.getElementById('sig-koordinator').src = log.signature_koordinator || "";
-            document.getElementById('nama-koordinator').innerText = log.koordinator_nama || "Belum Diverifikasi";
-            document.getElementById('note-koordinator').innerText = log.koordinator_note ? `Note: ${log.koordinator_note}` : "";
-
-            document.getElementById('sig-superintendent').src = log.signature_superintendent || "";
-            document.getElementById('nama-superintendent').innerText = log.superintendent_nama || "Belum Disetujui";
-            document.getElementById('note-superintendent').innerText = log.superintendent_note ? `Note: ${log.superintendent_note}` : "";
+            // Signatures
+            document.getElementById('sig1').src = log.signature_pelaksana;
+            document.getElementById('name1').innerText = log.pelaksana_nama;
+            
+            if(log.status_verifikasi) {
+                document.getElementById('sig2').src = log.signature_koordinator;
+                document.getElementById('name2').innerText = log.koordinator_nama;
+            }
+            
+            if(log.status_final) {
+                document.getElementById('sig3').src = log.signature_superintendent;
+                document.getElementById('name3').innerText = log.superintendent_nama;
+            }
         }
     }
 
-    window.onload = fetchLogs;
+    window.onload = getList;
 </script>
 </body>
 </html>
