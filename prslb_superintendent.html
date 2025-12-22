@@ -4,62 +4,223 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Superintendent - Final Approval</title>
+    <meta name="theme-color" content="#003366">
+
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
-    
+
     <style>
-        :root { --primary: #0f172a; --bg: #f1f5f9; --accent: #2563eb; --ng: #dc2626; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 15px; }
-        .container { max-width: 600px; margin: auto; }
-        
-        .header { text-align: center; margin-bottom: 25px; }
-        .header img { height: 45px; margin-bottom: 10px; }
-
-        .report-card { 
-            background: white; border-radius: 20px; padding: 20px; margin-bottom: 25px;
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;
+        :root {
+            --primary: #003366;
+            --primary-light: #004488;
+            --primary-dark: #002244;
+            --danger: #dc2626;
+            --gray-100: #f8fafc;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-500: #64748b;
+            --gray-700: #334155;
+            --gray-900: #0f172a;
+            --radius: 18px;
+            --shadow: 0 12px 35px -8px rgba(0, 51, 102, 0.2);
         }
 
-        .mesin-title { font-size: 24px; font-weight: 800; color: var(--primary); margin: 0; }
-        
-        /* Box Informasi Riwayat */
-        .info-panel { margin: 15px 0; border-left: 4px solid var(--accent); background: #f8fafc; padding: 12px; border-radius: 0 12px 12px 0; }
-        .info-row { margin-bottom: 10px; font-size: 13px; line-height: 1.4; }
-        .label { font-weight: bold; color: #64748b; font-size: 11px; text-transform: uppercase; display: block; }
-        .content { color: var(--primary); font-weight: 500; }
-        .ng-text { color: var(--ng); font-weight: bold; }
-
-        /* Canvas Style */
-        .sig-container { 
-            background: #fff; border: 2px dashed #cbd5e1; border-radius: 12px; 
-            position: relative; margin: 10px 0; touch-action: none;
-        }
-        canvas { width: 100%; height: 180px; display: block; cursor: crosshair; }
-
-        input { 
-            width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; 
-            margin-bottom: 10px; font-size: 14px; box-sizing: border-box;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f8f9ff 0%, #e6f0ff 100%);
+            color: var(--gray-900);
+            min-height: 100vh;
+            padding: 20px;
         }
 
-        .btn-submit { 
-            width: 100%; padding: 16px; background: #cbd5e1; color: white; border: none; 
-            border-radius: 12px; font-size: 15px; font-weight: bold; cursor: not-allowed;
-            transition: 0.3s;
+        .container {
+            max-width: 620px;
+            margin: 0 auto;
         }
-        .btn-active { background: var(--primary) !important; cursor: pointer !important; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2); }
-        .btn-clear { position: absolute; top: 5px; right: 5px; background: #eee; border: none; padding: 5px 10px; border-radius: 5px; font-size: 10px; z-index: 20; cursor: pointer; }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding: 28px 20px;
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+        .header h1 {
+            font-size: 26px;
+            font-weight: 900;
+            color: var(--primary);
+            letter-spacing: 0.6px;
+        }
+        .header p {
+            font-size: 14px;
+            color: var(--gray-600);
+            margin-top: 8px;
+            font-weight: 500;
+        }
+
+        /* Loading & Empty State */
+        .loading, .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray-600);
+            font-size: 15px;
+        }
+        .empty i {
+            font-size: 56px;
+            color: #16a34a;
+            margin-bottom: 16px;
+        }
+
+        /* Report Card */
+        .report-card {
+            background: white;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+            border: 1px solid var(--gray-200);
+            transition: all 0.3s ease;
+        }
+        .report-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 40px -10px rgba(0, 51, 102, 0.25);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+            padding: 20px 24px;
+            text-align: center;
+        }
+        .mesin-title {
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 0.8px;
+        }
+
+        .info-panel {
+            padding: 20px 24px;
+            background: var(--gray-100);
+            border-bottom: 1px solid var(--gray-200);
+        }
+        .info-row {
+            margin-bottom: 14px;
+            font-size: 14px;
+        }
+        .label {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--gray-600);
+            margin-bottom: 4px;
+        }
+        .content {
+            font-weight: 600;
+            color: var(--primary-dark);
+        }
+        .ng-text {
+            color: var(--danger);
+            font-weight: 700;
+        }
+
+        /* Approval Form */
+        .approval-form {
+            padding: 28px 24px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--gray-700);
+        }
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--gray-300);
+            border-radius: 14px;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(0, 51, 102, 0.12);
+        }
+
+        .signature-box {
+            position: relative;
+            background: white;
+            border: 3px dashed var(--gray-300);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        canvas {
+            width: 100%;
+            height: 180px;
+            background: #fafafa;
+            display: block;
+        }
+        .clear-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            border: 2px solid var(--gray-300);
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 18px;
+            background: var(--gray-300);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 800;
+            margin-top: 24px;
+            cursor: not-allowed;
+            transition: all 0.3s;
+        }
+        .submit-btn.active {
+            background: var(--primary);
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(0, 51, 102, 0.35);
+        }
+        .submit-btn.active:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">
-        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png">
-        <h3>Superintendent Approval</h3>
-    </div>
+    <header class="header">
+        <h1>Superintendent Approval</h1>
+        <p>Final Authorization • Preventif Robot & Stand Label</p>
+    </header>
 
     <div id="list-container">
-        <p style="text-align:center;">Mencari laporan...</p>
+        <div class="loading">Memuat laporan...</div>
     </div>
 </div>
 
@@ -71,115 +232,165 @@
     let signaturePads = {};
 
     async function loadReports() {
-        // Ambil log yang sudah diverifikasi Koordinator (P2)
-        const { data, error } = await _sb.from('prslb_log')
+        const { data, error } = await _sb
+            .from('prslb_log')
             .select('*, prslb_mesin(qr_code_id), prslb_result(*, prslb_items(item_name))')
             .eq('status_verifikasi', true)
-            .eq('status_final', false);
+            .eq('status_final', false)
+            .order('created_at', { ascending: false });
 
         const container = document.getElementById('list-container');
+
         if (!data || data.length === 0) {
-            container.innerHTML = "<p style='text-align:center; color:gray;'>✅ Tidak ada laporan menunggu approval.</p>";
+            container.innerHTML = `
+                <div class="empty">
+                    <i class="fas fa-check-circle"></i>
+                    <h3>Tidak Ada Laporan Menunggu</h3>
+                    <p>Semua kasus telah selesai atau belum diverifikasi koordinator.</p>
+                </div>`;
             return;
         }
 
-        container.innerHTML = "";
-        data.forEach(log => {
-            // Ambil item yang NG saja untuk ringkasan
-            const ngItems = log.prslb_result.filter(r => r.status === 'NG');
-            const ngSummary = ngItems.length > 0 
-                ? ngItems.map(i => `${i.prslb_items.item_name}: ${i.keterangan}`).join(', ') 
-                : "Semua Item OK";
+        container.innerHTML = '';
 
-            const cardHtml = `
+        data.forEach(log => {
+            const ngItems = log.prslb_result.filter(r => r.status === 'NG');
+            const ngSummary = ngItems.length > 0
+                ? ngItems.map(i => `${i.prslb_items.item_name}: ${i.keterangan}`).join('; ')
+                : "Semua item OK";
+
+            const cardHTML = `
                 <div class="report-card" id="card-${log.id}">
-                    <div class="mesin-title">${log.prslb_mesin.qr_code_id}</div>
-                    
+                    <div class="card-header">
+                        <div class="mesin-title">${log.prslb_mesin.qr_code_id}</div>
+                    </div>
+
                     <div class="info-panel">
                         <div class="info-row">
-                            <span class="label">Pelaksana (P1): ${log.pelaksana_nama}</span>
-                            <span class="content">Temuan: <span class="${ngItems.length > 0 ? 'ng-text' : ''}">${ngSummary}</span></span>
+                            <span class="label">Pelaksana</span>
+                            <div class="content">${log.pelaksana_nama}</div>
                         </div>
                         <div class="info-row">
-                            <span class="label">Koordinator (P2): ${log.koordinator_nama}</span>
-                            <span class="content">Tindakan: ${log.koordinator_note || 'Telah diverifikasi lapangan.'}</span>
+                            <span class="label">Temuan NG</span>
+                            <div class="content ${ngItems.length > 0 ? 'ng-text' : ''}">${ngSummary}</div>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Koordinator</span>
+                            <div class="content">${log.koordinator_nama || '—'}</div>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Catatan Koordinator</span>
+                            <div class="content">${log.koordinator_note || 'Tidak ada catatan.'}</div>
                         </div>
                     </div>
-                    
-                    <label class="label">Nama Superintendent</label>
-                    <input type="text" id="name-${log.id}" placeholder="Masukkan Nama Anda" oninput="runValidation('${log.id}')">
-                    
-                    <label class="label">Tanda Tangan Final</label>
-                    <div class="sig-container">
-                        <button class="btn-clear" onclick="resetCanvas('${log.id}')">Hapus</button>
-                        <canvas id="canvas-${log.id}"></canvas>
-                    </div>
 
-                    <button id="btn-${log.id}" class="btn-submit" onclick="approveFinal('${log.id}')" disabled>AUTHORIZE & CLOSE CASE</button>
+                    <div class="approval-form">
+                        <div class="form-group">
+                            <label>Nama Superintendent</label>
+                            <input type="text" id="name-${log.id}" placeholder="Masukkan nama lengkap" oninput="validate('${log.id}')">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Tanda Tangan Final Approval</label>
+                            <div class="signature-box">
+                                <button type="button" class="clear-btn" onclick="clearSig('${log.id}')">
+                                    Hapus Tanda Tangan
+                                </button>
+                                <canvas id="canvas-${log.id}"></canvas>
+                            </div>
+                        </div>
+
+                        <button id="btn-${log.id}" class="submit-btn" disabled>
+                            AUTHORIZE & CLOSE CASE
+                        </button>
+                    </div>
                 </div>
             `;
-            container.insertAdjacentHTML('beforeend', cardHtml);
 
+            container.insertAdjacentHTML('beforeend', cardHTML);
+
+            // Init Signature Pad
             setTimeout(() => {
                 const canvas = document.getElementById(`canvas-${log.id}`);
                 const ratio = Math.max(window.devicePixelRatio || 1, 1);
                 canvas.width = canvas.offsetWidth * ratio;
                 canvas.height = canvas.offsetHeight * ratio;
-                canvas.getContext("2d").scale(ratio, ratio);
+                canvas.getContext('2d').scale(ratio, ratio);
 
-                const pad = new SignaturePad(canvas);
-                pad.addEventListener("endStroke", () => runValidation(log.id));
+                const pad = new SignaturePad(canvas, { backgroundColor: '#fafafa' });
+                pad.addEventListener('endStroke', () => validate(log.id));
                 signaturePads[log.id] = pad;
-            }, 500);
+            }, 300);
         });
     }
 
-    function runValidation(id) {
-        const nameVal = document.getElementById(`name-${id}`).value.trim();
+    function validate(id) {
+        const name = document.getElementById(`name-${id}`).value.trim();
         const pad = signaturePads[id];
         const btn = document.getElementById(`btn-${id}`);
 
-        if (nameVal.length >= 3 && pad && !pad.isEmpty()) {
-            btn.classList.add('btn-active');
+        if (name.length >= 3 && pad && !pad.isEmpty()) {
+            btn.classList.add('active');
             btn.disabled = false;
+            btn.onclick = () => approveFinal(id);
         } else {
-            btn.classList.remove('btn-active');
+            btn.classList.remove('active');
             btn.disabled = true;
+            btn.onclick = null;
         }
     }
 
-    function resetCanvas(id) {
+    function clearSig(id) {
         if (signaturePads[id]) {
             signaturePads[id].clear();
-            runValidation(id);
+            validate(id);
         }
     }
 
     async function approveFinal(id) {
         const btn = document.getElementById(`btn-${id}`);
-        const name = document.getElementById(`name-${id}`).value;
-        const sigBase64 = signaturePads[id].toDataURL();
+        const name = document.getElementById(`name-${id}`).value.trim();
+        const signature = signaturePads[id].toDataURL();
 
-        btn.innerText = "⏳ Memproses...";
+        btn.innerHTML = 'Memproses...';
         btn.disabled = true;
 
-        const { error } = await _sb.from('prslb_log').update({
-            superintendent_nama: name,
-            signature_superintendent: sigBase64,
-            status_final: true
-        }).eq('id', id);
+        const { error } = await _sb
+            .from('prslb_log')
+            .update({
+                superintendent_nama: name,
+                signature_superintendent: signature,
+                status_final: true,
+                final_approved_at: new Date().toISOString()
+            })
+            .eq('id', id);
 
         if (!error) {
-            document.getElementById(`card-${id}`).remove();
-            if (document.querySelectorAll('.report-card').length === 0) loadReports();
+            document.getElementById(`card-${id}`).style.transition = 'all 0.5s';
+            document.getElementById(`card-${id}`).style.opacity = '0';
+            document.getElementById(`card-${id}`).style.transform = 'translateY(-20px)';
+
+            setTimeout(() => {
+                document.getElementById(`card-${id}`).remove();
+                if (document.querySelectorAll('.report-card').length === 0) {
+                    document.getElementById('list-container').innerHTML = `
+                        <div class="empty">
+                            <i class="fas fa-check-circle"></i>
+                            <h3>Semua Laporan Telah Disetujui</h3>
+                            <p>Tidak ada lagi yang menunggu approval final.</p>
+                        </div>`;
+                }
+            }, 500);
         } else {
-            alert("Gagal Approve!");
-            btn.innerText = "AUTHORIZE & CLOSE CASE";
+            alert('Gagal menyimpan approval: ' + error.message);
+            btn.innerHTML = 'AUTHORIZE & CLOSE CASE';
             btn.disabled = false;
+            btn.classList.add('active');
         }
     }
 
     window.onload = loadReports;
 </script>
+
 </body>
 </html>
