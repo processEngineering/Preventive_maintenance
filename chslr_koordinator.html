@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koordinator - Verifikasi CHSLR</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <style>
+        .table-container { overflow-x: auto; }
+        table { border-collapse: collapse; min-width: 1200px; }
+        th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: center; font-size: 11px; }
+        .sticky-col { position: sticky; left: 0; background: white; z-index: 5; border-right: 2px solid #cbd5e1; }
+        .bg-ok { background-color: #dcfce7; color: #166534; font-weight: bold; }
+        .bg-ng { background-color: #fee2e2; color: #991b1b; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen p-4">
+
+    <div class="max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <h1 class="text-2xl font-black text-slate-800">Verifikasi Koordinator (P2)</h1>
+            <div class="flex gap-2">
+                <select id="f-mesin" class="p-2 rounded-lg border border-slate-300 text-sm"></select>
+                <select id="f-bulan" class="p-2 rounded-lg border border-slate-300 text-sm">
+                    <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+                    <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+                    <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+                    <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+                </select>
+                <button onclick="loadMatrix()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition">Tampilkan</button>
+            </div>
+        </div>
+
+        <div id="matrix-wrapper" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+                <div class="table-container">
+                    <table>
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="sticky-col" width="250">Item Pengecekan</th>
+                                <script>for(let i=1; i<=31; i++) document.write(`<th>${i}</th>`);</script>
+                            </tr>
+                        </thead>
+                        <tbody id="matrix-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-md mx-auto">
+                <h3 class="font-bold text-slate-800 mb-4">Validasi Koordinator</h3>
+                <input type="text" id="k-nama" placeholder="Nama Koordinator" class="w-full p-3 border rounded-xl mb-3 outline-none focus:ring-2 focus:ring-blue-500">
+                <textarea id="k-note" placeholder="Catatan/Instruksi Perbaikan..." class="w-full p-3 border rounded-xl mb-3 h-24"></textarea>
+                
+                <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Tanda Tangan</label>
+                <div class="border-2 border-dashed rounded-xl relative bg-slate-50">
+                    <canvas id="pad" class="w-full h-40"></canvas>
+                    <button onclick="pad.clear()" class="absolute top-2 right-2 text-[10px] bg-slate-200 px-2 py-1 rounded">Reset</button>
+                </div>
+                
+                <button onclick="submitApproval()" id="btn-approve" class="w-full mt-6 bg-slate-900 text-white font-black py-4 rounded-xl shadow-lg active:scale-95 transition">
+                    VERIFIKASI SELESAI
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
+        let pad;
+        let currentLogId = null;
+
+        window.onload = async () => {
+            const { data } = await _sb.from('chslr_mesin').select('*').order('nama_mesin');
+            const sel = document.getElementById('f-mesin');
+            data.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.nama_mesin}</option>`);
+            document.getElementById('f-bulan').value = new Date().getMonth() + 1;
+            
+            const canvas = document.getElementById('pad');
+            pad = new SignaturePad(canvas);
+        };
+
+        async function loadMatrix() {
+            const mId = document.getElementById('f-mesin').value;
+            const bln = document.getElementById('f-bulan').value;
+            const thn = new Date().getFullYear();
+
+            // Load Items & Log
+            const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
+            const { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', mId).eq('bulan', bln).eq('tahun', thn).maybeSingle();
+
+            if(!log) {
+                alert("Data belum ada untuk bulan ini!");
+                return document.getElementById('matrix-wrapper').classList.add('hidden');
+            }
+
+            currentLogId = log.id;
+            const { data: results } = await _sb.from('chslr_result').select('*').eq('log_id', log.id);
+
+            const body = document.getElementById('matrix-body');
+            body.innerHTML = "";
+
+            items.forEach(item => {
+                let row = `<tr><td class="sticky-col text-left font-medium">${item.item_name}</td>`;
+                for(let tgl=1; tgl<=31; tgl++) {
+                    const found = results.find(r => r.item_id === item.id && r.tanggal === tgl);
+                    const statusClass = found ? (found.status === 'OK' ? 'bg-ok' : 'bg-ng') : '';
+                    const statusText = found ? (found.status === 'OK' ? '√' : 'X') : '';
+                    row += `<td class="${statusClass}" title="${found?.keterangan || ''}">${statusText}</td>`;
+                }
+                row += `</tr>`;
+                body.innerHTML += row;
+            });
+
+            document.getElementById('matrix-wrapper').classList.remove('hidden');
+        }
+
+        async function submitApproval() {
+            const nama = document.getElementById('k-nama').value;
+            if(!nama || pad.isEmpty()) return alert("Nama dan Tanda Tangan wajib diisi!");
+
+            const { error } = await _sb.from('chslr_log').update({
+                koordinator_nama: nama,
+                koordinator_note: document.getElementById('k-note').value,
+                signature_koordinator: pad.toDataURL(),
+                status_verifikasi: true
+            }).eq('id', currentLogId);
+
+            if(!error) {
+                alert("Berhasil Verifikasi!");
+                location.reload();
+            } else {
+                alert("Gagal: " + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
