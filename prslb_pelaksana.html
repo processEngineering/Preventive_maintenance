@@ -3,136 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pelaksana Preventif - PT AKG</title>
+    <title>Preventif Pelaksana - PT AKG</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root {
             --primary: #003366;
-            --primary-light: #e6f0f9;
+            --primary-light: #eef4ff;
             --bg: #f8fafc;
-            --ok: #22c55e;
-            --ng: #ef4444;
+            --ok: #28a745;
+            --ng: #dc3545;
             --text: #1e293b;
         }
 
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background-color: var(--bg);
-            margin: 0;
-            padding: 10px;
-            color: var(--text);
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid var(--primary-light);
-        }
-
-        .header img { height: 40px; margin-bottom: 5px; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; color: var(--text); }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        .header { text-align: center; border-bottom: 2px solid var(--primary-light); margin-bottom: 20px; padding-bottom: 10px; }
+        .header img { height: 45px; }
 
         /* Scanner Styling */
-        .scan-wrapper { 
-            background: #000; 
-            border-radius: 12px; 
-            overflow: hidden;
-            margin-bottom: 10px; 
-            min-height: 250px;
-            position: relative;
-        }
+        .scan-container { background: #000; border-radius: 12px; overflow: hidden; position: relative; min-height: 250px; }
         #reader { width: 100% !important; border: none !important; }
+        .status-msg { text-align: center; font-size: 13px; color: #64748b; margin-top: 10px; padding: 10px; border-radius: 8px; }
 
-        .debug-box {
-            background: #fff4f4;
-            color: #d32f2f;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 11px;
-            text-align: center;
-            margin-bottom: 10px;
-            font-family: monospace;
-            border: 1px solid #ffcdd2;
+        /* Form Content */
+        .machine-badge { background: var(--primary-light); border: 2px solid var(--primary); padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
+        .machine-badge h3 { margin: 5px 0; color: var(--primary); font-size: 18px; }
+
+        .category-header { 
+            background: var(--primary); color: white; padding: 10px 15px; margin-top: 25px; 
+            border-radius: 8px; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;
         }
 
-        /* Form Area */
-        .machine-info {
-            background: var(--primary-light);
-            border: 2px solid var(--primary);
-            padding: 15px;
-            border-radius: 12px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .category-header {
-            background: var(--primary);
-            color: white;
-            padding: 8px 15px;
-            font-weight: bold;
-            border-radius: 6px;
-            margin: 25px 0 10px 0;
-            font-size: 12px;
-            text-transform: uppercase;
-        }
-
-        .check-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 15px 0;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-        .item-text { flex: 1; padding-right: 10px; }
-        .item-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
-        .item-std { font-size: 11px; color: #64748b; font-style: italic; }
+        .check-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f1f5f9; }
+        .item-label { flex: 1; padding-right: 15px; }
+        .item-name { font-size: 14px; font-weight: 600; color: var(--text); display: block; }
+        .item-std { font-size: 11px; color: #64748b; font-style: italic; margin-top: 2px; display: block; }
 
         .btn-group { display: flex; gap: 8px; }
-        .btn-opt {
-            padding: 12px 18px;
-            border: 2px solid #e2e8f0;
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            min-width: 60px;
+        .btn-status { 
+            padding: 10px 18px; border: 2px solid #e2e8f0; background: white; 
+            border-radius: 8px; cursor: pointer; font-weight: bold; min-width: 60px; transition: 0.2s;
         }
+        .active-ok { background: var(--ok) !important; color: white; border-color: var(--ok); box-shadow: 0 3px 8px rgba(40,167,69,0.3); }
+        .active-ng { background: var(--ng) !important; color: white; border-color: var(--ng); box-shadow: 0 3px 8px rgba(220,53,69,0.3); }
 
-        .active-ok { background: var(--ok) !important; color: white; border-color: var(--ok); }
-        .active-ng { background: var(--ng) !important; color: white; border-color: var(--ng); }
-
-        input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 10px;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-
-        .btn-submit {
-            width: 100%;
-            padding: 18px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-            margin-top: 30px;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,51,102,0.2);
+        .input-nama { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1.5px solid #cbd5e1; box-sizing: border-box; font-size: 16px; }
+        
+        .btn-submit { 
+            width: 100%; padding: 18px; background: var(--primary); color: white; border: none; 
+            border-radius: 12px; font-size: 17px; font-weight: bold; margin-top: 30px; cursor: pointer; 
+            box-shadow: 0 4px 12px rgba(0,51,102,0.25);
         }
     </style>
 </head>
@@ -140,158 +62,135 @@
 
 <div class="container">
     <div class="header">
-        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="Logo">
-        <h2 style="margin:0; font-size: 1.1rem;">PREVENTIF ROBOT & STAND LABEL</h2>
+        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="Logo PT AKG">
+        <h2 style="margin:5px 0; font-size: 1.1rem; color: var(--primary);">PREVENTIF ROBOT & STAND LABEL</h2>
     </div>
 
-    <div id="scanner-area">
-        <div class="scan-wrapper">
+    <div id="view-scan">
+        <div class="scan-container">
             <div id="reader"></div>
         </div>
-        <div id="debug-info" class="debug-box">Siap Scan Barcode Mesin...</div>
+        <div id="info-scan" class="status-msg">Arahkan kamera ke Barcode Mesin...</div>
     </div>
 
-    <div id="form-area" style="display: none;">
-        <div class="machine-info">
-            <small>Mesin Terdeteksi:</small>
-            <h3 id="display-machine" style="margin:5px 0;">-</h3>
-            <button onclick="location.reload()" style="font-size:11px; padding:5px 10px; cursor:pointer;">Scan Ulang</button>
+    <div id="view-form" style="display: none;">
+        <div class="machine-badge">
+            <small style="color: #64748b;">Mesin Berhasil Di-Scan:</small>
+            <h3 id="txt-mesin-id">-</h3>
+            <button onclick="location.reload()" style="margin-top:8px; font-size:11px; cursor:pointer; padding:4px 10px; border-radius:5px; border:1px solid #ccc; background:#fff;">Scan Ulang</button>
         </div>
 
         <div style="margin-bottom: 20px;">
-            <label style="display:block; font-weight:bold; margin-bottom:5px; font-size:14px;">Nama Pelaksana:</label>
-            <input type="text" id="pelaksana-nama" placeholder="Ketik Nama Lengkap...">
+            <label style="font-size: 14px; font-weight: bold; color: var(--primary);">Nama Pelaksana:</label>
+            <input type="text" id="input-pelaksana" placeholder="Ketik Nama Lengkap Anda..." class="input-nama">
         </div>
 
-        <div id="item-list">
+        <div id="list-checklist">
             </div>
 
-        <button class="btn-submit" onclick="prosesSimpan()">SIMPAN DATA PREVENTIF</button>
+        <button class="btn-submit" onclick="simpanData()">SIMPAN DATA PREVENTIF</button>
     </div>
 </div>
 
 <script>
-    // Konfigurasi Supabase
     const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-    let html5QrCode;
-    let selectedMesinId = null;
+    let html5QrScanner;
+    let dataMesin = null;
 
-    // 1. Inisialisasi Kamera
-    function startCamera() {
-        html5QrCode = new Html5Qrcode("reader");
+    // Start Scanner
+    function startScanner() {
+        html5QrScanner = new Html5Qrcode("reader");
         const config = { fps: 15, qrbox: { width: 250, height: 250 } };
-        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
-    }
+        html5QrScanner.start({ facingMode: "environment" }, config, async (decodedText) => {
+            const cleanCode = decodedText.replace(/\s+/g, ' ').trim();
+            document.getElementById('info-scan').innerText = "Mengecek: " + cleanCode;
 
-    // 2. Logika Scan
-    async function onScanSuccess(decodedText) {
-        // Membersihkan teks barcode: hapus spasi ganda, karakter enter, dan spasi ujung
-        const cleanCode = decodedText.replace(/\s+/g, ' ').trim();
-        document.getElementById('debug-info').innerText = "Terbaca: [" + cleanCode + "]";
+            const { data, error } = await _sb.from('prslb_mesin').select('*').ilike('qr_code_id', cleanCode).maybeSingle();
 
-        try {
-            // Cari di Supabase dengan filter ILIKE (Case Insensitive)
-            const { data: mesin, error } = await _sb
-                .from('prslb_mesin')
-                .select('*')
-                .ilike('qr_code_id', cleanCode)
-                .maybeSingle();
-
-            if (error || !mesin) {
-                document.getElementById('debug-info').style.background = "#fee2e2";
-                document.getElementById('debug-info').innerText = "Error: Barcode [" + cleanCode + "] Tidak Terdaftar!";
-                return;
+            if (data) {
+                dataMesin = data;
+                await html5QrScanner.stop();
+                bukaForm();
+            } else {
+                document.getElementById('info-scan').innerText = "Barcode ["+cleanCode+"] Tidak Terdaftar!";
+                document.getElementById('info-scan').style.color = "red";
             }
-
-            // Jika Berhasil
-            selectedMesinId = mesin.id;
-            await html5QrCode.stop();
-            
-            document.getElementById('display-machine').innerText = mesin.qr_code_id;
-            document.getElementById('scanner-area').style.display = 'none';
-            document.getElementById('form-area').style.display = 'block';
-
-            renderChecklist();
-
-        } catch (err) {
-            console.error(err);
-        }
+        });
     }
 
-    // 3. Ambil Item Checklist
-    async function renderChecklist() {
+    async function bukaForm() {
+        document.getElementById('view-scan').style.display = 'none';
+        document.getElementById('view-form').style.display = 'block';
+        document.getElementById('txt-mesin-id').innerText = dataMesin.qr_code_id;
+
         const { data: items } = await _sb.from('prslb_items').select('*').order('id', { ascending: true });
-        const listContainer = document.getElementById('item-list');
-        let currentCategory = "";
+        const listDiv = document.getElementById('list-checklist');
+        let currentCat = "";
 
         items.forEach(item => {
-            if (item.kategori !== currentCategory) {
-                currentCategory = item.kategori;
-                listContainer.innerHTML += `<div class="category-header">${currentCategory}</div>`;
+            if (item.kategori !== currentCat) {
+                currentCat = item.kategori;
+                listDiv.innerHTML += `<div class="category-header">ITEM CHECK ROBOT (${currentCat})</div>`;
             }
 
-            listContainer.innerHTML += `
+            listDiv.innerHTML += `
                 <div class="check-item">
-                    <div class="item-text">
-                        <div class="item-name">${item.item_name}</div>
-                        <div class="item-std">Std: ${item.standard}</div>
+                    <div class="item-label">
+                        <span class="item-name">${item.item_name}</span>
+                        <span class="item-std">Standard: ${item.standard}</span>
                     </div>
                     <div class="btn-group" data-item-id="${item.id}">
-                        <button class="btn-opt" onclick="updateStatus(this, 'OK')">OK</button>
-                        <button class="btn-opt" onclick="updateStatus(this, 'NG')">NG</button>
+                        <button class="btn-status btn-ok" onclick="selectStatus(this, 'OK')">OK</button>
+                        <button class="btn-status btn-ng" onclick="selectStatus(this, 'NG')">NG</button>
                     </div>
                 </div>`;
         });
     }
 
-    function updateStatus(btn, val) {
+    function selectStatus(btn, val) {
         const group = btn.parentElement;
-        group.querySelectorAll('.btn-opt').forEach(b => b.classList.remove('active-ok', 'active-ng'));
+        group.querySelectorAll('.btn-status').forEach(b => b.classList.remove('active-ok', 'active-ng'));
         btn.classList.add(val === 'OK' ? 'active-ok' : 'active-ng');
     }
 
-    // 4. Simpan ke prslb_log
-    async function prosesSimpan() {
-        const pelaksana = document.getElementById('pelaksana-nama').value;
-        const itemsChecked = document.querySelectorAll('.btn-group');
+    async function simpanData() {
+        const nama = document.getElementById('input-pelaksana').value;
+        const checklistRows = document.querySelectorAll('.btn-group');
 
-        if (!pelaksana) return alert("Harap isi Nama Pelaksana!");
+        if (!nama) return alert("Mohon isi Nama Pelaksana!");
 
-        const logs = [];
+        const payload = [];
         let lengkap = true;
 
-        itemsChecked.forEach(group => {
-            const itemId = group.getAttribute('data-item-id');
-            const activeBtn = group.querySelector('.active-ok, .active-ng');
-            
+        checklistRows.forEach(row => {
+            const activeBtn = row.querySelector('.active-ok, .active-ng');
             if (!activeBtn) {
                 lengkap = false;
             } else {
-                logs.push({
-                    mesin_id: selectedMesinId,
-                    item_id: parseInt(itemId),
+                payload.push({
+                    mesin_id: dataMesin.id,
+                    item_id: row.getAttribute('data-item-id'),
                     status: activeBtn.innerText,
-                    pelaksana_nama: pelaksana
+                    pelaksana_nama: nama
                 });
             }
         });
 
-        if (!lengkap) return alert("Mohon lengkapi semua checklist!");
+        if (!lengkap) return alert("Harap isi semua item checklist (OK/NG)!");
 
-        const { error } = await _sb.from('prslb_log').insert(logs);
-
+        const { error } = await _sb.from('prslb_log').insert(payload);
         if (error) {
             alert("Gagal Simpan: " + error.message);
         } else {
-            alert("Data Berhasil Disimpan ke Log!");
+            alert("Data Preventif Berhasil Disimpan!");
             location.reload();
         }
     }
 
-    window.onload = startCamera;
+    window.onload = startScanner;
 </script>
 </body>
 </html>
