@@ -8,17 +8,28 @@
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     
     <style>
-        :root { --primary: #0f172a; --bg: #f1f5f9; --accent: #2563eb; }
+        :root { --primary: #0f172a; --bg: #f1f5f9; --accent: #2563eb; --ng: #dc2626; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 15px; }
         .container { max-width: 600px; margin: auto; }
         
+        .header { text-align: center; margin-bottom: 25px; }
+        .header img { height: 45px; margin-bottom: 10px; }
+
         .report-card { 
             background: white; border-radius: 20px; padding: 20px; margin-bottom: 25px;
             box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;
         }
 
-        .mesin-title { font-size: 22px; font-weight: 800; color: var(--primary); margin-bottom: 15px; }
+        .mesin-title { font-size: 24px; font-weight: 800; color: var(--primary); margin: 0; }
+        
+        /* Box Informasi Riwayat */
+        .info-panel { margin: 15px 0; border-left: 4px solid var(--accent); background: #f8fafc; padding: 12px; border-radius: 0 12px 12px 0; }
+        .info-row { margin-bottom: 10px; font-size: 13px; line-height: 1.4; }
+        .label { font-weight: bold; color: #64748b; font-size: 11px; text-transform: uppercase; display: block; }
+        .content { color: var(--primary); font-weight: 500; }
+        .ng-text { color: var(--ng); font-weight: bold; }
 
+        /* Canvas Style */
         .sig-container { 
             background: #fff; border: 2px dashed #cbd5e1; border-radius: 12px; 
             position: relative; margin: 10px 0; touch-action: none;
@@ -42,13 +53,13 @@
 <body>
 
 <div class="container">
-    <div style="text-align:center; margin-bottom:20px;">
-        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" height="40">
+    <div class="header">
+        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png">
         <h3>Superintendent Approval</h3>
     </div>
 
     <div id="list-container">
-        <p style="text-align:center;">Mencari laporan yang perlu disetujui...</p>
+        <p style="text-align:center;">Mencari laporan...</p>
     </div>
 </div>
 
@@ -60,69 +71,75 @@
     let signaturePads = {};
 
     async function loadReports() {
+        // Ambil log yang sudah diverifikasi Koordinator (P2)
         const { data, error } = await _sb.from('prslb_log')
-            .select('*, prslb_mesin(qr_code_id)')
+            .select('*, prslb_mesin(qr_code_id), prslb_result(*, prslb_items(item_name))')
             .eq('status_verifikasi', true)
             .eq('status_final', false);
 
         const container = document.getElementById('list-container');
         if (!data || data.length === 0) {
-            container.innerHTML = "<p style='text-align:center; color:gray;'>Tidak ada laporan menunggu approval.</p>";
+            container.innerHTML = "<p style='text-align:center; color:gray;'>✅ Tidak ada laporan menunggu approval.</p>";
             return;
         }
 
         container.innerHTML = "";
         data.forEach(log => {
+            // Ambil item yang NG saja untuk ringkasan
+            const ngItems = log.prslb_result.filter(r => r.status === 'NG');
+            const ngSummary = ngItems.length > 0 
+                ? ngItems.map(i => `${i.prslb_items.item_name}: ${i.keterangan}`).join(', ') 
+                : "Semua Item OK";
+
             const cardHtml = `
                 <div class="report-card" id="card-${log.id}">
                     <div class="mesin-title">${log.prslb_mesin.qr_code_id}</div>
-                    <p style="font-size:12px; color:gray;">Teknisi: ${log.pelaksana_nama} | Koordinator: ${log.koordinator_nama}</p>
                     
-                    <input type="text" id="name-${log.id}" placeholder="Nama Superintendent" oninput="runValidation('${log.id}')">
+                    <div class="info-panel">
+                        <div class="info-row">
+                            <span class="label">Pelaksana (P1): ${log.pelaksana_nama}</span>
+                            <span class="content">Temuan: <span class="${ngItems.length > 0 ? 'ng-text' : ''}">${ngSummary}</span></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Koordinator (P2): ${log.koordinator_nama}</span>
+                            <span class="content">Tindakan: ${log.koordinator_note || 'Telah diverifikasi lapangan.'}</span>
+                        </div>
+                    </div>
                     
+                    <label class="label">Nama Superintendent</label>
+                    <input type="text" id="name-${log.id}" placeholder="Masukkan Nama Anda" oninput="runValidation('${log.id}')">
+                    
+                    <label class="label">Tanda Tangan Final</label>
                     <div class="sig-container">
                         <button class="btn-clear" onclick="resetCanvas('${log.id}')">Hapus</button>
                         <canvas id="canvas-${log.id}"></canvas>
                     </div>
 
-                    <button id="btn-${log.id}" class="btn-submit" onclick="approveFinal('${log.id}')" disabled>APPROVE & CLOSE</button>
+                    <button id="btn-${log.id}" class="btn-submit" onclick="approveFinal('${log.id}')" disabled>AUTHORIZE & CLOSE CASE</button>
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', cardHtml);
 
-            // Inisialisasi Signature Pad (SANGAT KRUSIAL)
             setTimeout(() => {
                 const canvas = document.getElementById(`canvas-${log.id}`);
-                
-                // Set ukuran canvas agar pas secara internal
                 const ratio = Math.max(window.devicePixelRatio || 1, 1);
                 canvas.width = canvas.offsetWidth * ratio;
                 canvas.height = canvas.offsetHeight * ratio;
                 canvas.getContext("2d").scale(ratio, ratio);
 
-                const pad = new SignaturePad(canvas, {
-                    backgroundColor: 'rgba(255, 255, 255, 0)',
-                    penColor: 'rgb(0, 0, 0)'
-                });
-
-                // Setiap kali user selesai mencoret, jalankan validasi
-                pad.addEventListener("endStroke", () => {
-                    runValidation(log.id);
-                });
-
+                const pad = new SignaturePad(canvas);
+                pad.addEventListener("endStroke", () => runValidation(log.id));
                 signaturePads[log.id] = pad;
             }, 500);
         });
     }
 
-    // Fungsi Validasi agar tombol menyala
     function runValidation(id) {
-        const nameValue = document.getElementById(`name-${id}`).value.trim();
+        const nameVal = document.getElementById(`name-${id}`).value.trim();
         const pad = signaturePads[id];
         const btn = document.getElementById(`btn-${id}`);
 
-        // Jika Nama >= 3 huruf DAN Tanda Tangan tidak kosong
-        if (nameValue.length >= 3 && pad && !pad.isEmpty()) {
+        if (nameVal.length >= 3 && pad && !pad.isEmpty()) {
             btn.classList.add('btn-active');
             btn.disabled = false;
         } else {
@@ -141,25 +158,23 @@
     async function approveFinal(id) {
         const btn = document.getElementById(`btn-${id}`);
         const name = document.getElementById(`name-${id}`).value;
-        const signatureBase64 = signaturePads[id].toDataURL();
+        const sigBase64 = signaturePads[id].toDataURL();
 
-        btn.innerText = "⏳ Sedang Proses...";
+        btn.innerText = "⏳ Memproses...";
         btn.disabled = true;
 
         const { error } = await _sb.from('prslb_log').update({
             superintendent_nama: name,
-            signature_superintendent: signatureBase64,
+            signature_superintendent: sigBase64,
             status_final: true
         }).eq('id', id);
 
         if (!error) {
-            document.getElementById(`card-${id}`).style.display = 'none';
-            if (document.querySelectorAll('.report-card[style*="display: none"]').length === signaturePads.length) {
-                loadReports();
-            }
+            document.getElementById(`card-${id}`).remove();
+            if (document.querySelectorAll('.report-card').length === 0) loadReports();
         } else {
-            alert("Gagal Approve: " + error.message);
-            btn.innerText = "APPROVE & CLOSE";
+            alert("Gagal Approve!");
+            btn.innerText = "AUTHORIZE & CLOSE CASE";
             btn.disabled = false;
         }
     }
