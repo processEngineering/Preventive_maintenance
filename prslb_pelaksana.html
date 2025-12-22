@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pelaksana Preventif - PT AKG</title>
+    <title>QR Scan Pelaksana - PT AKG</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root {
             --primary: #003366;
@@ -12,280 +13,192 @@
             --bg: #f8fafc;
             --ok: #22c55e;
             --ng: #ef4444;
-            --text: #1e293b;
         }
 
-        body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 10px;
-        }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; padding: 10px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        
+        .header { text-align: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--primary-light); }
+        .header img { height: 40px; }
 
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid var(--primary-light);
-        }
-
-        .header img { height: 45px; margin-bottom: 10px; }
-        .header h2 { 
-            font-size: 1.2rem; 
-            color: var(--primary); 
-            margin: 0;
-            text-transform: uppercase;
-        }
-
-        .form-section { margin-bottom: 20px; }
-        label { 
-            display: block; 
-            font-weight: 600; 
-            margin-bottom: 8px; 
-            font-size: 14px; 
-            color: var(--primary);
-        }
-
-        select, input {
-            width: 100%;
-            padding: 12px;
-            border: 1.5px solid #e2e8f0;
+        /* Scanner Styling */
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; border: none !important; }
+        .scan-wrapper { background: #000; border-radius: 12px; margin-bottom: 15px; position: relative; }
+        
+        .machine-info-box {
+            background: #f0f9ff;
+            border: 2px solid var(--primary);
+            padding: 15px;
             border-radius: 10px;
-            font-size: 16px;
-            box-sizing: border-box;
-            transition: border-color 0.2s;
+            margin-bottom: 20px;
+            text-align: center;
         }
+        .machine-info-box h3 { margin: 0; color: var(--primary); font-size: 18px; }
 
-        select:focus, input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        /* Styling Item Checklist */
-        .category-header {
-            background: var(--primary-light);
-            color: var(--primary);
-            padding: 10px 15px;
-            font-weight: bold;
-            border-radius: 8px;
-            margin: 25px 0 10px 0;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-        }
-
-        .check-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 15px 5px;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-        .item-label { flex: 1; padding-right: 15px; }
-        .item-name { font-size: 15px; font-weight: 500; margin-bottom: 3px; }
+        .category-header { background: var(--primary-light); color: var(--primary); padding: 10px 15px; font-weight: bold; border-radius: 8px; margin: 25px 0 10px 0; font-size: 13px; }
+        .check-item { display: flex; align-items: center; justify-content: space-between; padding: 15px 5px; border-bottom: 1px solid #f1f5f9; }
+        .item-label { flex: 1; }
+        .item-name { font-size: 15px; font-weight: 500; }
         .item-std { font-size: 12px; color: #64748b; font-style: italic; }
 
         .btn-group { display: flex; gap: 8px; }
-        .btn-status {
-            padding: 10px 18px;
-            border: 2px solid #e2e8f0;
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 700;
-            transition: all 0.2s;
-        }
-
+        .btn-status { padding: 10px 18px; border: 2px solid #e2e8f0; background: white; border-radius: 8px; cursor: pointer; font-weight: 700; }
         .btn-status.active-ok { background: var(--ok); color: white; border-color: var(--ok); }
         .btn-status.active-ng { background: var(--ng); color: white; border-color: var(--ng); }
 
-        .submit-container {
-            position: sticky;
-            bottom: 10px;
-            background: white;
-            padding: 15px 0;
-            margin-top: 30px;
-        }
-
-        .btn-submit {
-            width: 100%;
-            padding: 16px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0, 51, 102, 0.2);
-        }
-
-        .btn-submit:active { transform: scale(0.98); }
-
-        /* Loading Spinner */
-        #loader { text-align: center; padding: 40px; color: var(--primary); }
+        .btn-submit { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px; }
+        
+        #btn-scan-again { background: #64748b; color: white; border: none; padding: 8px 15px; border-radius: 6px; margin-top: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
-        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="Logo PT AKG">
-        <h2>Preventif Robot & Stand Label</h2>
+        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="Logo">
+        <h2 style="font-size: 1.1rem; color: var(--primary);">PREVENTIF ROBOT (SCAN QR)</h2>
     </div>
 
-    <div class="form-section">
-        <label>Pilih Mesin / Scan QR:</label>
-        <select id="mesin-select">
-            <option value="">-- Loading Mesin... --</option>
-        </select>
+    <div id="scanner-section">
+        <div class="scan-wrapper">
+            <div id="reader"></div>
+        </div>
+        <p style="text-align: center; font-size: 14px; color: #666;">Scan QR Code pada mesin untuk memulai</p>
     </div>
 
-    <div class="form-section">
-        <label>Nama Pelaksana:</label>
-        <input type="text" id="pelaksana-name" placeholder="Contoh: Budi Santoso">
-    </div>
-
-    <div id="loader">Memuat item checklist...</div>
-    <div id="checklist-content" style="display: none;">
+    <div id="machine-result" style="display: none;">
+        <div class="machine-info-box">
+            <small>Mesin Terdeteksi:</small>
+            <h3 id="display-nama-mesin">-</h3>
+            <button id="btn-scan-again" onclick="resetScan()">Scan Ulang</button>
         </div>
 
-    <div class="submit-container">
-        <button class="btn-submit" onclick="submitData()">SIMPAN CHECKLIST</button>
+        <div style="margin-bottom: 20px;">
+            <label style="font-weight: bold; font-size: 14px;">Nama Pelaksana:</label>
+            <input type="text" id="pelaksana-name" style="width:100%; padding:12px; border-radius:8px; border:1px solid #ccc; margin-top:5px;" placeholder="Input Nama Anda">
+        </div>
+
+        <div id="checklist-content">
+            </div>
+
+        <button class="btn-submit" onclick="submitData()">SIMPAN DATA PREVENTIF</button>
     </div>
 </div>
 
 <script>
-    // Konfigurasi Supabase
     const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const _supabase = supabase.createClient(SB_URL, SB_KEY);
 
-    async function initPage() {
-        try {
-            // 1. Ambil Data Mesin
-            const { data: mesin, error: errMesin } = await _supabase
-                .from('prslb_mesin')
-                .select('*')
-                .order('nickname', { ascending: true });
+    let html5QrCode;
+    let selectedMesinId = null;
 
-            const selectMesin = document.getElementById('mesin-select');
-            selectMesin.innerHTML = '<option value="">-- Pilih Mesin --</option>';
-            mesin.forEach(m => {
-                selectMesin.innerHTML += `<option value="${m.id}">${m.nama_mesin} ${m.tonage || ''} (${m.nickname || 'EXT'})</option>`;
-            });
+    // 1. Inisialisasi Scanner & Load Checklist
+    async function startScanner() {
+        html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
-            // 2. Ambil Data Item Checklist
-            const { data: items, error: errItems } = await _supabase
-                .from('prslb_items')
-                .select('*')
-                .order('id', { ascending: true });
-
-            renderItems(items);
-            
-            document.getElementById('loader').style.display = 'none';
-            document.getElementById('checklist-content').style.display = 'block';
-
-        } catch (e) {
-            alert("Gagal koneksi ke database!");
-            console.error(e);
-        }
+        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
     }
 
-    function renderItems(items) {
+    async function onScanSuccess(decodedText) {
+        // Berhenti scan sementara
+        await html5QrCode.stop();
+        document.getElementById('scanner-section').style.display = 'none';
+
+        // Cari mesin di database berdasarkan qr_code_id
+        const { data: mesin, error } = await _supabase
+            .from('prslb_mesin')
+            .select('*')
+            .eq('qr_code_id', decodedText)
+            .single();
+
+        if (error || !mesin) {
+            alert("QR Code Tidak Terdaftar!");
+            resetScan();
+            return;
+        }
+
+        // Tampilkan Form
+        selectedMesinId = mesin.id;
+        document.getElementById('display-nama-mesin').innerText = `${mesin.nama_mesin} (${mesin.nickname})`;
+        document.getElementById('machine-result').style.display = 'block';
+        
+        loadChecklist();
+    }
+
+    async function loadChecklist() {
+        const { data: items } = await _supabase.from('prslb_items').select('*').order('id', { ascending: true });
         const container = document.getElementById('checklist-content');
+        container.innerHTML = "";
         let currentCat = "";
 
         items.forEach(item => {
-            // Header Kategori (A, B, C, D)
             if (item.kategori !== currentCat) {
                 currentCat = item.kategori;
-                const catDiv = document.createElement('div');
-                catDiv.className = 'category-header';
-                catDiv.innerText = `ITEM CHECK ROBOT (${currentCat})`;
-                container.appendChild(catDiv);
+                container.innerHTML += `<div class="category-header">ITEM CHECK ROBOT (${currentCat})</div>`;
             }
 
-            // Baris Item
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'check-item';
-            itemDiv.innerHTML = `
-                <div class="item-label">
-                    <div class="item-name">${item.item_name}</div>
-                    <div class="item-std">Std: ${item.standard}</div>
-                </div>
-                <div class="btn-group" data-item-id="${item.id}">
-                    <button class="btn-status" onclick="setStatus(this, 'OK')">OK</button>
-                    <button class="btn-status" onclick="setStatus(this, 'NG')">NG</button>
-                </div>
-            `;
-            container.appendChild(itemDiv);
+            container.innerHTML += `
+                <div class="check-item">
+                    <div class="item-label">
+                        <div class="item-name">${item.item_name}</div>
+                        <div class="item-std">Std: ${item.standard}</div>
+                    </div>
+                    <div class="btn-group" data-item-id="${item.id}">
+                        <button class="btn-status" onclick="setStatus(this, 'OK')">OK</button>
+                        <button class="btn-status" onclick="setStatus(this, 'NG')">NG</button>
+                    </div>
+                </div>`;
         });
     }
 
     function setStatus(btn, status) {
         const group = btn.parentElement;
         group.querySelectorAll('.btn-status').forEach(b => b.classList.remove('active-ok', 'active-ng'));
-        
-        if (status === 'OK') btn.classList.add('active-ok');
-        else btn.classList.add('active-ng');
+        btn.classList.add(status === 'OK' ? 'active-ok' : 'active-ng');
     }
 
     async function submitData() {
-        const mesinId = document.getElementById('mesin-select').value;
         const pelaksana = document.getElementById('pelaksana-name').value;
         const groups = document.querySelectorAll('.btn-group');
 
-        if (!mesinId || !pelaksana) {
-            return alert("Pilih Mesin dan isi Nama Pelaksana!");
-        }
+        if (!pelaksana) return alert("Isi Nama Pelaksana!");
 
-        const dataToSave = [];
+        const logs = [];
         let completed = true;
 
-        groups.forEach(group => {
-            const itemId = group.getAttribute('data-item-id');
-            const activeBtn = group.querySelector('.active-ok, .active-ng');
-
-            if (!activeBtn) {
-                completed = false;
-            } else {
-                dataToSave.push({
-                    mesin_id: parseInt(mesinId),
+        groups.forEach(g => {
+            const itemId = g.getAttribute('data-item-id');
+            const statusBtn = g.querySelector('.active-ok, .active-ng');
+            if (!statusBtn) completed = false;
+            else {
+                logs.push({
+                    mesin_id: selectedMesinId,
                     item_id: parseInt(itemId),
-                    status: activeBtn.innerText,
+                    status: statusBtn.innerText,
                     pelaksana_nama: pelaksana
                 });
             }
         });
 
-        if (!completed) {
-            return alert("Mohon lengkapi semua item checklist!");
-        }
+        if (!completed) return alert("Lengkapi semua checklist!");
 
-        const { error } = await _supabase.from('prslb_log').insert(dataToSave);
-
-        if (error) {
-            alert("Gagal menyimpan: " + error.message);
-        } else {
+        const { error } = await _supabase.from('prslb_log').insert(logs);
+        if (error) alert(error.message);
+        else {
             alert("Data Berhasil Disimpan!");
-            location.reload(); // Refresh halaman setelah sukses
+            location.reload();
         }
     }
 
-    // Jalankan saat load
-    initPage();
+    function resetScan() {
+        document.getElementById('machine-result').style.display = 'none';
+        document.getElementById('scanner-section').style.display = 'block';
+        startScanner();
+    }
+
+    window.onload = startScanner;
 </script>
 
 </body>
