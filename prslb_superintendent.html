@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Superintendent - Final Approval</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <style>
+        :root { --primary: #1e293b; --bg: #f8fafc; --ng: #ef4444; --accent: #0f172a; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
+        .header img { height: 40px; }
+
+        .report-card { 
+            border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 20px; 
+            background: #fff; position: relative; border-left: 6px solid var(--ng);
+        }
+        .report-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .mesin-name { font-size: 18px; font-weight: bold; color: var(--primary); }
+        .status-badge { background: #fee2e2; color: #b91c1c; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
+
+        .note-section { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; font-size: 13px; }
+        .note-box { background: #f1f5f9; padding: 10px; border-radius: 8px; }
+        .note-label { font-weight: bold; color: #64748b; margin-bottom: 5px; display: block; }
+
+        .signature-area { border: 2px solid #cbd5e1; border-radius: 8px; background: #fff; margin-top: 10px; }
+        #signature-pad { width: 100%; height: 150px; }
+        
+        .input-text { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 5px; box-sizing: border-box; }
+        .btn-final { width: 100%; padding: 15px; background: var(--accent); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="Logo">
+        <h2 style="font-size: 1.2rem; color: var(--primary);">SUPERINTENDENT FINAL REVIEW</h2>
+        <p style="font-size: 12px; color: #64748b;">Review temuan NG yang sudah diverifikasi Koordinator</p>
+    </div>
+
+    <div id="list-temuann-ng">Memuat data temuan NG hari ini...</div>
+</div>
+
+<script>
+    const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+    const _sb = supabase.createClient(SB_URL, SB_KEY);
+
+    let signaturePads = {};
+
+    async function loadNGReports() {
+        // Ambil log yang: 1. Sudah di-approve Koordinator, 2. Belum Final Approve, 3. Memiliki hasil NG
+        const { data, error } = await _sb
+            .from('prslb_log')
+            .select('*, prslb_mesin(qr_code_id), prslb_result(*)')
+            .eq('status_verifikasi', true)
+            .eq('status_final', false)
+            .order('created_at', { ascending: false });
+
+        const container = document.getElementById('list-temuann-ng');
+        container.innerHTML = "";
+
+        // Filter di sisi Client: Hanya tampilkan jika ada minimal 1 item NG di hasil checklist
+        const reportsWithNG = data.filter(log => log.prslb_result.some(res => res.status === 'NG'));
+
+        if (reportsWithNG.length === 0) {
+            container.innerHTML = "<p style='text-align:center; color:#94a3b8; margin-top:50px;'>Tidak ada laporan NG yang menunggu review final.</p>";
+            return;
+        }
+
+        reportsWithNG.forEach(log => {
+            const logId = log.id;
+            const ngItems = log.prslb_result.filter(r => r.status === 'NG');
+            
+            container.innerHTML += `
+                <div class="report-card" id="card-${logId}">
+                    <div class="report-header">
+                        <div>
+                            <span class="mesin-name">${log.prslb_mesin.qr_code_id}</span>
+                            <div style="font-size:11px; color:#64748b;">Tanggal: ${new Date(log.created_at).toLocaleString('id-ID')}</div>
+                        </div>
+                        <span class="status-badge">${ngItems.length} ITEM NG</span>
+                    </div>
+
+                    <div class="note-section">
+                        <div class="note-box">
+                            <span class="note-label">Pelaksana: ${log.pelaksana_nama}</span>
+                            <em>"${ngItems[0]?.keterangan || '-'}"</em>
+                        </div>
+                        <div class="note-box" style="background:#ecfdf5">
+                            <span class="note-label">Koordinator: ${log.koordinator_nama}</span>
+                            <b>"${log.koordinator_note || 'Tidak ada catatan'}"</b>
+                        </div>
+                    </div>
+
+                    <div style="border-top:1px solid #eee; padding-top:10px;">
+                        <label style="font-weight:bold; font-size:13px;">Review Superintendent:</label>
+                        <input type="text" id="name-${logId}" class="input-text" placeholder="Nama Superintendent...">
+                        <textarea id="note-${logId}" class="input-text" rows="2" placeholder="Tanggapan/Instruksi Final..."></textarea>
+                        
+                        <div class="signature-area">
+                            <canvas id="pad-${logId}"></canvas>
+                        </div>
+                        <button onclick="signaturePads['${logId}'].clear()" style="font-size:10px; margin-top:5px;">Hapus TTD</button>
+                        
+                        <button class="btn-final" onclick="submitFinalApproval('${logId}')">CLOSE CASE & SIGN</button>
+                    </div>
+                </div>
+            `;
+            
+            // Inisialisasi signature pad setelah elemen ditambahkan ke DOM
+            setTimeout(() => {
+                const canvas = document.getElementById(`pad-${logId}`);
+                const pad = new SignaturePad(canvas);
+                
+                // Fix scaling
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
+                
+                signaturePads[logId] = pad;
+            }, 100);
+        });
+    }
+
+    async function submitFinalApproval(logId) {
+        const name = document.getElementById(`name-${logId}`).value;
+        const note = document.getElementById(`note-${logId}`).value;
+        const pad = signaturePads[logId];
+
+        if (!name || pad.isEmpty()) {
+            return alert("Nama dan Tanda Tangan wajib diisi!");
+        }
+
+        const { error } = await _sb
+            .from('prslb_log')
+            .update({
+                superintendent_nama: name,
+                superintendent_note: note,
+                status_final: true,
+                signature_superintendent: pad.toDataURL()
+            })
+            .eq('id', logId);
+
+        if (!error) {
+            alert("Approval Final Berhasil!");
+            document.getElementById(`card-${logId}`).remove();
+            if (document.getElementById('list-temuann-ng').children.length === 0) {
+                location.reload();
+            }
+        } else {
+            alert("Error: " + error.message);
+        }
+    }
+
+    window.onload = loadNGReports;
+</script>
+</body>
+</html>
