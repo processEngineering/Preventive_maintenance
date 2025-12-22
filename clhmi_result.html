@@ -18,30 +18,26 @@
         .info-table td { border: none; text-align: left; padding: 0; font-size: 8pt; }
         .dot-line { border-bottom: 1px dotted #000; min-width: 120px; display: inline-block; padding-left: 5px; font-weight: bold; }
 
-        /* Sizing Kolom (Sesuai Struktur Excel) */
+        /* Sizing Kolom Persis Excel */
         .bg-gray { background-color: #dfdfdf; font-weight: bold; text-align: left; padding-left: 5px; height: 18px; }
-        .col-no { width: 20px; }
-        .col-nama { width: 160px; text-align: left; padding-left: 5px; font-size: 7pt; }
-        .col-empty { width: 10px; background: #f9f9f9; }
-        .col-std { width: 130px; text-align: left; padding-left: 4px; font-size: 6.5pt; white-space: normal; line-height: 1; }
-        .col-metode { width: 55px; font-size: 6.5pt; }
-        .col-catatan { width: 50px; font-size: 6.5pt; }
-        .date-cell { width: 22px; font-weight: bold; font-size: 7pt; }
+        .col-no { width: 22px; }
+        .col-nama { width: 175px; text-align: left; padding-left: 5px; font-size: 7pt; }
+        .col-empty { width: 10px; background: #f9f9f9; } /* Kolom pemisah */
+        .col-std { width: 135px; text-align: left; padding-left: 4px; font-size: 6.5pt; white-space: normal; line-height: 1.1; }
+        .col-metode { width: 65px; font-size: 6.5pt; text-transform: uppercase; }
+        .col-catatan { width: 55px; font-size: 6.5pt; }
+        .date-cell { width: 23px; font-weight: bold; font-size: 7pt; }
 
-        /* Status & Style */
+        /* Status Styling */
         .st-ng { background: #ff0000 !important; color: white; }
         .st-na { background: #ffff00 !important; color: black; }
-        .val-rh { font-size: 5.5pt; font-weight: normal; letter-spacing: -0.5px; }
+        .val-rh { font-size: 5.5pt; font-weight: normal; }
 
         /* Signature Space */
         .sig-cell { height: 40px; padding: 0 !important; background: white; }
         .sig-img { max-height: 38px; max-width: 20px; mix-blend-mode: multiply; display: block; margin: 0 auto; }
 
-        /* Footer Box */
-        .footer-box { border: 1px solid black; height: 100px; padding: 5px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
-        .name-display { font-weight: bold; text-decoration: underline; text-transform: uppercase; font-size: 8.5pt; }
-
-        .no-print { background: #003366; color: white; padding: 10px; margin-bottom: 10px; border-radius: 5px; display: flex; gap: 10px; align-items: center; }
+        .no-print { background: #003366; color: white; padding: 10px; margin-bottom: 10px; border-radius: 5px; display: flex; gap: 10px; align-items: center; font-weight: bold; }
         @media print { .no-print { display: none; } body { background: white; padding: 0; } .sheet { box-shadow: none; width: 100%; } }
     </style>
 </head>
@@ -114,10 +110,10 @@
                 <b>Catatan :</b> (*) Unit opsional | (**) Running Hour | <b>Tanda:</b> √ (OK), X (NG), O (NA/Repair)
             </td>
             <td width="35%" style="border:none;">
-                <div class="footer-box">
-                    <div style="font-weight:bold; text-align:center;">DIKETAHUI<br>MECHANIC SUPERINTENDENT</div>
+                <div style="border: 1px solid black; height: 100px; padding: 5px; display: flex; flex-direction: column; justify-content: space-between; align-items: center;">
+                    <div style="font-weight:bold; text-align:center; font-size:7pt;">DIKETAHUI<br>MECHANIC SUPERINTENDENT</div>
                     <div id="out-sig-super"><span style="color:#ccc; font-style:italic; font-size:7pt;">Belum Disahkan</span></div>
-                    <div id="out-name-super" class="name-display">-</div>
+                    <div id="out-name-super" style="font-weight: bold; text-decoration: underline; text-transform: uppercase; font-size: 8.5pt;">-</div>
                 </div>
             </td>
         </tr>
@@ -130,12 +126,15 @@
     const sb = supabase.createClient(_URL, _KEY);
 
     async function initFilter() {
-        const { data: m } = await sb.from('clhmi_machine').select('*').order('merk_mesin');
-        m?.forEach(x => document.getElementById('machine-select').add(new Option(`${x.merk_mesin} (${x.serial_no})`, x.id)));
+        const { data: machines } = await sb.from('clhmi_machine').select('*').order('merk_mesin');
+        machines?.forEach(x => document.getElementById('machine-select').add(new Option(`${x.merk_mesin} (${x.serial_no})`, x.id)));
+        
         const mo = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
         mo.forEach((v, i) => document.getElementById('month-select').add(new Option(v, i+1)));
+        
         const y = new Date().getFullYear();
         for(let i=y; i>=y-2; i--) document.getElementById('year-select').add(new Option(i, i));
+        
         let h = "";
         for(let i=1; i<=31; i++) h += `<th class="date-cell">${i}</th>`;
         document.getElementById('date-row').innerHTML = h;
@@ -147,30 +146,22 @@
         const thn = parseInt(document.getElementById('year-select').value);
         if(!mId) return;
 
-        // Clean signatures
-        for(let i=1; i<=31; i++) {
-            document.getElementById(`p-sig-${i}`).innerHTML = "";
-            document.getElementById(`k-sig-${i}`).innerHTML = "";
-        }
-
-        // 1. Fetch Master & Headers
+        // 1. Fetch Master Items & Headers
         const { data: master } = await sb.from('clhmi_items').select('*').order('urutan');
         const { data: headers } = await sb.from('clhmi').select('*').eq('machine_id', mId).eq('bulan', bln).eq('tahun', thn);
         
-        if(!headers || headers.length === 0) { alert("Data laporan tidak ditemukan."); return; }
+        if(!headers || headers.length === 0) { alert("Data tidak ditemukan."); return; }
 
-        // 2. Fetch Results (Optimized)
+        // 2. Map Results [item_id-tanggal]
         const hIds = headers.map(h => h.id);
         const { data: allRes } = await sb.from('clhmi_results').select('*').in('clhmi_id', hIds);
-
-        // 3. Map Results [item_id-tanggal]
         const resMap = {};
         allRes?.forEach(r => {
             const day = parseInt(r.tanggal_cek.split('-')[2]);
             resMap[`${r.item_id}-${day}`] = r;
         });
 
-        // 4. Update Machine Info
+        // 3. Update Header Info
         const head = headers[0];
         document.getElementById('out-merk').innerText = head.merk_mesin || '-';
         document.getElementById('out-sn').innerText = head.serial_no || '-';
@@ -178,7 +169,7 @@
         document.getElementById('out-bln').innerText = document.getElementById('month-select').options[bln-1].text;
         document.getElementById('out-thn').innerText = thn;
 
-        // 5. Render Table Rows
+        // 4. Render Table Body
         const tbody = document.getElementById('main-body');
         tbody.innerHTML = "";
         let curCat = "";
@@ -189,8 +180,8 @@
                 curCat = m.kategori;
             }
 
-            // AMBIL DATA STANDARD DAN METODE
-            const valStd = m.standar || m.standard || '-';
+            // POINT PENTING: Mengambil teks Standard dan Metode
+            const valStd = m.standar || m.standard || '-'; 
             const valMet = m.metode || m.method || '-';
 
             let row = `<tr>
@@ -205,7 +196,6 @@
                 const f = resMap[`${m.id}-${d}`];
                 let sym = '', cls = '';
                 if (f) {
-                    // Cek jika ini baris jam kerja (Running Hour)
                     if (m.nama_pengecekan.toLowerCase().includes('running hour') || (m.item_kode && m.item_kode.toLowerCase() === 'i')) {
                         sym = `<span class="val-rh">${f.value || ''}</span>`;
                     } else {
@@ -219,7 +209,11 @@
             tbody.innerHTML += row + "</tr>";
         });
 
-        // 6. Render Daily Signatures
+        // 5. Render Paraf
+        for(let i=1; i<=31; i++) {
+            document.getElementById(`p-sig-${i}`).innerHTML = "";
+            document.getElementById(`k-sig-${i}`).innerHTML = "";
+        }
         headers.forEach(h => {
             const d = parseInt(h.tanggal_isi.split('-')[2]);
             if(h.paraf && document.getElementById(`p-sig-${d}`)) 
@@ -228,14 +222,11 @@
                 document.getElementById(`k-sig-${d}`).innerHTML = `<img src="${h.paraf_coord}" class="sig-img">`;
         });
 
-        // 7. Render Superintendent Approval
+        // 6. Superintendent
         const fin = headers.find(h => h.status_form === 'finalized') || headers[headers.length-1];
         if(fin?.paraf_super) {
             document.getElementById('out-sig-super').innerHTML = `<img src="${fin.paraf_super}" style="max-height:65px; mix-blend-mode:multiply;">`;
             document.getElementById('out-name-super').innerText = (fin.approved_by || '').toUpperCase();
-        } else {
-            document.getElementById('out-sig-super').innerHTML = `<span style="color:#ccc; font-style:italic; font-size:7pt;">Belum Disahkan</span>`;
-            document.getElementById('out-name-super').innerText = "-";
         }
     }
 
