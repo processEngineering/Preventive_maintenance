@@ -6,55 +6,57 @@
     <title>Preventif Pelaksana - PT AKG</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    
     <style>
         :root {
             --primary: #003366;
-            --primary-light: #eef4ff;
             --bg: #f8fafc;
             --ok: #28a745;
             --ng: #dc3545;
-            --text: #1e293b;
         }
 
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; color: var(--text); }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; }
         .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         
-        .header { text-align: center; border-bottom: 2px solid var(--primary-light); margin-bottom: 20px; padding-bottom: 10px; }
-        .header img { height: 45px; }
+        .header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
+        .header img { height: 40px; }
 
-        /* Scanner Styling */
-        .scan-container { background: #000; border-radius: 12px; overflow: hidden; position: relative; min-height: 250px; }
+        /* Scanner */
+        .scan-wrapper { background: #000; border-radius: 12px; overflow: hidden; min-height: 250px; }
         #reader { width: 100% !important; border: none !important; }
-        .status-msg { text-align: center; font-size: 13px; color: #64748b; margin-top: 10px; padding: 10px; border-radius: 8px; }
 
         /* Form Content */
-        .machine-badge { background: var(--primary-light); border: 2px solid var(--primary); padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
-        .machine-badge h3 { margin: 5px 0; color: var(--primary); font-size: 18px; }
-
+        .machine-info { background: #eef4ff; border: 2px solid var(--primary); padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
+        
         .category-header { 
-            background: var(--primary); color: white; padding: 10px 15px; margin-top: 25px; 
-            border-radius: 8px; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;
+            background: var(--primary); color: white; padding: 10px; margin-top: 25px; 
+            border-radius: 8px; font-size: 12px; font-weight: bold; text-transform: uppercase; 
         }
 
         .check-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f1f5f9; }
-        .item-label { flex: 1; padding-right: 15px; }
-        .item-name { font-size: 14px; font-weight: 600; color: var(--text); display: block; }
-        .item-std { font-size: 11px; color: #64748b; font-style: italic; margin-top: 2px; display: block; }
+        .item-label { flex: 1; padding-right: 10px; }
+        .item-name { font-size: 14px; font-weight: 600; display: block; }
+        .item-std { font-size: 11px; color: #64748b; font-style: italic; }
 
         .btn-group { display: flex; gap: 8px; }
         .btn-status { 
-            padding: 10px 18px; border: 2px solid #e2e8f0; background: white; 
-            border-radius: 8px; cursor: pointer; font-weight: bold; min-width: 60px; transition: 0.2s;
+            padding: 10px 15px; border: 2px solid #e2e8f0; background: white; 
+            border-radius: 8px; cursor: pointer; font-weight: bold;
         }
-        .active-ok { background: var(--ok) !important; color: white; border-color: var(--ok); box-shadow: 0 3px 8px rgba(40,167,69,0.3); }
-        .active-ng { background: var(--ng) !important; color: white; border-color: var(--ng); box-shadow: 0 3px 8px rgba(220,53,69,0.3); }
+        .active-ok { background: var(--ok) !important; color: white; border-color: var(--ok); }
+        .active-ng { background: var(--ng) !important; color: white; border-color: var(--ng); }
 
-        .input-nama { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1.5px solid #cbd5e1; box-sizing: border-box; font-size: 16px; }
+        /* Signature Pad */
+        .signature-wrapper { border: 2px solid #cbd5e1; border-radius: 8px; margin-top: 10px; background: #fff; touch-action: none; }
+        #signature-pad { width: 100%; height: 200px; border-radius: 8px; }
+        .btn-clear { background: #64748b; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 11px; margin-top: 5px; cursor: pointer; }
+
+        input { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1.5px solid #cbd5e1; box-sizing: border-box; }
         
         .btn-submit { 
             width: 100%; padding: 18px; background: var(--primary); color: white; border: none; 
             border-radius: 12px; font-size: 17px; font-weight: bold; margin-top: 30px; cursor: pointer; 
-            box-shadow: 0 4px 12px rgba(0,51,102,0.25);
         }
     </style>
 </head>
@@ -62,33 +64,37 @@
 
 <div class="container">
     <div class="header">
-        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="Logo PT AKG">
-        <h2 style="margin:5px 0; font-size: 1.1rem; color: var(--primary);">PREVENTIF ROBOT & STAND LABEL</h2>
+        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="Logo">
+        <h2 style="font-size: 1.1rem; color: var(--primary);">PREVENTIF ROBOT & STAND LABEL</h2>
     </div>
 
     <div id="view-scan">
-        <div class="scan-container">
-            <div id="reader"></div>
-        </div>
-        <div id="info-scan" class="status-msg">Arahkan kamera ke Barcode Mesin...</div>
+        <div class="scan-wrapper"><div id="reader"></div></div>
+        <div id="status-scan" style="text-align:center; padding:10px; font-size:13px;">Siap Scan Barcode...</div>
     </div>
 
     <div id="view-form" style="display: none;">
-        <div class="machine-badge">
-            <small style="color: #64748b;">Mesin Berhasil Di-Scan:</small>
-            <h3 id="txt-mesin-id">-</h3>
-            <button onclick="location.reload()" style="margin-top:8px; font-size:11px; cursor:pointer; padding:4px 10px; border-radius:5px; border:1px solid #ccc; background:#fff;">Scan Ulang</button>
+        <div class="machine-info">
+            <h3 id="txt-mesin">-</h3>
+            <button onclick="location.reload()" style="font-size:10px;">Ganti Mesin</button>
         </div>
 
         <div style="margin-bottom: 20px;">
-            <label style="font-size: 14px; font-weight: bold; color: var(--primary);">Nama Pelaksana:</label>
-            <input type="text" id="input-pelaksana" placeholder="Ketik Nama Lengkap Anda..." class="input-nama">
+            <label style="font-weight: bold; font-size:14px;">Nama Pelaksana:</label>
+            <input type="text" id="input-nama" placeholder="Nama Lengkap...">
         </div>
 
-        <div id="list-checklist">
-            </div>
+        <div id="checklist-container"></div>
 
-        <button class="btn-submit" onclick="simpanData()">SIMPAN DATA PREVENTIF</button>
+        <div style="margin-top: 30px;">
+            <label style="font-weight: bold; font-size:14px;">Tanda Tangan Pelaksana:</label>
+            <div class="signature-wrapper">
+                <canvas id="signature-pad"></canvas>
+            </div>
+            <button class="btn-clear" onclick="signaturePad.clear()">Hapus Tanda Tangan</button>
+        </div>
+
+        <button class="btn-submit" onclick="simpanData()">SIMPAN & TANDA TANGAN</button>
     </div>
 </div>
 
@@ -97,100 +103,109 @@
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-    let html5QrScanner;
-    let dataMesin = null;
+    let scanner;
+    let signaturePad;
+    let currentMesin = null;
 
-    // Start Scanner
-    function startScanner() {
-        html5QrScanner = new Html5Qrcode("reader");
-        const config = { fps: 15, qrbox: { width: 250, height: 250 } };
-        html5QrScanner.start({ facingMode: "environment" }, config, async (decodedText) => {
-            const cleanCode = decodedText.replace(/\s+/g, ' ').trim();
-            document.getElementById('info-scan').innerText = "Mengecek: " + cleanCode;
-
-            const { data, error } = await _sb.from('prslb_mesin').select('*').ilike('qr_code_id', cleanCode).maybeSingle();
-
+    // 1. Inisialisasi Scanner
+    function initScanner() {
+        scanner = new Html5Qrcode("reader");
+        scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, async (text) => {
+            const clean = text.replace(/\s+/g, ' ').trim();
+            const { data } = await _sb.from('prslb_mesin').select('*').ilike('qr_code_id', clean).maybeSingle();
+            
             if (data) {
-                dataMesin = data;
-                await html5QrScanner.stop();
-                bukaForm();
+                currentMesin = data;
+                await scanner.stop();
+                renderForm();
             } else {
-                document.getElementById('info-scan').innerText = "Barcode ["+cleanCode+"] Tidak Terdaftar!";
-                document.getElementById('info-scan').style.color = "red";
+                document.getElementById('status-scan').innerText = "Tidak Terdaftar: " + clean;
             }
         });
     }
 
-    async function bukaForm() {
+    // 2. Render Form & Init Signature
+    async function renderForm() {
         document.getElementById('view-scan').style.display = 'none';
         document.getElementById('view-form').style.display = 'block';
-        document.getElementById('txt-mesin-id').innerText = dataMesin.qr_code_id;
+        document.getElementById('txt-mesin').innerText = currentMesin.qr_code_id;
 
         const { data: items } = await _sb.from('prslb_items').select('*').order('id', { ascending: true });
-        const listDiv = document.getElementById('list-checklist');
-        let currentCat = "";
+        const container = document.getElementById('checklist-container');
+        let cat = "";
 
         items.forEach(item => {
-            if (item.kategori !== currentCat) {
-                currentCat = item.kategori;
-                listDiv.innerHTML += `<div class="category-header">ITEM CHECK ROBOT (${currentCat})</div>`;
+            if (item.kategori !== cat) {
+                cat = item.kategori;
+                container.innerHTML += `<div class="category-header">ITEM CHECK ROBOT (${cat})</div>`;
             }
-
-            listDiv.innerHTML += `
+            container.innerHTML += `
                 <div class="check-item">
                     <div class="item-label">
                         <span class="item-name">${item.item_name}</span>
                         <span class="item-std">Standard: ${item.standard}</span>
                     </div>
-                    <div class="btn-group" data-item-id="${item.id}">
-                        <button class="btn-status btn-ok" onclick="selectStatus(this, 'OK')">OK</button>
-                        <button class="btn-status btn-ng" onclick="selectStatus(this, 'NG')">NG</button>
+                    <div class="btn-group" data-id="${item.id}">
+                        <button class="btn-status" onclick="setStatus(this, 'OK')">OK</button>
+                        <button class="btn-status" onclick="setStatus(this, 'NG')">NG</button>
                     </div>
                 </div>`;
         });
+
+        // Inisialisasi Canvas Tanda Tangan
+        const canvas = document.getElementById('signature-pad');
+        signaturePad = new SignaturePad(canvas);
+        
+        // Resize canvas agar responsif
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        canvas.getContext("2d").scale(ratio, ratio);
     }
 
-    function selectStatus(btn, val) {
-        const group = btn.parentElement;
-        group.querySelectorAll('.btn-status').forEach(b => b.classList.remove('active-ok', 'active-ng'));
+    function setStatus(btn, val) {
+        const p = btn.parentElement;
+        p.querySelectorAll('.btn-status').forEach(b => b.classList.remove('active-ok', 'active-ng'));
         btn.classList.add(val === 'OK' ? 'active-ok' : 'active-ng');
     }
 
+    // 3. Simpan Data
     async function simpanData() {
-        const nama = document.getElementById('input-pelaksana').value;
-        const checklistRows = document.querySelectorAll('.btn-group');
+        const nama = document.getElementById('input-nama').value;
+        const items = document.querySelectorAll('.btn-group');
+        
+        if (!nama) return alert("Isi Nama Pelaksana!");
+        if (signaturePad.isEmpty()) return alert("Tanda tangan dulu!");
 
-        if (!nama) return alert("Mohon isi Nama Pelaksana!");
+        const signatureBase64 = signaturePad.toDataURL(); // Ambil gambar tanda tangan
+        const logs = [];
+        let valid = true;
 
-        const payload = [];
-        let lengkap = true;
-
-        checklistRows.forEach(row => {
-            const activeBtn = row.querySelector('.active-ok, .active-ng');
-            if (!activeBtn) {
-                lengkap = false;
-            } else {
-                payload.push({
-                    mesin_id: dataMesin.id,
-                    item_id: row.getAttribute('data-item-id'),
-                    status: activeBtn.innerText,
-                    pelaksana_nama: nama
+        items.forEach(row => {
+            const btn = row.querySelector('.active-ok, .active-ng');
+            if (!btn) valid = false;
+            else {
+                logs.push({
+                    mesin_id: currentMesin.id,
+                    item_id: row.dataset.id,
+                    status: btn.innerText,
+                    pelaksana_nama: nama,
+                    signature_pelaksana: signatureBase64 // Simpan ke Supabase
                 });
             }
         });
 
-        if (!lengkap) return alert("Harap isi semua item checklist (OK/NG)!");
+        if (!valid) return alert("Lengkapi checklist!");
 
-        const { error } = await _sb.from('prslb_log').insert(payload);
-        if (error) {
-            alert("Gagal Simpan: " + error.message);
-        } else {
-            alert("Data Preventif Berhasil Disimpan!");
+        const { error } = await _sb.from('prslb_log').insert(logs);
+        if (error) alert(error.message);
+        else {
+            alert("Data Berhasil Disimpan!");
             location.reload();
         }
     }
 
-    window.onload = startScanner;
+    window.onload = initScanner;
 </script>
 </body>
 </html>
