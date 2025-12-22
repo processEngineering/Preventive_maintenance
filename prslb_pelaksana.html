@@ -14,20 +14,26 @@
         .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
         .header img { height: 40px; }
-        .scan-wrapper { background: #000; border-radius: 12px; overflow: hidden; min-height: 250px; }
+        
+        /* Scanner Fix */
+        .scan-wrapper { background: #000; border-radius: 12px; overflow: hidden; min-height: 300px; position: relative; }
         #reader { width: 100% !important; border: none !important; }
+        
         .machine-info { background: #eef4ff; border: 2px solid var(--primary); padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
         .category-header { background: var(--primary); color: white; padding: 10px; margin-top: 25px; border-radius: 8px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
         .check-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f1f5f9; }
         .item-label { flex: 1; padding-right: 10px; }
         .item-name { font-size: 14px; font-weight: 600; }
         .item-std { font-size: 11px; color: #64748b; font-style: italic; }
+        
         .btn-group { display: flex; gap: 8px; }
         .btn-status { padding: 10px 15px; border: 2px solid #e2e8f0; background: white; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .active-ok { background: var(--ok) !important; color: white; border-color: var(--ok); }
         .active-ng { background: var(--ng) !important; color: white; border-color: var(--ng); }
-        .signature-wrapper { border: 2px solid #cbd5e1; border-radius: 8px; margin-top: 10px; background: #fff; }
-        #signature-pad { width: 100%; height: 200px; cursor: crosshair; }
+        
+        .signature-wrapper { border: 2px solid #cbd5e1; border-radius: 8px; margin-top: 10px; background: #fff; touch-action: none; }
+        #signature-pad { width: 100%; height: 200px; }
+        
         input { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1.5px solid #cbd5e1; box-sizing: border-box; }
         .btn-submit { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 17px; font-weight: bold; margin-top: 30px; cursor: pointer; }
     </style>
@@ -37,23 +43,27 @@
 <div class="container">
     <div class="header">
         <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="Logo">
-        <h2 style="font-size: 1.1rem;">PREVENTIF ROBOT & STAND LABEL</h2>
+        <h2 style="font-size: 1.1rem; color: var(--primary);">PREVENTIF ROBOT & STAND LABEL</h2>
     </div>
 
     <div id="view-scan">
-        <div class="scan-wrapper"><div id="reader"></div></div>
-        <div id="status-scan" style="text-align:center; padding:10px; font-size:13px;">Siap Scan Barcode...</div>
+        <div class="scan-wrapper">
+            <div id="reader"></div>
+        </div>
+        <div id="status-scan" style="text-align:center; padding:15px; font-size:14px; font-weight: bold; color: var(--primary);">
+            Mencari Kamera...
+        </div>
     </div>
 
     <div id="view-form" style="display: none;">
         <div class="machine-info">
             <h3 id="txt-mesin">-</h3>
-            <button onclick="location.reload()" style="font-size:10px;">Ganti Mesin</button>
+            <button onclick="location.reload()" style="font-size:11px; margin-top:5px; cursor:pointer;">Scan Ulang</button>
         </div>
 
         <div style="margin-bottom: 20px;">
             <label style="font-weight: bold; font-size:14px;">Nama Pelaksana:</label>
-            <input type="text" id="input-nama" placeholder="Nama Lengkap...">
+            <input type="text" id="input-nama" placeholder="Ketik Nama Lengkap...">
         </div>
 
         <div id="checklist-container"></div>
@@ -61,7 +71,7 @@
         <div style="margin-top: 30px;">
             <label style="font-weight: bold; font-size:14px;">Tanda Tangan Pelaksana:</label>
             <div class="signature-wrapper"><canvas id="signature-pad"></canvas></div>
-            <button onclick="signaturePad.clear()" style="font-size:11px; margin-top:5px;">Hapus Tanda Tangan</button>
+            <button onclick="signaturePad.clear()" style="font-size:11px; margin-top:8px; padding:5px; cursor:pointer;">Hapus Tanda Tangan</button>
         </div>
 
         <button class="btn-submit" onclick="simpanData()">SIMPAN DATA INSPEKSI</button>
@@ -70,19 +80,57 @@
 
 <script>
     const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
-    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7|ImDFQuVWN_Mk6PrE-miP2E"; // Perhatikan Key Anda harus lengkap
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-    let scanner, signaturePad, currentMesin = null;
+    let scanner;
+    let signaturePad;
+    let currentMesin = null;
 
-    function initScanner() {
-        scanner = new Html5Qrcode("reader");
-        scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, async (text) => {
-            const clean = text.replace(/\s+/g, ' ').trim();
-            const { data } = await _sb.from('prslb_mesin').select('*').ilike('qr_code_id', clean).maybeSingle();
-            if (data) { currentMesin = data; await scanner.stop(); renderForm(); }
-            else { document.getElementById('status-scan').innerText = "Tidak Terdaftar: " + clean; }
-        });
+    // Fungsi Utama Scan
+    async function startScanner() {
+        try {
+            scanner = new Html5Qrcode("reader");
+            const config = { 
+                fps: 20, 
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0 
+            };
+            
+            await scanner.start(
+                { facingMode: "environment" }, 
+                config, 
+                onScanDone
+            );
+            document.getElementById('status-scan').innerText = "Kamera Aktif. Silakan Scan Barcode.";
+        } catch (err) {
+            document.getElementById('status-scan').innerText = "Gagal Akses Kamera. Pastikan Izin Diberikan!";
+            console.error(err);
+        }
+    }
+
+    async function onScanDone(text) {
+        // Bersihkan teks dari spasi atau karakter aneh
+        const clean = text.replace(/\s+/g, ' ').trim();
+        document.getElementById('status-scan').innerText = "Mengecek Database: " + clean;
+
+        try {
+            const { data, error } = await _sb
+                .from('prslb_mesin')
+                .select('*')
+                .ilike('qr_code_id', clean)
+                .maybeSingle();
+
+            if (data) {
+                currentMesin = data;
+                await scanner.stop();
+                renderForm();
+            } else {
+                document.getElementById('status-scan').innerHTML = `<span style="color:red">Barcode [${clean}] Tidak Terdaftar!</span>`;
+            }
+        } catch (e) {
+            console.error(e);
+        }
     }
 
     async function renderForm() {
@@ -93,16 +141,39 @@
         const { data: items } = await _sb.from('prslb_items').select('*').order('id', { ascending: true });
         const container = document.getElementById('checklist-container');
         let cat = "";
+
         items.forEach(item => {
-            if (item.kategori !== cat) { cat = item.kategori; container.innerHTML += `<div class="category-header">ITEM CHECK ROBOT (${cat})</div>`; }
-            container.innerHTML += `<div class="check-item"><div class="item-label"><span class="item-name">${item.item_name}</span><span class="item-std">Std: ${item.standard}</span></div><div class="btn-group" data-id="${item.id}"><button class="btn-status" onclick="setStatus(this, 'OK')">OK</button><button class="btn-status" onclick="setStatus(this, 'NG')">NG</button></div></div>`;
+            if (item.kategori !== cat) {
+                cat = item.kategori;
+                container.innerHTML += `<div class="category-header">ITEM CHECK ROBOT (${cat})</div>`;
+            }
+            container.innerHTML += `
+                <div class="check-item">
+                    <div class="item-label">
+                        <span class="item-name">${item.item_name}</span>
+                        <span class="item-std">Std: ${item.standard}</span>
+                    </div>
+                    <div class="btn-group" data-id="${item.id}">
+                        <button class="btn-status" onclick="setStatus(this, 'OK')">OK</button>
+                        <button class="btn-status" onclick="setStatus(this, 'NG')">NG</button>
+                    </div>
+                </div>`;
         });
 
+        // Inisialisasi Tanda Tangan
         const canvas = document.getElementById('signature-pad');
         signaturePad = new SignaturePad(canvas);
-        const ratio = Math.max(window.devicePixelRatio || 1, 1);
-        canvas.width = canvas.offsetWidth * ratio; canvas.height = canvas.offsetHeight * ratio;
-        canvas.getContext("2d").scale(ratio, ratio);
+        
+        // Resize canvas
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+            signaturePad.clear();
+        }
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
     }
 
     function setStatus(btn, val) {
@@ -114,6 +185,7 @@
     async function simpanData() {
         const nama = document.getElementById('input-nama').value;
         const rows = document.querySelectorAll('.btn-group');
+        
         if (!nama || signaturePad.isEmpty()) return alert("Nama dan Tanda Tangan wajib diisi!");
 
         let valid = true;
@@ -121,7 +193,7 @@
         if (!valid) return alert("Lengkapi semua checklist!");
 
         try {
-            // 1. Simpan Header (prslb_log)
+            // 1. Simpan Header ke prslb_log
             const { data: header, error: err1 } = await _sb.from('prslb_log').insert([{
                 mesin_id: currentMesin.id,
                 pelaksana_nama: nama,
@@ -130,7 +202,7 @@
 
             if (err1) throw err1;
 
-            // 2. Simpan Detail (prslb_result)
+            // 2. Simpan Detail ke prslb_result
             const results = Array.from(rows).map(r => ({
                 log_id: header.id,
                 item_id: r.dataset.id,
@@ -142,10 +214,12 @@
 
             alert("Data Berhasil Disimpan!");
             location.reload();
-        } catch (e) { alert("Error: " + e.message); }
+        } catch (e) { 
+            alert("Error Simpan: " + e.message); 
+        }
     }
 
-    window.onload = initScanner;
+    window.onload = startScanner;
 </script>
 </body>
 </html>
