@@ -18,12 +18,21 @@
         .info-table td { border: none; text-align: left; padding: 0; font-size: 8pt; }
         .dot-line { border-bottom: 1px dotted #000; min-width: 120px; display: inline-block; padding-left: 5px; font-weight: bold; }
 
-        /* Sizing Kolom Persis Excel */
+        /* Sizing Kolom - Sangat Detail Sesuai Excel */
         .bg-gray { background-color: #dfdfdf; font-weight: bold; text-align: left; padding-left: 5px; height: 18px; }
         .col-no { width: 22px; }
         .col-nama { width: 175px; text-align: left; padding-left: 5px; font-size: 7pt; }
-        .col-empty { width: 10px; background: #f9f9f9; } /* Kolom pemisah */
-        .col-std { width: 135px; text-align: left; padding-left: 4px; font-size: 6.5pt; white-space: normal; line-height: 1.1; }
+        .col-empty { width: 10px; background: #f9f9f9; }
+        
+        /* Kolom Standar & Metode: Dibuat wrap agar teks panjang tidak hilang */
+        .col-std { 
+            width: 135px; 
+            text-align: left; 
+            padding-left: 4px; 
+            font-size: 6.5pt; 
+            white-space: normal; /* Paksa teks turun ke bawah jika panjang */
+            line-height: 1.1; 
+        }
         .col-metode { width: 65px; font-size: 6.5pt; text-transform: uppercase; }
         .col-catatan { width: 55px; font-size: 6.5pt; }
         .date-cell { width: 23px; font-weight: bold; font-size: 7pt; }
@@ -121,6 +130,7 @@
 </div>
 
 <script>
+    // Konfigurasi Supabase
     const _URL = "https://dsyvlavphvrdidmodokd.supabase.co";
     const _KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const sb = supabase.createClient(_URL, _KEY);
@@ -146,13 +156,13 @@
         const thn = parseInt(document.getElementById('year-select').value);
         if(!mId) return;
 
-        // 1. Fetch Master Items & Headers
+        // 1. Ambil Master Items & Headers
         const { data: master } = await sb.from('clhmi_items').select('*').order('urutan');
         const { data: headers } = await sb.from('clhmi').select('*').eq('machine_id', mId).eq('bulan', bln).eq('tahun', thn);
         
         if(!headers || headers.length === 0) { alert("Data tidak ditemukan."); return; }
 
-        // 2. Map Results [item_id-tanggal]
+        // 2. Map Results untuk performa cepat
         const hIds = headers.map(h => h.id);
         const { data: allRes } = await sb.from('clhmi_results').select('*').in('clhmi_id', hIds);
         const resMap = {};
@@ -169,7 +179,7 @@
         document.getElementById('out-bln').innerText = document.getElementById('month-select').options[bln-1].text;
         document.getElementById('out-thn').innerText = thn;
 
-        // 4. Render Table Body
+        // 4. Render Table Body (Point Penting Standar & Metode)
         const tbody = document.getElementById('main-body');
         tbody.innerHTML = "";
         let curCat = "";
@@ -180,7 +190,11 @@
                 curCat = m.kategori;
             }
 
-            // POINT PENTING: Mengambil teks Standard dan Metode
+            /* DETAIL PERBAIKAN:
+               Menggunakan pengecekan ganda m.standar ATAU m.standard
+               agar teks "RADIUS TIDAK RUSAK" pasti muncul meskipun 
+               nama kolom di DB berbeda sedikit.
+            */
             const valStd = m.standar || m.standard || '-'; 
             const valMet = m.metode || m.method || '-';
 
@@ -222,7 +236,7 @@
                 document.getElementById(`k-sig-${d}`).innerHTML = `<img src="${h.paraf_coord}" class="sig-img">`;
         });
 
-        // 6. Superintendent
+        // 6. Superintendent Approval
         const fin = headers.find(h => h.status_form === 'finalized') || headers[headers.length-1];
         if(fin?.paraf_super) {
             document.getElementById('out-sig-super').innerHTML = `<img src="${fin.paraf_super}" style="max-height:65px; mix-blend-mode:multiply;">`;
