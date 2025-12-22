@@ -6,45 +6,73 @@
     <title>Laporan Final - AF.SP 05.08.Rev-00</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        /* Base Style */
         body { font-family: 'Arial', sans-serif; background: #525659; margin: 0; padding: 20px; color: #000; }
         
-        /* Area Filter */
+        /* Area Filter & Navigasi */
         .no-print { 
             max-width: 900px; margin: 0 auto 15px; background: #fff; padding: 20px; 
             border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
         .filter-group { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 10px; align-items: end; }
-        .filter-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #444; }
-        select { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; }
-        
-        .btn-view { padding: 10px 20px; background: #003366; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
-        .btn-print { padding: 10px 20px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .filter-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 5px; }
+        select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+        .btn-view { padding: 8px 15px; background: #003366; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .btn-print { padding: 8px 15px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
 
-        /* Kertas A4 */
+        /* Pengaturan Kertas A4 */
         .page {
-            width: 210mm; min-height: 297mm; padding: 10mm; margin: auto;
-            background: white; box-shadow: 0 0 10px rgba(0,0,0,0.5); position: relative;
+            width: 210mm;
+            height: 296mm; /* Sedikit kurang dari 297mm agar aman */
+            padding: 8mm; /* Padding dikecilkan agar ruang tabel lebih luas */
+            margin: auto;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
         }
 
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: -1px; }
-        td, th { border: 1px solid black; padding: 3px 6px; font-size: 10px; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        td, th { border: 1px solid black; padding: 2px 5px; font-size: 9.5px; line-height: 1.2; }
 
-        .logo-box { width: 80px; text-align: center; }
-        .title-box { text-align: center; font-size: 13px; font-weight: bold; width: 380px; }
-        .label-bg { background-color: #efefef; font-weight: bold; width: 18%; }
-        .th-bg { background-color: #d9d9d9; text-align: center; font-weight: bold; }
-        .cat-bg { background-color: #e9e9e9; font-weight: bold; padding-left: 10px; }
+        /* Header Style */
+        .logo-box { width: 70px; text-align: center; }
+        .title-box { text-align: center; font-size: 12px; font-weight: bold; }
+        .meta-text { font-size: 8px; }
+
+        /* Label Info Mesin */
+        .label-bg { background-color: #f0f0f0; font-weight: bold; width: 18%; }
+        
+        /* Checklist Table */
+        .th-bg { background-color: #d9d9d9; text-align: center; font-weight: bold; height: 25px; }
+        .cat-bg { background-color: #ececec; font-weight: bold; font-size: 10px; }
         .center { text-align: center; }
         
-        .note-footer { font-size: 9px; margin-top: 10px; line-height: 1.4; border: 1px solid black; padding: 5px; }
-        .approval-table td { height: 90px; vertical-align: top; text-align: center; padding-top: 5px; }
-        .sig-img { max-height: 55px; max-width: 100%; }
-        .name-under { font-weight: bold; text-decoration: underline; display: block; margin-top: 5px; }
+        /* Legend & Note */
+        .note-footer { font-size: 8.5px; margin-top: 5px; border: 1px solid black; padding: 4px; }
 
+        /* Approval Box */
+        .approval-table { margin-top: 10px; }
+        .approval-table td { height: 75px; vertical-align: top; text-align: center; font-size: 9px; }
+        .sig-img { max-height: 45px; max-width: 90%; margin: 2px auto; display: block; }
+        .name-under { font-weight: bold; text-decoration: underline; display: block; margin-top: 2px; }
+
+        /* CSS KHUSUS CETAK PDF */
         @media print {
+            @page { size: A4; margin: 0; }
             body { background: none; padding: 0; }
-            .no-print { display: none; }
-            .page { margin: 0; border: none; box-shadow: none; width: 100%; }
+            .no-print { display: none !important; }
+            .page { 
+                margin: 0; 
+                border: none; 
+                box-shadow: none; 
+                width: 100%; 
+                height: 100vh;
+                padding: 10mm; 
+            }
+            /* Memastikan warna background (abu-abu) ikut tercetak */
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
@@ -70,14 +98,12 @@
         <div>
             <label>TAHUN</label>
             <select id="f-tahun">
-                <option value="2024">2024</option>
-                <option value="2025">2025</option>
-                <option value="2026">2026</option>
+                <option value="2024">2024</option><option value="2025" selected>2025</option><option value="2026">2026</option>
             </select>
         </div>
         <div style="display:flex; gap:5px">
-            <button class="btn-view" onclick="searchReport()">CARI</button>
-            <button class="btn-print" onclick="window.print()">PDF</button>
+            <button class="btn-view" onclick="searchReport()">TAMPILKAN</button>
+            <button class="btn-print" onclick="window.print()">CETAK PDF</button>
         </div>
     </div>
 </div>
@@ -85,22 +111,22 @@
 <div class="page" id="report-view" style="display: none;">
     <table>
         <tr>
-            <td rowspan="4" class="logo-box"><img src="https://amarilyskg.co.id/bootstrap/img/logo.png" width="70"></td>
+            <td rowspan="4" class="logo-box"><img src="https://amarilyskg.co.id/bootstrap/img/logo.png" width="60"></td>
             <td rowspan="4" class="title-box">PREVENTIF ROBOT & STAND LABEL BULANAN</td>
-            <td width="80" style="border-right:none">No. Dokumen</td>
-            <td style="border-left:none">: AF.SP 05.08.Rev-00</td>
+            <td width="70" class="meta-text" style="border-right:none">No. Dokumen</td>
+            <td class="meta-text" style="border-left:none">: AF.SP 05.08.Rev-00</td>
         </tr>
-        <tr><td style="border-right:none">Tanggal Terbit</td><td style="border-left:none">: 02 Agustus 2024</td></tr>
-        <tr><td style="border-right:none">Halaman</td><td style="border-left:none">: 1/1</td></tr>
-        <tr><td style="border-right:none">Tanggal Revisi</td><td style="border-left:none">: -</td></tr>
+        <tr><td class="meta-text" style="border-right:none">Tanggal Terbit</td><td class="meta-text" style="border-left:none">: 02 Agustus 2024</td></tr>
+        <tr><td class="meta-text" style="border-right:none">Halaman</td><td class="meta-text" style="border-left:none">: 1/1</td></tr>
+        <tr><td class="meta-text" style="border-right:none">Tanggal Revisi</td><td class="meta-text" style="border-left:none">: -</td></tr>
     </table>
 
-    <div style="height:10px"></div>
+    <div style="height:8px"></div>
 
     <table>
         <tr>
-            <td class="label-bg">MERK MESIN</td><td id="m-merk">: </td>
-            <td class="label-bg">TARGET SELESAI</td><td>: </td>
+            <td class="label-bg">MERK MESIN</td><td id="m-merk" width="32%">: </td>
+            <td class="label-bg">TARGET SELESAI</td><td width="32%">: </td>
         </tr>
         <tr>
             <td class="label-bg">TONAGE</td><td>: </td>
@@ -116,37 +142,39 @@
         </tr>
     </table>
 
-    <div style="height:10px"></div>
+    <div style="height:8px"></div>
 
-    <table>
-        <thead>
-            <tr class="th-bg">
-                <th width="30">NO</th><th>ITEM</th><th width="140">STANDARD</th>
-                <th width="30">P1</th><th width="30">P2</th><th>KET/PEMAKAIAN SPAREPART</th>
-            </tr>
-        </thead>
-        <tbody id="content-body"></tbody>
-    </table>
-
-    <div class="note-footer">
-        <b>Note :</b><br>
-        P1 = Pelaksana pekerjaan (Teknisi) | P2 = Pelaksana verifikasi pekerjaan (Kasie/Kabag)<br>
-        OK = Item sesuai standar (✓) | NG = Item bermasalah / Rusak (Ditulis di kolom Keterangan)
+    <div style="flex-grow: 1;"> <table>
+            <thead>
+                <tr class="th-bg">
+                    <th width="25">NO</th>
+                    <th>ITEM</th>
+                    <th width="140">STANDARD</th>
+                    <th width="30">P1</th>
+                    <th width="30">P2</th>
+                    <th width="170">KETERANGAN SPAREPART</th>
+                </tr>
+            </thead>
+            <tbody id="content-body"></tbody>
+        </table>
     </div>
 
-    <div style="height:15px"></div>
+    <div class="note-footer">
+        <b>Note :</b> P1 = Pelaksana (Teknisi) | P2 = Verifikasi (Kasie/Kabag) | OK = Sesuai (✓) | NG = Bermasalah (Lihat Keterangan)
+    </div>
 
     <table class="approval-table">
         <tr>
-            <td width="33%">Dibuat Oleh (P1)<div style="height:60px"><img id="s1" class="sig-img"></div><span id="n1" class="name-under"></span></td>
-            <td width="33%">Diperiksa Oleh (P2)<div style="height:60px"><img id="s2" class="sig-img"></div><span id="n2" class="name-under"></span></td>
-            <td width="34%">Disetujui Oleh<div style="height:60px"><img id="s3" class="sig-img"></div><span id="n3" class="name-under"></span></td>
+            <td width="33%">Dibuat Oleh (P1)<div style="height:50px; display:flex; align-items:center; justify-content:center;"><img id="s1" class="sig-img"></div><span id="n1" class="name-under"></span></td>
+            <td width="33%">Diperiksa Oleh (P2)<div style="height:50px; display:flex; align-items:center; justify-content:center;"><img id="s2" class="sig-img"></div><span id="n2" class="name-under"></span></td>
+            <td width="34%">Disetujui Oleh<div style="height:50px; display:flex; align-items:center; justify-content:center;"><img id="s3" class="sig-img"></div><span id="n3" class="name-under"></span></td>
         </tr>
     </table>
 </div>
 
 <div id="empty-state" style="text-align:center; color:white; padding:100px;">
-    <p>Silakan pilih Mesin, Bulan, dan Tahun lalu klik Cari.</p>
+    <h3>Sistem Laporan Digital PT AKG</h3>
+    <p>Gunakan filter di atas untuk menampilkan laporan.</p>
 </div>
 
 <script>
@@ -154,41 +182,30 @@
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-    async function loadInitialData() {
+    async function loadFilter() {
         const { data } = await _sb.from('prslb_mesin').select('*');
         const sel = document.getElementById('f-mesin');
         sel.innerHTML = '<option value="">-- Pilih Mesin --</option>';
         data.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.qr_code_id}</option>`);
-        
-        // Set default bulan & tahun ke sekarang
-        const now = new Date();
-        document.getElementById('f-bulan').value = now.getMonth() + 1;
-        document.getElementById('f-tahun').value = now.getFullYear();
     }
 
     async function searchReport() {
-        const mesinId = document.getElementById('f-mesin').value;
-        const bulan = document.getElementById('f-bulan').value;
-        const tahun = document.getElementById('f-tahun').value;
+        const mId = document.getElementById('f-mesin').value;
+        const bln = document.getElementById('f-bulan').value;
+        const thn = document.getElementById('f-tahun').value;
 
-        if(!mesinId) return alert("Pilih mesin dulu bro!");
+        if(!mId) return alert("Pilih Mesin!");
 
-        // Logika Filter Tanggal Supabase (Awal bulan s/d Akhir bulan)
-        const startDate = `${tahun}-${bulan.padStart(2,'0')}-01T00:00:00`;
-        const endDate = `${tahun}-${bulan.padStart(2,'0')}-31T23:59:59`;
+        const start = `${thn}-${bln.padStart(2,'0')}-01T00:00:00`;
+        const end = `${thn}-${bln.padStart(2,'0')}-31T23:59:59`;
 
-        const { data: logs, error } = await _sb.from('prslb_log')
+        const { data: logs } = await _sb.from('prslb_log')
             .select('*, prslb_mesin(qr_code_id), prslb_result(*, prslb_items(*))')
-            .eq('mesin_id', mesinId)
-            .gte('created_at', startDate)
-            .lte('created_at', endDate)
-            .order('created_at', {ascending: false})
-            .limit(1);
+            .eq('mesin_id', mId).gte('created_at', start).lte('created_at', end)
+            .order('created_at', {ascending: false}).limit(1);
 
         if(!logs || logs.length === 0) {
-            document.getElementById('report-view').style.display = 'none';
-            document.getElementById('empty-state').style.display = 'block';
-            document.getElementById('empty-state').innerHTML = `<p>Data tidak ditemukan untuk periode ${bulan}/${tahun}</p>`;
+            alert("Data Tidak Ditemukan!");
             return;
         }
 
@@ -196,7 +213,6 @@
         document.getElementById('empty-state').style.display = 'none';
         document.getElementById('report-view').style.display = 'block';
 
-        // Tampilkan Data
         const d = new Date(log.created_at);
         document.getElementById('m-merk').innerText = ": " + log.prslb_mesin.qr_code_id;
         document.getElementById('m-tgl').innerText = ": " + d.toLocaleDateString('id-ID');
@@ -223,14 +239,14 @@
         });
 
         document.getElementById('s1').src = log.signature_pelaksana || "";
-        document.getElementById('n1').innerText = log.pelaksana_nama || "-";
+        document.getElementById('n1').innerText = log.pelaksana_nama;
         document.getElementById('s2').src = log.signature_koordinator || "";
         document.getElementById('n2').innerText = log.koordinator_nama || "(....................)";
         document.getElementById('s3').src = log.signature_superintendent || "";
         document.getElementById('n3').innerText = log.superintendent_nama || "(....................)";
     }
 
-    window.onload = loadInitialData;
+    window.onload = loadFilter;
 </script>
 </body>
 </html>
