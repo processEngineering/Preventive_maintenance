@@ -3,38 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Koordinator - Daftar Antrean & Verifikasi</title>
+    <title>Koordinator - Approval & Signature</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     <style>
-        :root { --primary: #003366; --bg: #f1f5f9; --warn: #f59e0b; --ok: #10b981; --ng: #ef4444; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #334155; }
+        :root { --primary: #003366; --bg: #f1f5f9; --ok: #10b981; --ng: #ef4444; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; }
         .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        
         .header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
         .header img { height: 40px; }
+        
+        /* List Antrean */
+        .waiting-card { background: #fff; border-left: 5px solid #f59e0b; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .btn-go { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
 
-        /* Style Daftar Antrean */
-        .waiting-list { margin-bottom: 20px; }
-        .waiting-card { 
-            background: #fff; border-left: 5px solid var(--warn); 
-            padding: 15px; margin-bottom: 10px; border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .waiting-card h4 { margin: 0; color: var(--primary); font-size: 14px; }
-        .waiting-card p { margin: 3px 0 0 0; font-size: 11px; color: #64748b; }
-        .btn-go { background: var(--primary); color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 11px; cursor: pointer; }
-
-        /* Scanner & Review */
+        /* Review Details */
         #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; margin-bottom: 15px; }
         .item-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
-        .ng-text { color: var(--ng); font-weight: bold; }
-        .ok-text { color: var(--ok); font-weight: bold; }
-        .note-box { font-size: 12px; background: #fff7ed; padding: 8px; border-radius: 6px; margin-top: 5px; border: 1px solid #ffedd5; }
+        .note-box { font-size: 12px; background: #fefce8; padding: 8px; border-radius: 6px; margin-top: 5px; border: 1px solid #fef08a; }
 
-        textarea, .input-nama { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box; margin-top: 8px; font-size: 14px; }
-        .btn-verify { width: 100%; padding: 16px; background: var(--ok); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; margin-top: 20px; cursor: pointer; }
+        /* Signature Pad */
+        .sig-wrapper { border: 2px solid #cbd5e1; border-radius: 8px; margin-top: 10px; background: #fff; touch-action: none; }
+        #signature-pad { width: 100%; height: 200px; }
+        
+        .input-field { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box; margin-top: 8px; }
+        .btn-verify { width: 100%; padding: 18px; background: var(--ok); color: white; border: none; border-radius: 12px; font-size: 17px; font-weight: bold; margin-top: 25px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -42,39 +36,44 @@
 <div class="container">
     <div class="header">
         <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="Logo">
-        <h2 style="font-size: 1.1rem; color: var(--primary);">VERIFIKASI KOORDINATOR</h2>
+        <h2 style="font-size: 1.1rem; color: var(--primary);">APPROVAL KOORDINATOR</h2>
     </div>
 
     <div id="view-list">
-        <h3 style="font-size: 14px; margin-bottom: 15px;">📋 Mesin Menunggu Verifikasi:</h3>
+        <h3 style="font-size: 14px; margin-bottom: 15px;">📋 Menunggu Verifikasi Lapangan:</h3>
         <div id="antrean-container">Memuat data...</div>
     </div>
 
     <div id="view-scan" style="display: none;">
-        <div style="background: #fff7ed; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; border: 1px solid #ffedd5;">
-            🚩 <b>Instruksi:</b> Anda memilih <b><span id="target-mesin-name"></span></b>. <br>Silakan scan Barcode pada fisik mesin tersebut.
+        <div style="background: #e0f2fe; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; border: 1px solid #bae6fd;">
+            📍 Silakan Scan Mesin: <b><span id="target-name"></span></b>
         </div>
         <div id="reader"></div>
-        <button onclick="showList()" style="width:100%; padding:10px; margin-top:10px; background:#64748b; color:white; border:none; border-radius:8px; cursor:pointer;">Kembali ke Daftar</button>
+        <button onclick="location.reload()" style="width:100%; padding:10px; margin-top:10px; border:none; background:#94a3b8; color:white; border-radius:8px;">Batal</button>
     </div>
 
-    <div id="view-verify" style="display: none;">
+    <div id="view-approve" style="display: none;">
         <div style="background: var(--primary); color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
-            <h3 id="display-mesin" style="margin:0;">-</h3>
-            <p id="display-pelaksana" style="margin:5px 0 0 0; font-size:12px; opacity:0.8;"></p>
+            <h3 id="disp-mesin" style="margin:0;">-</h3>
+            <p id="disp-pelaksana" style="margin:5px 0 0 0; font-size:12px; opacity:0.8;"></p>
         </div>
 
-        <h4 style="font-size: 14px; margin-bottom: 10px;">Temuan Inspeksi:</h4>
         <div id="detail-items"></div>
 
-        <div style="margin-top: 25px; padding-top: 20px; border-top: 2px solid #f1f5f9;">
-            <label style="font-weight: bold; font-size:13px;">Nama Koordinator:</label>
-            <input type="text" id="koor-nama" class="input-nama" placeholder="Ketik nama Anda...">
+        <div style="margin-top: 25px; border-top: 2px solid #eee; padding-top: 20px;">
+            <label style="font-weight: bold; font-size:14px;">Nama Koordinator (Approver):</label>
+            <input type="text" id="koor-nama" class="input-field" placeholder="Nama Lengkap...">
             
-            <label style="font-weight: bold; font-size:13px; display:block; margin-top:15px;">Catatan Koordinator:</label>
-            <textarea id="koor-note" rows="3" placeholder="Masukkan catatan atau tindak lanjut..."></textarea>
+            <label style="font-weight: bold; font-size:14px; display:block; margin-top:15px;">Catatan Verifikasi:</label>
+            <textarea id="koor-note" class="input-field" rows="3" placeholder="Contoh: Kondisi oke, lanjut produksi..."></textarea>
+
+            <label style="font-weight: bold; font-size:14px; display:block; margin-top:15px;">Tanda Tangan Approval:</label>
+            <div class="sig-wrapper">
+                <canvas id="signature-pad"></canvas>
+            </div>
+            <button onclick="signaturePad.clear()" style="font-size:11px; margin-top:5px; cursor:pointer;">Hapus TTD</button>
             
-            <button class="btn-verify" onclick="prosesVerifikasi()">SAYUDAH DICEK & VALID</button>
+            <button class="btn-verify" onclick="submitApproval()">APPROVE & SELESAI</button>
         </div>
     </div>
 </div>
@@ -84,114 +83,75 @@
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-    let scanner;
-    let selectedMesinQR = null;
-    let activeLogData = null;
+    let scanner, signaturePad, targetQR = null, activeLog = null;
 
-    // --- LOGIKA DAFTAR ANTREAN ---
     async function loadAntrean() {
-        // Ambil prslb_log yang status_verifikasi = false, join dengan prslb_mesin
-        const { data, error } = await _sb
-            .from('prslb_log')
-            .select('*, prslb_mesin(qr_code_id)')
-            .eq('status_verifikasi', false)
-            .order('created_at', { ascending: false });
-
+        const { data } = await _sb.from('prslb_log').select('*, prslb_mesin(qr_code_id)').eq('status_verifikasi', false);
         const container = document.getElementById('antrean-container');
-        if (!data || data.length === 0) {
-            container.innerHTML = "<p style='text-align:center; color:#94a3b8; font-size:13px;'>Tidak ada antrean verifikasi.</p>";
-            return;
-        }
-
+        if (!data || data.length === 0) { container.innerHTML = "<p style='text-align:center;font-size:13px;'>Kosong.</p>"; return; }
+        
         container.innerHTML = "";
         data.forEach(log => {
-            container.innerHTML += `
-                <div class="waiting-card">
-                    <div>
-                        <h4>${log.prslb_mesin.qr_code_id}</h4>
-                        <p>Oleh: ${log.pelaksana_nama} | ${new Date(log.created_at).toLocaleTimeString()}</p>
-                    </div>
-                    <button class="btn-go" onclick="goToScan('${log.prslb_mesin.qr_code_id}')">Scan Mesin</button>
-                </div>`;
+            container.innerHTML += `<div class="waiting-card"><div><h4>${log.prslb_mesin.qr_code_id}</h4><p>${log.pelaksana_nama}</p></div>
+            <button class="btn-go" onclick="startScan('${log.prslb_mesin.qr_code_id}')">APPROVE</button></div>`;
         });
     }
 
-    // --- LOGIKA SCANNER ---
-    function goToScan(qrName) {
-        selectedMesinQR = qrName;
+    function startScan(name) {
+        targetQR = name;
         document.getElementById('view-list').style.display = 'none';
         document.getElementById('view-scan').style.display = 'block';
-        document.getElementById('target-mesin-name').innerText = qrName;
+        document.getElementById('target-name').innerText = name;
         
         scanner = new Html5Qrcode("reader");
-        scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, async (decodedText) => {
-            const clean = decodedText.replace(/\s+/g, ' ').trim();
-            
-            if (clean.toLowerCase() === selectedMesinQR.toLowerCase()) {
+        scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, async (text) => {
+            if (text.trim().toLowerCase() === targetQR.toLowerCase()) {
                 await scanner.stop();
-                loadDetailLog(clean);
-            } else {
-                alert("Salah Mesin! Anda sedang memverifikasi " + selectedMesinQR + ", tapi men-scan " + clean);
-            }
+                loadDetail(text.trim());
+            } else { alert("QR Salah! Scan Mesin " + targetQR); }
         });
     }
 
-    async function loadDetailLog(qrCode) {
-        const { data } = await _sb.from('prslb_log')
-            .select('*, prslb_mesin(qr_code_id), prslb_result(*, prslb_items(item_name))')
-            .eq('status_verifikasi', false)
-            .eq('prslb_mesin.qr_code_id', qrCode)
-            .maybeSingle();
+    async function loadDetail(qr) {
+        const { data } = await _sb.from('prslb_log').select('*, prslb_mesin(qr_code_id), prslb_result(*, prslb_items(item_name))')
+            .eq('status_verifikasi', false).eq('prslb_mesin.qr_code_id', qr).maybeSingle();
 
         if (data) {
-            activeLogData = data;
+            activeLog = data;
             document.getElementById('view-scan').style.display = 'none';
-            document.getElementById('view-verify').style.display = 'block';
-            document.getElementById('display-mesin').innerText = data.prslb_mesin.qr_code_id;
-            document.getElementById('display-pelaksana').innerText = "Pelaksana: " + data.pelaksana_nama;
+            document.getElementById('view-approve').style.display = 'block';
+            document.getElementById('disp-mesin').innerText = data.prslb_mesin.qr_code_id;
+            document.getElementById('disp-pelaksana').innerText = "Oleh: " + data.pelaksana_nama;
 
-            const detailDiv = document.getElementById('detail-items');
-            detailDiv.innerHTML = "";
+            const div = document.getElementById('detail-items');
             data.prslb_result.forEach(res => {
-                const isNG = res.status === 'NG';
-                detailDiv.innerHTML += `
-                    <div class="item-row">
-                        <span>${res.prslb_items.item_name}</span>
-                        <span class="${isNG ? 'ng-text' : 'ok-text'}">${res.status}</span>
-                    </div>
-                    ${res.keterangan ? `<div class="note-box"><b>Catatan Pelaksana:</b> ${res.keterangan}</div>` : ''}
-                `;
+                div.innerHTML += `<div class="item-row"><span>${res.prslb_items.item_name}</span><span style="color:${res.status==='NG'?'red':'green'};font-weight:bold">${res.status}</span></div>
+                ${res.keterangan ? `<div class="note-box">Ket: ${res.keterangan}</div>`:''}`;
             });
+
+            const canvas = document.getElementById('signature-pad');
+            signaturePad = new SignaturePad(canvas);
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio; canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
         }
     }
 
-    // --- LOGIKA SIMPAN VERIFIKASI ---
-    async function prosesVerifikasi() {
-        const koorNama = document.getElementById('koor-nama').value;
-        const koorNote = document.getElementById('koor-note').value;
+    async function submitApproval() {
+        const nama = document.getElementById('koor-nama').value;
+        const note = document.getElementById('koor-note').value;
+        if (!nama || signaturePad.isEmpty()) return alert("Nama & TTD wajib diisi!");
 
-        if (!koorNama) return alert("Nama Koordinator wajib diisi!");
+        const { error } = await _sb.from('prslb_log').update({
+            koordinator_nama: nama,
+            koordinator_note: note,
+            status_verifikasi: true,
+            verified_at: new Date().toISOString(),
+            signature_koordinator: signaturePad.toDataURL()
+        }).eq('id', activeLog.id);
 
-        const { error } = await _sb.from('prslb_log')
-            .update({
-                koordinator_nama: koorNama,
-                koordinator_note: koorNote,
-                status_verifikasi: true,
-                verified_at: new Date().toISOString()
-            })
-            .eq('id', activeLogData.id);
-
-        if (!error) {
-            alert("Berhasil diverifikasi!");
-            location.reload();
-        } else {
-            alert("Error: " + error.message);
-        }
-    }
-
-    function showList() {
-        if(scanner) scanner.stop();
-        location.reload();
+        if (!error) { alert("Laporan Approved!"); location.reload(); }
+        else { alert(error.message); }
     }
 
     window.onload = loadAntrean;
