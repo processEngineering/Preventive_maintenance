@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koordinator Verifikasi - PT AKG</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        :root { --primary: #003366; --bg: #f1f5f9; --warn: #f59e0b; --ok: #10b981; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        .header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
+        .header img { height: 40px; }
+
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
+        
+        .card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; background: #fff; }
+        .badge-ng { background: #fee2e2; color: #dc2626; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        
+        .item-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        .note-pelaksana { font-size: 12px; color: #64748b; background: #f8fafc; padding: 5px; border-left: 3px solid #cbd5e1; margin-top: 4px; }
+
+        textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box; margin-top: 10px; }
+        .btn-verify { width: 100%; padding: 15px; background: var(--ok); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; margin-top: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="Logo">
+        <h2 style="font-size: 1.1rem; color: var(--primary);">VERIFIKASI KOORDINATOR</h2>
+    </div>
+
+    <div id="view-scan">
+        <div id="reader"></div>
+        <p id="status-scan" style="text-align:center; font-size:13px; color:#666;">Scan QR Mesin untuk verifikasi laporan terakhir</p>
+    </div>
+
+    <div id="view-review" style="display: none;">
+        <div class="card" style="background: var(--primary); color: white;">
+            <h3 id="txt-mesin" style="margin:0;">-</h3>
+            <p id="txt-pelaksana" style="margin:5px 0 0 0; font-size:13px; opacity:0.9;"></p>
+        </div>
+
+        <h4 style="margin: 20px 0 10px 0;">Detail Temuan:</h4>
+        <div id="detail-list"></div>
+
+        <div style="margin-top: 30px; border-top: 2px dashed #eee; padding-top: 20px;">
+            <label style="font-weight: bold; font-size:14px;">Nama Koordinator:</label>
+            <input type="text" id="nama-koordinator" placeholder="Masukkan nama Anda..." style="width:100%; padding:12px; border-radius:8px; border:1px solid #cbd5e1; box-sizing:border-box; margin-bottom:15px;">
+            
+            <label style="font-weight: bold; font-size:14px;">Catatan/Tindak Lanjut Koordinator:</label>
+            <textarea id="note-koordinator" rows="3" placeholder="Contoh: Sudah diperbaiki, atau Perlu panggil vendor..."></textarea>
+            
+            <button class="btn-verify" onclick="verifikasiLaporan()">TANDAI SEBAGAI TERVERIFIKASI</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+    const _sb = supabase.createClient(SB_URL, SB_KEY);
+
+    let scanner;
+    let lastLogId = null;
+
+    function startScan() {
+        scanner = new Html5Qrcode("reader");
+        scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, async (text) => {
+            const clean = text.replace(/\s+/g, ' ').trim();
+            
+            // 1. Cari mesin berdasarkan QR
+            const { data: mesin } = await _sb.from('prslb_mesin').select('id, qr_code_id').ilike('qr_code_id', clean).maybeSingle();
+            
+            if (mesin) {
+                // 2. Ambil log terakhir yang BELUM diverifikasi untuk mesin ini
+                const { data: log, error } = await _sb.from('prslb_log')
+                    .select('*, prslb_result(*, prslb_items(item_name))')
+                    .eq('mesin_id', mesin.id)
+                    .eq('status_verifikasi', false)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (log) {
+                    lastLogId = log.id;
+                    await scanner.stop();
+                    renderReview(log, mesin.qr_code_id);
+                } else {
+                    alert("Tidak ada laporan baru yang perlu diverifikasi untuk mesin ini.");
+                }
+            }
+        });
+    }
+
+    function renderReview(log, mesinName) {
+        document.getElementById('view-scan').style.display = 'none';
+        document.getElementById('view-review').style.display = 'block';
+        document.getElementById('txt-mesin').innerText = mesinName;
+        document.getElementById('txt-pelaksana').innerText = "Pelaksana: " + log.pelaksana_nama + " (" + new Date(log.created_at).toLocaleString('id-ID') + ")";
+
+        const listDiv = document.getElementById('detail-list');
+        listDiv.innerHTML = "";
+
+        log.prslb_result.forEach(res => {
+            const isNG = res.status === 'NG';
+            listDiv.innerHTML += `
+                <div class="item-row">
+                    <span>${res.prslb_items.item_name}</span>
+                    <span class="${isNG ? 'badge-ng' : ''}" style="color:${isNG ? '#dc2626' : '#10b981'}">${res.status}</span>
+                </div>
+                ${res.keterangan ? `<div class="note-pelaksana">Ket Pelaksana: ${res.keterangan}</div>` : ''}
+            `;
+        });
+    }
+
+    async function verifikasiLaporan() {
+        const namaKoor = document.getElementById('nama-koordinator').value;
+        const noteKoor = document.getElementById('note-koordinator').value;
+
+        if (!namaKoor) return alert("Nama Koordinator wajib diisi!");
+
+        const { error } = await _sb.from('prslb_log')
+            .update({
+                koordinator_nama: namaKoor,
+                koordinator_note: noteKoor,
+                status_verifikasi: true,
+                verified_at: new Date().toISOString()
+            })
+            .eq('id', lastLogId);
+
+        if (!error) {
+            alert("Laporan berhasil diverifikasi!");
+            location.reload();
+        } else {
+            alert("Gagal verifikasi: " + error.message);
+        }
+    }
+
+    window.onload = startScan;
+</script>
+</body>
+</html>
