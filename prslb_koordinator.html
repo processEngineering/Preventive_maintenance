@@ -3,27 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Koordinator Verifikasi - PT AKG</title>
+    <title>Koordinator - Daftar Antrean & Verifikasi</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --primary: #003366; --bg: #f1f5f9; --warn: #f59e0b; --ok: #10b981; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; }
+        :root { --primary: #003366; --bg: #f1f5f9; --warn: #f59e0b; --ok: #10b981; --ng: #ef4444; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #334155; }
         .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         
         .header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
         .header img { height: 40px; }
 
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
-        
-        .card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; background: #fff; }
-        .badge-ng { background: #fee2e2; color: #dc2626; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-        
-        .item-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
-        .note-pelaksana { font-size: 12px; color: #64748b; background: #f8fafc; padding: 5px; border-left: 3px solid #cbd5e1; margin-top: 4px; }
+        /* Style Daftar Antrean */
+        .waiting-list { margin-bottom: 20px; }
+        .waiting-card { 
+            background: #fff; border-left: 5px solid var(--warn); 
+            padding: 15px; margin-bottom: 10px; border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .waiting-card h4 { margin: 0; color: var(--primary); font-size: 14px; }
+        .waiting-card p { margin: 3px 0 0 0; font-size: 11px; color: #64748b; }
+        .btn-go { background: var(--primary); color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 11px; cursor: pointer; }
 
-        textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box; margin-top: 10px; }
-        .btn-verify { width: 100%; padding: 15px; background: var(--ok); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; margin-top: 20px; cursor: pointer; }
+        /* Scanner & Review */
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; margin-bottom: 15px; }
+        .item-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        .ng-text { color: var(--ng); font-weight: bold; }
+        .ok-text { color: var(--ok); font-weight: bold; }
+        .note-box { font-size: 12px; background: #fff7ed; padding: 8px; border-radius: 6px; margin-top: 5px; border: 1px solid #ffedd5; }
+
+        textarea, .input-nama { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box; margin-top: 8px; font-size: 14px; }
+        .btn-verify { width: 100%; padding: 16px; background: var(--ok); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; margin-top: 20px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -34,28 +45,36 @@
         <h2 style="font-size: 1.1rem; color: var(--primary);">VERIFIKASI KOORDINATOR</h2>
     </div>
 
-    <div id="view-scan">
-        <div id="reader"></div>
-        <p id="status-scan" style="text-align:center; font-size:13px; color:#666;">Scan QR Mesin untuk verifikasi laporan terakhir</p>
+    <div id="view-list">
+        <h3 style="font-size: 14px; margin-bottom: 15px;">📋 Mesin Menunggu Verifikasi:</h3>
+        <div id="antrean-container">Memuat data...</div>
     </div>
 
-    <div id="view-review" style="display: none;">
-        <div class="card" style="background: var(--primary); color: white;">
-            <h3 id="txt-mesin" style="margin:0;">-</h3>
-            <p id="txt-pelaksana" style="margin:5px 0 0 0; font-size:13px; opacity:0.9;"></p>
+    <div id="view-scan" style="display: none;">
+        <div style="background: #fff7ed; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; border: 1px solid #ffedd5;">
+            🚩 <b>Instruksi:</b> Anda memilih <b><span id="target-mesin-name"></span></b>. <br>Silakan scan Barcode pada fisik mesin tersebut.
+        </div>
+        <div id="reader"></div>
+        <button onclick="showList()" style="width:100%; padding:10px; margin-top:10px; background:#64748b; color:white; border:none; border-radius:8px; cursor:pointer;">Kembali ke Daftar</button>
+    </div>
+
+    <div id="view-verify" style="display: none;">
+        <div style="background: var(--primary); color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+            <h3 id="display-mesin" style="margin:0;">-</h3>
+            <p id="display-pelaksana" style="margin:5px 0 0 0; font-size:12px; opacity:0.8;"></p>
         </div>
 
-        <h4 style="margin: 20px 0 10px 0;">Detail Temuan:</h4>
-        <div id="detail-list"></div>
+        <h4 style="font-size: 14px; margin-bottom: 10px;">Temuan Inspeksi:</h4>
+        <div id="detail-items"></div>
 
-        <div style="margin-top: 30px; border-top: 2px dashed #eee; padding-top: 20px;">
-            <label style="font-weight: bold; font-size:14px;">Nama Koordinator:</label>
-            <input type="text" id="nama-koordinator" placeholder="Masukkan nama Anda..." style="width:100%; padding:12px; border-radius:8px; border:1px solid #cbd5e1; box-sizing:border-box; margin-bottom:15px;">
+        <div style="margin-top: 25px; padding-top: 20px; border-top: 2px solid #f1f5f9;">
+            <label style="font-weight: bold; font-size:13px;">Nama Koordinator:</label>
+            <input type="text" id="koor-nama" class="input-nama" placeholder="Ketik nama Anda...">
             
-            <label style="font-weight: bold; font-size:14px;">Catatan/Tindak Lanjut Koordinator:</label>
-            <textarea id="note-koordinator" rows="3" placeholder="Contoh: Sudah diperbaiki, atau Perlu panggil vendor..."></textarea>
+            <label style="font-weight: bold; font-size:13px; display:block; margin-top:15px;">Catatan Koordinator:</label>
+            <textarea id="koor-note" rows="3" placeholder="Masukkan catatan atau tindak lanjut..."></textarea>
             
-            <button class="btn-verify" onclick="verifikasiLaporan()">TANDAI SEBAGAI TERVERIFIKASI</button>
+            <button class="btn-verify" onclick="prosesVerifikasi()">SAYUDAH DICEK & VALID</button>
         </div>
     </div>
 </div>
@@ -66,82 +85,116 @@
     const _sb = supabase.createClient(SB_URL, SB_KEY);
 
     let scanner;
-    let lastLogId = null;
+    let selectedMesinQR = null;
+    let activeLogData = null;
 
-    function startScan() {
+    // --- LOGIKA DAFTAR ANTREAN ---
+    async function loadAntrean() {
+        // Ambil prslb_log yang status_verifikasi = false, join dengan prslb_mesin
+        const { data, error } = await _sb
+            .from('prslb_log')
+            .select('*, prslb_mesin(qr_code_id)')
+            .eq('status_verifikasi', false)
+            .order('created_at', { ascending: false });
+
+        const container = document.getElementById('antrean-container');
+        if (!data || data.length === 0) {
+            container.innerHTML = "<p style='text-align:center; color:#94a3b8; font-size:13px;'>Tidak ada antrean verifikasi.</p>";
+            return;
+        }
+
+        container.innerHTML = "";
+        data.forEach(log => {
+            container.innerHTML += `
+                <div class="waiting-card">
+                    <div>
+                        <h4>${log.prslb_mesin.qr_code_id}</h4>
+                        <p>Oleh: ${log.pelaksana_nama} | ${new Date(log.created_at).toLocaleTimeString()}</p>
+                    </div>
+                    <button class="btn-go" onclick="goToScan('${log.prslb_mesin.qr_code_id}')">Scan Mesin</button>
+                </div>`;
+        });
+    }
+
+    // --- LOGIKA SCANNER ---
+    function goToScan(qrName) {
+        selectedMesinQR = qrName;
+        document.getElementById('view-list').style.display = 'none';
+        document.getElementById('view-scan').style.display = 'block';
+        document.getElementById('target-mesin-name').innerText = qrName;
+        
         scanner = new Html5Qrcode("reader");
-        scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, async (text) => {
-            const clean = text.replace(/\s+/g, ' ').trim();
+        scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, async (decodedText) => {
+            const clean = decodedText.replace(/\s+/g, ' ').trim();
             
-            // 1. Cari mesin berdasarkan QR
-            const { data: mesin } = await _sb.from('prslb_mesin').select('id, qr_code_id').ilike('qr_code_id', clean).maybeSingle();
-            
-            if (mesin) {
-                // 2. Ambil log terakhir yang BELUM diverifikasi untuk mesin ini
-                const { data: log, error } = await _sb.from('prslb_log')
-                    .select('*, prslb_result(*, prslb_items(item_name))')
-                    .eq('mesin_id', mesin.id)
-                    .eq('status_verifikasi', false)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-
-                if (log) {
-                    lastLogId = log.id;
-                    await scanner.stop();
-                    renderReview(log, mesin.qr_code_id);
-                } else {
-                    alert("Tidak ada laporan baru yang perlu diverifikasi untuk mesin ini.");
-                }
+            if (clean.toLowerCase() === selectedMesinQR.toLowerCase()) {
+                await scanner.stop();
+                loadDetailLog(clean);
+            } else {
+                alert("Salah Mesin! Anda sedang memverifikasi " + selectedMesinQR + ", tapi men-scan " + clean);
             }
         });
     }
 
-    function renderReview(log, mesinName) {
-        document.getElementById('view-scan').style.display = 'none';
-        document.getElementById('view-review').style.display = 'block';
-        document.getElementById('txt-mesin').innerText = mesinName;
-        document.getElementById('txt-pelaksana').innerText = "Pelaksana: " + log.pelaksana_nama + " (" + new Date(log.created_at).toLocaleString('id-ID') + ")";
+    async function loadDetailLog(qrCode) {
+        const { data } = await _sb.from('prslb_log')
+            .select('*, prslb_mesin(qr_code_id), prslb_result(*, prslb_items(item_name))')
+            .eq('status_verifikasi', false)
+            .eq('prslb_mesin.qr_code_id', qrCode)
+            .maybeSingle();
 
-        const listDiv = document.getElementById('detail-list');
-        listDiv.innerHTML = "";
+        if (data) {
+            activeLogData = data;
+            document.getElementById('view-scan').style.display = 'none';
+            document.getElementById('view-verify').style.display = 'block';
+            document.getElementById('display-mesin').innerText = data.prslb_mesin.qr_code_id;
+            document.getElementById('display-pelaksana').innerText = "Pelaksana: " + data.pelaksana_nama;
 
-        log.prslb_result.forEach(res => {
-            const isNG = res.status === 'NG';
-            listDiv.innerHTML += `
-                <div class="item-row">
-                    <span>${res.prslb_items.item_name}</span>
-                    <span class="${isNG ? 'badge-ng' : ''}" style="color:${isNG ? '#dc2626' : '#10b981'}">${res.status}</span>
-                </div>
-                ${res.keterangan ? `<div class="note-pelaksana">Ket Pelaksana: ${res.keterangan}</div>` : ''}
-            `;
-        });
-    }
-
-    async function verifikasiLaporan() {
-        const namaKoor = document.getElementById('nama-koordinator').value;
-        const noteKoor = document.getElementById('note-koordinator').value;
-
-        if (!namaKoor) return alert("Nama Koordinator wajib diisi!");
-
-        const { error } = await _sb.from('prslb_log')
-            .update({
-                koordinator_nama: namaKoor,
-                koordinator_note: noteKoor,
-                status_verifikasi: true,
-                verified_at: new Date().toISOString()
-            })
-            .eq('id', lastLogId);
-
-        if (!error) {
-            alert("Laporan berhasil diverifikasi!");
-            location.reload();
-        } else {
-            alert("Gagal verifikasi: " + error.message);
+            const detailDiv = document.getElementById('detail-items');
+            detailDiv.innerHTML = "";
+            data.prslb_result.forEach(res => {
+                const isNG = res.status === 'NG';
+                detailDiv.innerHTML += `
+                    <div class="item-row">
+                        <span>${res.prslb_items.item_name}</span>
+                        <span class="${isNG ? 'ng-text' : 'ok-text'}">${res.status}</span>
+                    </div>
+                    ${res.keterangan ? `<div class="note-box"><b>Catatan Pelaksana:</b> ${res.keterangan}</div>` : ''}
+                `;
+            });
         }
     }
 
-    window.onload = startScan;
+    // --- LOGIKA SIMPAN VERIFIKASI ---
+    async function prosesVerifikasi() {
+        const koorNama = document.getElementById('koor-nama').value;
+        const koorNote = document.getElementById('koor-note').value;
+
+        if (!koorNama) return alert("Nama Koordinator wajib diisi!");
+
+        const { error } = await _sb.from('prslb_log')
+            .update({
+                koordinator_nama: koorNama,
+                koordinator_note: koorNote,
+                status_verifikasi: true,
+                verified_at: new Date().toISOString()
+            })
+            .eq('id', activeLogData.id);
+
+        if (!error) {
+            alert("Berhasil diverifikasi!");
+            location.reload();
+        } else {
+            alert("Error: " + error.message);
+        }
+    }
+
+    function showList() {
+        if(scanner) scanner.stop();
+        location.reload();
+    }
+
+    window.onload = loadAntrean;
 </script>
 </body>
 </html>
