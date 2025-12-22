@@ -19,7 +19,7 @@
         .header { text-align: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--primary-light); }
         .header img { height: 40px; }
         #reader { width: 100%; border-radius: 12px; overflow: hidden; border: none !important; }
-        .scan-wrapper { background: #000; border-radius: 12px; margin-bottom: 15px; position: relative; min-height: 250px;}
+        .scan-wrapper { background: #000; border-radius: 12px; margin-bottom: 15px; min-height: 250px;}
         .machine-info-box { background: #f0f9ff; border: 2px solid var(--primary); padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
         .machine-info-box h3 { margin: 5px 0; color: var(--primary); font-size: 18px; }
         .category-header { background: var(--primary-light); color: var(--primary); padding: 10px 15px; font-weight: bold; border-radius: 8px; margin: 25px 0 10px 0; font-size: 13px; text-transform: uppercase;}
@@ -33,6 +33,7 @@
         .btn-status.active-ng { background: var(--ng); color: white; border-color: var(--ng); }
         .btn-submit { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px; box-shadow: 0 4px 10px rgba(0,51,102,0.3); }
         #btn-scan-again { background: #64748b; color: white; border: none; padding: 8px 15px; border-radius: 6px; margin-top: 10px; cursor: pointer; font-size: 12px; }
+        .debug-info { font-size: 10px; color: #999; text-align: center; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -48,6 +49,7 @@
             <div id="reader"></div>
         </div>
         <p style="text-align: center; font-size: 14px; color: #666;">Arahkan kamera ke QR Code Mesin</p>
+        <div id="debug-text" class="debug-info"></div>
     </div>
 
     <div id="machine-result" style="display: none;">
@@ -59,18 +61,15 @@
 
         <div style="margin-bottom: 20px;">
             <label style="font-weight: bold; font-size: 14px; color: var(--primary);">Nama Pelaksana:</label>
-            <input type="text" id="pelaksana-name" placeholder="Input Nama Lengkap">
+            <input type="text" id="pelaksana-name" style="width:100%; padding:12px; border-radius:8px; border:1px solid #ccc; box-sizing:border-box;" placeholder="Input Nama Lengkap">
         </div>
 
-        <div id="checklist-content">
-            </div>
-
+        <div id="checklist-content"></div>
         <button class="btn-submit" onclick="submitData()">SIMPAN DATA PREVENTIF</button>
     </div>
 </div>
 
 <script>
-    // KONFIGURASI SUPABASE
     const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const _supabase = supabase.createClient(SB_URL, SB_KEY);
@@ -78,35 +77,36 @@
     let html5QrCode;
     let selectedMesinId = null;
 
-    // Inisialisasi Kamera
     function startScanner() {
         html5QrCode = new Html5Qrcode("reader");
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        const config = { fps: 15, qrbox: { width: 250, height: 250 } };
         html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
-        .catch(err => console.error("Gagal akses kamera: ", err));
+        .catch(err => {
+            document.getElementById('debug-text').innerText = "Kamera Error: " + err;
+        });
     }
 
-    // Fungsi saat QR Terbaca
     async function onScanSuccess(decodedText) {
-        console.log("QR Terdeteksi:", decodedText); // Cek nilai QR di console
+        // 1. Bersihkan input dari QR (Hapus spasi depan/belakang)
+        const cleanCode = decodedText.trim();
+        document.getElementById('debug-text').innerText = "Terbaca: '" + cleanCode + "'";
         
         try {
             await html5QrCode.stop();
             
-            // Ambil data mesin dari Supabase berdasarkan qr_code_id
+            // 2. Cari di database (Menggunakan ILIKE agar tidak sensitif huruf besar/kecil)
             const { data: mesin, error } = await _supabase
                 .from('prslb_mesin')
                 .select('*')
-                .eq('qr_code_id', decodedText)
-                .single();
+                .ilike('qr_code_id', cleanCode)
+                .maybeSingle();
 
             if (error || !mesin) {
-                alert("QR Kode '" + decodedText + "' tidak terdaftar di database prslb_mesin!");
+                alert("GAGAL: QR Code '" + cleanCode + "' tidak ada di tabel prslb_mesin.\n\nPastikan kolom qr_code_id di Supabase sudah diisi.");
                 resetScan();
                 return;
             }
 
-            // Jika ada, tampilkan form
             selectedMesinId = mesin.id;
             document.getElementById('display-nama-mesin').innerText = `${mesin.nama_mesin} ${mesin.tonage || ''} (${mesin.nickname || ''})`;
             document.getElementById('scanner-section').style.display = 'none';
@@ -119,11 +119,8 @@
         }
     }
 
-    // Ambil Item dari prslb_items
     async function loadChecklist() {
-        const { data: items, error } = await _supabase.from('prslb_items').select('*').order('id', { ascending: true });
-        if (error) return alert("Gagal ambil item checklist");
-
+        const { data: items } = await _supabase.from('prslb_items').select('*').order('id', { ascending: true });
         const container = document.getElementById('checklist-content');
         container.innerHTML = "";
         let currentCat = "";
@@ -133,7 +130,6 @@
                 currentCat = item.kategori;
                 container.innerHTML += `<div class="category-header">ITEM CHECK ROBOT (${currentCat})</div>`;
             }
-
             container.innerHTML += `
                 <div class="check-item">
                     <div class="item-label">
@@ -154,22 +150,18 @@
         btn.classList.add(status === 'OK' ? 'active-ok' : 'active-ng');
     }
 
-    // Simpan ke prslb_log
     async function submitData() {
         const pelaksana = document.getElementById('pelaksana-name').value;
         const groups = document.querySelectorAll('.btn-group');
-
-        if (!pelaksana) return alert("Mohon masukkan nama pelaksana!");
+        if (!pelaksana) return alert("Masukkan nama pelaksana!");
 
         const logs = [];
         let allChecked = true;
-
         groups.forEach(g => {
             const itemId = g.getAttribute('data-item-id');
             const statusBtn = g.querySelector('.active-ok, .active-ng');
-            if (!statusBtn) {
-                allChecked = false;
-            } else {
+            if (!statusBtn) allChecked = false;
+            else {
                 logs.push({
                     mesin_id: selectedMesinId,
                     item_id: parseInt(itemId),
@@ -179,14 +171,11 @@
             }
         });
 
-        if (!allChecked) return alert("Mohon lengkapi seluruh checklist sebelum simpan!");
-
+        if (!allChecked) return alert("Lengkapi semua checklist!");
         const { error } = await _supabase.from('prslb_log').insert(logs);
-        
-        if (error) {
-            alert("Error: " + error.message);
-        } else {
-            alert("Berhasil! Data Preventif telah disimpan ke prslb_log.");
+        if (error) alert("Error: " + error.message);
+        else {
+            alert("Data Berhasil Disimpan!");
             location.reload();
         }
     }
@@ -194,12 +183,11 @@
     function resetScan() {
         document.getElementById('machine-result').style.display = 'none';
         document.getElementById('scanner-section').style.display = 'block';
-        if (html5QrCode) html5QrCode.clear();
+        document.getElementById('debug-text').innerText = "";
         startScanner();
     }
 
     window.onload = startScanner;
 </script>
-
 </body>
 </html>
