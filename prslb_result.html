@@ -7,41 +7,37 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: 'Arial', sans-serif; background: #525659; margin: 0; padding: 20px; color: #000; }
-        .no-print { max-width: 900px; margin: 0 auto 15px; background: #fff; padding: 15px; border-radius: 8px; display: flex; gap: 10px; }
         
+        /* Area Filter */
+        .no-print { 
+            max-width: 900px; margin: 0 auto 15px; background: #fff; padding: 20px; 
+            border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .filter-group { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 10px; align-items: end; }
+        .filter-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #444; }
+        select { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; }
+        
+        .btn-view { padding: 10px 20px; background: #003366; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .btn-print { padding: 10px 20px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
+
+        /* Kertas A4 */
         .page {
-            width: 210mm;
-            min-height: 297mm;
-            padding: 10mm;
-            margin: auto;
-            background: white;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            position: relative;
+            width: 210mm; min-height: 297mm; padding: 10mm; margin: auto;
+            background: white; box-shadow: 0 0 10px rgba(0,0,0,0.5); position: relative;
         }
 
         table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: -1px; }
         td, th { border: 1px solid black; padding: 3px 6px; font-size: 10px; }
 
-        /* Header Dokumen */
         .logo-box { width: 80px; text-align: center; }
         .title-box { text-align: center; font-size: 13px; font-weight: bold; width: 380px; }
-        .meta-box { font-size: 8px; width: 80px; border-right: none; }
-        .meta-val { font-size: 8px; border-left: none; }
-
-        /* Info Mesin */
-        .label-bg { background-color: #efefef; font-weight: bold; width: 15%; }
-        .val-box { width: 35%; }
-
-        /* Table Checklist */
+        .label-bg { background-color: #efefef; font-weight: bold; width: 18%; }
         .th-bg { background-color: #d9d9d9; text-align: center; font-weight: bold; }
         .cat-bg { background-color: #e9e9e9; font-weight: bold; padding-left: 10px; }
         .center { text-align: center; }
-        .v-mark { font-family: "DejaVu Sans", Arial; font-weight: bold; font-size: 12px; }
-
-        /* Footer & Note */
-        .note-footer { font-size: 9px; margin-top: 10px; line-height: 1.4; }
+        
+        .note-footer { font-size: 9px; margin-top: 10px; line-height: 1.4; border: 1px solid black; padding: 5px; }
         .approval-table td { height: 90px; vertical-align: top; text-align: center; padding-top: 5px; }
-        .sig-space { height: 60px; display: flex; align-items: center; justify-content: center; }
         .sig-img { max-height: 55px; max-width: 100%; }
         .name-under { font-weight: bold; text-decoration: underline; display: block; margin-top: 5px; }
 
@@ -55,51 +51,68 @@
 <body>
 
 <div class="no-print">
-    <select id="select-log" style="flex: 1; padding: 8px;"></select>
-    <button onclick="renderReport()" style="padding: 8px 20px; background: #003366; color: white; border: none; cursor: pointer;">Tampilkan Laporan</button>
-    <button onclick="window.print()" style="padding: 8px 20px; background: #28a745; color: white; border: none; cursor: pointer;">Print / PDF</button>
+    <div class="filter-group">
+        <div>
+            <label>PILIH MESIN</label>
+            <select id="f-mesin"><option value="">Memuat Mesin...</option></select>
+        </div>
+        <div>
+            <label>BULAN</label>
+            <select id="f-bulan">
+                <option value="1">Januari</option><option value="2">Februari</option>
+                <option value="3">Maret</option><option value="4">April</option>
+                <option value="5">Mei</option><option value="6">Juni</option>
+                <option value="7">Juli</option><option value="8">Agustus</option>
+                <option value="9">September</option><option value="10">Oktober</option>
+                <option value="11">November</option><option value="12">Desember</option>
+            </select>
+        </div>
+        <div>
+            <label>TAHUN</label>
+            <select id="f-tahun">
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+            </select>
+        </div>
+        <div style="display:flex; gap:5px">
+            <button class="btn-view" onclick="searchReport()">CARI</button>
+            <button class="btn-print" onclick="window.print()">PDF</button>
+        </div>
+    </div>
 </div>
 
-<div class="page" id="printable">
+<div class="page" id="report-view" style="display: none;">
     <table>
         <tr>
             <td rowspan="4" class="logo-box"><img src="https://amarilyskg.co.id/bootstrap/img/logo.png" width="70"></td>
             <td rowspan="4" class="title-box">PREVENTIF ROBOT & STAND LABEL BULANAN</td>
-            <td class="meta-box">No. Dokumen</td>
-            <td class="meta-val">: AF.SP 05.08.Rev-00</td>
+            <td width="80" style="border-right:none">No. Dokumen</td>
+            <td style="border-left:none">: AF.SP 05.08.Rev-00</td>
         </tr>
-        <tr>
-            <td class="meta-box">Tanggal Terbit</td>
-            <td class="meta-val">: 02 Agustus 2024</td>
-        </tr>
-        <tr>
-            <td class="meta-box">Halaman</td>
-            <td class="meta-val">: 1/1</td>
-        </tr>
-        <tr>
-            <td class="meta-box">Tanggal Revisi</td>
-            <td class="meta-val">: -</td>
-        </tr>
+        <tr><td style="border-right:none">Tanggal Terbit</td><td style="border-left:none">: 02 Agustus 2024</td></tr>
+        <tr><td style="border-right:none">Halaman</td><td style="border-left:none">: 1/1</td></tr>
+        <tr><td style="border-right:none">Tanggal Revisi</td><td style="border-left:none">: -</td></tr>
     </table>
 
     <div style="height:10px"></div>
 
     <table>
         <tr>
-            <td class="label-bg">MERK MESIN</td><td class="val-box" id="m-merk">: -</td>
-            <td class="label-bg">TARGET SELESAI</td><td class="val-box">: -</td>
+            <td class="label-bg">MERK MESIN</td><td id="m-merk">: </td>
+            <td class="label-bg">TARGET SELESAI</td><td>: </td>
         </tr>
         <tr>
-            <td class="label-bg">TONAGE</td><td class="val-box">: -</td>
-            <td class="label-bg">START JAM</td><td class="val-box">: -</td>
+            <td class="label-bg">TONAGE</td><td>: </td>
+            <td class="label-bg">START JAM</td><td>: </td>
         </tr>
         <tr>
-            <td class="label-bg">TANGGAL</td><td class="val-box" id="m-tgl">: -</td>
-            <td class="label-bg">FINISH JAM</td><td class="val-box">: -</td>
+            <td class="label-bg">TANGGAL</td><td id="m-tgl">: </td>
+            <td class="label-bg">FINISH JAM</td><td>: </td>
         </tr>
         <tr>
-            <td class="label-bg">TAHUN</td><td class="val-box" id="m-thn">: -</td>
-            <td class="label-bg">RUNNING HOURS</td><td class="val-box">: -</td>
+            <td class="label-bg">TAHUN</td><td id="m-thn">: </td>
+            <td class="label-bg">RUNNING HOURS</td><td>: </td>
         </tr>
     </table>
 
@@ -108,47 +121,32 @@
     <table>
         <thead>
             <tr class="th-bg">
-                <th width="30">NO</th>
-                <th>ITEM</th>
-                <th width="150">STANDARD</th>
-                <th width="35">P1</th>
-                <th width="35">P2</th>
-                <th width="180">KET/PEMAKAIAN SPAREPART</th>
+                <th width="30">NO</th><th>ITEM</th><th width="140">STANDARD</th>
+                <th width="30">P1</th><th width="30">P2</th><th>KET/PEMAKAIAN SPAREPART</th>
             </tr>
         </thead>
-        <tbody id="content-rows">
-            </tbody>
+        <tbody id="content-body"></tbody>
     </table>
 
     <div class="note-footer">
         <b>Note :</b><br>
-        P1 = Pelaksana pekerjaan (Teknisi)<br>
-        P2 = Pelaksana verifikasi pekerjaan (Kasie/Kabag)<br>
-        OK = Item sesuai standar (✓)<br>
-        NG = Item bermasalah / Rusak (Ditulis di kolom Keterangan)
+        P1 = Pelaksana pekerjaan (Teknisi) | P2 = Pelaksana verifikasi pekerjaan (Kasie/Kabag)<br>
+        OK = Item sesuai standar (✓) | NG = Item bermasalah / Rusak (Ditulis di kolom Keterangan)
     </div>
 
     <div style="height:15px"></div>
 
     <table class="approval-table">
         <tr>
-            <td width="33%">
-                Dibuat Oleh,<br>Pelaksana (P1)
-                <div class="sig-space"><img id="s1" class="sig-img"></div>
-                <span id="n1" class="name-under"></span>
-            </td>
-            <td width="33%">
-                Diperiksa Oleh,<br>Koordinator (P2)
-                <div class="sig-space"><img id="s2" class="sig-img"></div>
-                <span id="n2" class="name-under"></span>
-            </td>
-            <td width="34%">
-                Disetujui Oleh,<br>Superintendent
-                <div class="sig-space"><img id="s3" class="sig-img"></div>
-                <span id="n3" class="name-under"></span>
-            </td>
+            <td width="33%">Dibuat Oleh (P1)<div style="height:60px"><img id="s1" class="sig-img"></div><span id="n1" class="name-under"></span></td>
+            <td width="33%">Diperiksa Oleh (P2)<div style="height:60px"><img id="s2" class="sig-img"></div><span id="n2" class="name-under"></span></td>
+            <td width="34%">Disetujui Oleh<div style="height:60px"><img id="s3" class="sig-img"></div><span id="n3" class="name-under"></span></td>
         </tr>
     </table>
+</div>
+
+<div id="empty-state" style="text-align:center; color:white; padding:100px;">
+    <p>Silakan pilih Mesin, Bulan, dan Tahun lalu klik Cari.</p>
 </div>
 
 <script>
@@ -156,68 +154,83 @@
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-    async function init() {
-        const { data } = await _sb.from('prslb_log').select('*, prslb_mesin(qr_code_id)').order('created_at',{ascending:false});
-        const sel = document.getElementById('select-log');
-        data.forEach(l => {
-            sel.innerHTML += `<option value="${l.id}">${l.prslb_mesin.qr_code_id} - ${new Date(l.created_at).toLocaleDateString('id-ID')}</option>`;
-        });
+    async function loadInitialData() {
+        const { data } = await _sb.from('prslb_mesin').select('*');
+        const sel = document.getElementById('f-mesin');
+        sel.innerHTML = '<option value="">-- Pilih Mesin --</option>';
+        data.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.qr_code_id}</option>`);
+        
+        // Set default bulan & tahun ke sekarang
+        const now = new Date();
+        document.getElementById('f-bulan').value = now.getMonth() + 1;
+        document.getElementById('f-tahun').value = now.getFullYear();
     }
 
-    async function renderReport() {
-        const id = document.getElementById('select-log').value;
-        if(!id) return;
+    async function searchReport() {
+        const mesinId = document.getElementById('f-mesin').value;
+        const bulan = document.getElementById('f-bulan').value;
+        const tahun = document.getElementById('f-tahun').value;
 
-        const { data: log } = await _sb.from('prslb_log')
+        if(!mesinId) return alert("Pilih mesin dulu bro!");
+
+        // Logika Filter Tanggal Supabase (Awal bulan s/d Akhir bulan)
+        const startDate = `${tahun}-${bulan.padStart(2,'0')}-01T00:00:00`;
+        const endDate = `${tahun}-${bulan.padStart(2,'0')}-31T23:59:59`;
+
+        const { data: logs, error } = await _sb.from('prslb_log')
             .select('*, prslb_mesin(qr_code_id), prslb_result(*, prslb_items(*))')
-            .eq('id', id).single();
+            .eq('mesin_id', mesinId)
+            .gte('created_at', startDate)
+            .lte('created_at', endDate)
+            .order('created_at', {ascending: false})
+            .limit(1);
 
-        if(log) {
-            const date = new Date(log.created_at);
-            document.getElementById('m-merk').innerText = ": " + log.prslb_mesin.qr_code_id;
-            document.getElementById('m-tgl').innerText = ": " + date.toLocaleDateString('id-ID');
-            document.getElementById('m-thn').innerText = ": " + date.getFullYear();
-
-            const body = document.getElementById('content-rows');
-            body.innerHTML = "";
-            let currentCat = "";
-            let no = 1;
-
-            log.prslb_result.forEach(r => {
-                if(r.prslb_items.kategori !== currentCat) {
-                    currentCat = r.prslb_items.kategori;
-                    body.innerHTML += `<tr class="cat-bg"><td colspan="6">ITEM CHECK ${currentCat}</td></tr>`;
-                }
-
-                // Logika P1 (Pelaksana) dan P2 (Koordinator)
-                const p1_val = r.status === 'OK' ? '✓' : '';
-                const p2_val = (log.status_verifikasi && r.status === 'OK') ? '✓' : (r.status === 'NG' ? 'NG' : '');
-
-                body.innerHTML += `
-                    <tr>
-                        <td class="center">${no++}</td>
-                        <td>${r.prslb_items.item_name}</td>
-                        <td>${r.prslb_items.standard}</td>
-                        <td class="center v-mark">${p1_val}</td>
-                        <td class="center v-mark" style="color:${p2_val === 'NG' ? 'red' : 'black'}">${p2_val}</td>
-                        <td>${r.keterangan || ''}</td>
-                    </tr>
-                `;
-            });
-
-            // Approval Images
-            document.getElementById('s1').src = log.signature_pelaksana || "";
-            document.getElementById('n1').innerText = log.pelaksana_nama || "-";
-            
-            document.getElementById('s2').src = log.signature_koordinator || "";
-            document.getElementById('n2').innerText = log.koordinator_nama || "(....................)";
-            
-            document.getElementById('s3').src = log.signature_superintendent || "";
-            document.getElementById('n3').innerText = log.superintendent_nama || "(....................)";
+        if(!logs || logs.length === 0) {
+            document.getElementById('report-view').style.display = 'none';
+            document.getElementById('empty-state').style.display = 'block';
+            document.getElementById('empty-state').innerHTML = `<p>Data tidak ditemukan untuk periode ${bulan}/${tahun}</p>`;
+            return;
         }
+
+        const log = logs[0];
+        document.getElementById('empty-state').style.display = 'none';
+        document.getElementById('report-view').style.display = 'block';
+
+        // Tampilkan Data
+        const d = new Date(log.created_at);
+        document.getElementById('m-merk').innerText = ": " + log.prslb_mesin.qr_code_id;
+        document.getElementById('m-tgl').innerText = ": " + d.toLocaleDateString('id-ID');
+        document.getElementById('m-thn').innerText = ": " + d.getFullYear();
+
+        const body = document.getElementById('content-body');
+        body.innerHTML = "";
+        let currentCat = "", no = 1;
+
+        log.prslb_result.forEach(r => {
+            if(r.prslb_items.kategori !== currentCat) {
+                currentCat = r.prslb_items.kategori;
+                body.innerHTML += `<tr class="cat-bg"><td colspan="6">ITEM CHECK ${currentCat}</td></tr>`;
+            }
+            body.innerHTML += `
+                <tr>
+                    <td class="center">${no++}</td>
+                    <td>${r.prslb_items.item_name}</td>
+                    <td>${r.prslb_items.standard}</td>
+                    <td class="center">${r.status === 'OK' ? '✓' : ''}</td>
+                    <td class="center">${log.status_verifikasi && r.status === 'OK' ? '✓' : (r.status === 'NG' ? 'NG' : '')}</td>
+                    <td>${r.keterangan || ''}</td>
+                </tr>`;
+        });
+
+        document.getElementById('s1').src = log.signature_pelaksana || "";
+        document.getElementById('n1').innerText = log.pelaksana_nama || "-";
+        document.getElementById('s2').src = log.signature_koordinator || "";
+        document.getElementById('n2').innerText = log.koordinator_nama || "(....................)";
+        document.getElementById('s3').src = log.signature_superintendent || "";
+        document.getElementById('n3').innerText = log.superintendent_nama || "(....................)";
     }
 
-    window.onload = init;
+    window.onload = loadInitialData;
 </script>
 </body>
 </html>
