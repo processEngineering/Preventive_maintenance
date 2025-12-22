@@ -15,13 +15,14 @@
         .header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
         .header img { height: 40px; }
         
-        /* Scanner Fix */
         .scan-wrapper { background: #000; border-radius: 12px; overflow: hidden; min-height: 300px; position: relative; }
         #reader { width: 100% !important; border: none !important; }
         
         .machine-info { background: #eef4ff; border: 2px solid var(--primary); padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
         .category-header { background: var(--primary); color: white; padding: 10px; margin-top: 25px; border-radius: 8px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
-        .check-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f1f5f9; }
+        
+        .check-item { padding: 15px 0; border-bottom: 1px solid #f1f5f9; }
+        .item-main { display: flex; justify-content: space-between; align-items: center; }
         .item-label { flex: 1; padding-right: 10px; }
         .item-name { font-size: 14px; font-weight: 600; }
         .item-std { font-size: 11px; color: #64748b; font-style: italic; }
@@ -31,10 +32,14 @@
         .active-ok { background: var(--ok) !important; color: white; border-color: var(--ok); }
         .active-ng { background: var(--ng) !important; color: white; border-color: var(--ng); }
         
+        /* Input Keterangan NG */
+        .note-area { margin-top: 10px; display: none; }
+        .input-note { width: 100%; padding: 8px; border: 1px solid var(--ng); border-radius: 6px; font-size: 13px; box-sizing: border-box; }
+
         .signature-wrapper { border: 2px solid #cbd5e1; border-radius: 8px; margin-top: 10px; background: #fff; touch-action: none; }
         #signature-pad { width: 100%; height: 200px; }
         
-        input { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1.5px solid #cbd5e1; box-sizing: border-box; }
+        input[type="text"] { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1.5px solid #cbd5e1; box-sizing: border-box; }
         .btn-submit { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 17px; font-weight: bold; margin-top: 30px; cursor: pointer; }
     </style>
 </head>
@@ -47,12 +52,8 @@
     </div>
 
     <div id="view-scan">
-        <div class="scan-wrapper">
-            <div id="reader"></div>
-        </div>
-        <div id="status-scan" style="text-align:center; padding:15px; font-size:14px; font-weight: bold; color: var(--primary);">
-            Mencari Kamera...
-        </div>
+        <div class="scan-wrapper"><div id="reader"></div></div>
+        <div id="status-scan" style="text-align:center; padding:15px; font-size:14px; font-weight: bold; color: var(--primary);">Mencari Kamera...</div>
     </div>
 
     <div id="view-form" style="display: none;">
@@ -83,54 +84,23 @@
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-    let scanner;
-    let signaturePad;
-    let currentMesin = null;
+    let scanner, signaturePad, currentMesin = null;
 
-    // Fungsi Utama Scan
     async function startScanner() {
         try {
             scanner = new Html5Qrcode("reader");
-            const config = { 
-                fps: 20, 
-                qrbox: { width: 250, height: 250 },
-                aspectRatio: 1.0 
-            };
-            
-            await scanner.start(
-                { facingMode: "environment" }, 
-                config, 
-                onScanDone
-            );
+            await scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, onScanDone);
             document.getElementById('status-scan').innerText = "Kamera Aktif. Silakan Scan Barcode.";
         } catch (err) {
-            document.getElementById('status-scan').innerText = "Gagal Akses Kamera. Pastikan Izin Diberikan!";
-            console.error(err);
+            document.getElementById('status-scan').innerText = "Gagal Akses Kamera!";
         }
     }
 
     async function onScanDone(text) {
-        // Bersihkan teks dari spasi atau karakter aneh
         const clean = text.replace(/\s+/g, ' ').trim();
-        document.getElementById('status-scan').innerText = "Mengecek Database: " + clean;
-
-        try {
-            const { data, error } = await _sb
-                .from('prslb_mesin')
-                .select('*')
-                .ilike('qr_code_id', clean)
-                .maybeSingle();
-
-            if (data) {
-                currentMesin = data;
-                await scanner.stop();
-                renderForm();
-            } else {
-                document.getElementById('status-scan').innerHTML = `<span style="color:red">Barcode [${clean}] Tidak Terdaftar!</span>`;
-            }
-        } catch (e) {
-            console.error(e);
-        }
+        const { data } = await _sb.from('prslb_mesin').select('*').ilike('qr_code_id', clean).maybeSingle();
+        if (data) { currentMesin = data; await scanner.stop(); renderForm(); }
+        else { document.getElementById('status-scan').innerHTML = `<span style="color:red">Barcode [${clean}] Tidak Terdaftar!</span>`; }
     }
 
     async function renderForm() {
@@ -148,52 +118,74 @@
                 container.innerHTML += `<div class="category-header">ITEM CHECK ROBOT (${cat})</div>`;
             }
             container.innerHTML += `
-                <div class="check-item">
-                    <div class="item-label">
-                        <span class="item-name">${item.item_name}</span>
-                        <span class="item-std">Std: ${item.standard}</span>
+                <div class="check-item" data-id="${item.id}">
+                    <div class="item-main">
+                        <div class="item-label">
+                            <span class="item-name">${item.item_name}</span>
+                            <span class="item-std">Std: ${item.standard}</span>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn-status" onclick="setStatus(this, 'OK')">OK</button>
+                            <button class="btn-status" onclick="setStatus(this, 'NG')">NG</button>
+                        </div>
                     </div>
-                    <div class="btn-group" data-id="${item.id}">
-                        <button class="btn-status" onclick="setStatus(this, 'OK')">OK</button>
-                        <button class="btn-status" onclick="setStatus(this, 'NG')">NG</button>
+                    <div class="note-area">
+                        <input type="text" class="input-note" placeholder="Jelaskan detail kerusakan (Wajib jika NG)...">
                     </div>
                 </div>`;
         });
 
-        // Inisialisasi Tanda Tangan
         const canvas = document.getElementById('signature-pad');
         signaturePad = new SignaturePad(canvas);
-        
-        // Resize canvas
-        function resizeCanvas() {
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext("2d").scale(ratio, ratio);
-            signaturePad.clear();
-        }
-        window.addEventListener("resize", resizeCanvas);
-        resizeCanvas();
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        canvas.getContext("2d").scale(ratio, ratio);
     }
 
     function setStatus(btn, val) {
-        const p = btn.parentElement;
-        p.querySelectorAll('.btn-status').forEach(b => b.classList.remove('active-ok', 'active-ng'));
+        const row = btn.closest('.check-item');
+        const noteArea = row.querySelector('.note-area');
+        const btns = row.querySelectorAll('.btn-status');
+        
+        btns.forEach(b => b.classList.remove('active-ok', 'active-ng'));
         btn.classList.add(val === 'OK' ? 'active-ok' : 'active-ng');
+
+        // Tampilkan catatan jika NG, sembunyikan jika OK
+        noteArea.style.display = (val === 'NG') ? 'block' : 'none';
+        if(val === 'OK') noteArea.querySelector('.input-note').value = "";
     }
 
     async function simpanData() {
         const nama = document.getElementById('input-nama').value;
-        const rows = document.querySelectorAll('.btn-group');
+        const rows = document.querySelectorAll('.check-item');
         
         if (!nama || signaturePad.isEmpty()) return alert("Nama dan Tanda Tangan wajib diisi!");
 
         let valid = true;
-        rows.forEach(r => { if(!r.querySelector('.active-ok, .active-ng')) valid = false; });
-        if (!valid) return alert("Lengkapi semua checklist!");
+        const results = [];
+
+        rows.forEach(r => {
+            const btnActive = r.querySelector('.active-ok, .active-ng');
+            const itemId = r.dataset.id;
+            const noteValue = r.querySelector('.input-note').value;
+
+            if(!btnActive) {
+                valid = false;
+            } else {
+                const status = btnActive.innerText;
+                if(status === 'NG' && !noteValue) {
+                    alert("Harap isi catatan untuk item yang bermasalah (NG)!");
+                    valid = false;
+                    return;
+                }
+                results.push({ item_id: itemId, status: status, keterangan: noteValue });
+            }
+        });
+
+        if (!valid) return;
 
         try {
-            // 1. Simpan Header ke prslb_log
             const { data: header, error: err1 } = await _sb.from('prslb_log').insert([{
                 mesin_id: currentMesin.id,
                 pelaksana_nama: nama,
@@ -202,21 +194,13 @@
 
             if (err1) throw err1;
 
-            // 2. Simpan Detail ke prslb_result
-            const results = Array.from(rows).map(r => ({
-                log_id: header.id,
-                item_id: r.dataset.id,
-                status: r.querySelector('.active-ok, .active-ng').innerText
-            }));
-
-            const { error: err2 } = await _sb.from('prslb_result').insert(results);
+            const finalResults = results.map(res => ({ ...res, log_id: header.id }));
+            const { error: err2 } = await _sb.from('prslb_result').insert(finalResults);
             if (err2) throw err2;
 
             alert("Data Berhasil Disimpan!");
             location.reload();
-        } catch (e) { 
-            alert("Error Simpan: " + e.message); 
-        }
+        } catch (e) { alert("Error: " + e.message); }
     }
 
     window.onload = startScanner;
