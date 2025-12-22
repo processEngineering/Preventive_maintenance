@@ -7,41 +7,80 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     <style>
-        :root { --primary: #1e293b; --bg: #f8fafc; --ng: #ef4444; --accent: #0f172a; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
-        .header img { height: 40px; }
+        :root { --primary: #0f172a; --bg: #f1f5f9; --ng: #dc2626; --accent: #2563eb; }
+        body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 15px; }
+        .container { max-width: 800px; margin: auto; }
+        
+        .header-main { text-align: center; margin-bottom: 25px; }
+        .header-main img { height: 45px; margin-bottom: 10px; }
 
         .report-card { 
-            border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 20px; 
-            background: #fff; position: relative; border-left: 6px solid var(--ng);
+            background: white; border-radius: 20px; padding: 20px; margin-bottom: 25px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;
+            transition: transform 0.2s;
         }
-        .report-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-        .mesin-name { font-size: 18px; font-weight: bold; color: var(--primary); }
-        .status-badge { background: #fee2e2; color: #b91c1c; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
 
-        .note-section { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; font-size: 13px; }
-        .note-box { background: #f1f5f9; padding: 10px; border-radius: 8px; }
-        .note-label { font-weight: bold; color: #64748b; margin-bottom: 5px; display: block; }
+        .ng-indicator { 
+            display: inline-flex; align-items: center; gap: 5px;
+            background: #fef2f2; color: #991b1b; padding: 5px 12px;
+            border-radius: 50px; font-size: 12px; font-weight: 700; border: 1px solid #fee2e2;
+        }
 
-        .signature-area { border: 2px solid #cbd5e1; border-radius: 8px; background: #fff; margin-top: 10px; }
-        #signature-pad { width: 100%; height: 150px; }
+        .mesin-title { font-size: 22px; font-weight: 800; color: var(--primary); margin: 10px 0; }
+
+        .timeline { border-left: 2px dashed #e2e8f0; margin: 20px 0; padding-left: 20px; position: relative; }
+        .timeline-item { margin-bottom: 15px; position: relative; }
+        .timeline-item::before { 
+            content: ''; position: absolute; left: -27px; top: 5px;
+            width: 12px; height: 12px; border-radius: 50%; background: #cbd5e1; border: 2px solid white;
+        }
+        .item-active::before { background: var(--accent); }
+
+        .note-bubble { background: #f8fafc; padding: 12px; border-radius: 12px; font-size: 14px; border: 1px solid #edf2f7; }
+        .role-label { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 4px; display: block; }
+
+        /* INTERACTIVE SIGNATURE SECTION */
+        .approval-zone { 
+            margin-top: 20px; padding-top: 20px; border-top: 2px solid #f1f5f9; 
+            background: #f8fafc; margin: 20px -20px -20px -20px; padding: 20px; border-radius: 0 0 20px 20px;
+        }
+
+        .sig-container { 
+            background: white; border: 2px dashed #cbd5e1; border-radius: 15px; 
+            position: relative; margin-top: 10px; touch-action: none;
+            transition: all 0.3s;
+        }
+        .sig-container:active { border-color: var(--accent); scale: 0.99; }
         
-        .input-text { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 5px; box-sizing: border-box; }
-        .btn-final { width: 100%; padding: 15px; background: var(--accent); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        canvas { width: 100%; height: 180px; cursor: url('https://cdn-icons-png.flaticon.com/32/598/598234.png'), auto; }
+
+        .btn-clear { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.05); border: none; padding: 5px 10px; border-radius: 6px; font-size: 10px; cursor: pointer; }
+
+        input, textarea { 
+            width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #cbd5e1; 
+            box-sizing: border-box; margin-bottom: 10px; font-family: inherit; font-size: 14px;
+        }
+
+        .btn-submit { 
+            width: 100%; padding: 18px; background: #94a3b8; color: white; border: none; 
+            border-radius: 12px; font-size: 16px; font-weight: 800; cursor: not-allowed;
+            transition: all 0.3s;
+        }
+        .btn-active { background: var(--primary) !important; cursor: pointer !important; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); }
+        .btn-active:hover { transform: translateY(-2px); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">
+    <div class="header-main">
         <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="Logo">
-        <h2 style="font-size: 1.2rem; color: var(--primary);">SUPERINTENDENT FINAL REVIEW</h2>
-        <p style="font-size: 12px; color: #64748b;">Review temuan NG yang sudah diverifikasi Koordinator</p>
+        <h2 style="margin:0; color:var(--primary);">Superintendent Portal</h2>
+        <p style="color:#64748b; font-size:14px;">Final Approval for Defected Machines</p>
     </div>
 
-    <div id="list-temuann-ng">Memuat data temuan NG hari ini...</div>
+    <div id="list-container">
+        </div>
 </div>
 
 <script>
@@ -49,115 +88,132 @@
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-    let signaturePads = {};
+    let pads = {};
 
-    async function loadNGReports() {
-        // Ambil log yang: 1. Sudah di-approve Koordinator, 2. Belum Final Approve, 3. Memiliki hasil NG
-        const { data, error } = await _sb
-            .from('prslb_log')
+    async function loadReports() {
+        const { data } = await _sb.from('prslb_log')
             .select('*, prslb_mesin(qr_code_id), prslb_result(*)')
             .eq('status_verifikasi', true)
             .eq('status_final', false)
             .order('created_at', { ascending: false });
 
-        const container = document.getElementById('list-temuann-ng');
-        container.innerHTML = "";
+        const container = document.getElementById('list-container');
+        const logsWithNG = data?.filter(l => l.prslb_result.some(r => r.status === 'NG')) || [];
 
-        // Filter di sisi Client: Hanya tampilkan jika ada minimal 1 item NG di hasil checklist
-        const reportsWithNG = data.filter(log => log.prslb_result.some(res => res.status === 'NG'));
-
-        if (reportsWithNG.length === 0) {
-            container.innerHTML = "<p style='text-align:center; color:#94a3b8; margin-top:50px;'>Tidak ada laporan NG yang menunggu review final.</p>";
+        if (logsWithNG.length === 0) {
+            container.innerHTML = `<div style="text-align:center; padding:50px; color:#94a3b8;">
+                <img src="https://cdn-icons-png.flaticon.com/128/1791/1791330.png" style="width:64px; opacity:0.3; margin-bottom:15px;"><br>
+                Semua aman bro. Tidak ada temuan NG hari ini.
+            </div>`;
             return;
         }
 
-        reportsWithNG.forEach(log => {
-            const logId = log.id;
+        logsWithNG.forEach(log => {
             const ngItems = log.prslb_result.filter(r => r.status === 'NG');
-            
-            container.innerHTML += `
-                <div class="report-card" id="card-${logId}">
-                    <div class="report-header">
-                        <div>
-                            <span class="mesin-name">${log.prslb_mesin.qr_code_id}</span>
-                            <div style="font-size:11px; color:#64748b;">Tanggal: ${new Date(log.created_at).toLocaleString('id-ID')}</div>
+            const html = `
+                <div class="report-card" id="card-${log.id}">
+                    <div class="ng-indicator">⚠️ ATTENTION REQUIRED</div>
+                    <div class="mesin-title">${log.prslb_mesin.qr_code_id}</div>
+                    
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <span class="role-label">Pelaksana: ${log.pelaksana_nama}</span>
+                            <div class="note-bubble">Temuan: ${ngItems.map(i => i.keterangan).join(', ')}</div>
                         </div>
-                        <span class="status-badge">${ngItems.length} ITEM NG</span>
-                    </div>
-
-                    <div class="note-section">
-                        <div class="note-box">
-                            <span class="note-label">Pelaksana: ${log.pelaksana_nama}</span>
-                            <em>"${ngItems[0]?.keterangan || '-'}"</em>
-                        </div>
-                        <div class="note-box" style="background:#ecfdf5">
-                            <span class="note-label">Koordinator: ${log.koordinator_nama}</span>
-                            <b>"${log.koordinator_note || 'Tidak ada catatan'}"</b>
+                        <div class="timeline-item item-active">
+                            <span class="role-label">Koordinator: ${log.koordinator_nama}</span>
+                            <div class="note-bubble" style="border-left: 4px solid var(--accent)">
+                                <b>Respon:</b> ${log.koordinator_note || 'Sudah diverifikasi di lapangan.'}
+                            </div>
                         </div>
                     </div>
 
-                    <div style="border-top:1px solid #eee; padding-top:10px;">
-                        <label style="font-weight:bold; font-size:13px;">Review Superintendent:</label>
-                        <input type="text" id="name-${logId}" class="input-text" placeholder="Nama Superintendent...">
-                        <textarea id="note-${logId}" class="input-text" rows="2" placeholder="Tanggapan/Instruksi Final..."></textarea>
+                    <div class="approval-zone">
+                        <span class="role-label" style="color:var(--primary)">Superintendent Decision</span>
+                        <input type="text" id="name-${log.id}" placeholder="Your Name (e.g., John Doe)" oninput="checkInput('${log.id}')">
+                        <textarea id="note-${log.id}" placeholder="Final Instruction / Feedback..." oninput="checkInput('${log.id}')"></textarea>
                         
-                        <div class="signature-area">
-                            <canvas id="pad-${logId}"></canvas>
+                        <div class="sig-container">
+                            <button class="btn-clear" onclick="clearPad('${log.id}')">Reset</button>
+                            <canvas id="pad-${log.id}"></canvas>
                         </div>
-                        <button onclick="signaturePads['${logId}'].clear()" style="font-size:10px; margin-top:5px;">Hapus TTD</button>
+                        <p style="font-size:10px; color:#94a3b8; text-align:center; margin-top:10px;">Sign above for final approval</p>
                         
-                        <button class="btn-final" onclick="submitFinalApproval('${logId}')">CLOSE CASE & SIGN</button>
+                        <button id="btn-${log.id}" class="btn-submit" onclick="submitFinal('${log.id}')">AUTHORIZE & CLOSE CASE</button>
                     </div>
                 </div>
             `;
-            
-            // Inisialisasi signature pad setelah elemen ditambahkan ke DOM
-            setTimeout(() => {
-                const canvas = document.getElementById(`pad-${logId}`);
-                const pad = new SignaturePad(canvas);
-                
-                // Fix scaling
-                const ratio = Math.max(window.devicePixelRatio || 1, 1);
-                canvas.width = canvas.offsetWidth * ratio;
-                canvas.height = canvas.offsetHeight * ratio;
-                canvas.getContext("2d").scale(ratio, ratio);
-                
-                signaturePads[logId] = pad;
-            }, 100);
+            container.insertAdjacentHTML('beforeend', html);
+            initPad(log.id);
         });
     }
 
-    async function submitFinalApproval(logId) {
-        const name = document.getElementById(`name-${logId}`).value;
-        const note = document.getElementById(`note-${logId}`).value;
-        const pad = signaturePads[logId];
+    function initPad(id) {
+        const canvas = document.getElementById(`pad-${id}`);
+        const pad = new SignaturePad(canvas, {
+            penColor: 'rgb(15, 23, 42)',
+            minWidth: 1.5,
+            maxWidth: 3.5
+        });
+        
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        canvas.getContext("2d").scale(ratio, ratio);
+        
+        pad.onEnd = () => checkInput(id); // Aktifkan tombol saat tanda tangan dibuat
+        pads[id] = pad;
+    }
 
-        if (!name || pad.isEmpty()) {
-            return alert("Nama dan Tanda Tangan wajib diisi!");
-        }
+    function checkInput(id) {
+        const name = document.getElementById(`name-${id}`).value;
+        const btn = document.getElementById(`btn-${id}`);
+        const pad = pads[id];
 
-        const { error } = await _sb
-            .from('prslb_log')
-            .update({
-                superintendent_nama: name,
-                superintendent_note: note,
-                status_final: true,
-                signature_superintendent: pad.toDataURL()
-            })
-            .eq('id', logId);
-
-        if (!error) {
-            alert("Approval Final Berhasil!");
-            document.getElementById(`card-${logId}`).remove();
-            if (document.getElementById('list-temuann-ng').children.length === 0) {
-                location.reload();
-            }
+        if (name.length > 2 && !pad.isEmpty()) {
+            btn.classList.add('btn-active');
         } else {
-            alert("Error: " + error.message);
+            btn.classList.remove('btn-active');
         }
     }
 
-    window.onload = loadNGReports;
+    function clearPad(id) {
+        pads[id].clear();
+        checkInput(id);
+    }
+
+    async function submitFinal(id) {
+        const name = document.getElementById(`name-${id}`).value;
+        const note = document.getElementById(`note-${id}`).value;
+        const btn = document.getElementById(`btn-${id}`);
+
+        if (!btn.classList.contains('btn-active')) return;
+
+        btn.innerText = "Processing...";
+        btn.disabled = true;
+
+        const { error } = await _sb.from('prslb_log').update({
+            superintendent_nama: name,
+            superintendent_note: note,
+            status_final: true,
+            signature_superintendent: pads[id].toDataURL()
+        }).eq('id', id);
+
+        if (!error) {
+            document.getElementById(`card-${id}`).style.opacity = '0.5';
+            document.getElementById(`card-${id}`).style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                document.getElementById(`card-${id}`).remove();
+                if (Object.keys(pads).length === 1) location.reload();
+            }, 300);
+        } else {
+            alert(error.message);
+            btn.innerText = "AUTHORIZE & CLOSE CASE";
+            btn.disabled = false;
+        }
+    }
+
+    window.onload = loadReports;
 </script>
 </body>
 </html>
