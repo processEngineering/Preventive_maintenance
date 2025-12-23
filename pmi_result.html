@@ -3,123 +3,214 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>History PMI - PT AKG</title>
+    <title>PMI Report - PT AKG</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        :root { --primary: #003366; --bg: #f1f5f9; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .filter-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; }
-        select, button { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; }
-        button { background: var(--primary); color: white; font-weight: 700; cursor: pointer; border: none; transition: 0.3s; }
-        button:hover { background: #002244; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
-        th { background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; }
-        td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
-        .btn-view { background: #10b981; color: white; padding: 6px 12px; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        :root { --primary: #003366; --accent: #ffcc00; }
+        body { font-family: 'Inter', sans-serif; background: #525659; margin: 0; padding: 20px; }
+        
+        /* Filter Area - Hilang saat Print */
+        .filter-container { max-width: 210mm; margin: 0 auto 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+        select, button { padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 13px; }
+        button { background: var(--primary); color: white; font-weight: bold; cursor: pointer; border: none; }
+
+        /* Paper Format A4 */
+        .paper { width: 210mm; min-height: 297mm; background: white; padding: 10mm; margin: 0 auto; box-sizing: border-box; display: none; }
+        
+        /* Header Tabel PT AKG */
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        .header-table td { border: 1px solid black; padding: 5px; font-size: 11px; }
+        .logo { width: 100px; }
+        .title { font-size: 13px; font-weight: bold; text-align: center; }
+
+        /* Info Mesin */
+        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 11px; }
+        .info-table td { padding: 3px 0; }
+
+        /* Main Table */
+        .main-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+        .main-table th, .main-table td { border: 1px solid black; padding: 5px; }
+        .section-row { background: #eeeeee; font-weight: bold; }
+        .center { text-align: center; }
+
+        /* Tanda Tangan */
+        .footer-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }
+        .footer-table td { border: 1px solid black; width: 33%; height: 80px; text-align: center; vertical-align: bottom; padding-bottom: 5px; }
+        .sig-img { max-height: 50px; display: block; margin: 0 auto; }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .filter-container, .btn-print, .list-results { display: none !important; }
+            .paper { display: block !important; box-shadow: none; margin: 0; width: 100%; }
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2 style="color: var(--primary); margin-top: 0;">Arsip Laporan PMI</h2>
-    
-    <div class="filter-group">
-        <div>
-            <label style="font-size: 12px; font-weight: 800;">PILIH MESIN</label>
-            <select id="filter-mesin">
-                <option value="">Semua Mesin</option>
+    <div class="filter-container">
+        <h3 style="margin-top:0; color:var(--primary)">Cari Laporan PMI</h3>
+        <div class="filter-grid">
+            <select id="f-mesin">
+                <option value="">-- Semua Mesin --</option>
+                <option value="LIANXIN 80 T (TOAD)">LIANXIN 80 T (TOAD)</option>
                 <option value="WIBA 270 T (NEBULA)">WIBA 270 T (NEBULA)</option>
                 <option value="WIBA 500 T (THANOS)">WIBA 500 T (THANOS)</option>
                 <option value="EXTRUDER">EXTRUDER</option>
             </select>
-        </div>
-        <div>
-            <label style="font-size: 12px; font-weight: 800;">BULAN</label>
-            <select id="filter-bulan">
-                <option value="01">Januari</option><option value="02">Februari</option>
-                <option value="03">Maret</option><option value="04">April</option>
-                <option value="05">Mei</option><option value="06">Juni</option>
-                <option value="07">Juli</option><option value="08">Agustus</option>
-                <option value="09">September</option><option value="10">Oktober</option>
-                <option value="11">November</option><option value="12">Desember</option>
+            <select id="f-bulan">
+                <option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option>
+                <option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option>
+                <option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option>
+                <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
             </select>
-        </div>
-        <div>
-            <label style="font-size: 12px; font-weight: 800;">TAHUN</label>
-            <select id="filter-tahun">
-                <option value="2024">2024</option>
-                <option value="2025">2025</option>
+            <select id="f-tahun">
+                <option value="2024">2024</option><option value="2025" selected>2025</option>
             </select>
+            <button onclick="searchData()">CARI</button>
         </div>
-        <div style="display: flex; align-items: flex-end;">
-            <button onclick="cariLaporan()">CARI DATA</button>
-        </div>
+
+        <div id="list-results" style="margin-top:15px; max-height: 200px; overflow-y: auto;">
+            </div>
     </div>
 
-    <table id="result-table">
-        <thead>
+    <div style="text-align: center; margin-bottom: 10px;">
+        <button class="btn-print" id="btnPrint" style="display:none; background:#d32f2f;" onclick="window.print()">PRINT / DOWNLOAD PDF</button>
+    </div>
+
+    <div class="paper" id="report-paper">
+        <table class="header-table">
             <tr>
-                <th>Tanggal</th>
-                <th>Mesin</th>
-                <th>Teknisi</th>
-                <th>Status</th>
-                <th>Aksi</th>
+                <td rowspan="4" style="text-align:center; width:120px;"><img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo"></td>
+                <td rowspan="4" class="title">FORM PREVENTIF MESIN INJECTION<br>(CLAMPING & INJECTION UNIT)</td>
+                <td>No. Dokumen: AF.SP 05.07.Rev-00</td>
             </tr>
-        </thead>
-        <tbody id="list-body">
-            <tr><td colspan="5" style="text-align:center; padding:40px; color:#94a3b8;">Silakan filter data terlebih dahulu.</td></tr>
-        </tbody>
-    </table>
-</div>
+            <tr><td>Tanggal Terbit: 02 Agustus 2024</td></tr>
+            <tr><td>Halaman: 1/1</td></tr>
+            <tr><td>Tanggal Revisi: -</td></tr>
+        </table>
 
-<script>
-    const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
-    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
-    const _sb = supabase.createClient(SB_URL, SB_KEY);
+        <table class="info-table">
+            <tr>
+                <td width="15%">MERK MESIN</td><td width="35%">: <span id="v-merk"></span></td>
+                <td width="15%">TARGET SELESAI</td><td width="35%">: <span id="v-target">-</span></td>
+            </tr>
+            <tr>
+                <td>TONAGE</td><td>: <span id="v-ton"></span></td>
+                <td>START JAM</td><td>: <span id="v-start"></span></td>
+            </tr>
+            <tr>
+                <td>TANGGAL</td><td>: <span id="v-tgl"></span></td>
+                <td>FINISH JAM</td><td>: <span id="v-finish"></span></td>
+            </tr>
+            <tr>
+                <td>KODE HERO</td><td>: <b id="v-hero"></b></td>
+                <td>RUNNING HOURS</td><td>: <span>-</span></td>
+            </tr>
+        </table>
 
-    async function cariLaporan() {
-        const mesin = document.getElementById('filter-mesin').value;
-        const bulan = document.getElementById('filter-bulan').value;
-        const tahun = document.getElementById('filter-tahun').value;
-        const tbody = document.getElementById('list-body');
+        <table class="main-table">
+            <thead>
+                <tr>
+                    <th width="30">NO</th>
+                    <th>ITEM PENGECEKAN</th>
+                    <th width="180">STANDARD</th>
+                    <th width="50">ACTUAL</th>
+                    <th width="120">KETERANGAN</th>
+                </tr>
+            </thead>
+            <tbody id="v-body"></tbody>
+        </table>
 
-        tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>Mencari...</td></tr>";
+        <table class="footer-table">
+            <tr>
+                <td>Dibuat Oleh (Teknisi)</td>
+                <td>Diperiksa Oleh (Koordinator)</td>
+                <td>Disetujui Oleh (Superintendent)</td>
+            </tr>
+            <tr style="height: 60px;">
+                <td id="s-pel"></td><td id="s-koo"></td><td id="s-sup"></td>
+            </tr>
+            <tr>
+                <td id="n-pel"></td><td id="n-koo"></td><td id="n-sup"></td>
+            </tr>
+        </table>
+    </div>
 
-        // Query berdasarkan range tanggal (bulan)
-        const startDate = `${tahun}-${bulan}-01`;
-        const endDate = `${tahun}-${bulan}-31`;
+    <script>
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-        let query = _sb.from('pmi_log')
-            .select('*')
-            .gte('created_at', startDate)
-            .lte('created_at', endDate)
-            .order('created_at', { ascending: false });
+        async function searchData() {
+            const m = document.getElementById('f-mesin').value;
+            const b = document.getElementById('f-bulan').value;
+            const t = document.getElementById('f-tahun').value;
+            const resDiv = document.getElementById('list-results');
+            
+            resDiv.innerHTML = "Mencari...";
+            let q = _sb.from('pmi_log').select('id, created_at, mesin_id, status_verifikasi')
+                    .gte('created_at', `${t}-${b}-01`).lte('created_at', `${t}-${b}-31`);
+            if(m) q = q.eq('mesin_id', m);
 
-        if (mesin) query = query.eq('mesin_id', mesin);
+            const { data, error } = await q.order('created_at', {ascending: false});
+            if(error || !data.length) return resDiv.innerHTML = "Data tidak ditemukan.";
 
-        const { data, error } = await query;
-
-        if (error || data.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>Data tidak ditemukan.</td></tr>";
-            return;
+            resDiv.innerHTML = `<table style="width:100%; border-collapse:collapse; font-size:12px;">
+                ${data.map(d => `
+                    <tr style="border-bottom:1px solid #eee;">
+                        <td style="padding:8px">${new Date(d.created_at).toLocaleDateString()}</td>
+                        <td><b>${d.mesin_id}</b></td>
+                        <td><button onclick="loadReport('${d.id}')" style="padding:4px 8px; font-size:10px;">BUKA FORM</button></td>
+                    </tr>
+                `).join('')}
+            </table>`;
         }
 
-        tbody.innerHTML = "";
-        data.forEach(item => {
-            const row = `
-                <tr>
-                    <td>${new Date(item.created_at).toLocaleDateString('id-ID')}</td>
-                    <td><b>${item.mesin_id}</b></td>
-                    <td>${item.nama_pelaksana}</td>
-                    <td><span style="color:${item.status_verifikasi === 'Completed' ? 'green' : 'orange'}">${item.status_verifikasi}</span></td>
-                    <td><a href="pmi_result.html?id=${item.id}" class="btn-view">LIHAT FORM</a></td>
-                </tr>
-            `;
-            tbody.innerHTML += row;
-        });
-    }
-</script>
+        async function loadReport(id) {
+            const { data: log, error } = await _sb.from('pmi_log').select('*, pmi_result(*)').eq('id', id).single();
+            if(error) return alert("Gagal!");
+
+            // Display Paper & Print Button
+            document.getElementById('report-paper').style.display = 'block';
+            document.getElementById('btnPrint').style.display = 'inline-block';
+
+            // Fill Data
+            document.getElementById('v-hero').innerText = log.mesin_id;
+            document.getElementById('v-tgl').innerText = new Date(log.created_at).toLocaleDateString('id-ID');
+            document.getElementById('v-start').innerText = new Date(log.created_at).toLocaleTimeString();
+            document.getElementById('v-finish').innerText = log.completed_at ? new Date(log.completed_at).toLocaleTimeString() : '-';
+            
+            // Auto Extract Merk & Tonage
+            document.getElementById('v-merk').innerText = log.mesin_id.split(' ')[0];
+            document.getElementById('v-ton').innerText = log.mesin_id.includes('T') ? log.mesin_id.split(' T')[0].split(' ').pop() + ' T' : '-';
+
+            const tbody = document.getElementById('v-body');
+            tbody.innerHTML = `<tr class="section-row"><td colspan="5">MEKANIKAL & HYDROLIK UNIT :</td></tr>`;
+            
+            log.pmi_result.forEach((r, i) => {
+                if(i === 10) tbody.innerHTML += `<tr class="section-row"><td colspan="5">INJECTION UNIT :</td></tr>`;
+                tbody.innerHTML += `<tr>
+                    <td class="center">${i+1}</td>
+                    <td>${r.item_name}</td>
+                    <td>${r.standard || '-'}</td>
+                    <td class="center"><b>${r.status}</b></td>
+                    <td>${r.keterangan || ''}</td>
+                </tr>`;
+            });
+
+            // Signatures & Names
+            document.getElementById('n-pel').innerText = log.nama_pelaksana || '-';
+            document.getElementById('n-koo').innerText = log.nama_koordinator || '-';
+            document.getElementById('n-sup').innerText = log.nama_superintendent || '-';
+
+            document.getElementById('s-pel').innerHTML = log.signature_pelaksana ? `<img src="${log.signature_pelaksana}" class="sig-img">` : '';
+            document.getElementById('s-koo').innerHTML = log.signature_koordinator ? `<img src="${log.signature_koordinator}" class="sig-img">` : '';
+            document.getElementById('s-sup').innerHTML = log.signature_superintendent ? `<img src="${log.signature_superintendent}" class="sig-img">` : '';
+
+            window.scrollTo({ top: document.getElementById('report-paper').offsetTop, behavior: 'smooth' });
+        }
+    </script>
 </body>
 </html>
