@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CHECKLIST HARIAN STAND LABEL DAN ROBOT - FIXED TABLE</title>
+    <title>CHECKLIST HARIAN STAND LABEL DAN ROBOT - SIGNATURE ENLARGED</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @page { size: A4 landscape; margin: 8mm; }
@@ -29,9 +29,9 @@
         .meta-info { display: flex; justify-content: space-between; margin: 8px 0; font-weight: bold; font-size: 11pt; }
         .meta-info span { border-bottom: 1.5px solid black; min-width: 220px; display: inline-block; padding: 0 5px; }
 
-        /* TABLE - PENEMPATAN TANDA TANGAN DI DALAM KOTAK */
+        /* TABLE BODY */
         .table-official { width: 100%; border-collapse: collapse; table-layout: fixed; border: 2px solid black; }
-        .table-official th, .table-official td { border: 1px solid black; padding: 2px; font-size: 8pt; text-align: center; vertical-align: middle; overflow: hidden; }
+        .table-official th, .table-official td { border: 1px solid black; padding: 2px; font-size: 8pt; text-align: center; vertical-align: middle; }
         .table-official th { background-color: #e5e5e5; font-weight: bold; }
         
         .col-no { width: 30px; }
@@ -40,14 +40,25 @@
         .col-tgl { width: 25px; }
 
         .section-header { background-color: #dcdcdc !important; text-align: left !important; padding-left: 5px !important; }
-        .sig-cell-img { max-height: 40px; width: 100%; object-fit: contain; mix-blend-mode: multiply; display: block; margin: 0 auto; }
+
+        /* MODIFIKASI TANDA TANGAN AGAR GEDE DAN PAS */
+        .sig-td { padding: 0 !important; height: 60px; overflow: hidden; position: relative; } /* Tinggi ditambah agar lebih lega */
+        .sig-cell-img { 
+            height: 100%; 
+            width: 100%; 
+            object-fit: contain; /* Agar gambar tidak gepeng tapi tetap besar */
+            mix-blend-mode: multiply; 
+            display: block;
+            transform: scale(1.2); /* Zoom sedikit agar benar-benar ngepas ke garis */
+        }
+
         .text-ng { color: red; font-weight: bold; }
 
         /* FOOTER */
         .footer-flex { display: flex; justify-content: space-between; margin-top: 15px; }
         .keterangan { font-size: 8.5pt; width: 60%; line-height: 1.4; }
         .diketahui-box { width: 220px; text-align: center; }
-        .sig-frame { border: 1px solid black; width: 160px; height: 75px; margin: 5px auto; display: flex; align-items: center; justify-content: center; }
+        .sig-frame { border: 1px solid black; width: 160px; height: 85px; margin: 5px auto; display: flex; align-items: center; justify-content: center; }
         .name-line { border-top: 1.5px solid black; width: 180px; margin: 0 auto; padding-top: 3px; font-weight: bold; text-transform: uppercase; }
 
         .no-print { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; padding: 10px; background: #fff; border-radius: 5px; }
@@ -100,12 +111,12 @@
             </thead>
             <tbody id="table-content"></tbody>
             <tbody id="footer-table-content">
-                <tr id="row-paraf-pelaksana" style="height: 50px;">
+                <tr id="row-paraf-pelaksana">
                     <td colspan="3" style="text-align: right; font-weight: bold; padding-right: 10px;">Paraf Pelaksana</td>
-                    </tr>
-                <tr id="row-paraf-koordinator" style="height: 50px;">
+                </tr>
+                <tr id="row-paraf-koordinator">
                     <td colspan="3" style="text-align: right; font-weight: bold; padding-right: 10px;">Paraf Pengecek (Coord)</td>
-                    </tr>
+                </tr>
             </tbody>
         </table>
 
@@ -154,7 +165,6 @@
             const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
             const { data: results } = log ? await _sb.from('chslr_result').select('*').eq('log_id', log.id) : { data: [] };
 
-            // Render Item Table
             const tbody = document.getElementById('table-content');
             tbody.innerHTML = "";
             items?.forEach(item => {
@@ -171,40 +181,33 @@
                 tbody.innerHTML += row + `</tr>`;
             });
 
-            // Render Paraf Harian DI DALAM KOTAK
             const rowPel = document.getElementById('row-paraf-pelaksana');
             const rowCoord = document.getElementById('row-paraf-koordinator');
-            
-            // Bersihkan cell lama (kecuali label "Paraf...")
             while(rowPel.cells.length > 1) rowPel.deleteCell(1);
             while(rowCoord.cells.length > 1) rowCoord.deleteCell(1);
 
             for(let t=1; t<=31; t++) {
-                // Paraf Pelaksana
                 const sigPel = results.find(r => r.tanggal === t && r.signature);
                 const cellPel = rowPel.insertCell();
-                cellPel.className = "col-tgl";
+                cellPel.className = "col-tgl sig-td"; // Pakai class baru
                 cellPel.innerHTML = sigPel ? `<img src="${sigPel.signature}" class="sig-cell-img">` : "";
 
-                // Paraf Koordinator (muncul di tanggal terakhir yang diisi)
                 const hasData = results.some(r => r.tanggal === t);
                 const cellCoord = rowCoord.insertCell();
-                cellCoord.className = "col-tgl";
+                cellCoord.className = "col-tgl sig-td"; // Pakai class baru
                 cellCoord.innerHTML = (log?.signature_koordinator && hasData) ? `<img src="${log.signature_koordinator}" class="sig-cell-img">` : "";
             }
 
-            // Superintendent
             const superBox = document.getElementById('super-sig');
             const superName = document.getElementById('super-name');
             if(log?.signature_superintendent) {
-                superBox.innerHTML = `<img src="${log.signature_superintendent}" style="height:65px; mix-blend-mode: multiply;">`;
+                superBox.innerHTML = `<img src="${log.signature_superintendent}" style="height:80px; mix-blend-mode: multiply;">`;
                 superName.innerText = log.superintendent_nama;
             } else {
                 superBox.innerHTML = "";
                 superName.innerText = "( ........................ )";
             }
         }
-
         window.onload = init;
     </script>
 </body>
