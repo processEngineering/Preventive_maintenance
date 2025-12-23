@@ -3,193 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Preventif Mesin Injection - PT AKG</title>
+    <title>Preventif Maintenance AKG</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        :root { --primary: #003366; --accent: #ffcc00; --bg: #f8fafc; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #1e293b; }
-        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); overflow: hidden; }
+        :root { --primary: #003366; --success: #10b981; --bg: #f1f5f9; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 0; }
         
-        /* Header Section */
-        .header { background: var(--primary); color: white; padding: 25px 20px; text-align: center; }
-        .header h1 { margin: 0; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; }
-        .machine-info { display: inline-block; margin-top: 10px; background: var(--accent); color: #000; padding: 6px 16px; border-radius: 20px; font-weight: 700; font-size: 14px; }
+        /* Scanner Style */
+        #scanner-container { padding: 20px; text-align: center; }
+        #reader { width: 100%; max-width: 500px; margin: auto; border-radius: 12px; overflow: hidden; border: 4px solid var(--primary); }
 
-        /* Form Controls */
-        .input-section { padding: 20px; border-bottom: 8px solid var(--bg); }
-        .grid-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
-        label { display: block; font-size: 11px; font-weight: 700; margin-bottom: 6px; color: #64748b; text-transform: uppercase; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; box-sizing: border-box; outline: none; }
-        input:focus { border-color: var(--primary); }
-
-        /* Table Checklist */
-        .table-container { padding: 0; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 400px; }
-        th { background: #f1f5f9; padding: 12px; font-size: 11px; text-align: left; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; color: #475569; }
-        td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: top; }
-        .cat-row { background: #f8fafc; font-weight: 800; color: var(--primary); font-size: 12px; text-transform: uppercase; border-left: 4px solid var(--primary); }
+        /* Form Style */
+        .container { max-width: 800px; margin: 0 auto; background: white; min-height: 100vh; display: none; }
+        .header { background: var(--primary); color: white; padding: 20px; text-align: center; }
+        .machine-badge { background: #ffcc00; color: black; padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-top: 10px; display: inline-block; }
         
-        /* Options & Inputs in Table */
-        .status-group { display: flex; gap: 5px; margin-top: 5px; }
-        .status-group label { background: #f1f5f9; padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 12px; flex: 1; justify-content: center; }
+        .section-padding { padding: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; color: #475569; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 15px; box-sizing: border-box; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: #f8fafc; padding: 10px; font-size: 12px; border-bottom: 2px solid #e2e8f0; text-align: left; }
+        td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        .category-head { background: #e2e8f0; font-weight: bold; font-size: 12px; }
+
+        .status-group { display: flex; gap: 5px; }
+        .status-group label { flex: 1; padding: 8px; text-align: center; background: #f1f5f9; border-radius: 6px; cursor: pointer; font-size: 11px; }
         .status-group input { display: none; }
-        .status-group input:checked + span { color: white; font-weight: bold; }
-        .status-group label:has(input[value="OK"]:checked) { background: #10b981; color: white; }
-        .status-group label:has(input[value="NG"]:checked) { background: #ef4444; color: white; }
-        .status-group label:has(input[value="Repair"]:checked) { background: #f59e0b; color: white; }
+        .status-group input:checked + span { font-weight: bold; color: white; }
+        .status-group label:has(input[value="OK"]:checked) { background: var(--success); }
+        .status-group label:has(input[value="NG"]:checked) { background: #ef4444; }
+        .status-group label:has(input[value="Repair"]:checked) { background: #f59e0b; }
 
-        /* Signature */
-        .sig-section { padding: 20px; text-align: center; background: #fff; }
-        #sig-canvas { border: 2px dashed #cbd5e1; border-radius: 10px; width: 100%; height: 200px; touch-action: none; background: #fafafa; }
-        
-        .btn-save { width: 90%; margin: 20px auto; display: block; padding: 18px; background: #003366; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.3s; }
-        .btn-save:disabled { background: #94a3b8; cursor: not-allowed; }
-
-        /* Screen States */
-        #error-screen { display: none; text-align: center; padding: 80px 20px; }
-        #loading { text-align: center; padding: 100px 20px; font-weight: 600; color: var(--primary); font-size: 18px; }
+        #sig-canvas { border: 2px dashed #cbd5e1; background: #fff; width: 100%; height: 180px; border-radius: 8px; touch-action: none; }
+        .btn-submit { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; font-weight: bold; font-size: 16px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div id="loading">Validasi Mesin & Memuat Data...</div>
-
-<div id="error-screen">
-    <h1 style="color: #ef4444; font-size: 40px;">⚠️</h1>
-    <h2 style="color: #1e293b;">AKSES DITOLAK</h2>
-    <p style="color: #64748b;">Scan QR Code pada mesin untuk mengisi form preventif ini.</p>
-    <br>
-    <a href="index.html" style="color: var(--primary); font-weight: 700; text-decoration: none;">Kembali ke Dashboard</a>
-</div>
-
-<div class="container" id="main-content" style="display: none;">
-    <div class="header">
-        <h1>PREVENTIF MESIN INJECTION (CLAMPING UNIT)</h1>
-        <div class="machine-info" id="display-machine">LOADING...</div>
+    <div id="scanner-container">
+        <h2 style="color:var(--primary)">SCAN BARCODE MESIN</h2>
+        <p style="color:#64748b">Arahkan kamera ke barcode mesin untuk verifikasi</p>
+        <div id="reader"></div>
+        <p id="scan-status" style="margin-top:20px; font-weight:bold; color:var(--primary)">Menunggu Scan...</p>
     </div>
 
-    <div class="input-section">
-        <label>Nama Pelaksana (Teknisi)</label>
-        <input type="text" id="nama_pelaksana" placeholder="Contoh: Budi Santoso">
-        
-        <div class="grid-inputs">
-            <div>
-                <label>Bulan Periode</label>
-                <select id="bulan">
-                    <option value="1">Januari</option><option value="2">Februari</option>
-                    <option value="3">Maret</option><option value="4">April</option>
-                    <option value="5">Mei</option><option value="6">Juni</option>
-                    <option value="7">Juli</option><option value="8">Agustus</option>
-                    <option value="9">September</option><option value="10">Oktober</option>
-                    <option value="11">November</option><option value="12">Desember</option>
-                </select>
+    <div class="container" id="form-container">
+        <div class="header">
+            <h2 style="margin:0">FORM PREVENTIF BULANAN</h2>
+            <div class="machine-badge" id="machine-display">ID MESIN: -</div>
+        </div>
+
+        <div class="section-padding">
+            <label>NAMA PELAKSANA (TEKNISI)</label>
+            <input type="text" id="nama_pelaksana" placeholder="Ketik Nama Anda">
+
+            <div style="display:flex; gap:15px">
+                <div style="flex:1">
+                    <label>BULAN</label>
+                    <select id="bulan">
+                        <option value="1">Januari</option><option value="2">Februari</option>
+                        <option value="3">Maret</option><option value="4">April</option>
+                        <option value="5">Mei</option><option value="6">Juni</option>
+                        <option value="7">Juli</option><option value="8">Agustus</option>
+                        <option value="9">September</option><option value="10">Oktober</option>
+                        <option value="11">November</option><option value="12">Desember</option>
+                    </select>
+                </div>
+                <div style="flex:1">
+                    <label>TAHUN</label>
+                    <input type="number" id="tahun" value="2025" readonly>
+                </div>
             </div>
-            <div>
-                <label>Tahun</label>
-                <input type="text" id="tahun" value="2025" readonly>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>ITEM PENGECEKAN</th>
+                        <th width="45%">STATUS & KET</th>
+                    </tr>
+                </thead>
+                <tbody id="item-list"></tbody>
+            </table>
+
+            <div style="margin-top:30px">
+                <label>TANDA TANGAN PELAKSANA</label>
+                <canvas id="sig-canvas"></canvas>
+                <button onclick="signaturePad.clear()" style="background:none; border:none; color:red; font-size:11px; cursor:pointer">Hapus Tanda Tangan</button>
             </div>
         </div>
+        <button class="btn-submit" onclick="submitData()">SIMPAN DATA KE DATABASE</button>
     </div>
 
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Item Pengecekan</th>
-                    <th width="45%">Status & Keterangan</th>
-                </tr>
-            </thead>
-            <tbody id="pmi-items-body"></tbody>
-        </table>
-    </div>
+    <script>
+        // 1. KONEKSI SUPABASE
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-    <div class="sig-section">
-        <label>Tanda Tangan Digital Pelaksana</label>
-        <canvas id="sig-canvas"></canvas>
-        <button onclick="signaturePad.clear()" style="background:none; border:none; color: #ef4444; font-size: 12px; font-weight: 700; margin-top: 10px; cursor: pointer; text-decoration: underline;">BERSIHKAN TANDA TANGAN</button>
-    </div>
+        const html5QrCode = new Html5Qrcode("reader");
+        const canvas = document.getElementById('sig-canvas');
+        const signaturePad = new SignaturePad(canvas);
+        let selectedMachineId = "";
+        let globalItems = [];
 
-    <button class="btn-save" id="btnSubmit" onclick="saveData()">SIMPAN DATA PREVENTIF</button>
-</div>
+        // 2. FUNGSI SCANNER
+        const onScanSuccess = async (decodedText) => {
+            const scannedID = decodedText.trim();
+            document.getElementById('scan-status').innerText = "Verifikasi Mesin: " + scannedID;
 
-<script>
-    // INTEGRASI SUPABASE
-    const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
-    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
-    const _sb = supabase.createClient(SB_URL, SB_KEY);
+            // Verifikasi ke tabel pmi_machine
+            const { data, error } = await _sb.from('pmi_machine').select('*').eq('id', scannedID).single();
 
-    const canvas = document.getElementById('sig-canvas');
-    const signaturePad = new SignaturePad(canvas);
-    const urlParams = new URLSearchParams(window.location.search);
-    const machineId = urlParams.get('id');
-    let dbItems = [];
-
-    async function init() {
-        if (!machineId) return showError();
-
-        // 1. Validasi Mesin (pmi_machine)
-        const { data: machine, error: mErr } = await _sb.from('pmi_machine').select('*').eq('id', machineId).single();
-        if (mErr || !machine) return showError();
-
-        document.getElementById('display-machine').innerText = `${machine.id} - ${machine.machine_name}`;
-        
-        // 2. Load Checklist Items (pmi_items)
-        const { data: items, error: iErr } = await _sb.from('pmi_items').select('*').order('sort_order', { ascending: true });
-        if (iErr) return alert("Gagal memuat item pengecekan.");
-
-        dbItems = items;
-        renderChecklist(items);
-        
-        document.getElementById('bulan').value = new Date().getMonth() + 1;
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('main-content').style.display = 'block';
-        resizeCanvas();
-    }
-
-    function renderChecklist(items) {
-        const tbody = document.getElementById('pmi-items-body');
-        let currentCat = "";
-
-        items.forEach(it => {
-            if (it.category !== currentCat) {
-                currentCat = it.category;
-                tbody.innerHTML += `<tr class="cat-row"><td colspan="2">${currentCat}</td></tr>`;
+            if (data) {
+                selectedMachineId = data.id;
+                html5QrCode.stop();
+                document.getElementById('scanner-container').style.display = 'none';
+                document.getElementById('form-container').style.display = 'block';
+                document.getElementById('machine-display').innerText = `${data.id} (${data.machine_name})`;
+                loadChecklist();
+                resizeCanvas();
+            } else {
+                document.getElementById('scan-status').innerText = "❌ Mesin " + scannedID + " Tidak Terdaftar!";
+                document.getElementById('scan-status').style.color = "red";
             }
+        };
 
-            tbody.innerHTML += `
-                <tr>
-                    <td>
-                        <strong>${it.item_name}</strong><br>
-                        <small style="color: #64748b; line-height: 1.4;">Std: ${it.standard}</small>
-                    </td>
-                    <td>
-                        <div class="status-group">
-                            <label><input type="radio" name="st-${it.id}" value="OK" checked><span>OK</span></label>
-                            <label><input type="radio" name="st-${it.id}" value="NG"><span>NG</span></label>
-                            <label><input type="radio" name="st-${it.id}" value="Repair"><span>RP</span></label>
-                        </div>
-                        <input type="text" id="ket-${it.id}" placeholder="Keterangan..." style="margin-top:8px; padding:8px; font-size:12px; height: 34px;">
-                    </td>
-                </tr>
-            `;
-        });
-    }
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess);
 
-    async function saveData() {
-        const nama = document.getElementById('nama_pelaksana').value;
-        if (!nama) return alert("Mohon isi Nama Pelaksana!");
-        if (signaturePad.isEmpty()) return alert("Tanda tangan wajib diisi!");
+        // 3. LOAD ITEM DARI DATABASE
+        async function loadChecklist() {
+            const { data: items } = await _sb.from('pmi_items').select('*').order('sort_order', { ascending: true });
+            globalItems = items;
+            const container = document.getElementById('item-list');
+            let currentCat = "";
 
-        const btn = document.getElementById('btnSubmit');
-        btn.disabled = true;
-        btn.innerText = "MENYIMPAN...";
+            items.forEach(it => {
+                if (it.category !== currentCat) {
+                    currentCat = it.category;
+                    container.innerHTML += `<tr class="category-head"><td colspan="2">${currentCat}</td></tr>`;
+                }
+                container.innerHTML += `
+                    <tr>
+                        <td><b>${it.item_name}</b><br><small>${it.standard}</small></td>
+                        <td>
+                            <div class="status-group">
+                                <label><input type="radio" name="st-${it.id}" value="OK" checked><span>OK</span></label>
+                                <label><input type="radio" name="st-${it.id}" value="NG"><span>NG</span></label>
+                                <label><input type="radio" name="st-${it.id}" value="Repair"><span>RP</span></label>
+                            </div>
+                            <input type="text" id="ket-${it.id}" placeholder="Ket..." style="margin-top:5px; padding:5px; font-size:11px; margin-bottom:0">
+                        </td>
+                    </tr>`;
+            });
+            document.getElementById('bulan').value = new Date().getMonth() + 1;
+        }
 
-        try {
-            // A. Simpan Header ke pmi_log
-            const { data: log, error: logErr } = await _sb.from('pmi_log').insert([{
-                mesin_id: machineId,
+        // 4. SIMPAN DATA
+        async function submitData() {
+            const nama = document.getElementById('nama_pelaksana').value;
+            if (!nama || signaturePad.isEmpty()) return alert("Nama dan Tanda Tangan Wajib Diisi!");
+
+            // Insert ke pmi_log
+            const { data: log, error: e1 } = await _sb.from('pmi_log').insert([{
+                mesin_id: selectedMachineId,
                 bulan: document.getElementById('bulan').value,
                 tahun: document.getElementById('tahun').value,
                 nama_pelaksana: nama,
@@ -197,46 +177,30 @@
                 status_verifikasi: 'Pending'
             }]).select();
 
-            if (logErr) throw logErr;
+            if (e1) return alert("Gagal simpan log: " + e1.message);
 
-            // B. Simpan Detail ke pmi_result
-            const results = dbItems.map(it => ({
+            // Insert ke pmi_result
+            const results = globalItems.map(it => ({
                 log_id: log[0].id,
-                item_id: it.id,
                 item_name: it.item_name,
                 status: document.querySelector(`input[name="st-${it.id}"]:checked`).value,
                 keterangan: document.getElementById(`ket-${it.id}`).value
             }));
 
-            const { error: resErr } = await _sb.from('pmi_result').insert(results);
-            if (resErr) throw resErr;
-
-            alert("SUKSES! Data Preventif Telah Tersimpan.");
-            window.location.href = "index.html";
-
-        } catch (err) {
-            alert("Error: " + err.message);
-            btn.disabled = false;
-            btn.innerText = "SIMPAN DATA PREVENTIF";
+            const { error: e2 } = await _sb.from('pmi_result').insert(results);
+            if (e2) alert("Gagal simpan hasil: " + e2.message);
+            else {
+                alert("BERHASIL! Data tersimpan.");
+                location.reload();
+            }
         }
-    }
 
-    function showError() {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('error-screen').style.display = 'block';
-    }
-
-    function resizeCanvas() {
-        const ratio = Math.max(window.devicePixelRatio || 1, 1);
-        canvas.width = canvas.offsetWidth * ratio;
-        canvas.height = canvas.offsetHeight * ratio;
-        canvas.getContext("2d").scale(ratio, ratio);
-        signaturePad.clear();
-    }
-
-    window.onresize = resizeCanvas;
-    window.onload = init;
-</script>
-
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+        }
+    </script>
 </body>
 </html>
