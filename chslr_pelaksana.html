@@ -3,63 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner CHSLR (UUID)</title>
+    <title>CHSLR - Input Pelaksana</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <style>
         #reader { border: none !important; border-radius: 24px; overflow: hidden; }
-        .peer:checked + div { border-color: #22c55e; background-color: #f0fdf4; color: #15803d; }
-        .scan-line {
-            height: 2px; background: #3b82f6; width: 100%; position: absolute;
-            top: 50%; left: 0; animation: moveScan 2s infinite linear; z-index: 10;
+        #reader__dashboard_section_csr button {
+            background-color: #3b82f6 !important; color: white !important; border-radius: 8px !important; padding: 8px 16px !important; border: none; margin: 5px;
         }
-        @keyframes moveScan { 0% { top: 20%; } 50% { top: 80%; } 100% { top: 20%; } }
+        .peer:checked + div { border-color: #22c55e; background-color: #f0fdf4; color: #15803d; }
+        .ng-peer:checked + div { border-color: #ef4444; background-color: #fef2f2; color: #b91c1c; }
+        
+        .scan-line {
+            height: 3px; background: linear-gradient(to right, transparent, #3b82f6, transparent);
+            width: 100%; position: absolute; top: 50%; left: 0;
+            animation: moveScan 2s infinite ease-in-out; z-index: 10;
+        }
+        @keyframes moveScan {
+            0% { top: 20%; opacity: 0; }
+            50% { top: 50%; opacity: 1; }
+            100% { top: 80%; opacity: 0; }
+        }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen pb-20">
+<body class="bg-slate-50 min-h-screen pb-24 font-sans text-slate-900">
+
+    <nav class="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50 p-4">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                    <i class="fa-solid fa-qrcode"></i>
+                </div>
+                <div>
+                    <h1 class="font-black text-slate-800 tracking-tighter leading-none">DAILY CHECK</h1>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Maintenance System</p>
+                </div>
+            </div>
+            <div id="date-now" class="text-right">
+                <p id="txt-date" class="font-black text-blue-600 text-xs"></p>
+                <p class="text-[9px] text-slate-400 font-bold uppercase">Tanggal Cek</p>
+            </div>
+        </div>
+    </nav>
 
     <div class="max-w-md mx-auto p-4">
         
-        <div id="scan-section" class="space-y-6">
-            <div class="text-center py-6">
-                <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="h-8 mx-auto mb-4">
-                <h1 class="text-2xl font-black text-slate-800 tracking-tighter uppercase">Machine Scanner</h1>
-                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">PT AKG MAINTENANCE</p>
-            </div>
-            
-            <div class="bg-white p-2 rounded-[32px] shadow-2xl border border-white relative overflow-hidden">
-                <div id="reader" class="w-full"></div>
-                <div id="scanner-line" class="scan-line"></div>
+        <div id="scan-section" class="space-y-6 animate-fade-in">
+            <div class="bg-white p-3 rounded-[32px] shadow-2xl shadow-slate-200 border border-white relative overflow-hidden mt-4">
+                <div id="reader" class="w-full aspect-square"></div>
+                <div class="scan-line"></div>
             </div>
 
-            <div id="scan-feedback" class="text-center text-sm font-bold text-slate-400 bg-white py-4 rounded-2xl shadow-sm border border-slate-100">
-                Arahkan ke QR Code Mesin
+            <div id="scan-feedback" class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm text-center">
+                <p class="text-slate-400 font-bold text-sm mb-1 uppercase tracking-tighter">Status Sensor</p>
+                <p id="feedback-msg" class="text-slate-800 font-black">MENUNGGU QR CODE MESIN...</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                    <i class="fa-solid fa-shield-halved text-blue-500 mb-2"></i>
+                    <p class="text-[10px] font-bold text-blue-700 uppercase leading-tight">Verifikasi Otomatis</p>
+                </div>
+                <div class="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
+                    <i class="fa-solid fa-bolt text-indigo-500 mb-2"></i>
+                    <p class="text-[10px] font-bold text-indigo-700 uppercase leading-tight">Input Tanpa Kertas</p>
+                </div>
             </div>
         </div>
 
-        <div id="form-section" class="hidden">
-            <div class="bg-slate-900 rounded-3xl p-6 shadow-xl mb-6 text-white relative overflow-hidden">
+        <div id="form-section" class="hidden space-y-4">
+            <div class="bg-slate-900 rounded-[2rem] p-6 shadow-2xl text-white relative overflow-hidden">
                 <div class="relative z-10">
-                    <p class="text-blue-400 text-[10px] font-black uppercase tracking-widest mb-1">UUID Verified</p>
-                    <h2 id="out-nama-mesin" class="text-2xl font-black italic tracking-tight"></h2>
-                    <p id="out-merk" class="text-slate-400 text-xs font-bold uppercase"></p>
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="px-3 py-1 bg-blue-600 rounded-full text-[10px] font-black uppercase">Verified Machine</span>
+                        <i class="fa-solid fa-circle-check text-green-400"></i>
+                    </div>
+                    <h2 id="out-nama-mesin" class="text-3xl font-black italic tracking-tighter uppercase mb-1"></h2>
+                    <p id="out-detail" class="text-slate-400 text-xs font-bold tracking-widest"></p>
                     
-                    <div class="mt-6">
-                        <label class="block text-[10px] font-black text-slate-500 mb-2 uppercase italic">Nama Pelaksana</label>
-                        <input type="text" id="input-nama" placeholder="Ketik nama anda..." 
-                            class="w-full bg-white/10 border border-white/20 rounded-2xl p-4 text-white font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                    <div class="mt-8">
+                        <label class="block text-[10px] font-black text-slate-500 mb-2 uppercase tracking-[0.2em]">Nama Pelaksana</label>
+                        <input type="text" id="input-nama" placeholder="Masukkan nama anda..." 
+                            class="w-full bg-white/10 border border-white/20 rounded-2xl p-4 text-white font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-white/20">
                     </div>
                 </div>
-                <i class="fa-solid fa-microchip absolute -bottom-4 -right-4 text-8xl text-white/5 rotate-12"></i>
+                <i class="fa-solid fa-robot absolute -bottom-6 -right-6 text-9xl text-white/5 rotate-12"></i>
             </div>
 
-            <div id="checklist-items" class="space-y-4 mb-24"></div>
+            <div id="checklist-items" class="space-y-4 pt-4">
+                </div>
 
             <div class="fixed bottom-6 left-0 right-0 px-6 max-w-md mx-auto z-50">
-                <button onclick="submitHarian()" id="btn-save" class="w-full bg-blue-600 text-white font-black py-5 rounded-[2rem] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3">
-                    <span>SIMPAN LAPORAN</span>
+                <button onclick="submitHarian()" id="btn-save" class="w-full bg-blue-600 text-white font-black py-5 rounded-[2rem] shadow-2xl shadow-blue-500/40 active:scale-95 transition-all flex items-center justify-center gap-3">
+                    <span>SIMPAN DATA HARIAN</span>
                     <i class="fa-solid fa-paper-plane"></i>
                 </button>
             </div>
@@ -67,52 +106,45 @@
     </div>
 
     <script>
+        // CONFIG SUPABASE
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
         let currentMachineId = null;
         let html5QrCode = new Html5Qrcode("reader");
+        const now = new Date();
 
         window.onload = () => {
+            // Set Tanggal Tampilan
+            document.getElementById('txt-date').innerText = now.toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
             startScanner();
         };
 
         function startScanner() {
             html5QrCode.start(
                 { facingMode: "environment" }, 
-                { fps: 15, qrbox: 250 },
+                { fps: 15, qrbox: { width: 250, height: 250 } },
                 onScanSuccess
             ).catch(err => {
-                document.getElementById('scan-feedback').innerText = "Kamera tidak diizinkan!";
+                document.getElementById('feedback-msg').innerText = "ERROR: IZINKAN KAMERA!";
+                document.getElementById('feedback-msg').classList.add('text-red-600');
             });
         }
 
-        // Fungsi Validasi UUID
-        function isValidUUID(str) {
-            const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-            return regex.test(str);
-        }
-
         async function onScanSuccess(decodedText) {
-            const feedback = document.getElementById('scan-feedback');
+            const feedback = document.getElementById('feedback-msg');
             
-            // Parsing ID jika QR berupa URL
+            // Parsing ID jika QR berisi URL atau teks murni
             let machineId = decodedText;
             if(decodedText.includes('id=')) {
                 machineId = new URL(decodedText).searchParams.get('id');
             }
 
-            // Validasi format sebelum kirim ke Supabase
-            if(!isValidUUID(machineId)) {
-                feedback.innerText = "KODE QR BUKAN FORMAT UUID!";
-                feedback.className = "text-center text-sm font-bold text-orange-500 bg-orange-50 py-4 rounded-2xl";
-                return;
-            }
+            feedback.innerText = "VERIFIKASI: " + machineId;
+            feedback.className = "text-blue-600 font-black animate-pulse";
 
-            feedback.innerText = "Memverifikasi UUID...";
-            feedback.className = "text-center text-sm font-bold text-blue-600 bg-blue-50 py-4 rounded-2xl animate-pulse";
-
+            // Cek ke Tabel chslr_mesin (Primary Key 'id' adalah Teks Nama Mesin)
             const { data: mesin, error } = await _sb
                 .from('chslr_mesin')
                 .select('*')
@@ -120,12 +152,12 @@
                 .maybeSingle();
 
             if (error || !mesin) {
-                feedback.innerText = "UUID TIDAK DIKENAL!";
-                feedback.className = "text-center text-sm font-bold text-red-600 bg-red-50 py-4 rounded-2xl";
+                feedback.innerText = "MESIN '" + machineId + "' TIDAK TERDAFTAR!";
+                feedback.className = "text-red-600 font-black";
                 return;
             }
 
-            // Sukses
+            // Jika Berhasil, pindah ke Form
             try {
                 await html5QrCode.stop();
                 currentMachineId = mesin.id;
@@ -140,8 +172,9 @@
             document.getElementById('form-section').classList.remove('hidden');
             
             document.getElementById('out-nama-mesin').innerText = mesin.nama_mesin;
-            document.getElementById('out-merk').innerText = `${mesin.merk_mesin} - ${mesin.tonage}`;
+            document.getElementById('out-detail').innerText = `${mesin.merk_mesin} // ${mesin.tonage}`;
 
+            // Load Items Checklist
             const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
             const container = document.getElementById('checklist-items');
             
@@ -149,21 +182,32 @@
             items.forEach(item => {
                 if(item.kategori !== currentCat) {
                     currentCat = item.kategori;
-                    container.insertAdjacentHTML('beforeend', `<p class="pt-6 pb-2 text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-2"><span>${currentCat}</span><span class="h-[1px] bg-blue-100 flex-1"></span></p>`);
+                    container.insertAdjacentHTML('beforeend', `
+                        <div class="pt-6 pb-2 flex items-center gap-3 text-blue-600">
+                            <span class="text-[10px] font-black uppercase tracking-widest">${currentCat}</span>
+                            <div class="h-[1px] bg-slate-200 flex-1"></div>
+                        </div>
+                    `);
                 }
 
                 const card = `
-                    <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm transition-all active:scale-[0.98]">
-                        <p class="font-bold text-slate-800 text-sm mb-1 leading-tight">${item.item_name}</p>
-                        <p class="text-[10px] text-slate-400 italic mb-4 font-medium">Std: ${item.standard}</p>
+                    <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <div class="mb-4">
+                            <p class="font-bold text-slate-800 text-sm leading-tight mb-1">${item.item_name}</p>
+                            <p class="text-[10px] text-slate-400 italic font-medium">Std: ${item.standard}</p>
+                        </div>
                         <div class="grid grid-cols-2 gap-3">
-                            <label class="cursor-pointer">
+                            <label class="cursor-pointer group">
                                 <input type="radio" name="status-${item.id}" value="OK" class="hidden peer" checked>
-                                <div class="text-center py-3 rounded-2xl bg-slate-50 border-2 border-transparent peer-checked:border-green-500 peer-checked:bg-green-50 peer-checked:text-green-700 font-black text-xs transition-all">OK</div>
+                                <div class="text-center py-4 rounded-2xl bg-slate-50 border-2 border-transparent peer-checked:shadow-lg peer-checked:shadow-green-100 transition-all font-black text-xs text-slate-400 peer-checked:text-green-700">
+                                    <i class="fa-solid fa-check-circle mr-1"></i> OK
+                                </div>
                             </label>
-                            <label class="cursor-pointer">
+                            <label class="cursor-pointer group">
                                 <input type="radio" name="status-${item.id}" value="NG" class="hidden peer">
-                                <div class="text-center py-3 rounded-2xl bg-slate-50 border-2 border-transparent peer-checked:border-red-500 peer-checked:bg-red-50 peer-checked:text-red-700 font-black text-xs transition-all">NG</div>
+                                <div class="text-center py-4 rounded-2xl bg-slate-50 border-2 border-transparent peer-checked:shadow-lg peer-checked:shadow-red-100 transition-all font-black text-xs text-slate-400 peer-checked:text-red-700">
+                                    <i class="fa-solid fa-times-circle mr-1"></i> NG
+                                </div>
                             </label>
                         </div>
                     </div>
@@ -174,16 +218,15 @@
 
         async function submitHarian() {
             const nama = document.getElementById('input-nama').value.trim();
-            if(!nama) return alert("Wajib isi nama pelaksana!");
+            if(!nama) return alert("SIAPA NAMA ANDA? WAJIB DIISI!");
 
             const btn = document.getElementById('btn-save');
             btn.disabled = true; 
-            btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> MENYIMPAN...`;
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> SEDANG MENGIRIM...`;
 
-            const now = new Date();
             const tgl = now.getDate(), bln = now.getMonth()+1, thn = now.getFullYear();
 
-            // Log Logic
+            // 1. Log Management (chslr_log)
             let { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', currentMachineId).eq('bulan', bln).eq('tahun', thn).maybeSingle();
             
             if(!log) {
@@ -195,23 +238,26 @@
                 await _sb.from('chslr_log').update({ pelaksana_names: [...log.pelaksana_names, nama] }).eq('id', log.id);
             }
 
-            // Results Logic
+            // 2. Result Management (chslr_result)
             const { data: items } = await _sb.from('chslr_items').select('id');
             const records = items.map(i => ({
-                log_id: log.id, item_id: i.id, tanggal: tgl,
+                log_id: log.id, 
+                item_id: i.id, 
+                tanggal: tgl,
                 status: document.querySelector(`input[name="status-${i.id}"]:checked`).value,
                 keterangan: ""
             }));
 
+            // Delete existing (overwriting) then insert
             await _sb.from('chslr_result').delete().eq('log_id', log.id).eq('tanggal', tgl);
             const { error } = await _sb.from('chslr_result').insert(records);
 
             if(!error) {
-                alert("LAPORAN HARIAN BERHASIL DISIMPAN!");
-                location.href = 'chslr.html';
+                alert("DATA HARIAN BERHASIL DISIMPAN! TERIMA KASIH.");
+                location.reload(); // Reset untuk scan mesin lain
             } else {
-                alert("Simpan Gagal: " + error.message);
-                btn.disabled = false; btn.innerText = "SIMPAN LAPORAN";
+                alert("GAGAL: " + error.message);
+                btn.disabled = false; btn.innerText = "SIMPAN DATA HARIAN";
             }
         }
     </script>
