@@ -12,12 +12,10 @@
         :root { --primary: #003366; --accent: #ffcc00; --success: #10b981; --danger: #ef4444; --bg: #f1f5f9; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; color: #1e293b; }
         
-        /* Scanner View */
         #scanner-view { padding: 20px; text-align: center; min-height: 100vh; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         #reader { width: 100%; max-width: 400px; border: 4px solid var(--primary); border-radius: 20px; overflow: hidden; }
         .scan-label { margin-top: 20px; padding: 10px 25px; background: var(--primary); color: white; border-radius: 30px; font-weight: 600; font-size: 14px; }
 
-        /* Form View */
         #form-view { display: none; max-width: 800px; margin: 0 auto; background: white; min-height: 100vh; }
         .header { background: var(--primary); color: white; padding: 30px 20px; text-align: center; }
         .machine-badge { background: var(--accent); color: black; padding: 12px 30px; border-radius: 50px; font-weight: 800; margin-top: 15px; display: inline-block; font-size: 18px; border: 3px solid white; }
@@ -31,18 +29,17 @@
         .cat-title { background: #f8fafc; font-weight: 800; color: var(--primary); padding: 15px; border-left: 6px solid var(--primary); text-transform: uppercase; font-size: 12px; }
 
         .status-options { display: flex; gap: 8px; margin-top: 12px; }
-        .status-options label { flex: 1; padding: 14px; text-align: center; background: white; border-radius: 10px; cursor: pointer; border: 2px solid #e2e8f0; font-weight: 700; transition: 0.2s; }
+        .status-options label { flex: 1; padding: 14px; text-align: center; background: white; border-radius: 10px; cursor: pointer; border: 2px solid #e2e8f0; font-weight: 700; }
         .status-options input { display: none; }
         .status-options label:has(input[value="OK"]:checked) { background: var(--success); border-color: var(--success); color: white; }
         .status-options label:has(input[value="NG"]:checked) { background: var(--danger); border-color: var(--danger); color: white; }
         .status-options label:has(input[value="Repair"]:checked) { background: #f59e0b; border-color: #f59e0b; color: white; }
 
-        .input-ket { margin-top:10px; padding:12px; font-size:13px; border:1px solid #e2e8f0; border-radius:10px; width:100%; box-sizing:border-box; transition: 0.3s; }
+        .input-ket { margin-top:10px; padding:12px; font-size:13px; border:1px solid #e2e8f0; border-radius:10px; width:100%; box-sizing:border-box; }
         .input-ket.required-ng { border: 2px solid var(--danger); background: #fef2f2; }
 
         #sig-canvas { border: 2px solid #e2e8f0; width: 100%; height: 220px; border-radius: 15px; background: #fff; margin-top: 10px; }
         .btn-submit { width: 100%; padding: 25px; background: var(--primary); color: white; border: none; font-weight: 800; font-size: 20px; cursor: pointer; }
-        .btn-clear { border: none; background: #fee2e2; color: #ef4444; padding: 10px 20px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 12px; }
     </style>
 </head>
 <body>
@@ -72,7 +69,7 @@
         <div class="section">
             <label>KONFIRMASI TANDA TANGAN</label>
             <canvas id="sig-canvas"></canvas>
-            <div style="text-align: right;"><button class="btn-clear" onclick="signaturePad.clear()">HAPUS TTD</button></div>
+            <div style="text-align: right;"><button onclick="signaturePad.clear()" style="border:none; color:red; background:none; font-weight:bold; cursor:pointer;">HAPUS TTD</button></div>
         </div>
 
         <button class="btn-submit" id="btnSave" onclick="submitData()">SIMPAN LAPORAN</button>
@@ -85,23 +82,29 @@
         const html5QrCode = new Html5Qrcode("reader");
         const canvas = document.getElementById('sig-canvas');
         const signaturePad = new SignaturePad(canvas);
-        let currentMachineId = "";
+        let currentMachineId = ""; 
         let checklistItems = [];
 
         async function startScan() {
-            html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: {width: 280, height: 180} },
+            html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 },
                 async (decodedText) => {
                     const rawText = decodedText.trim().toUpperCase();
+                    // Logika Ekstraksi Nickname (TOAD)
                     const match = rawText.match(/\(([^)]+)\)/);
                     const keyword = match ? match[1] : rawText;
 
-                    const { data: machine } = await _sb.from('pmi_machine').select('*').or(`id.ilike.%${keyword}%,machine_name.ilike.%${keyword}%`).maybeSingle();
-                    if (machine) {
-                        currentMachineId = machine.id;
+                    // PERBAIKAN: Query lebih luas agar pasti ketemu
+                    const { data: machines } = await _sb.from('pmi_machine')
+                        .select('*')
+                        .or(`id.ilike.%${keyword}%,machine_name.ilike.%${keyword}%`);
+
+                    if (machines && machines.length > 0) {
+                        const machine = machines[0]; // Ambil hasil pertama
+                        currentMachineId = machine.id; // Pastikan ID ini ada di tabel pmi_machine
                         await html5QrCode.stop();
                         showForm(machine);
                     } else {
-                        document.getElementById('scan-msg').innerText = "❌ TIDAK COCOK!";
+                        document.getElementById('scan-msg').innerText = "❌ MESIN TIDAK TERDAFTAR!";
                     }
                 }
             ).catch(err => console.error(err));
@@ -138,15 +141,12 @@
             resizeCanvas();
         }
 
-        // Fungsi highlight jika NG tapi catatan kosong
         function checkNg(id) {
             const status = document.querySelector(`input[name="st-${id}"]:checked`).value;
             const inputKet = document.getElementById(`ket-${id}`);
             if(status !== "OK") {
-                inputKet.placeholder = "WAJIB ISI CATATAN KERUSAKAN!";
                 inputKet.classList.add('required-ng');
             } else {
-                inputKet.placeholder = "Catatan/Keterangan...";
                 inputKet.classList.remove('required-ng');
             }
         }
@@ -155,22 +155,23 @@
             const nama = document.getElementById('nama_pelaksana').value;
             if(!nama || signaturePad.isEmpty()) return alert("Nama dan TTD wajib diisi!");
 
-            // Validasi Catatan NG sebelum simpan
+            // Validasi Catatan NG
             for (let it of checklistItems) {
                 const status = document.querySelector(`input[name="st-${it.id}"]:checked`).value;
                 const ket = document.getElementById(`ket-${it.id}`).value;
                 if (status !== "OK" && ket.trim() === "") {
                     document.getElementById(`ket-${it.id}`).focus();
-                    return alert(`Item "${it.item_name}" berstatus ${status}. Anda WAJIB mengisi catatan kerusakannya!`);
+                    return alert(`Item "${it.item_name}" berstatus ${status}. WAJIB isi catatan!`);
                 }
             }
 
             const btn = document.getElementById('btnSave');
-            btn.disabled = true; btn.innerText = "MENYIMPAN...";
+            btn.disabled = true; btn.innerText = "SEDANG MENYIMPAN...";
 
             try {
                 const now = new Date();
-                const { data: log, error: e1 } = await _sb.from('pmi_log').insert([{
+                // 1. Simpan ke pmi_log (PASTIKAN status_verifikasi adalah 'Pending')
+                const { data: logData, error: e1 } = await _sb.from('pmi_log').insert([{
                     mesin_id: currentMachineId,
                     bulan: now.getMonth() + 1,
                     tahun: now.getFullYear(),
@@ -181,8 +182,9 @@
 
                 if (e1) throw e1;
 
+                // 2. Simpan detail ke pmi_result
                 const results = checklistItems.map(it => ({
-                    log_id: log[0].id,
+                    log_id: logData[0].id,
                     item_name: it.item_name,
                     status: document.querySelector(`input[name="st-${it.id}"]:checked`).value,
                     keterangan: document.getElementById(`ket-${it.id}`).value
@@ -191,11 +193,11 @@
                 const { error: e2 } = await _sb.from('pmi_result').insert(results);
                 if (e2) throw e2;
 
-                alert("LAPORAN BERHASIL DISIMPAN KE DATABASE!");
+                alert("BERHASIL! Laporan sudah terkirim ke Koordinator.");
                 location.reload();
 
             } catch (err) {
-                alert("Error: " + err.message);
+                alert("Simpan Gagal: " + err.message);
                 btn.disabled = false; btn.innerText = "SIMPAN LAPORAN";
             }
         }
