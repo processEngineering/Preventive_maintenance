@@ -15,18 +15,15 @@
         .container { max-width: 800px; margin: 0 auto; padding: 20px; }
         .header-main { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         
-        /* List Cards */
         .card-pmi { background: white; padding: 18px; border-radius: 12px; margin-bottom: 12px; border-left: 6px solid var(--accent); box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; }
         .machine-id { font-weight: 800; color: var(--primary); font-size: 17px; }
         .tech-info { font-size: 13px; color: #64748b; margin-top: 4px; }
         .note-box { background: #fff1f2; border: 1px solid #fecdd3; padding: 10px; border-radius: 8px; font-size: 12px; margin-top: 10px; color: #be123c; }
         .ok-box { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px; border-radius: 8px; font-size: 12px; margin-top: 10px; color: #15803d; }
 
-        /* Scanner Overlay */
         #scanner-view { display:none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.98); z-index:1000; flex-direction: column; align-items: center; justify-content: center; }
         #reader { width: 90%; max-width: 400px; border: 4px solid var(--primary); border-radius: 15px; overflow: hidden; }
 
-        /* Approval Form */
         #approval-view { display: none; background: white; min-height: 100vh; }
         .header-app { background: var(--primary); color: white; padding: 30px 20px; text-align: center; }
         .section { padding: 20px; border-bottom: 6px solid var(--bg); }
@@ -43,28 +40,29 @@
         <div class="header-main">
             <div>
                 <h1 style="margin:0; font-size: 20px; color: var(--primary);">Verifikasi PMI</h1>
-                <p style="margin:0; font-size: 13px; color: #64748b;">Pilih mesin untuk divalidasi</p>
+                <p style="margin:0; font-size: 13px; color: #64748b;">Gunakan nama mesin sesuai label Marvel</p>
             </div>
             <button class="btn-refresh" onclick="loadPmiList()">Refresh</button>
         </div>
-        <div id="pmi-list">Memuat data...</div>
+        <div id="pmi-list">Memuat data laporan...</div>
     </div>
 
     <div id="scanner-view">
-        <h3 style="color: var(--primary); margin-bottom: 15px;">SCAN BARCODE: <span id="target-id" style="color:var(--danger)"></span></h3>
+        <h3 style="color: var(--primary); margin-bottom: 15px;">SCAN BARCODE MESIN:</h3>
+        <div id="target-id" style="background: var(--accent); padding: 10px 20px; border-radius: 10px; font-weight: 800; margin-bottom: 20px;">-</div>
         <div id="reader"></div>
         <button onclick="location.reload()" style="margin-top:25px; color:red; font-weight:bold; border:none; background:none; cursor:pointer;">BATAL</button>
     </div>
 
     <div id="approval-view">
         <div class="header-app">
-            <p style="margin:0; font-size: 12px; opacity: 0.8;">APPROVAL KOORDINATOR</p>
+            <p style="margin:0; font-size: 12px; opacity: 0.8;">VALIDASI KOORDINATOR</p>
             <h2 id="display-machine" style="margin:5px 0 0; color: var(--accent);">-</h2>
         </div>
 
         <div class="section">
             <label style="font-size:12px; font-weight:800; color:#64748b;">CATATAN KOORDINATOR</label>
-            <textarea id="catatan_koordinator" rows="4" placeholder="Tambahkan instruksi jika ada..."></textarea>
+            <textarea id="catatan_koordinator" rows="4" placeholder="Tulis instruksi tambahan jika perlu..."></textarea>
         </div>
 
         <div class="section">
@@ -73,7 +71,7 @@
             <div style="text-align:right;"><button onclick="signaturePad.clear()" style="color:red; font-size:11px; border:none; background:none; font-weight:bold;">HAPUS</button></div>
         </div>
 
-        <button class="btn-verif" id="btnSave" onclick="updateVerifikasi()">SIMPAN & VERIFIKASI</button>
+        <button class="btn-verif" id="btnSave" onclick="updateVerifikasi()">SIMPAN VERIFIKASI</button>
     </div>
 
     <script>
@@ -95,8 +93,8 @@
                 .eq('status_verifikasi', 'Pending')
                 .order('created_at', { ascending: false });
 
-            if (error) return listDiv.innerHTML = "Error database.";
-            if (!data.length) return listDiv.innerHTML = "<p style='text-align:center; margin-top:40px; color:#94a3b8;'>Tidak ada laporan pending.</p>";
+            if (error) return listDiv.innerHTML = "Gagal memuat data.";
+            if (!data || data.length === 0) return listDiv.innerHTML = "<p style='text-align:center; padding:40px; color:#94a3b8;'>Semua mesin sudah aman (Verified).</p>";
 
             listDiv.innerHTML = "";
             data.forEach(log => {
@@ -108,8 +106,8 @@
                         <span class="machine-id">${log.mesin_id}</span>
                         <span style="font-size:10px; color:#94a3b8;">${new Date(log.created_at).toLocaleTimeString()}</span>
                     </div>
-                    <div class="tech-info">Oleh: ${log.nama_pelaksana}</div>
-                    ${temuanNG ? `<div class="note-box">⚠️ ${temuanNG}</div>` : `<div class="ok-box">✅ Kondisi Normal</div>`}
+                    <div class="tech-info">Teknisi: ${log.nama_pelaksana}</div>
+                    ${temuanNG ? `<div class="note-box">⚠️ ${temuanNG}</div>` : `<div class="ok-box">✅ Semua OK</div>`}
                 `;
                 card.onclick = () => {
                     selectedLogId = log.id;
@@ -123,11 +121,14 @@
         }
 
         function startScanner() {
-            // Scanner responsif: Begitu detek keyword mesin, langsung pindah
-            html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 },
+            html5QrCode.start({ facingMode: "environment" }, { fps: 25, qrbox: 250 },
                 async (decodedText) => {
-                    const scanned = decodedText.toUpperCase();
-                    if (scanned.includes(selectedMachineId.toUpperCase())) {
+                    const scanned = decodedText.trim().toUpperCase();
+                    // Logika Marvel: Cocokkan kata kunci di dalam kurung atau nama lengkap
+                    // Contoh: Jika selectedMachineId "WIBA 270 T (NEBULA)" dan scan isinya "NEBULA", maka COCOK.
+                    const targetClean = selectedMachineId.toUpperCase();
+                    
+                    if (scanned.includes(targetClean) || targetClean.includes(scanned)) {
                         await html5QrCode.stop();
                         document.getElementById('scanner-view').style.display = 'none';
                         document.getElementById('dashboard').style.display = 'none';
@@ -135,7 +136,7 @@
                         document.getElementById('display-machine').innerText = selectedMachineId;
                         resizeCanvas();
                     } else {
-                        alert("SALAH MESIN! Harap scan mesin: " + selectedMachineId);
+                        alert("SALAH SCAN! Mesin yang dipilih: " + selectedMachineId + "\nHasil Scan: " + scanned);
                     }
                 }
             ).catch(err => console.error(err));
@@ -144,7 +145,7 @@
         async function updateVerifikasi() {
             if (signaturePad.isEmpty()) return alert("Tanda tangan wajib!");
             const btn = document.getElementById('btnSave');
-            btn.disabled = true; btn.innerText = "Simpan...";
+            btn.disabled = true; btn.innerText = "Menyimpan...";
 
             const { error } = await _sb.from('pmi_log').update({
                 status_verifikasi: 'Verified',
@@ -154,7 +155,7 @@
             }).eq('id', selectedLogId);
 
             if (error) { alert(error.message); btn.disabled = false; }
-            else { alert("Berhasil diverifikasi!"); location.reload(); }
+            else { alert("Mesin " + selectedMachineId + " telah diverifikasi!"); location.reload(); }
         }
 
         function resizeCanvas() {
