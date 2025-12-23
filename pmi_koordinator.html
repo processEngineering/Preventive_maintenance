@@ -9,35 +9,36 @@
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --primary: #003366; --accent: #ffcc00; --success: #10b981; --bg: #f8fafc; }
+        :root { --primary: #003366; --accent: #ffcc00; --success: #10b981; --danger: #ef4444; --bg: #f8fafc; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; color: #1e293b; }
         
         .container { max-width: 800px; margin: 0 auto; padding: 20px; }
-        .header-main { padding: 20px 0; display: flex; justify-content: space-between; align-items: center; }
+        .header-main { padding: 20px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; margin-bottom: 20px; }
         
         /* Dashboard Card */
-        .card-pmi { background: white; padding: 20px; border-radius: 16px; margin-bottom: 15px; border-left: 8px solid var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; }
+        .card-pmi { background: white; padding: 20px; border-radius: 16px; margin-bottom: 15px; border-left: 8px solid var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s; }
+        .card-pmi:active { transform: scale(0.98); }
         .machine-id { font-weight: 800; color: var(--primary); font-size: 18px; }
         .tech-info { font-size: 13px; color: #64748b; margin-top: 5px; }
         
-        /* Temuan NG Styling */
-        .note-box { background: #fff1f2; border: 1px solid #fecdd3; padding: 12px; border-radius: 10px; font-size: 13px; margin-top: 12px; color: #be123c; }
+        .note-box { background: #fff1f2; border: 1px solid #fecdd3; padding: 12px; border-radius: 10px; font-size: 13px; margin-top: 12px; color: #be123c; line-height: 1.5; }
         .ok-box { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 10px; font-size: 13px; margin-top: 12px; color: #15803d; font-weight: 600; }
 
         /* Scanner View */
         #scanner-view { display:none; position: fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:1000; flex-direction: column; align-items: center; justify-content: center; }
         #reader { width: 85%; max-width: 400px; border: 5px solid var(--primary); border-radius: 20px; overflow: hidden; }
+        .scan-msg { margin-top: 20px; font-weight: 700; color: var(--primary); background: #e2e8f0; padding: 10px 20px; border-radius: 20px; font-size: 14px; }
 
         /* Approval Form */
         #approval-view { display: none; background: white; min-height: 100vh; }
         .header-app { background: var(--primary); color: white; padding: 40px 20px; text-align: center; }
         .section { padding: 25px 20px; border-bottom: 8px solid var(--bg); }
         
-        textarea { width: 100%; padding: 15px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 15px; box-sizing: border-box; background: #f8fafc; resize: none; }
+        textarea { width: 100%; padding: 15px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 15px; box-sizing: border-box; background: #f8fafc; resize: none; font-family: inherit; }
         #sig-canvas { border: 2px solid #e2e8f0; width: 100%; height: 220px; border-radius: 15px; background: #fff; margin-top: 10px; }
         
         .btn-verif { width: 100%; padding: 25px; background: var(--success); color: white; border: none; font-weight: 800; font-size: 20px; cursor: pointer; }
-        .btn-refresh { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        .btn-refresh { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -45,45 +46,48 @@
     <div id="dashboard" class="container">
         <div class="header-main">
             <div>
-                <h1 style="margin:0; color: var(--primary); font-size: 22px;">Monitoring PMI</h1>
-                <p style="margin:0; color: #64748b; font-size: 13px;">Laporan masuk yang perlu verifikasi</p>
+                <h1 style="margin:0; color: var(--primary); font-size: 24px;">Monitoring PMI</h1>
+                <p style="margin:0; color: #64748b; font-size: 14px;">Menunggu Verifikasi Koordinator</p>
             </div>
             <button class="btn-refresh" onclick="loadPmiList()">REFRESH</button>
         </div>
-        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 20px;">
-        <div id="pmi-list">Memuat database...</div>
+        <div id="pmi-list">Memuat data database...</div>
     </div>
 
     <div id="scanner-view">
         <h2 style="color: var(--primary); margin-bottom: 5px;">VERIFIKASI FISIK</h2>
-        <p style="color: #64748b; margin-bottom: 20px;">Silakan scan barcode mesin <b id="target-id" style="color:red"></b></p>
+        <p style="color: #64748b; margin-bottom: 20px; text-align: center; padding: 0 20px;">
+            Arahkan kamera ke barcode mesin: <br><b id="target-id" style="color:var(--danger); font-size: 20px;">-</b>
+        </p>
         <div id="reader"></div>
-        <button onclick="location.reload()" style="margin-top:30px; border:none; background:none; color:red; font-weight:700;">BATAL</button>
+        <div id="scan-status" class="scan-msg">MENCARI BARCODE...</div>
+        <button onclick="location.reload()" style="margin-top:40px; border:none; background:none; color:red; font-weight:700; cursor:pointer;">BATALKAN</button>
     </div>
 
     <div id="approval-view">
         <div class="header-app">
-            <div style="font-size: 11px; letter-spacing: 2px; opacity: 0.8;">KONFIRMASI KOORDINATOR</div>
-            <div id="display-machine" style="font-size: 24px; font-weight: 800; margin-top: 10px; color: var(--accent);">-</div>
+            <div style="font-size: 12px; letter-spacing: 2px; opacity: 0.8; text-transform: uppercase;">Laporan Validasi</div>
+            <div id="display-machine" style="font-size: 28px; font-weight: 800; margin-top: 10px; color: var(--accent);">-</div>
         </div>
 
         <div class="section">
-            <label style="display:block; font-size:12px; font-weight:800; color:#475569; margin-bottom:10px;">CATATAN/INSTRUKSI KOORDINATOR</label>
-            <textarea id="catatan_koordinator" rows="4" placeholder="Masukkan instruksi atau hasil pengecekan ulang..."></textarea>
+            <label style="display:block; font-size:12px; font-weight:800; color:#475569; margin-bottom:10px;">CATATAN / FEEDBACK KOORDINATOR</label>
+            <textarea id="catatan_koordinator" rows="4" placeholder="Contoh: Sudah diperiksa ulang, aman untuk produksi..."></textarea>
         </div>
 
         <div class="section">
-            <label style="display:block; font-size:12px; font-weight:800; color:#475569; margin-bottom:10px;">TANDA TANGAN</label>
+            <label style="display:block; font-size:12px; font-weight:800; color:#475569; margin-bottom:10px;">TANDA TANGAN KOORDINATOR</label>
             <canvas id="sig-canvas"></canvas>
             <div style="text-align: right;">
-                <button onclick="signaturePad.clear()" style="background:none; border:none; color:red; font-size:12px; font-weight:700; cursor:pointer; margin-top:10px;">HAPUS TTD</button>
+                <button onclick="signaturePad.clear()" style="background:none; border:none; color:red; font-size:12px; font-weight:700; cursor:pointer; margin-top:10px;">HAPUS TANDA TANGAN</button>
             </div>
         </div>
 
-        <button class="btn-verif" id="btnSave" onclick="updateVerifikasi()">VERIFIKASI & SELESAI</button>
+        <button class="btn-verif" id="btnSave" onclick="updateVerifikasi()">APPROVE & SIMPAN</button>
     </div>
 
     <script>
+        // CONFIG SUPABASE
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
@@ -94,65 +98,86 @@
         
         let selectedLogId = null;
         let selectedMachineId = "";
+        let lastScannedText = "";
+        let lastScannedTime = 0;
 
+        // 1. LOAD DATA LIST PENDING
         async function loadPmiList() {
             const listDiv = document.getElementById('pmi-list');
-            listDiv.innerHTML = "Mengecek data...";
+            listDiv.innerHTML = "<p style='text-align:center; padding:20px;'>Mengecek database...</p>";
 
-            // Ambil log yang statusnya 'Pending' beserta detail result-nya
             const { data, error } = await _sb
                 .from('pmi_log')
                 .select(`id, mesin_id, nama_pelaksana, created_at, pmi_result(status, keterangan)`)
                 .eq('status_verifikasi', 'Pending')
                 .order('created_at', { ascending: false });
 
-            if (error) return listDiv.innerHTML = "Gagal memuat data.";
-            if (!data || data.length === 0) return listDiv.innerHTML = "<div style='text-align:center; padding:40px; color:#94a3b8;'>Hore! Tidak ada antrean verifikasi.</div>";
+            if (error) return listDiv.innerHTML = "Gagal mengambil data.";
+            if (!data || data.length === 0) return listDiv.innerHTML = "<div style='text-align:center; padding:60px; color:#94a3b8;'>Antrean kosong. Semua laporan sudah diverifikasi.</div>";
 
             listDiv.innerHTML = "";
             data.forEach(log => {
-                // Filter temuan yang statusnya bukan OK
                 const temuanNG = log.pmi_result
                     .filter(r => r.status !== 'OK')
-                    .map(r => `${r.keterangan || 'Tanpa keterangan'}`)
+                    .map(r => r.keterangan || "Rusak/NG")
                     .join(", ");
 
                 const card = document.createElement('div');
                 card.className = 'card-pmi';
                 card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div class="machine-id">${log.mesin_id}</div>
-                        <div style="font-size:10px; font-weight:800; color:var(--primary);">${new Date(log.created_at).toLocaleTimeString()}</div>
+                        <div style="font-size:11px; background:#f1f5f9; padding:4px 8px; border-radius:5px;">${new Date(log.created_at).toLocaleTimeString()}</div>
                     </div>
-                    <div class="tech-info">Oleh: <b>${log.nama_pelaksana}</b></div>
-                    ${temuanNG ? `<div class="note-box"><b>⚠️ TEMUAN NG:</b><br>${temuanNG}</div>` : `<div class="ok-box">✅ KONDISI NORMAL</div>`}
+                    <div class="tech-info">Teknisi: <b>${log.nama_pelaksana}</b></div>
+                    ${temuanNG ? `<div class="note-box"><b>⚠️ TEMUAN NG:</b><br>${temuanNG}</div>` : `<div class="ok-box">✅ KONDISI MESIN NORMAL</div>`}
                 `;
                 card.onclick = () => openScanner(log.id, log.mesin_id);
                 listDiv.appendChild(card);
             });
         }
 
+        // 2. OPEN SCANNER (DENGAN LOGIKA ANTI-SENSITIF)
         function openScanner(logId, machineId) {
             selectedLogId = logId;
             selectedMachineId = machineId;
             document.getElementById('target-id').innerText = machineId;
             document.getElementById('scanner-view').style.display = 'flex';
             
-            html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 },
+            // FPS dikurangi ke 5 agar kamera tidak terlalu agresif
+            html5QrCode.start({ facingMode: "environment" }, { fps: 5, qrbox: 250 },
                 async (decodedText) => {
-                    const scanned = decodedText.toUpperCase();
-                    // Validasi: Scan harus mengandung ID mesin yang benar
-                    if (scanned.includes(selectedMachineId.toUpperCase())) {
-                        await html5QrCode.stop();
-                        document.getElementById('scanner-view').style.display = 'none';
-                        showApprovalForm();
-                    } else {
-                        alert("SALAH MESIN! Ini laporan untuk " + selectedMachineId);
+                    const raw = decodedText.trim().toUpperCase();
+                    const now = Date.now();
+
+                    // Filter: Harus baca kode yang sama selama 1 detik (1000ms)
+                    if (raw !== lastScannedText) {
+                        lastScannedText = raw;
+                        lastScannedTime = now;
+                        document.getElementById('scan-status').innerText = "MENGUNCI: " + raw;
+                        document.getElementById('scan-status').style.background = "#ffcc00";
+                        return;
+                    }
+
+                    if (now - lastScannedTime > 1000) {
+                        // Jika sudah stabil 1 detik, baru dicek apakah ID mesin cocok
+                        if (raw.includes(selectedMachineId.toUpperCase())) {
+                            await html5QrCode.stop();
+                            document.getElementById('scanner-view').style.display = 'none';
+                            showApprovalForm();
+                        } else {
+                            // Jika salah mesin, reset status scan
+                            document.getElementById('scan-status').innerText = "SALAH MESIN! SCAN " + selectedMachineId;
+                            document.getElementById('scan-status').style.background = "#ef4444";
+                            document.getElementById('scan-status').style.color = "white";
+                            lastScannedText = ""; // Reset agar bisa scan ulang
+                        }
                     }
                 }
             ).catch(err => console.error(err));
         }
 
+        // 3. SHOW APPROVAL FORM
         function showApprovalForm() {
             document.getElementById('dashboard').style.display = 'none';
             document.getElementById('approval-view').style.display = 'block';
@@ -160,11 +185,12 @@
             resizeCanvas();
         }
 
+        // 4. SUBMIT VERIFIKASI KE DATABASE
         async function updateVerifikasi() {
-            if (signaturePad.isEmpty()) return alert("Tanda tangan wajib diisi!");
+            if (signaturePad.isEmpty()) return alert("Tanda tangan koordinator wajib diisi!");
 
             const btn = document.getElementById('btnSave');
-            btn.disabled = true; btn.innerText = "PROSES...";
+            btn.disabled = true; btn.innerText = "MENYIMPAN...";
 
             const { error } = await _sb
                 .from('pmi_log')
@@ -177,10 +203,10 @@
                 .eq('id', selectedLogId);
 
             if (error) {
-                alert("Gagal update: " + error.message);
+                alert("Gagal menyimpan: " + error.message);
                 btn.disabled = false;
             } else {
-                alert("VERIFIKASI BERHASIL DISIMPAN!");
+                alert("LAPORAN BERHASIL DIVERIFIKASI!");
                 location.reload();
             }
         }
