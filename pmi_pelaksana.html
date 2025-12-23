@@ -7,63 +7,62 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --primary: #003366; --success: #10b981; --bg: #f1f5f9; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 0; }
+        :root { --primary: #003366; --accent: #ffcc00; --success: #10b981; --bg: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 0; color: #1e293b; }
         
-        /* Scanner Style */
-        #scanner-container { padding: 20px; text-align: center; }
-        #reader { width: 100%; max-width: 500px; margin: auto; border-radius: 12px; overflow: hidden; border: 4px solid var(--primary); }
+        /* Scanner UI */
+        #scanner-view { padding: 20px; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center; background: #000; color: white; }
+        #reader { width: 100%; max-width: 450px; margin: auto; border: 2px solid var(--accent); border-radius: 12px; overflow: hidden; }
 
-        /* Form Style */
-        .container { max-width: 800px; margin: 0 auto; background: white; min-height: 100vh; display: none; }
-        .header { background: var(--primary); color: white; padding: 20px; text-align: center; }
-        .machine-badge { background: #ffcc00; color: black; padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-top: 10px; display: inline-block; }
+        /* Form UI */
+        #form-view { display: none; max-width: 800px; margin: 0 auto; background: white; min-height: 100vh; }
+        .header { background: var(--primary); color: white; padding: 20px; text-align: center; position: sticky; top: 0; z-index: 10; }
+        .machine-badge { background: var(--accent); color: black; padding: 6px 16px; border-radius: 20px; font-weight: 800; font-size: 14px; margin-top: 8px; display: inline-block; }
         
-        .section-padding { padding: 20px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; color: #475569; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 15px; box-sizing: border-box; }
+        .section { padding: 20px; border-bottom: 8px solid var(--bg); }
+        label { display: block; font-size: 11px; font-weight: 700; margin-bottom: 6px; color: #64748b; text-transform: uppercase; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { background: #f8fafc; padding: 10px; font-size: 12px; border-bottom: 2px solid #e2e8f0; text-align: left; }
-        td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
-        .category-head { background: #e2e8f0; font-weight: bold; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 12px 8px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        .cat-title { background: #f1f5f9; font-weight: 800; color: var(--primary); font-size: 12px; padding: 10px; }
 
-        .status-group { display: flex; gap: 5px; }
-        .status-group label { flex: 1; padding: 8px; text-align: center; background: #f1f5f9; border-radius: 6px; cursor: pointer; font-size: 11px; }
-        .status-group input { display: none; }
-        .status-group input:checked + span { font-weight: bold; color: white; }
-        .status-group label:has(input[value="OK"]:checked) { background: var(--success); }
-        .status-group label:has(input[value="NG"]:checked) { background: #ef4444; }
-        .status-group label:has(input[value="Repair"]:checked) { background: #f59e0b; }
+        /* OK/NG/Repair Buttons */
+        .status-options { display: flex; gap: 4px; margin-top: 8px; }
+        .status-options label { flex: 1; padding: 8px; text-align: center; background: #f1f5f9; border-radius: 6px; cursor: pointer; border: 1px solid #e2e8f0; }
+        .status-options input { display: none; }
+        .status-options input:checked + span { font-weight: bold; color: white; }
+        .status-options label:has(input[value="OK"]:checked) { background: var(--success); border-color: var(--success); }
+        .status-options label:has(input[value="NG"]:checked) { background: #ef4444; border-color: #ef4444; }
+        .status-options label:has(input[value="Repair"]:checked) { background: #f59e0b; border-color: #f59e0b; }
 
-        #sig-canvas { border: 2px dashed #cbd5e1; background: #fff; width: 100%; height: 180px; border-radius: 8px; touch-action: none; }
-        .btn-submit { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; font-weight: bold; font-size: 16px; cursor: pointer; }
+        #sig-canvas { border: 2px dashed #cbd5e1; width: 100%; height: 180px; border-radius: 10px; background: #fafafa; }
+        .btn-submit { width: 100%; padding: 20px; background: var(--primary); color: white; border: none; font-weight: 800; font-size: 16px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="scanner-container">
-        <h2 style="color:var(--primary)">SCAN BARCODE MESIN</h2>
-        <p style="color:#64748b">Arahkan kamera ke barcode mesin untuk verifikasi</p>
+    <div id="scanner-view">
+        <h2 style="margin-bottom: 10px;">SCAN BARCODE MESIN</h2>
         <div id="reader"></div>
-        <p id="scan-status" style="margin-top:20px; font-weight:bold; color:var(--primary)">Menunggu Scan...</p>
+        <p id="scan-msg" style="margin-top: 20px; color: var(--accent);">Arahkan kamera ke barcode mesin...</p>
     </div>
 
-    <div class="container" id="form-container">
+    <div id="form-view">
         <div class="header">
-            <h2 style="margin:0">FORM PREVENTIF BULANAN</h2>
-            <div class="machine-badge" id="machine-display">ID MESIN: -</div>
+            <h1 style="margin:0; font-size: 18px;">PREVENTIF MESIN INJECTION</h1>
+            <div class="machine-badge" id="m-name">MEMUAT...</div>
         </div>
 
-        <div class="section-padding">
-            <label>NAMA PELAKSANA (TEKNISI)</label>
-            <input type="text" id="nama_pelaksana" placeholder="Ketik Nama Anda">
-
-            <div style="display:flex; gap:15px">
+        <div class="section">
+            <label>Nama Teknisi (Pelaksana)</label>
+            <input type="text" id="nama_pelaksana" placeholder="Masukkan nama lengkap">
+            
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
                 <div style="flex:1">
-                    <label>BULAN</label>
+                    <label>Bulan</label>
                     <select id="bulan">
                         <option value="1">Januari</option><option value="2">Februari</option>
                         <option value="3">Maret</option><option value="4">April</option>
@@ -74,32 +73,30 @@
                     </select>
                 </div>
                 <div style="flex:1">
-                    <label>TAHUN</label>
-                    <input type="number" id="tahun" value="2025" readonly>
+                    <label>Tahun</label>
+                    <input type="text" id="tahun" value="2025" readonly>
                 </div>
             </div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>ITEM PENGECEKAN</th>
-                        <th width="45%">STATUS & KET</th>
-                    </tr>
-                </thead>
-                <tbody id="item-list"></tbody>
-            </table>
-
-            <div style="margin-top:30px">
-                <label>TANDA TANGAN PELAKSANA</label>
-                <canvas id="sig-canvas"></canvas>
-                <button onclick="signaturePad.clear()" style="background:none; border:none; color:red; font-size:11px; cursor:pointer">Hapus Tanda Tangan</button>
-            </div>
         </div>
-        <button class="btn-submit" onclick="submitData()">SIMPAN DATA KE DATABASE</button>
+
+        <div class="table-container">
+            <table>
+                <tbody id="pmi-items-body">
+                    </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <label>Tanda Tangan Pelaksana</label>
+            <canvas id="sig-canvas"></canvas>
+            <button onclick="signaturePad.clear()" style="border:none; background:none; color:red; font-size:11px; margin-top:5px; cursor:pointer;">Hapus TTD</button>
+        </div>
+
+        <button class="btn-submit" onclick="submitData()">SIMPAN DATA PREVENTIF</button>
     </div>
 
     <script>
-        // 1. KONEKSI SUPABASE
+        // KONFIGURASI SUPABASE
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
@@ -107,69 +104,79 @@
         const html5QrCode = new Html5Qrcode("reader");
         const canvas = document.getElementById('sig-canvas');
         const signaturePad = new SignaturePad(canvas);
-        let selectedMachineId = "";
-        let globalItems = [];
+        let currentMachineId = "";
+        let checklistData = [];
 
-        // 2. FUNGSI SCANNER
-        const onScanSuccess = async (decodedText) => {
-            const scannedID = decodedText.trim();
-            document.getElementById('scan-status').innerText = "Verifikasi Mesin: " + scannedID;
+        // START SCANNER SAAT LOAD
+        async function startScan() {
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: 250 },
+                async (decodedText) => {
+                    const scannedID = decodedText.trim();
+                    document.getElementById('scan-msg').innerText = "Verifikasi ID: " + scannedID;
 
-            // Verifikasi ke tabel pmi_machine
-            const { data, error } = await _sb.from('pmi_machine').select('*').eq('id', scannedID).single();
+                    // Cek ke tabel pmi_machine
+                    const { data: machine, error } = await _sb.from('pmi_machine').select('*').eq('id', scannedID).single();
 
-            if (data) {
-                selectedMachineId = data.id;
-                html5QrCode.stop();
-                document.getElementById('scanner-container').style.display = 'none';
-                document.getElementById('form-container').style.display = 'block';
-                document.getElementById('machine-display').innerText = `${data.id} (${data.machine_name})`;
-                loadChecklist();
-                resizeCanvas();
-            } else {
-                document.getElementById('scan-status').innerText = "❌ Mesin " + scannedID + " Tidak Terdaftar!";
-                document.getElementById('scan-status').style.color = "red";
-            }
-        };
-
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess);
-
-        // 3. LOAD ITEM DARI DATABASE
-        async function loadChecklist() {
-            const { data: items } = await _sb.from('pmi_items').select('*').order('sort_order', { ascending: true });
-            globalItems = items;
-            const container = document.getElementById('item-list');
-            let currentCat = "";
-
-            items.forEach(it => {
-                if (it.category !== currentCat) {
-                    currentCat = it.category;
-                    container.innerHTML += `<tr class="category-head"><td colspan="2">${currentCat}</td></tr>`;
+                    if (machine) {
+                        currentMachineId = machine.id;
+                        await html5QrCode.stop(); // MATIKAN KAMERA
+                        showForm(machine);
+                    } else {
+                        document.getElementById('scan-msg').innerText = "❌ Mesin tidak terdaftar!";
+                    }
                 }
-                container.innerHTML += `
+            ).catch(err => alert("Kamera error: " + err));
+        }
+
+        // TAMPILKAN FORM SETELAH SCAN BERHASIL
+        async function showForm(machine) {
+            document.getElementById('scanner-view').style.display = 'none';
+            document.getElementById('form-view').style.display = 'block';
+            document.getElementById('m-name').innerText = `${machine.id} - ${machine.machine_name}`;
+            
+            // Load Items
+            const { data: items } = await _sb.from('pmi_items').select('*').order('sort_order', { ascending: true });
+            checklistData = items;
+
+            const tbody = document.getElementById('pmi-items-body');
+            let lastCat = "";
+            
+            items.forEach(it => {
+                if(it.category !== lastCat) {
+                    lastCat = it.category;
+                    tbody.innerHTML += `<tr><td colspan="2" class="cat-title">${lastCat.toUpperCase()}</td></tr>`;
+                }
+                tbody.innerHTML += `
                     <tr>
-                        <td><b>${it.item_name}</b><br><small>${it.standard}</small></td>
+                        <td><strong>${it.item_name}</strong><br><small>${it.standard}</small></td>
                         <td>
-                            <div class="status-group">
+                            <div class="status-options">
                                 <label><input type="radio" name="st-${it.id}" value="OK" checked><span>OK</span></label>
                                 <label><input type="radio" name="st-${it.id}" value="NG"><span>NG</span></label>
                                 <label><input type="radio" name="st-${it.id}" value="Repair"><span>RP</span></label>
                             </div>
-                            <input type="text" id="ket-${it.id}" placeholder="Ket..." style="margin-top:5px; padding:5px; font-size:11px; margin-bottom:0">
+                            <input type="text" id="ket-${it.id}" placeholder="Catatan..." style="margin-top:5px; padding:6px; font-size:12px;">
                         </td>
                     </tr>`;
             });
+            
             document.getElementById('bulan').value = new Date().getMonth() + 1;
+            resizeCanvas();
         }
 
-        // 4. SIMPAN DATA
+        // SUBMIT KE DATABASE
         async function submitData() {
             const nama = document.getElementById('nama_pelaksana').value;
-            if (!nama || signaturePad.isEmpty()) return alert("Nama dan Tanda Tangan Wajib Diisi!");
+            if(!nama || signaturePad.isEmpty()) return alert("Nama dan TTD wajib diisi!");
 
-            // Insert ke pmi_log
+            const btn = document.querySelector('.btn-submit');
+            btn.disabled = true; btn.innerText = "Menyimpan...";
+
+            // 1. Simpan Header
             const { data: log, error: e1 } = await _sb.from('pmi_log').insert([{
-                mesin_id: selectedMachineId,
+                mesin_id: currentMachineId,
                 bulan: document.getElementById('bulan').value,
                 tahun: document.getElementById('tahun').value,
                 nama_pelaksana: nama,
@@ -177,10 +184,10 @@
                 status_verifikasi: 'Pending'
             }]).select();
 
-            if (e1) return alert("Gagal simpan log: " + e1.message);
+            if (e1) return alert("Gagal Simpan Log: " + e1.message);
 
-            // Insert ke pmi_result
-            const results = globalItems.map(it => ({
+            // 2. Simpan Detail
+            const results = checklistData.map(it => ({
                 log_id: log[0].id,
                 item_name: it.item_name,
                 status: document.querySelector(`input[name="st-${it.id}"]:checked`).value,
@@ -188,9 +195,10 @@
             }));
 
             const { error: e2 } = await _sb.from('pmi_result').insert(results);
-            if (e2) alert("Gagal simpan hasil: " + e2.message);
+
+            if (e2) alert("Gagal Simpan Detail: " + e2.message);
             else {
-                alert("BERHASIL! Data tersimpan.");
+                alert("SUKSES! Data Preventif Berhasil Disimpan.");
                 location.reload();
             }
         }
@@ -201,6 +209,8 @@
             canvas.height = canvas.offsetHeight * ratio;
             canvas.getContext("2d").scale(ratio, ratio);
         }
+
+        window.onload = startScan;
     </script>
 </body>
 </html>
