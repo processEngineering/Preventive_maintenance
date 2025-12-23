@@ -3,64 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Koordinator - Verifikasi CHSLR</title>
+    <title>Coordinator Approval - PT AKG</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <style>
-        .table-container { overflow-x: auto; }
-        table { border-collapse: collapse; min-width: 1200px; }
-        th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: center; font-size: 11px; }
-        .sticky-col { position: sticky; left: 0; background: white; z-index: 5; border-right: 2px solid #cbd5e1; }
-        .bg-ok { background-color: #dcfce7; color: #166534; font-weight: bold; }
-        .bg-ng { background-color: #fee2e2; color: #991b1b; font-weight: bold; }
+        #reader { border: none !important; border-radius: 24px; overflow: hidden; }
+        #signature-pad-koor { border: 2px dashed #3b82f6; border-radius: 1.5rem; width: 100%; height: 180px; background: #fff; touch-action: none; }
+        .finding-card { border-left: 4px solid #ef4444; }
+        .scan-line {
+            height: 3px; background: linear-gradient(to right, transparent, #3b82f6, transparent);
+            width: 100%; position: absolute; top: 50%; left: 0;
+            animation: moveScan 2s infinite ease-in-out; z-index: 10;
+        }
+        @keyframes moveScan { 0% { top: 20%; opacity: 0; } 50% { top: 50%; opacity: 1; } 100% { top: 80%; opacity: 0; } }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen p-4">
+<body class="bg-slate-50 min-h-screen pb-32 font-sans">
 
-    <div class="max-w-7xl mx-auto">
-        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-            <h1 class="text-2xl font-black text-slate-800">Verifikasi Koordinator (P2)</h1>
-            <div class="flex gap-2">
-                <select id="f-mesin" class="p-2 rounded-lg border border-slate-300 text-sm"></select>
-                <select id="f-bulan" class="p-2 rounded-lg border border-slate-300 text-sm">
-                    <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
-                    <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
-                    <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
-                    <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
-                </select>
-                <button onclick="loadMatrix()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition">Tampilkan</button>
+    <nav class="bg-blue-600 border-b sticky top-0 z-50 p-4 shadow-lg">
+        <div class="max-w-md mx-auto flex justify-between items-center text-white">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-user-shield text-xl"></i>
+                <h1 class="font-black italic tracking-tighter text-lg uppercase">Coordinator Approval</h1>
+            </div>
+            <p id="display-date" class="text-[10px] font-black bg-white/20 px-3 py-1 rounded-full uppercase"></p>
+        </div>
+    </nav>
+
+    <div class="max-w-md mx-auto p-4">
+        
+        <div id="scan-area" class="space-y-6">
+            <div class="bg-white p-2 rounded-[32px] shadow-2xl border-4 border-blue-100 relative overflow-hidden mt-4">
+                <div id="reader" class="w-full aspect-square"></div>
+                <div class="scan-line"></div>
+            </div>
+            <div class="bg-blue-50 p-5 rounded-3xl text-center border border-blue-200 shadow-sm">
+                <p id="scan-status" class="text-blue-800 font-black uppercase text-sm italic">SILAHKAN SCAN QR MESIN</p>
             </div>
         </div>
 
-        <div id="matrix-wrapper" class="hidden">
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
-                <div class="table-container">
-                    <table>
-                        <thead class="bg-slate-50">
-                            <tr>
-                                <th class="sticky-col" width="250">Item Pengecekan</th>
-                                <script>for(let i=1; i<=31; i++) document.write(`<th>${i}</th>`);</script>
-                            </tr>
-                        </thead>
-                        <tbody id="matrix-body"></tbody>
-                    </table>
+        <div id="form-area" class="hidden space-y-6 animate-in slide-in-from-bottom duration-500">
+            <div class="bg-slate-900 rounded-[2.5rem] p-7 shadow-2xl text-white relative overflow-hidden">
+                <div class="relative z-10">
+                    <p class="text-blue-400 text-[10px] font-black uppercase tracking-widest mb-1">Verifikasi Unit</p>
+                    <h2 id="machine-name-koor" class="text-3xl font-black italic mb-6 leading-tight uppercase tracking-tighter"></h2>
+                    
+                    <div class="flex items-center gap-3 bg-white/10 p-4 rounded-2xl border border-white/10">
+                        <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                            <i class="fa-solid fa-user-check"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">Dilaporkan Oleh:</p>
+                            <p id="pelaksana-names" class="font-bold text-sm text-blue-100"></p>
+                        </div>
+                    </div>
+                </div>
+                <i class="fa-solid fa-shield-halved absolute -bottom-6 -right-6 text-9xl text-white/5 rotate-12"></i>
+            </div>
+
+            <div class="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm">
+                <div class="flex items-center gap-2 mb-4">
+                    <i class="fa-solid fa-clipboard-list text-blue-600"></i>
+                    <p class="font-black text-slate-800 text-xs uppercase tracking-widest">Review Temuan & Catatan</p>
+                </div>
+                
+                <div id="findings-container" class="space-y-3">
+                    <p class="text-[10px] text-slate-400 italic">Mengecek data harian...</p>
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-md mx-auto">
-                <h3 class="font-bold text-slate-800 mb-4">Validasi Koordinator</h3>
-                <input type="text" id="k-nama" placeholder="Nama Koordinator" class="w-full p-3 border rounded-xl mb-3 outline-none focus:ring-2 focus:ring-blue-500">
-                <textarea id="k-note" placeholder="Catatan/Instruksi Perbaikan..." class="w-full p-3 border rounded-xl mb-3 h-24"></textarea>
-                
-                <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Tanda Tangan</label>
-                <div class="border-2 border-dashed rounded-xl relative bg-slate-50">
-                    <canvas id="pad" class="w-full h-40"></canvas>
-                    <button onclick="pad.clear()" class="absolute top-2 right-2 text-[10px] bg-slate-200 px-2 py-1 rounded">Reset</button>
+            <div class="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-5">
+                <div class="space-y-2">
+                    <label class="font-black text-slate-800 text-[10px] uppercase tracking-widest ml-1">Nama Koordinator</label>
+                    <input type="text" id="koor-name" placeholder="Input nama anda..." 
+                        class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 font-bold outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
-                
-                <button onclick="submitApproval()" id="btn-approve" class="w-full mt-6 bg-slate-900 text-white font-black py-4 rounded-xl shadow-lg active:scale-95 transition">
-                    VERIFIKASI SELESAI
+
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center px-1">
+                        <label class="font-black text-slate-800 text-[10px] uppercase tracking-widest">Tanda Tangan</label>
+                        <button onclick="clearSig()" class="text-[9px] font-black text-red-500 uppercase">Hapus</button>
+                    </div>
+                    <canvas id="signature-pad-koor"></canvas>
+                </div>
+            </div>
+
+            <div class="fixed bottom-6 left-0 right-0 px-6 max-w-md mx-auto z-50">
+                <button onclick="saveApproval()" id="approve-btn" class="w-full bg-green-600 text-white font-black py-5 rounded-[2.5rem] shadow-2xl shadow-green-500/40 active:scale-95 transition-all flex items-center justify-center gap-3">
+                    <span class="italic tracking-tight">VERIFIKASI & APPROVE</span>
+                    <i class="fa-solid fa-check-double text-xl"></i>
                 </button>
             </div>
         </div>
@@ -70,70 +105,114 @@
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
-        let pad;
-        let currentLogId = null;
 
-        window.onload = async () => {
-            const { data } = await _sb.from('chslr_mesin').select('*').order('nama_mesin');
-            const sel = document.getElementById('f-mesin');
-            data.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.nama_mesin}</option>`);
-            document.getElementById('f-bulan').value = new Date().getMonth() + 1;
-            
-            const canvas = document.getElementById('pad');
-            pad = new SignaturePad(canvas);
+        let currentLogId = null;
+        let scanner = new Html5Qrcode("reader");
+        let sigPadKoor;
+
+        window.onload = () => {
+            document.getElementById('display-date').innerText = new Date().toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
+            scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, onScanSuccess);
         };
 
-        async function loadMatrix() {
-            const mId = document.getElementById('f-mesin').value;
-            const bln = document.getElementById('f-bulan').value;
-            const thn = new Date().getFullYear();
+        function clearSig() { sigPadKoor.clear(); }
 
-            // Load Items & Log
-            const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
-            const { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', mId).eq('bulan', bln).eq('tahun', thn).maybeSingle();
+        async function onScanSuccess(decodedText) {
+            const status = document.getElementById('scan-status');
+            const now = new Date();
+            const d = now.getDate(), m = now.getMonth() + 1, y = now.getFullYear();
 
-            if(!log) {
-                alert("Data belum ada untuk bulan ini!");
-                return document.getElementById('matrix-wrapper').classList.add('hidden');
+            status.innerText = "MENCARI LAPORAN...";
+
+            // 1. Cek apakah sudah ada log untuk mesin ini di bulan berjalan
+            const { data: log, error } = await _sb.from('chslr_log')
+                .select('*')
+                .eq('mesin_id', decodedText)
+                .eq('bulan', m)
+                .eq('tahun', y)
+                .maybeSingle();
+
+            if (log) {
+                await scanner.stop();
+                currentLogId = log.id;
+                document.getElementById('scan-area').classList.add('hidden');
+                document.getElementById('form-area').classList.remove('hidden');
+                document.getElementById('machine-name-koor').innerText = log.mesin_id;
+                document.getElementById('pelaksana-names').innerText = log.pelaksana_names.join(", ");
+                
+                initSignature();
+                loadFindings(log.id, d);
+            } else {
+                status.innerText = "LAPORAN PELAKSANA TIDAK DITEMUKAN!";
+                status.classList.replace('text-blue-800', 'text-red-600');
             }
-
-            currentLogId = log.id;
-            const { data: results } = await _sb.from('chslr_result').select('*').eq('log_id', log.id);
-
-            const body = document.getElementById('matrix-body');
-            body.innerHTML = "";
-
-            items.forEach(item => {
-                let row = `<tr><td class="sticky-col text-left font-medium">${item.item_name}</td>`;
-                for(let tgl=1; tgl<=31; tgl++) {
-                    const found = results.find(r => r.item_id === item.id && r.tanggal === tgl);
-                    const statusClass = found ? (found.status === 'OK' ? 'bg-ok' : 'bg-ng') : '';
-                    const statusText = found ? (found.status === 'OK' ? '√' : 'X') : '';
-                    row += `<td class="${statusClass}" title="${found?.keterangan || ''}">${statusText}</td>`;
-                }
-                row += `</tr>`;
-                body.innerHTML += row;
-            });
-
-            document.getElementById('matrix-wrapper').classList.remove('hidden');
         }
 
-        async function submitApproval() {
-            const nama = document.getElementById('k-nama').value;
-            if(!nama || pad.isEmpty()) return alert("Nama dan Tanda Tangan wajib diisi!");
+        async function loadFindings(log_id, tanggal) {
+            // 2. Tarik hasil checklist hari ini yang NG atau ada catatannya
+            const { data: results } = await _sb.from('chslr_result')
+                .select('status, keterangan, chslr_items(item_name)')
+                .eq('log_id', log_id)
+                .eq('tanggal', tanggal);
 
-            const { error } = await _sb.from('chslr_log').update({
-                koordinator_nama: nama,
-                koordinator_note: document.getElementById('k-note').value,
-                signature_koordinator: pad.toDataURL(),
-                status_verifikasi: true
-            }).eq('id', currentLogId);
+            const container = document.getElementById('findings-container');
+            container.innerHTML = "";
+
+            const ngItems = results.filter(r => r.status === 'NG' || r.keterangan !== "");
+
+            if (ngItems.length === 0) {
+                container.innerHTML = `<div class="p-4 rounded-2xl bg-green-50 text-green-700 text-xs font-bold border border-green-100 italic flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check"></i> Semua item OK. Tidak ada temuan.
+                </div>`;
+            } else {
+                ngItems.forEach(item => {
+                    container.insertAdjacentHTML('beforeend', `
+                        <div class="p-4 rounded-2xl ${item.status === 'NG' ? 'bg-red-50 border border-red-100 finding-card' : 'bg-slate-50 border border-slate-100'}">
+                            <div class="flex justify-between items-start">
+                                <p class="text-xs font-bold text-slate-800 w-3/4 leading-tight">${item.chslr_items.item_name}</p>
+                                <span class="text-[9px] font-black px-2 py-0.5 rounded-full ${item.status === 'NG' ? 'bg-red-500 text-white' : 'bg-slate-300 text-slate-700'}">${item.status}</span>
+                            </div>
+                            ${item.keterangan ? `<p class="text-[11px] font-medium mt-2 italic text-slate-600 bg-white/60 p-2 rounded-lg border border-dashed border-slate-200">"${item.keterangan}"</p>` : ''}
+                        </div>
+                    `);
+                });
+            }
+        }
+
+        function initSignature() {
+            const canvas = document.getElementById('signature-pad-koor');
+            sigPadKoor = new SignaturePad(canvas);
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+        }
+
+        async function saveApproval() {
+            const name = document.getElementById('koor-name').value.trim();
+            if(!name || sigPadKoor.isEmpty()) return alert("NAMA & TANDA TANGAN WAJIB DIISI!");
+
+            const btn = document.getElementById('approve-btn');
+            btn.disabled = true; btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> SAVING APPROVAL...`;
+
+            const sigBase64 = sigPadKoor.toDataURL();
+
+            // 3. Update data Koordinator ke tabel Log
+            const { error } = await _sb.from('chslr_log')
+                .update({
+                    koordinator_nama: name,
+                    signature_koordinator: sigBase64,
+                    status_verifikasi: true
+                })
+                .eq('id', currentLogId);
 
             if(!error) {
-                alert("Berhasil Verifikasi!");
+                alert("VERIFIKASI BERHASIL DISIMPAN!");
                 location.reload();
             } else {
-                alert("Gagal: " + error.message);
+                alert("GAGAL: " + error.message);
+                btn.disabled = false;
+                btn.innerText = "VERIFIKASI & APPROVE";
             }
         }
     </script>
