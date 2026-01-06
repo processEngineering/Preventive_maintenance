@@ -52,7 +52,17 @@
             <div class="bg-slate-900 rounded-[2.5rem] p-7 shadow-2xl text-white relative overflow-hidden">
                 <div class="relative z-10">
                     <p class="text-blue-400 text-[10px] font-black uppercase tracking-widest mb-1">Unit Terverifikasi</p>
-                    <h2 id="machine-name" class="text-2xl font-black italic mb-6 leading-tight uppercase tracking-tighter"></h2>
+                    <h2 id="machine-display-name" class="text-xl font-black italic mb-6 leading-tight uppercase tracking-tighter"></h2>
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <p class="text-slate-500 text-[8px] uppercase font-bold">ID Mesin</p>
+                            <p id="machine-id-tag" class="text-xs font-bold"></p>
+                        </div>
+                        <div>
+                            <p class="text-slate-500 text-[8px] uppercase font-bold">Tonage</p>
+                            <p id="machine-tonage-tag" class="text-xs font-bold"></p>
+                        </div>
+                    </div>
                     <div class="space-y-1">
                         <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nama Pelaksana</label>
                         <input type="text" id="technician-name" placeholder="Input nama anda..." 
@@ -82,7 +92,6 @@
     </div>
 
     <script>
-        // SUPABASE CONFIG
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
@@ -102,24 +111,29 @@
             const status = document.getElementById('scan-status');
             status.innerText = "VERIFIKASI DB...";
             
-            // Menggunakan ILIKE agar fleksibel terhadap huruf besar/kecil
+            // SINKRONISASI: Mencari berdasarkan ID di tabel chslr_mesin
             const { data: mesin, error } = await _sb
                 .from('chslr_mesin')
                 .select('*')
-                .ilike('id', decodedText)
+                .eq('id', decodedText.trim())
                 .maybeSingle();
 
             if (mesin) {
                 await scanner.stop();
                 currentMachineId = mesin.id;
+                
                 document.getElementById('scan-area').classList.add('hidden');
                 document.getElementById('form-area').classList.remove('hidden');
-                document.getElementById('machine-name').innerText = mesin.id;
+                
+                // REVISI: Tampilkan data lengkap dari tabel
+                document.getElementById('machine-display-name').innerText = mesin.nama_mesin;
+                document.getElementById('machine-id-tag').innerText = mesin.id;
+                document.getElementById('machine-tonage-tag').innerText = mesin.tonage || '-';
                 
                 initSignature();
                 loadItems();
             } else {
-                status.innerText = "Gagal: " + decodedText + " Tidak Ditemukan!";
+                status.innerText = "KODE " + decodedText + " TIDAK TERDAFTAR!";
                 status.classList.add('text-red-600');
             }
         }
@@ -134,9 +148,12 @@
         }
 
         async function loadItems() {
-            const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
+            const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order', { ascending: true });
             const container = document.getElementById('checklist-container');
+            container.innerHTML = ""; // Clear loader
             
+            if(!items) return;
+
             items.forEach(item => {
                 container.insertAdjacentHTML('beforeend', `
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-200 shadow-sm">
@@ -169,49 +186,53 @@
 
         async function saveAll() {
             const name = document.getElementById('technician-name').value.trim();
-            if(!name || sigPad.isEmpty()) return alert("NAMA & TANDA TANGAN HARUS DIISI!");
+            if(!name) return alert("NAMA PELAKSANA HARUS DIISI!");
+            if(sigPad.isEmpty()) return alert("TANDA TANGAN HARUS DIISI!");
 
             const btn = document.getElementById('save-btn');
-            btn.disabled = true; btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin mr-2"></i> SAVING...`;
+            btn.disabled = true; 
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin mr-2"></i> SAVING...`;
 
             const now = new Date();
-            const d = now.getDate(), m = now.getMonth() + 1, y = now.getFullYear();
-            const sigBase64 = sigPad.toDataURL(); // Data Tanda Tangan
+            const d = now.getDate();
+            const m = now.getMonth() + 1;
+            const y = now.getFullYear();
+            const sigBase64 = sigPad.toDataURL();
 
-            // 1. Dapatkan atau Buat Log Bulanan
+            // 1. Dapatkan Log Bulanan
             let { data: log } = await _sb.from('chslr_log').select('id').eq('mesin_id', currentMachineId).eq('bulan', m).eq('tahun', y).maybeSingle();
             
             if(!log) {
                 const { data: nLog, error: eLog } = await _sb.from('chslr_log').insert({ 
                     mesin_id: currentMachineId, bulan: m, tahun: y, pelaksana_names: [name] 
                 }).select().single();
-                if(eLog) { alert("Gagal Log: "+eLog.message); btn.disabled=false; return; }
+                if(eLog) { alert("Gagal Buat Log: "+eLog.message); btn.disabled=false; return; }
                 log = nLog;
             }
 
-            // 2. Siapkan data results
+            // 2. Siapkan Results
             const { data: items } = await _sb.from('chslr_items').select('id');
             const dataToInsert = items.map(i => ({
                 log_id: log.id, 
                 item_id: i.id, 
                 tanggal: d,
                 status: document.querySelector(`input[name="status-${i.id}"]:checked`).value,
-                keterangan: document.getElementById(`note-${i.id}`).value || "",
-                signature: sigBase64 // Disimpan sebagai TEXT Base64
+                keterangan: document.getElementById(`note-${i.id}`)?.value || "",
+                signature: sigBase64
             }));
 
-            // Hapus data hari yang sama (timpa ulang)
+            // Timpa data jika hari yang sama sudah diisi
             await _sb.from('chslr_result').delete().eq('log_id', log.id).eq('tanggal', d);
             
-            // Insert data baru
             const { error: resErr } = await _sb.from('chslr_result').insert(dataToInsert);
 
             if(!resErr) {
-                alert("BERHASIL! DATA TERSIMPAN.");
+                alert("LAPORAN BERHASIL DISIMPAN!");
                 location.reload();
             } else {
-                alert("Gagal Simpan: " + resErr.message);
-                btn.disabled = false; btn.innerText = "SIMPAN LAPORAN HARIAN";
+                alert("ERROR: " + resErr.message);
+                btn.disabled = false;
+                btn.innerText = "SIMPAN LAPORAN HARIAN";
             }
         }
     </script>
