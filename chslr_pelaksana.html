@@ -11,7 +11,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        #reader { border: none !important; border-radius: 24px; overflow: hidden; }
+        /* Perbaikan lebar scanner agar QR panjang mudah terbaca */
+        #reader { 
+            border: none !important; 
+            border-radius: 24px; 
+            overflow: hidden;
+            width: 100% !important;
+        }
+        #reader video {
+            object-fit: cover !important;
+        }
         .peer:checked + div { border-color: #22c55e; background-color: #f0fdf4; color: #15803d; }
         #signature-pad { border: 2px dashed #cbd5e1; border-radius: 1.5rem; width: 100%; height: 200px; background: #fff; touch-action: none; }
         .scan-line {
@@ -40,11 +49,11 @@
         
         <div id="scan-area" class="space-y-6">
             <div class="bg-white p-2 rounded-[32px] shadow-2xl border border-white relative overflow-hidden mt-4">
-                <div id="reader" class="w-full aspect-square"></div>
+                <div id="reader"></div>
                 <div class="scan-line"></div>
             </div>
             <div class="bg-white p-5 rounded-3xl text-center shadow-sm border border-slate-100">
-                <p id="scan-status" class="text-slate-800 font-black uppercase tracking-tight text-sm italic">SIAP SCAN QR CODE MESIN</p>
+                <p id="scan-status" class="text-slate-800 font-black uppercase tracking-tight text-sm italic">ARAHKAN KE QR CODE NAMA MESIN</p>
             </div>
         </div>
 
@@ -52,27 +61,30 @@
             <div class="bg-slate-900 rounded-[2.5rem] p-7 shadow-2xl text-white relative overflow-hidden">
                 <div class="relative z-10">
                     <p class="text-blue-400 text-[10px] font-black uppercase tracking-widest mb-1">Unit Terverifikasi</p>
-                    <h2 id="machine-display-name" class="text-xl font-black italic mb-6 leading-tight uppercase tracking-tighter"></h2>
-                    <div class="grid grid-cols-2 gap-4 mb-6">
-                        <div>
-                            <p class="text-slate-500 text-[8px] uppercase font-bold">ID Mesin</p>
-                            <p id="machine-id-tag" class="text-xs font-bold"></p>
+                    <h2 id="machine-display-name" class="text-xl font-black italic mb-6 leading-tight uppercase tracking-tighter text-blue-50"></h2>
+                    
+                    <div class="flex gap-4 mb-6">
+                        <div class="bg-white/5 p-3 rounded-2xl border border-white/10 flex-1">
+                            <p class="text-slate-500 text-[8px] uppercase font-bold">ID Unit</p>
+                            <p id="machine-id-tag" class="text-xs font-bold text-white"></p>
                         </div>
-                        <div>
-                            <p class="text-slate-500 text-[8px] uppercase font-bold">Tonage</p>
-                            <p id="machine-tonage-tag" class="text-xs font-bold"></p>
+                        <div class="bg-white/5 p-3 rounded-2xl border border-white/10 flex-1">
+                            <p class="text-slate-500 text-[8px] uppercase font-bold">Tonnage</p>
+                            <p id="machine-tonage-tag" class="text-xs font-bold text-white"></p>
                         </div>
                     </div>
+
                     <div class="space-y-1">
-                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nama Pelaksana</label>
-                        <input type="text" id="technician-name" placeholder="Input nama anda..." 
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nama Pelaksana</label>
+                        <input type="text" id="technician-name" placeholder="Input nama lengkap..." 
                             class="w-full bg-white/10 border border-white/20 rounded-2xl p-4 text-white font-bold outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-white/20">
                     </div>
                 </div>
                 <i class="fa-solid fa-microchip absolute -bottom-6 -right-6 text-9xl text-white/5 rotate-12"></i>
             </div>
 
-            <div id="checklist-container" class="space-y-4"></div>
+            <div id="checklist-container" class="space-y-4">
+                </div>
 
             <div class="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm">
                 <div class="flex justify-between items-center mb-4">
@@ -84,7 +96,7 @@
 
             <div class="fixed bottom-6 left-0 right-0 px-6 max-w-md mx-auto z-50">
                 <button onclick="saveAll()" id="save-btn" class="w-full bg-blue-600 text-white font-black py-5 rounded-[2.5rem] shadow-2xl shadow-blue-500/40 active:scale-95 transition-all flex items-center justify-center gap-3">
-                    <span>SIMPAN LAPORAN HARIAN</span>
+                    <span>KIRIM LAPORAN SEKARANG</span>
                     <i class="fa-solid fa-paper-plane"></i>
                 </button>
             </div>
@@ -102,20 +114,26 @@
 
         window.onload = () => {
             document.getElementById('display-date').innerText = new Date().toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
-            scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, onScanSuccess);
+            // REVISI: Konfigurasi Scanner lebih lebar (qrbox 300x150) untuk teks panjang
+            scanner.start({ facingMode: "environment" }, { 
+                fps: 20, 
+                qrbox: { width: 300, height: 150 },
+                aspectRatio: 1.0
+            }, onScanSuccess);
         };
 
         function clearSig() { sigPad.clear(); }
 
         async function onScanSuccess(decodedText) {
             const status = document.getElementById('scan-status');
-            status.innerText = "VERIFIKASI DB...";
+            status.innerText = "MENCARI DATA MESIN...";
             
-            // SINKRONISASI: Mencari berdasarkan ID di tabel chslr_mesin
+            // REVISI: Mencari berdasarkan Nama Mesin (Isi QR)
+            // Pakai .ilike dengan % agar lebih toleran terhadap spasi
             const { data: mesin, error } = await _sb
                 .from('chslr_mesin')
                 .select('*')
-                .eq('id', decodedText.trim())
+                .ilike('nama_mesin', `%${decodedText.trim()}%`)
                 .maybeSingle();
 
             if (mesin) {
@@ -125,7 +143,6 @@
                 document.getElementById('scan-area').classList.add('hidden');
                 document.getElementById('form-area').classList.remove('hidden');
                 
-                // REVISI: Tampilkan data lengkap dari tabel
                 document.getElementById('machine-display-name').innerText = mesin.nama_mesin;
                 document.getElementById('machine-id-tag').innerText = mesin.id;
                 document.getElementById('machine-tonage-tag').innerText = mesin.tonage || '-';
@@ -133,8 +150,9 @@
                 initSignature();
                 loadItems();
             } else {
-                status.innerText = "KODE " + decodedText + " TIDAK TERDAFTAR!";
+                status.innerText = "MESIN TIDAK TERDATA DI DB";
                 status.classList.add('text-red-600');
+                console.log("Scan Result:", decodedText);
             }
         }
 
@@ -150,9 +168,12 @@
         async function loadItems() {
             const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order', { ascending: true });
             const container = document.getElementById('checklist-container');
-            container.innerHTML = ""; // Clear loader
+            container.innerHTML = ""; 
             
-            if(!items) return;
+            if(!items || items.length === 0) {
+                container.innerHTML = "<p class='text-center text-slate-400 text-xs'>Item checklist belum di-set di database.</p>";
+                return;
+            }
 
             items.forEach(item => {
                 container.insertAdjacentHTML('beforeend', `
@@ -162,15 +183,15 @@
                             <div class="grid grid-cols-2 gap-3">
                                 <label class="cursor-pointer">
                                     <input type="radio" name="status-${item.id}" value="OK" class="hidden peer" checked onclick="toggleNote('${item.id}', false)">
-                                    <div class="text-center py-3 rounded-2xl bg-slate-50 border-2 border-transparent peer-checked:border-green-500 peer-checked:text-green-700 font-black text-xs transition-all">OK</div>
+                                    <div class="text-center py-3 rounded-2xl bg-slate-50 border-2 border-transparent peer-checked:border-green-500 peer-checked:text-green-700 font-black text-xs transition-all uppercase">OK</div>
                                 </label>
                                 <label class="cursor-pointer">
                                     <input type="radio" name="status-${item.id}" value="NG" class="hidden peer" onclick="toggleNote('${item.id}', true)">
-                                    <div class="text-center py-3 rounded-2xl bg-slate-50 border-2 border-transparent peer-checked:border-red-500 peer-checked:text-red-700 font-black text-xs transition-all">NG</div>
+                                    <div class="text-center py-3 rounded-2xl bg-slate-50 border-2 border-transparent peer-checked:border-red-500 peer-checked:text-red-700 font-black text-xs transition-all uppercase">NG</div>
                                 </label>
                             </div>
                             <div id="note-box-${item.id}" class="hidden">
-                                <textarea id="note-${item.id}" placeholder="Jelaskan kondisi NG..." 
+                                <textarea id="note-${item.id}" placeholder="Tulis alasan NG di sini..." 
                                     class="w-full bg-red-50/50 border border-red-100 rounded-xl p-3 text-xs font-bold text-red-900 outline-none"></textarea>
                             </div>
                         </div>
@@ -186,12 +207,11 @@
 
         async function saveAll() {
             const name = document.getElementById('technician-name').value.trim();
-            if(!name) return alert("NAMA PELAKSANA HARUS DIISI!");
-            if(sigPad.isEmpty()) return alert("TANDA TANGAN HARUS DIISI!");
+            if(!name || sigPad.isEmpty()) return alert("HARAP ISI NAMA & TANDA TANGAN!");
 
             const btn = document.getElementById('save-btn');
             btn.disabled = true; 
-            btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin mr-2"></i> SAVING...`;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin mr-2"></i> MENGIRIM...`;
 
             const now = new Date();
             const d = now.getDate();
@@ -199,40 +219,42 @@
             const y = now.getFullYear();
             const sigBase64 = sigPad.toDataURL();
 
-            // 1. Dapatkan Log Bulanan
-            let { data: log } = await _sb.from('chslr_log').select('id').eq('mesin_id', currentMachineId).eq('bulan', m).eq('tahun', y).maybeSingle();
-            
-            if(!log) {
-                const { data: nLog, error: eLog } = await _sb.from('chslr_log').insert({ 
-                    mesin_id: currentMachineId, bulan: m, tahun: y, pelaksana_names: [name] 
-                }).select().single();
-                if(eLog) { alert("Gagal Buat Log: "+eLog.message); btn.disabled=false; return; }
-                log = nLog;
-            }
+            try {
+                // 1. Ambil/Buat Log Bulan Berjalan
+                let { data: log } = await _sb.from('chslr_log').select('id').eq('mesin_id', currentMachineId).eq('bulan', m).eq('tahun', y).maybeSingle();
+                
+                if(!log) {
+                    const { data: nLog, error: eLog } = await _sb.from('chslr_log').insert({ 
+                        mesin_id: currentMachineId, bulan: m, tahun: y, pelaksana_names: [name] 
+                    }).select().single();
+                    if(eLog) throw eLog;
+                    log = nLog;
+                }
 
-            // 2. Siapkan Results
-            const { data: items } = await _sb.from('chslr_items').select('id');
-            const dataToInsert = items.map(i => ({
-                log_id: log.id, 
-                item_id: i.id, 
-                tanggal: d,
-                status: document.querySelector(`input[name="status-${i.id}"]:checked`).value,
-                keterangan: document.getElementById(`note-${i.id}`)?.value || "",
-                signature: sigBase64
-            }));
+                // 2. Insert Result per item
+                const { data: items } = await _sb.from('chslr_items').select('id');
+                const results = items.map(i => ({
+                    log_id: log.id, 
+                    item_id: i.id, 
+                    tanggal: d,
+                    status: document.querySelector(`input[name="status-${i.id}"]:checked`).value,
+                    keterangan: document.getElementById(`note-${i.id}`)?.value || "",
+                    signature: sigBase64
+                }));
 
-            // Timpa data jika hari yang sama sudah diisi
-            await _sb.from('chslr_result').delete().eq('log_id', log.id).eq('tanggal', d);
-            
-            const { error: resErr } = await _sb.from('chslr_result').insert(dataToInsert);
+                // Hapus data hari yang sama (biar ga duplikat kalau ngisi ulang)
+                await _sb.from('chslr_result').delete().eq('log_id', log.id).eq('tanggal', d);
+                
+                const { error: resErr } = await _sb.from('chslr_result').insert(results);
+                if(resErr) throw resErr;
 
-            if(!resErr) {
-                alert("LAPORAN BERHASIL DISIMPAN!");
+                alert("✅ LAPORAN BERHASIL TERKIRIM!");
                 location.reload();
-            } else {
-                alert("ERROR: " + resErr.message);
+
+            } catch (err) {
+                alert("GAGAL: " + err.message);
                 btn.disabled = false;
-                btn.innerText = "SIMPAN LAPORAN HARIAN";
+                btn.innerText = "KIRIM LAPORAN SEKARANG";
             }
         }
     </script>
