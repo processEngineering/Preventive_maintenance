@@ -32,7 +32,7 @@
                 <span id="log-count" class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded-md font-bold">0</span>
             </div>
             <div id="log-container" class="space-y-3">
-                <p class="text-center text-slate-400 text-xs py-10 italic font-bold">Mencari laporan masuk...</p>
+                <div class="text-center py-10"><i class="fas fa-spinner fa-spin text-blue-500"></i></div>
             </div>
         </div>
 
@@ -51,10 +51,10 @@
             </div>
         </div>
 
-        <div id="approval-area" class="hidden space-y-6">
+        <div id="approval-area" class="hidden space-y-6 animate-in slide-in-from-bottom duration-500">
             <div class="bg-slate-900 rounded-[2.5rem] p-7 shadow-2xl text-white relative overflow-hidden">
-                <p class="text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2">Reviewing Report</p>
-                <h2 id="machine-name-koor" class="text-2xl font-black italic mb-4 uppercase leading-tight tracking-tighter"></h2>
+                <p class="text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2 text-xs">Review Laporan</p>
+                <h2 id="machine-name-koor" class="text-xl font-black italic mb-4 uppercase leading-tight tracking-tighter"></h2>
                 
                 <div id="koor-machine-detail" class="grid grid-cols-2 gap-3 mb-6 border-t border-white/10 pt-4 text-white/70">
                     </div>
@@ -67,14 +67,13 @@
 
             <div class="bg-white p-7 rounded-[2.5rem] shadow-xl border border-slate-200 space-y-5">
                 <div class="space-y-1">
-                    <label class="font-black text-slate-800 text-[10px] uppercase ml-1">Nama Koordinator</label>
-                    <input type="text" id="koor-name" placeholder="Input nama anda..." class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 font-bold outline-none focus:ring-2 focus:ring-blue-500 uppercase">
+                    <label class="font-black text-slate-800 text-[10px] uppercase ml-1 tracking-widest">Nama Koordinator</label>
+                    <input type="text" id="koor-name" placeholder="Nama anda..." class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 font-bold outline-none focus:ring-2 focus:ring-blue-500 uppercase">
                 </div>
 
                 <div class="space-y-1">
-                    <label class="font-black text-slate-800 text-[10px] uppercase ml-1 tracking-widest text-blue-600 font-bold">Catatan Verifikasi (Remark)</label>
-                    <textarea id="koor-remark" placeholder="Tulis catatan atau instruksi jika ada..." 
-                        class="w-full bg-blue-50/50 border border-blue-100 rounded-2xl p-4 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"></textarea>
+                    <label class="font-black text-slate-800 text-[10px] uppercase ml-1 tracking-widest text-blue-600 font-bold">Remark Koordinator</label>
+                    <textarea id="koor-remark" placeholder="Instruksi/catatan..." class="w-full bg-blue-50/50 border border-blue-100 rounded-2xl p-4 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"></textarea>
                 </div>
 
                 <div class="space-y-2 pt-2">
@@ -102,10 +101,13 @@
 
         window.onload = loadQueue;
 
-        // 1. Ambil antrean laporan (status_verifikasi = false)
+        // 1. LOAD ANTREAN (Revisi: Tanpa Join Paksa)
         async function loadQueue() {
-            const { data: logs } = await _sb.from('chslr_log')
-                .select('*, chslr_mesin(*)')
+            const now = new Date();
+            const { data: logs, error } = await _sb.from('chslr_log')
+                .select('*')
+                .eq('bulan', now.getMonth()+1)
+                .eq('tahun', now.getFullYear())
                 .eq('status_verifikasi', false)
                 .order('created_at', { ascending: false });
 
@@ -115,20 +117,19 @@
 
             if (!logs || logs.length === 0) {
                 container.innerHTML = `<div class="bg-white p-12 rounded-[2.5rem] text-center border-2 border-dashed border-slate-200">
-                    <p class="text-slate-400 text-xs italic font-bold">Tidak ada laporan menunggu approval.</p>
+                    <p class="text-slate-400 text-xs italic font-bold">Antrean kosong.</p>
                 </div>`;
                 return;
             }
 
             logs.forEach(log => {
-                const machineName = log.chslr_mesin ? log.chslr_mesin.nama_mesin : log.mesin_id;
                 container.insertAdjacentHTML('beforeend', `
                     <div onclick="openVerifModal('${encodeURIComponent(JSON.stringify(log))}')" 
-                        class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200 active:scale-95 transition-all flex items-center justify-between cursor-pointer hover:border-blue-400">
-                        <div>
+                        class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200 active:scale-95 transition-all flex items-center justify-between cursor-pointer hover:border-blue-300">
+                        <div class="pr-4">
                             <p class="text-[9px] font-black text-blue-600 uppercase mb-1 tracking-widest italic">Pending Review</p>
-                            <h3 class="font-black text-slate-800 text-sm uppercase italic leading-tight pr-4">${machineName}</h3>
-                            <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">Operator: ${log.pelaksana_names.join(', ')}</p>
+                            <h3 class="font-black text-slate-800 text-xs uppercase italic leading-tight">${log.mesin_id}</h3>
+                            <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">Oleh: ${log.pelaksana_names ? log.pelaksana_names.join(', ') : '-'}</p>
                         </div>
                         <i class="fa-solid fa-chevron-right text-slate-300"></i>
                     </div>
@@ -136,73 +137,72 @@
             });
         }
 
-        // 2. Modal Verifikasi Scanner (Berdasarkan Nama Mesin di Barcode)
+        // 2. SCAN VERIFIKASI
         function openVerifModal(logStr) {
             activeLog = JSON.parse(decodeURIComponent(logStr));
-            const machineName = activeLog.chslr_mesin ? activeLog.chslr_mesin.nama_mesin : activeLog.mesin_id;
-            
             document.getElementById('modal-scan').classList.remove('hidden');
-            document.getElementById('target-mesin-txt').innerText = "WAJIB SCAN: " + machineName;
+            document.getElementById('target-mesin-txt').innerText = "SCAN BARCODE: " + activeLog.mesin_id;
             
-            scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 300, height: 150 } }, onScanSuccess);
+            scanner.start({ facingMode: "environment" }, { 
+                fps: 20, 
+                qrbox: { width: 300, height: 150 } 
+            }, onScanSuccess);
         }
 
         async function onScanSuccess(decodedText) {
-            const machineName = activeLog.chslr_mesin ? activeLog.chslr_mesin.nama_mesin : activeLog.mesin_id;
-            
-            // Pencocokan teks QR dengan Nama di Database
-            if (machineName.toLowerCase().includes(decodedText.trim().toLowerCase())) {
+            // Match nama mesin (case insensitive)
+            if (activeLog.mesin_id.toLowerCase().trim() === decodedText.toLowerCase().trim()) {
                 await scanner.stop();
                 document.getElementById('modal-scan').classList.add('hidden');
-                openApprovalForm(machineName);
+                openApprovalForm();
             } else {
-                alert("QR TIDAK COCOK!\nSilahkan scan mesin yang sesuai.");
+                alert("QR TIDAK COCOK!\nScan: " + decodedText + "\nButuh: " + activeLog.mesin_id);
             }
         }
 
         function closeModalScan() { scanner.stop(); document.getElementById('modal-scan').classList.add('hidden'); }
 
-        // 3. Form Approval & Review Detail
-        async function openApprovalForm(machineName) {
+        // 3. OPEN FORM APPROVAL
+        async function openApprovalForm() {
             document.getElementById('list-area').classList.add('hidden');
             document.getElementById('approval-area').classList.remove('hidden');
             
+            const machineName = activeLog.mesin_id;
             document.getElementById('machine-name-koor').innerText = machineName;
-            document.getElementById('pelaksana-names').innerText = "LAPORAN OLEH: " + activeLog.pelaksana_names.join(', ');
+            document.getElementById('pelaksana-names').innerText = "Dilaporkan Oleh: " + activeLog.pelaksana_names.join(', ');
 
-            // Tampilkan Detail Mesin (Tonnage & No Seri)
-            if(activeLog.chslr_mesin) {
+            // Ambil Detail Tonnage & Seri (Cari ke tabel mesin)
+            const { data: mInfo } = await _sb.from('chslr_mesin').select('*').eq('nama_mesin', machineName).maybeSingle();
+            if(mInfo) {
                 document.getElementById('koor-machine-detail').innerHTML = `
-                    <div><p class="text-[8px] font-black uppercase">Tonnage</p><p class="text-xs font-bold text-white">${activeLog.chslr_mesin.tonage || '-'}</p></div>
-                    <div><p class="text-[8px] font-black uppercase">No. Seri</p><p class="text-xs font-bold text-white">${activeLog.chslr_mesin.no_seri || '-'}</p></div>
+                    <div><p class="text-[8px] font-black uppercase">Tonnage</p><p class="text-xs font-bold text-white">${mInfo.tonage || '-'}</p></div>
+                    <div><p class="text-[8px] font-black uppercase">No. Seri</p><p class="text-xs font-bold text-white">${mInfo.no_seri || '-'}</p></div>
                 `;
             }
 
-            // Load Temuan NG dari database
+            // Load Temuan NG
             const { data: results } = await _sb.from('chslr_result')
                 .select('status, keterangan, chslr_items(item_name)')
                 .eq('log_id', activeLog.id)
                 .eq('tanggal', new Date().getDate());
 
             const fContainer = document.getElementById('findings-container');
-            fContainer.innerHTML = `<h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-3 mb-2 font-bold">Ringkasan Pengecekan</h4>`;
+            fContainer.innerHTML = `<h4 class="text-[10px] font-black text-slate-500 uppercase ml-3 mb-2 font-bold tracking-widest text-xs">Detail Pengecekan</h4>`;
             
-            results.filter(r => r.status === 'NG' || r.keterangan).forEach(item => {
-                fContainer.insertAdjacentHTML('beforeend', `
-                    <div class="bg-white p-5 rounded-3xl border-l-4 ${item.status === 'NG' ? 'border-red-500 bg-red-50/50' : 'border-blue-400'} shadow-sm">
-                        <div class="flex justify-between items-center mb-1">
-                            <p class="text-[10px] font-black text-slate-800 uppercase">${item.chslr_items.item_name}</p>
-                            <span class="text-[8px] font-black ${item.status === 'NG' ? 'text-red-600' : 'text-blue-600'} uppercase">${item.status}</span>
+            if(results) {
+                results.filter(r => r.status === 'NG' || r.keterangan).forEach(item => {
+                    fContainer.insertAdjacentHTML('beforeend', `
+                        <div class="bg-white p-5 rounded-3xl border-l-4 ${item.status === 'NG' ? 'border-red-500 bg-red-50' : 'border-blue-400'} shadow-sm">
+                            <div class="flex justify-between items-center mb-1">
+                                <p class="text-[10px] font-black text-slate-800 uppercase">${item.chslr_items ? item.chslr_items.item_name : 'Unknown Item'}</p>
+                                <span class="text-[8px] font-black ${item.status === 'NG' ? 'text-red-600' : 'text-blue-600'} uppercase">${item.status}</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 italic font-bold">"${item.keterangan || '-'}"</p>
                         </div>
-                        <p class="text-[10px] text-slate-500 italic font-bold">"${item.keterangan || 'Tidak ada catatan'}"</p>
-                    </div>
-                `);
-            });
+                    `);
+                });
+            }
 
-            initSignature();
-        }
-
-        function initSignature() {
             const canvas = document.getElementById('signature-pad-koor');
             sigPadKoor = new SignaturePad(canvas);
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -210,27 +210,23 @@
             canvas.getContext("2d").scale(ratio, ratio);
         }
 
-        // 4. Submit Approval Koordinator
+        // 4. SUBMIT
         async function submitApproval() {
             const name = document.getElementById('koor-name').value.trim();
-            const remark = document.getElementById('koor-remark').value.trim();
-            
-            if(!name || sigPadKoor.isEmpty()) return alert("NAMA & PARAF WAJIB DIISI!");
+            if(!name || sigPadKoor.isEmpty()) return alert("NAMA & PARAF WAJIB!");
 
             const btn = document.getElementById('approve-btn');
-            btn.disabled = true; btn.innerHTML = "<i class='fa-solid fa-spinner animate-spin'></i> PROCESSING...";
+            btn.disabled = true; btn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> SAVING...";
 
-            const { error } = await _sb.from('chslr_log')
-                .update({
-                    koordinator_nama: name,
-                    signature_koordinator: sigPadKoor.toDataURL(),
-                    status_verifikasi: true,
-                    remark_koordinator: remark
-                })
-                .eq('id', activeLog.id);
+            const { error } = await _sb.from('chslr_log').update({
+                koordinator_nama: name,
+                signature_koordinator: sigPadKoor.toDataURL(),
+                status_verifikasi: true,
+                remark_koordinator: document.getElementById('koor-remark').value
+            }).eq('id', activeLog.id);
 
             if(!error) {
-                alert("LAPORAN BERHASIL DI-APPROVE! ✅");
+                alert("LAPORAN TERVERIFIKASI ✅");
                 location.reload();
             } else {
                 alert("GAGAL: " + error.message);
