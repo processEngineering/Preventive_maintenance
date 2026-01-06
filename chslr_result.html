@@ -6,7 +6,6 @@
     <title>REPORT CHECKLIST HARIAN - PT AKG</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* CSS Kamu sudah sangat bagus, saya pertahankan */
         @page { size: A4 landscape; margin: 8mm; }
         @media print { .no-print { display: none !important; } .document-page { box-shadow: none; border: none; width: 100%; margin: 0; padding: 5px; } }
         body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
@@ -36,21 +35,23 @@
         .diketahui-box { width: 220px; text-align: center; }
         .sig-frame { border: 1px solid black; width: 160px; height: 85px; margin: 5px auto; display: flex; align-items: center; justify-content: center; }
         .name-line { border-top: 1.5px solid black; width: 180px; margin: 0 auto; padding-top: 3px; font-weight: bold; text-transform: uppercase; }
-        .no-print { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; padding: 10px; background: #fff; border-radius: 5px; }
+        .no-print { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; padding: 10px; background: #fff; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
 
     <div class="no-print">
-        <select id="filter-mesin" style="padding: 5px; min-width: 200px;"></select>
-        <select id="filter-bulan" style="padding: 5px;">
+        <select id="filter-mesin" style="padding: 5px; min-width: 200px; border-radius: 4px; border: 1px solid #ccc;"></select>
+        <select id="filter-bulan" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
             <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
             <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
             <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
             <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
         </select>
-        <button onclick="renderDashboard()" style="background: #0056b3; color: white; border: none; padding: 5px 20px; cursor: pointer; border-radius: 3px;">TAMPILKAN DATA</button>
-        <button onclick="window.print()" style="background: #222; color: white; border: none; padding: 5px 20px; cursor: pointer; border-radius: 3px;">PRINT</button>
+        <select id="filter-tahun" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;"></select>
+        
+        <button onclick="renderDashboard()" style="background: #0056b3; color: white; border: none; padding: 5px 20px; cursor: pointer; border-radius: 4px; font-weight: bold;">TAMPILKAN DATA</button>
+        <button onclick="window.print()" style="background: #222; color: white; border: none; padding: 5px 20px; cursor: pointer; border-radius: 4px; font-weight: bold;">PRINT</button>
     </div>
 
     <div class="document-page">
@@ -115,16 +116,25 @@
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
         async function init() {
-            // REVISI: Mengambil nama_mesin sebagai primary filter
+            // Load Mesin
             const { data: mesin } = await _sb.from('chslr_mesin').select('nama_mesin');
             const selectMesin = document.getElementById('filter-mesin');
             mesin?.forEach(m => {
                 selectMesin.innerHTML += `<option value="${m.nama_mesin}">${m.nama_mesin}</option>`;
             });
             
+            // Init Tanggal Header
             const dateRow = document.getElementById('date-row');
             for(let i=1; i<=31; i++) dateRow.innerHTML += `<th class="col-tgl">${i}</th>`;
             
+            // Init Dropdown Tahun (Ambil tahun sekarang + 2 tahun ke belakang)
+            const yearSelect = document.getElementById('filter-tahun');
+            const currentYear = new Date().getFullYear();
+            for(let i=0; i<3; i++) {
+                let y = currentYear - i;
+                yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
+            }
+
             document.getElementById('filter-bulan').value = new Date().getMonth() + 1;
             renderDashboard();
         }
@@ -132,18 +142,23 @@
         async function renderDashboard() {
             const m_name = document.getElementById('filter-mesin').value;
             const bln = document.getElementById('filter-bulan').value;
-            const thn = new Date().getFullYear();
+            const thn = document.getElementById('filter-tahun').value; // Mengambil value tahun dari filter
 
             document.getElementById('label-mesin').innerText = m_name;
             document.getElementById('label-bulan').innerText = document.getElementById('filter-bulan').options[bln-1].text + " " + thn;
 
-            // Ambil Log Header
-            const { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', m_name).eq('bulan', bln).eq('tahun', thn).maybeSingle();
+            // Load Header Log
+            const { data: log } = await _sb.from('chslr_log')
+                .select('*')
+                .eq('mesin_id', m_name)
+                .eq('bulan', parseInt(bln))
+                .eq('tahun', parseInt(thn))
+                .maybeSingle();
             
-            // Ambil Master Items
+            // Load Items Master
             const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
             
-            // Ambil Results detail
+            // Load Result Detail
             const { data: results } = log ? await _sb.from('chslr_result').select('*').eq('log_id', log.id) : { data: [] };
 
             const tbody = document.getElementById('table-content');
@@ -161,33 +176,26 @@
                     let val = "";
                     if (find) {
                         val = find.status === 'OK' ? '√' : 'X';
-                        // Opsional: Jika ada nilai jam/value numerik
-                        if (find.value) val = find.value; 
                     }
                     row += `<td class="${find?.status === 'NG' ? 'text-ng' : ''}">${isHeader ? '' : val}</td>`;
                 }
                 tbody.innerHTML += row + `</tr>`;
             });
 
-            // HANDLE PARAF BARIS (PELAKSANA & KOORDINATOR)
+            // Handle Paraf Row
             const rowPel = document.getElementById('row-paraf-pelaksana');
             const rowCoord = document.getElementById('row-paraf-koordinator');
-            
-            // Reset cell lama
             while(rowPel.cells.length > 1) rowPel.deleteCell(1);
             while(rowCoord.cells.length > 1) rowCoord.deleteCell(1);
 
             for(let t=1; t<=31; t++) {
-                // Paraf Pelaksana per tanggal (dari signature_results)
                 const dataHariItu = results.filter(r => r.tanggal === t && r.signature);
                 const cellPel = rowPel.insertCell();
                 cellPel.className = "sig-td";
                 if(dataHariItu.length > 0) {
-                    // Ambil signature pertama yang ditemukan di tanggal tersebut
                     cellPel.innerHTML = `<img src="${dataHariItu[0].signature}" class="sig-cell-img">`;
                 }
 
-                // Paraf Koordinator (Header signature berlaku untuk sebulan jika sudah verifikasi)
                 const hasData = results.some(r => r.tanggal === t);
                 const cellCoord = rowCoord.insertCell();
                 cellCoord.className = "sig-td";
@@ -196,7 +204,7 @@
                 }
             }
 
-            // HANDLE SIGNATURE SUPERINTENDENT (DIKETAHUI)
+            // Handle Superintendent
             const superBox = document.getElementById('super-sig');
             const superName = document.getElementById('super-name');
             if(log?.status_final && log?.signature_superintendent) {
