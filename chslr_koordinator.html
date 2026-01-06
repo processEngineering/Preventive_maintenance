@@ -3,56 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coordinator - PT AKG</title>
+    <title>Coordinator Verifier - PT AKG</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        #reader { border: none !important; border-radius: 24px; overflow: hidden; }
-        #signature-pad-koor { border: 2px dashed #3b82f6; border-radius: 1.5rem; width: 100%; height: 180px; background: #fff; touch-action: none; }
-    </style>
 </head>
 <body class="bg-slate-100 min-h-screen pb-10 font-sans">
 
-    <nav class="bg-slate-900 border-b sticky top-0 z-50 p-4 shadow-xl text-white flex justify-between items-center">
+    <nav class="bg-slate-900 sticky top-0 z-50 p-4 flex justify-between items-center text-white shadow-xl">
         <h1 class="font-black italic tracking-tighter text-lg uppercase text-blue-400">Verifier System</h1>
         <span class="text-[10px] font-bold bg-white/10 px-3 py-1 rounded-full uppercase">Koordinator</span>
     </nav>
 
     <div class="max-w-md mx-auto p-4">
         <div id="list-area" class="space-y-4">
-            <div class="flex items-center justify-between px-2">
-                <h2 class="font-black text-slate-800 text-sm uppercase">Antrean Approval</h2>
-                <span id="log-count" class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded-md font-bold">0</span>
-            </div>
+            <h2 class="font-black text-slate-800 text-xs uppercase tracking-widest ml-2">Antrean Verifikasi</h2>
             <div id="log-container" class="space-y-3"></div>
         </div>
 
         <div id="modal-scan" class="fixed inset-0 z-[60] bg-slate-900/90 backdrop-blur-sm hidden flex items-center justify-center p-6 text-center">
             <div class="bg-white w-full max-w-sm rounded-[3rem] p-6">
-                <i class="fa-solid fa-qrcode text-4xl text-blue-600 mb-4"></i>
                 <h3 class="font-black text-slate-800 text-xl uppercase italic mb-2">Verifikasi Lokasi</h3>
                 <p id="target-mesin-txt" class="text-xs font-bold text-slate-500 mb-6 bg-slate-100 p-4 rounded-2xl"></p>
-                <div class="bg-slate-100 rounded-[2rem] overflow-hidden mb-6 border-4 border-blue-500 shadow-inner">
+                <div class="bg-slate-100 rounded-[2rem] overflow-hidden mb-6 border-4 border-blue-500">
                     <div id="reader" class="w-full aspect-square"></div>
                 </div>
-                <button onclick="closeModalScan()" class="text-slate-400 font-bold text-[10px] uppercase">Batal</button>
+                <button onclick="scanner.stop(); document.getElementById('modal-scan').classList.add('hidden')" class="text-slate-400 font-bold text-[10px] uppercase">Batal</button>
             </div>
         </div>
 
         <div id="approval-area" class="hidden space-y-6">
-            <div class="bg-slate-900 rounded-[2.5rem] p-7 shadow-2xl text-white relative overflow-hidden">
-                <h2 id="machine-name-koor" class="text-2xl font-black italic mb-4 uppercase leading-tight"></h2>
-                <p id="pelaksana-names" class="text-[10px] text-blue-300 font-bold italic uppercase"></p>
+            <div class="bg-slate-900 rounded-[2.5rem] p-7 text-white shadow-2xl">
+                <h2 id="m-name-koor" class="text-2xl font-black italic uppercase leading-tight mb-2"></h2>
+                <p id="p-names" class="text-[10px] text-blue-300 font-bold uppercase"></p>
             </div>
             <div id="findings-container" class="space-y-3"></div>
-            <div class="bg-white p-7 rounded-[2.5rem] shadow-xl border border-slate-200 space-y-5">
-                <input type="text" id="koor-name" placeholder="Nama Koordinator..." class="w-full bg-slate-50 border p-4 rounded-2xl font-bold outline-none">
-                <textarea id="koor-remark" placeholder="Remark / Instruksi..." class="w-full bg-blue-50/50 border p-4 rounded-2xl font-bold text-sm min-h-[100px]"></textarea>
-                <canvas id="signature-pad-koor"></canvas>
-                <button onclick="submitApproval()" id="approve-btn" class="w-full bg-blue-600 text-white font-black py-5 rounded-[2.5rem] flex items-center justify-center gap-3">
+            <div class="bg-white p-7 rounded-[2.5rem] shadow-xl space-y-5 border">
+                <input type="text" id="koor-name" placeholder="Nama Koordinator..." class="w-full bg-slate-50 border p-4 rounded-2xl font-bold">
+                <textarea id="koor-remark" placeholder="Catatan Verifikasi..." class="w-full bg-blue-50/50 border p-4 rounded-2xl font-bold text-sm min-h-[100px]"></textarea>
+                <div class="border-2 border-dashed border-blue-200 rounded-2xl p-2 bg-white">
+                    <canvas id="signature-pad-koor" class="w-full h-40"></canvas>
+                </div>
+                <button onclick="submitApproval()" id="approve-btn" class="w-full bg-blue-600 text-white font-black py-5 rounded-[2.5rem] flex items-center justify-center gap-3 active:scale-95 transition-all">
                     <span>APPROVE SEKARANG</span> <i class="fa-solid fa-circle-check"></i>
                 </button>
             </div>
@@ -68,18 +62,17 @@
         window.onload = loadQueue;
 
         async function loadQueue() {
-            const now = new Date();
-            const { data: logs } = await _sb.from('chslr_log').select('*, chslr_mesin(nama_mesin)').eq('bulan', now.getMonth()+1).eq('tahun', now.getFullYear()).eq('status_verifikasi', false).order('created_at', { ascending: false });
+            const { data: logs } = await _sb.from('chslr_log').select('*, chslr_mesin(nama_mesin)').eq('status_verifikasi', false).order('created_at', { ascending: false });
             const container = document.getElementById('log-container');
-            document.getElementById('log-count').innerText = logs ? logs.length : 0;
             container.innerHTML = "";
             logs.forEach(log => {
+                const machineName = log.chslr_mesin ? log.chslr_mesin.nama_mesin : log.mesin_id;
                 container.insertAdjacentHTML('beforeend', `
                     <div onclick="openVerifModal('${encodeURIComponent(JSON.stringify(log))}')" class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer">
                         <div>
-                            <p class="text-[9px] font-black text-blue-600 uppercase tracking-widest">Waiting Approval</p>
-                            <h3 class="font-black text-slate-800 text-sm uppercase italic leading-tight">${log.chslr_mesin ? log.chslr_mesin.nama_mesin : log.mesin_id}</h3>
-                            <p class="text-[9px] text-slate-400 font-bold uppercase italic mt-1">${log.pelaksana_names.join(', ')}</p>
+                            <p class="text-[9px] font-black text-blue-600 uppercase mb-1">Butuh Verifikasi</p>
+                            <h3 class="font-black text-slate-800 text-sm uppercase italic leading-tight">${machineName}</h3>
+                            <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">${log.pelaksana_names.join(', ')}</p>
                         </div>
                         <i class="fa-solid fa-chevron-right text-slate-300"></i>
                     </div>
@@ -89,35 +82,35 @@
 
         function openVerifModal(logStr) {
             activeLog = JSON.parse(decodeURIComponent(logStr));
+            const machineName = activeLog.chslr_mesin ? activeLog.chslr_mesin.nama_mesin : activeLog.mesin_id;
             document.getElementById('modal-scan').classList.remove('hidden');
-            document.getElementById('target-mesin-txt').innerText = "Wajib Scan: " + (activeLog.chslr_mesin ? activeLog.chslr_mesin.nama_mesin : activeLog.mesin_id);
+            document.getElementById('target-mesin-txt').innerText = "WAJIB SCAN: " + machineName;
             scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 300, height: 150 } }, onScanSuccess);
         }
 
         async function onScanSuccess(decodedText) {
             const machineName = activeLog.chslr_mesin ? activeLog.chslr_mesin.nama_mesin : activeLog.mesin_id;
-            if (decodedText.trim().toLowerCase() === machineName.toLowerCase()) {
+            // ILIKE matching: mencocokkan teks QR dengan database
+            if (machineName.toLowerCase().includes(decodedText.trim().toLowerCase())) {
                 await scanner.stop();
                 document.getElementById('modal-scan').classList.add('hidden');
                 openApprovalForm(machineName);
             } else { alert("QR TIDAK COCOK!"); }
         }
 
-        function closeModalScan() { scanner.stop(); document.getElementById('modal-scan').classList.add('hidden'); }
-
         async function openApprovalForm(machineName) {
             document.getElementById('list-area').classList.add('hidden');
             document.getElementById('approval-area').classList.remove('hidden');
-            document.getElementById('machine-name-koor').innerText = machineName;
-            document.getElementById('pelaksana-names').innerText = "Operator: " + activeLog.pelaksana_names.join(', ');
+            document.getElementById('m-name-koor').innerText = machineName;
+            document.getElementById('p-names').innerText = "Operator: " + activeLog.pelaksana_names.join(', ');
 
             const { data: results } = await _sb.from('chslr_result').select('status, keterangan, chslr_items(item_name)').eq('log_id', activeLog.id).eq('tanggal', new Date().getDate());
             const fContainer = document.getElementById('findings-container');
-            fContainer.innerHTML = `<h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-3">Temuan Lapangan</h4>`;
+            fContainer.innerHTML = `<h4 class="text-[10px] font-black text-slate-500 uppercase ml-3">Detail Temuan</h4>`;
             results.filter(r => r.status === 'NG' || r.keterangan).forEach(item => {
-                fContainer.insertAdjacentHTML('beforeend', `<div class="bg-white p-5 rounded-3xl border-l-4 ${item.status === 'NG' ? 'border-red-500 bg-red-50' : 'border-blue-400'} shadow-sm">
-                    <p class="text-[10px] font-black uppercase text-slate-800">${item.chslr_items.item_name}</p>
-                    <p class="text-[10px] italic font-bold text-slate-500">"${item.keterangan || '-'}"</p>
+                fContainer.insertAdjacentHTML('beforeend', `<div class="bg-white p-4 rounded-3xl border-l-4 ${item.status === 'NG' ? 'border-red-500 bg-red-50' : 'border-blue-400'} shadow-sm text-xs font-bold">
+                    <p class="uppercase text-slate-800">${item.chslr_items.item_name}</p>
+                    <p class="italic text-slate-500">"${item.keterangan || '-'}"</p>
                 </div>`);
             });
             const canvas = document.getElementById('signature-pad-koor');
