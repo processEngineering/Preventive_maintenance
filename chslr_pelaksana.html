@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pelaksana Daily Check - PT AKG</title>
+    <title>Scanner Pelaksana</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -11,462 +11,358 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        
-        /* Scanner Styling Professional */
-        #reader { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: cover;
-            border-radius: 24px;
-        }
-        #reader video { 
-            object-fit: cover; 
-            border-radius: 24px;
+        body { font-family: 'Inter', sans-serif; background-color: #ffffff; color: #000; overflow-x: hidden; }
+
+        /* SCANNER VIEW (Wireframe Style) */
+        .pill-header {
+            border: 2px solid #000;
+            border-radius: 9999px; /* Pill shape */
+            padding: 1rem 3rem;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.1); /* Sedikit shadow halus */
+            background: white;
+            display: inline-block;
+            width: 80%;
         }
 
-        /* Hide Default HTML5-QRCode Elements */
-        #html5-qrcode-button-camera-permission { display: none; }
-        #html5-qrcode-anchor-scan-type-change { display: none !important; }
-
-        /* Custom Scan Overlay */
-        .scan-overlay {
+        /* Viewfinder Brackets */
+        .scanner-frame {
+            position: relative;
+            width: 280px;
+            height: 280px;
+            margin: 0 auto;
+        }
+        .bracket {
             position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.2);
-            z-index: 10;
-            border-radius: 24px;
+            width: 40px;
+            height: 40px;
+            border-color: #000;
+            border-style: solid;
+            border-width: 0;
+            z-index: 20;
+        }
+        .tl { top: 0; left: 0; border-top-width: 6px; border-left-width: 6px; }
+        .tr { top: 0; right: 0; border-top-width: 6px; border-right-width: 6px; }
+        .bl { bottom: 0; left: 0; border-bottom-width: 6px; border-left-width: 6px; }
+        .br { bottom: 0; right: 0; border-bottom-width: 6px; border-right-width: 6px; }
+
+        /* Video element fix */
+        #reader { width: 100%; height: 100%; border-radius: 12px; overflow: hidden; background: #eee; }
+        #reader video { object-fit: cover; width: 100%; height: 100%; }
+
+        /* Trapezoid Lines Effect */
+        .trapezoid-lines {
+            position: absolute;
+            bottom: 80px; /* Di atas navbar */
+            left: 0; 
+            right: 0;
+            height: 150px;
+            z-index: 5;
             pointer-events: none;
         }
-        .scan-frame {
+        .line-left, .line-right {
             position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 260px; height: 260px;
-            border: 2px solid rgba(255,255,255,0.6);
-            border-radius: 20px;
-            box-shadow: 0 0 0 1000px rgba(15, 23, 42, 0.85); /* Dark focus mode */
+            bottom: 0;
+            width: 2px;
+            height: 100%;
+            background: #000;
         }
-        .scan-corner {
-            position: absolute; width: 40px; height: 40px;
-            border-color: #3b82f6; border-style: solid; border-width: 5px;
-        }
-        .tl { top: -2px; left: -2px; border-right: 0; border-bottom: 0; border-radius: 16px 0 0 0; }
-        .tr { top: -2px; right: -2px; border-left: 0; border-bottom: 0; border-radius: 0 16px 0 0; }
-        .bl { bottom: -2px; left: -2px; border-right: 0; border-top: 0; border-radius: 0 0 0 16px; }
-        .br { bottom: -2px; right: -2px; border-left: 0; border-top: 0; border-radius: 0 0 16px 0; }
+        .line-left { left: 20px; transform-origin: bottom left; transform: rotate(25deg); }
+        .line-right { right: 20px; transform-origin: bottom right; transform: rotate(-25deg); }
 
-        /* Laser Animation */
-        .laser-line {
+        /* Button "SCAN QR" */
+        .scan-badge {
             position: absolute;
-            width: 100%; height: 2px;
-            background: #3b82f6;
-            box-shadow: 0 0 15px #3b82f6;
-            top: 10%;
-            animation: scanMove 2.5s infinite ease-in-out;
+            top: -10px; /* Posisi di ujung atas garis trapesium */
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border: 2px solid #000;
+            border-radius: 8px;
+            padding: 4px 16px;
+            font-weight: 900;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            z-index: 10;
+            box-shadow: 2px 2px 0 #000;
         }
-        @keyframes scanMove { 0% { top: 10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
 
-        /* Form Styling */
-        .form-check:checked + div { 
-            border-color: #22c55e; 
-            background-color: #f0fdf4; 
-            color: #15803d; 
-            box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.2);
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 70px;
+            background: white;
+            border-top: 2px solid #000;
+            display: flex;
+            justify-content: space-around;
+            items-align: center;
+            padding-top: 15px;
+            z-index: 50;
         }
+        .nav-icon { font-size: 24px; color: #000; }
+
+        /* FORM STYLING (Tetap Rapi tapi logic jalan) */
         .form-ng:checked + div {
+            background-color: #fee2e2; /* Red-100 */
             border-color: #ef4444;
-            background-color: #fef2f2;
             color: #b91c1c;
-            box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);
         }
-
-        /* Signature Pad */
-        #signature-pad { 
-            border: 2px dashed #cbd5e1; 
-            border-radius: 16px; 
-            width: 100%; 
-            height: 180px; 
-            background: #fff; 
-            touch-action: none; 
+        .form-ok:checked + div {
+            background-color: #dcfce7; /* Green-100 */
+            border-color: #22c55e;
+            color: #15803d;
         }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen text-slate-800 pb-20 selection:bg-blue-100">
+<body class="bg-white min-h-screen relative">
 
-    <nav class="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
-        <div class="max-w-md mx-auto px-5 py-4 flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-                    <i class="fa-solid fa-qrcode text-sm"></i>
-                </div>
-                <div>
-                    <h1 class="font-bold text-slate-800 text-sm leading-tight tracking-tight uppercase">Daily Check</h1>
-                    <p class="text-[10px] text-slate-500 font-medium">PT AKG - Maintenance</p>
-                </div>
-            </div>
-            <div id="display-date" class="text-[10px] font-bold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 uppercase tracking-wide">
-                ...
-            </div>
-        </div>
-    </nav>
-
-    <div class="max-w-md mx-auto pt-24 px-5">
+    <div id="page-scanner" class="flex flex-col h-screen relative">
         
-        <div id="scan-area" class="flex flex-col items-center justify-center min-h-[70vh] animate-in fade-in duration-700">
-            
-            <div class="text-center mb-8 space-y-2">
-                <h2 class="text-2xl font-black text-slate-800 tracking-tight">Identifikasi Mesin</h2>
-                <p class="text-sm text-slate-500 font-medium px-8 leading-relaxed">
-                    Arahkan kamera ke QR Code yang tertempel pada mesin unit.
-                </p>
+        <div class="pt-12 pb-4 text-center z-20">
+            <div class="pill-header">
+                <h1 class="text-xl font-bold text-black">Pelaksana</h1>
             </div>
-
-            <div class="relative w-full aspect-square max-w-[320px] mx-auto mb-8">
-                <div class="absolute -inset-1 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-[28px] blur opacity-30 animate-pulse"></div>
-                
-                <div class="relative w-full h-full bg-slate-900 rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/20">
-                    <div id="reader" class="h-full w-full"></div>
-                    
-                    <div class="scan-overlay">
-                        <div class="scan-frame">
-                            <div class="scan-corner tl"></div>
-                            <div class="scan-corner tr"></div>
-                            <div class="scan-corner bl"></div>
-                            <div class="scan-corner br"></div>
-                            <div class="laser-line"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white px-6 py-3 rounded-full shadow-lg border border-slate-100 flex items-center gap-3">
-                <span class="relative flex h-3 w-3">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-                </span>
-                <p id="scan-status" class="text-xs font-bold text-slate-600 uppercase tracking-wider">Kamera Aktif</p>
-            </div>
-
         </div>
 
-        <div id="form-area" class="hidden space-y-6 pb-20 animate-in slide-in-from-bottom-10 duration-500">
-            
-            <div class="bg-slate-900 rounded-3xl p-6 shadow-2xl shadow-slate-900/20 text-white relative overflow-hidden group">
-                <div class="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <i class="fa-solid fa-gears text-8xl"></i>
-                </div>
+        <div class="px-10 mb-6 text-center z-20">
+            <p class="text-[13px] italic text-gray-600 leading-tight">
+                Silahkan scan QR code pada mesin<br>untuk melanjutkan ke halaman form check list
+            </p>
+        </div>
+
+        <div class="flex-grow flex flex-col items-center justify-start pt-4 z-20">
+            <div class="scanner-frame">
+                <div class="bracket tl"></div>
+                <div class="bracket tr"></div>
+                <div class="bracket bl"></div>
+                <div class="bracket br"></div>
                 
-                <div class="relative z-10">
-                    <div class="flex items-center gap-2 mb-2">
-                        <div class="bg-green-500/20 text-green-400 text-[10px] font-bold px-2 py-0.5 rounded border border-green-500/30 uppercase">
-                            Terverifikasi
-                        </div>
-                    </div>
-                    <h2 id="machine-display-name" class="text-2xl font-black italic tracking-tighter uppercase mb-6 text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                        </h2>
-
-                    <div class="grid grid-cols-2 gap-3 mb-6">
-                        <div class="bg-white/5 p-3 rounded-2xl border border-white/10 backdrop-blur-sm">
-                            <p class="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-1">Tonnage</p>
-                            <p id="info-tonage" class="text-sm font-bold text-white">-</p>
-                        </div>
-                        <div class="bg-white/5 p-3 rounded-2xl border border-white/10 backdrop-blur-sm">
-                            <p class="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-1">Serial No.</p>
-                            <p id="info-seri" class="text-sm font-bold text-white">-</p>
-                        </div>
-                    </div>
-
-                    <div class="space-y-1.5">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Pelaksana Tugas</label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <i class="fa-regular fa-user text-slate-400 text-xs"></i>
-                            </div>
-                            <input type="text" id="technician-name" placeholder="Nama Lengkap..." 
-                                class="w-full bg-white/10 border border-white/10 rounded-xl py-3.5 pl-10 pr-4 text-sm text-white font-bold outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white/20 transition-all placeholder:text-slate-500 uppercase">
-                        </div>
-                    </div>
-                </div>
+                <div id="reader"></div>
             </div>
+        </div>
 
-            <div id="checklist-container" class="space-y-4">
-                </div>
+        <div class="trapezoid-lines">
+            <div class="scan-badge">SCAN QR</div>
+            <div class="line-left"></div>
+            <div class="line-right"></div>
+        </div>
 
-            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                <div class="flex justify-between items-center mb-4">
-                    <div>
-                        <p class="font-bold text-slate-800 text-xs uppercase tracking-wider">Tanda Tangan</p>
-                        <p class="text-[10px] text-slate-400">Wajib diisi oleh pelaksana</p>
-                    </div>
-                    <button onclick="sigPad.clear()" class="bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 text-[10px] px-3 py-1.5 rounded-lg font-bold uppercase transition-colors">
-                        <i class="fa-solid fa-eraser mr-1"></i> Hapus
-                    </button>
-                </div>
-                <div class="relative">
-                    <canvas id="signature-pad"></canvas>
-                    <div class="absolute bottom-2 right-4 pointer-events-none text-[10px] text-slate-300 italic">Sign here</div>
-                </div>
-            </div>
-
+        <div class="bottom-nav">
+            <i class="fa-solid fa-house nav-icon"></i>
+            <i class="fa-solid fa-bars nav-icon"></i>
+            <i class="fa-solid fa-download nav-icon"></i>
+            <i class="fa-solid fa-circle-user nav-icon"></i>
         </div>
     </div>
 
-    <div id="submit-area" class="fixed bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-white via-white to-transparent z-40 hidden animate-in slide-in-from-bottom-5">
-        <div class="max-w-md mx-auto">
-            <button onclick="saveAll()" id="save-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-xl shadow-blue-600/30 flex items-center justify-center gap-3 active:scale-95 transition-all group">
-                <span class="tracking-widest text-sm">KIRIM LAPORAN</span>
-                <div class="bg-white/20 rounded-full w-6 h-6 flex items-center justify-center group-hover:rotate-45 transition-transform">
-                    <i class="fa-solid fa-paper-plane text-xs"></i>
-                </div>
-            </button>
+
+    <div id="page-form" class="hidden min-h-screen pb-24 px-5 pt-8 bg-slate-50">
+        <div class="bg-white border-2 border-black rounded-2xl p-6 mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <h2 id="machine-name" class="text-2xl font-black uppercase tracking-tighter mb-1">LOADING...</h2>
+            <div class="flex gap-4 text-xs font-bold text-gray-500">
+                <p>TON: <span id="machine-ton" class="text-black">-</span></p>
+                <p>SN: <span id="machine-sn" class="text-black">-</span></p>
+            </div>
         </div>
+
+        <div class="mb-6">
+            <label class="text-xs font-bold uppercase mb-2 block ml-1">Nama Pelaksana</label>
+            <input type="text" id="technician-name" class="w-full border-2 border-black rounded-xl p-3 font-bold uppercase outline-none focus:bg-blue-50" placeholder="ISIKAN NAMA ANDA">
+        </div>
+
+        <div id="checklist-container" class="space-y-4 mb-6">
+            </div>
+
+        <div class="bg-white border-2 border-black rounded-2xl p-4 mb-8">
+            <div class="flex justify-between mb-2">
+                <span class="text-xs font-bold uppercase">Tanda Tangan</span>
+                <button onclick="sigPad.clear()" class="text-[10px] font-bold text-red-600 uppercase border border-red-200 px-2 rounded">Hapus</button>
+            </div>
+            <canvas id="signature-pad" class="w-full h-32 bg-gray-50 border border-dashed border-gray-300 rounded-lg"></canvas>
+        </div>
+
+        <button onclick="saveAll()" id="btn-save" class="w-full bg-black text-white font-black py-4 rounded-xl shadow-[4px_4px_0px_0px_rgba(100,100,100,1)] active:translate-y-1 active:shadow-none transition-all uppercase tracking-widest text-sm">
+            Kirim Laporan
+        </button>
     </div>
 
     <script>
-        // --- KONFIGURASI SUPABASE ---
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-        let currentMachineId = null;
-        let scanner = null;
-        let sigPad = null;
+        let scanner, currentMachineId, sigPad;
 
-        // --- INIT ---
         window.onload = () => {
-            // Set Tanggal
-            const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
-            document.getElementById('display-date').innerText = new Date().toLocaleDateString('id-ID', options);
-            
-            // Start Scanner
-            startScanner();
+            // Start Scanner langsung agar tampil di kotak viewfinder
+            scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess);
         };
 
-        function startScanner() {
-            scanner = new Html5Qrcode("reader");
-            const config = { fps: 20, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
-            
-            scanner.start({ facingMode: "environment" }, config, onScanSuccess)
-            .catch(err => {
-                console.error("Error start scanner", err);
-                document.getElementById('scan-status').innerText = "IZIN KAMERA DITOLAK";
-                document.getElementById('scan-status').parentElement.classList.add('bg-red-50', 'border-red-200');
-                document.getElementById('scan-status').classList.add('text-red-600');
-            });
-        }
-
+        // --- SCAN LOGIC ---
         async function onScanSuccess(decodedText) {
-            // Visual Feedback Beep/Vibrate (Optional)
-            if (navigator.vibrate) navigator.vibrate(200);
-
-            // Update UI status
-            const statusEl = document.getElementById('scan-status');
-            statusEl.innerText = "Mencari Data...";
+            // Hentikan scanner
+            await scanner.stop();
             
-            try {
-                // Query Database
-                const { data: mesin, error } = await _sb.from('chslr_mesin')
-                    .select('*')
-                    .ilike('nama_mesin', `%${decodedText.trim()}%`) 
-                    .maybeSingle();
+            // Cari data mesin
+            const { data: mesin } = await _sb.from('chslr_mesin')
+                .select('*').ilike('nama_mesin', `%${decodedText.trim()}%`).maybeSingle();
 
-                if (mesin) {
-                    // STOP Scanner & Switch View
-                    await scanner.stop();
-                    scanner.clear();
-                    
-                    currentMachineId = mesin.nama_mesin; // Gunakan ID atau Nama sesuai DB
-                    
-                    // Transisi UI
-                    document.getElementById('scan-area').classList.add('hidden');
-                    document.getElementById('form-area').classList.remove('hidden');
-                    document.getElementById('submit-area').classList.remove('hidden');
-                    
-                    // Populate Data
-                    document.getElementById('machine-display-name').innerText = mesin.nama_mesin;
-                    document.getElementById('info-tonage').innerText = mesin.tonage || '-';
-                    document.getElementById('info-seri').innerText = mesin.no_seri || '-';
-                    
-                    initSignature();
-                    loadItems();
-                    
-                } else {
-                    statusEl.innerText = "❌ Mesin Tidak Dikenal";
-                    setTimeout(() => statusEl.innerText = "Kamera Aktif", 2000);
-                }
-            } catch (err) {
-                console.error(err);
-                statusEl.innerText = "Error Koneksi";
+            if (mesin) {
+                currentMachineId = mesin.nama_mesin;
+                
+                // Pindah Halaman
+                document.getElementById('page-scanner').classList.add('hidden');
+                document.getElementById('page-form').classList.remove('hidden');
+
+                // Isi Data Header
+                document.getElementById('machine-name').innerText = mesin.nama_mesin;
+                document.getElementById('machine-ton').innerText = mesin.tonage || '-';
+                document.getElementById('machine-sn').innerText = mesin.no_seri || '-';
+
+                // Init Signature & Items
+                initSigPad();
+                loadItems();
+            } else {
+                alert("❌ Mesin tidak terdaftar!");
+                location.reload();
             }
         }
 
-        function initSignature() {
+        function initSigPad() {
             const canvas = document.getElementById('signature-pad');
-            sigPad = new SignaturePad(canvas, { backgroundColor: 'rgb(255, 255, 255)' });
-            
-            // Resize canvas handling high DPI
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
             canvas.width = canvas.offsetWidth * ratio;
             canvas.height = canvas.offsetHeight * ratio;
             canvas.getContext("2d").scale(ratio, ratio);
+            sigPad = new SignaturePad(canvas);
         }
 
+        // --- LOAD ITEMS & LOGIC OK/NG ---
         async function loadItems() {
+            const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
             const container = document.getElementById('checklist-container');
-            container.innerHTML = '<div class="text-center py-10"><i class="fa-solid fa-circle-notch animate-spin text-blue-500"></i> Loading Checksheet...</div>';
-            
-            const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order', { ascending: true });
-            
-            container.innerHTML = ""; // Clear loader
-            
-            if(!items || items.length === 0) {
-                container.innerHTML = '<p class="text-center text-slate-400">Tidak ada item check.</p>';
-                return;
-            }
+            container.innerHTML = "";
 
-            items.forEach((item, index) => {
+            items.forEach((item, idx) => {
                 const html = `
-                    <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
-                        <div class="flex justify-between items-start mb-3">
-                            <div class="flex items-center gap-3">
-                                <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-1 rounded-lg">#${index + 1}</span>
-                                <p class="font-bold text-slate-700 text-sm leading-tight">${item.item_name}</p>
+                <div class="bg-white p-4 rounded-xl border border-gray-300 shadow-sm">
+                    <p class="font-bold text-sm mb-3">${idx + 1}. ${item.item_name}</p>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="status-${item.id}" value="OK" class="hidden form-ok" checked 
+                                onclick="toggleNote(${item.id}, false)">
+                            <div class="py-2 text-center border rounded-lg font-bold text-xs bg-gray-50 text-gray-400 transition-all">
+                                OK
                             </div>
-                        </div>
+                        </label>
                         
-                        <div class="grid grid-cols-2 gap-3 mt-4">
-                            <label class="cursor-pointer group">
-                                <input type="radio" name="status-${item.id}" value="OK" class="hidden peer form-check" checked 
-                                    onclick="toggleNote(${item.id}, false)">
-                                <div class="text-center py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 
-                                            font-black text-xs transition-all uppercase group-active:scale-95 flex items-center justify-center gap-2">
-                                    <i class="fa-solid fa-check"></i> OK
-                                </div>
-                            </label>
-
-                            <label class="cursor-pointer group">
-                                <input type="radio" name="status-${item.id}" value="NG" class="hidden peer form-ng" 
-                                    onclick="toggleNote(${item.id}, true)">
-                                <div class="text-center py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 
-                                            font-black text-xs transition-all uppercase group-active:scale-95 flex items-center justify-center gap-2">
-                                    <i class="fa-solid fa-xmark"></i> NG
-                                </div>
-                            </label>
-                        </div>
-
-                        <div id="wrapper-note-${item.id}" class="hidden overflow-hidden transition-all duration-300 ease-in-out mt-3">
-                            <div class="bg-red-50 p-3 rounded-xl border border-red-100">
-                                <label class="text-[10px] font-bold text-red-500 uppercase mb-1 block">Deskripsi Masalah (Wajib)</label>
-                                <textarea id="note-${item.id}" rows="2" placeholder="Jelaskan detail kerusakan..." 
-                                    class="w-full bg-white border border-red-200 rounded-lg p-2 text-xs font-medium text-slate-700 outline-none focus:ring-1 focus:ring-red-400"></textarea>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="status-${item.id}" value="NG" class="hidden form-ng" 
+                                onclick="toggleNote(${item.id}, true)">
+                            <div class="py-2 text-center border rounded-lg font-bold text-xs bg-gray-50 text-gray-400 transition-all">
+                                NG
                             </div>
-                        </div>
+                        </label>
                     </div>
-                `;
+
+                    <div id="note-box-${item.id}" class="hidden mt-3 animate-[fadeIn_0.3s_ease-out]">
+                        <textarea id="note-${item.id}" rows="2" 
+                            class="w-full bg-red-50 border border-red-200 rounded-lg p-2 text-xs placeholder-red-300 outline-none" 
+                            placeholder="Wajib isi detail kerusakan..."></textarea>
+                    </div>
+                </div>`;
                 container.insertAdjacentHTML('beforeend', html);
             });
         }
 
-        // Logic UI untuk Show/Hide Note
-        function toggleNote(id, isNG) {
-            const wrapper = document.getElementById(`wrapper-note-${id}`);
-            const textarea = document.getElementById(`note-${id}`);
+        // FUNGSI UTAMA LOGIC CATATAN
+        // Dipanggil saat radio button diklik
+        window.toggleNote = function(id, isNG) {
+            const box = document.getElementById(`note-box-${id}`);
+            const input = document.getElementById(`note-${id}`);
             
             if (isNG) {
-                wrapper.classList.remove('hidden');
-                wrapper.classList.add('animate-in', 'fade-in', 'slide-in-from-top-2');
-                textarea.focus(); // Auto focus agar user langsung isi
+                // Kalo NG: Munculkan kotak catatan
+                box.classList.remove('hidden');
+                input.focus();
             } else {
-                wrapper.classList.add('hidden');
-                textarea.value = ""; // Reset text jika kembali ke OK
+                // Kalo OK: Sembunyikan & Kosongkan isinya
+                box.classList.add('hidden');
+                input.value = ""; 
             }
         }
 
+        // --- SAVE FUNCTION ---
         async function saveAll() {
             const name = document.getElementById('technician-name').value.trim();
-            if(!name) return alert("⚠️ HARAP ISI NAMA PELAKSANA!");
-            if(sigPad.isEmpty()) return alert("⚠️ HARAP ISI TANDA TANGAN!");
+            if(!name || sigPad.isEmpty()) return alert("Isi Nama & Tanda Tangan!");
 
-            // Validasi NG wajib ada catatan
-            const itemsDiv = document.querySelectorAll('textarea[id^="note-"]');
-            for (let ta of itemsDiv) {
-                if(!ta.closest('.hidden') && ta.value.trim() === "") {
-                    return alert("⚠️ CATATAN HARUS DIISI UNTUK ITEM 'NG'!");
+            // Validasi: Jika ada status NG, catatannya harus diisi
+            const ngInputs = document.querySelectorAll('input[value="NG"]:checked');
+            for (let radio of ngInputs) {
+                const itemId = radio.name.split('-')[1]; // status-123 -> 123
+                const noteVal = document.getElementById(`note-${itemId}`).value.trim();
+                if (!noteVal) {
+                    return alert("⚠️ Item NG wajib diberi catatan!");
                 }
             }
 
-            const btn = document.getElementById('save-btn');
-            const originalContent = btn.innerHTML;
-            btn.disabled = true; 
-            btn.innerHTML = "<i class='fa-solid fa-circle-notch animate-spin'></i> MENYIMPAN...";
-            btn.classList.add('opacity-75');
+            const btn = document.getElementById('btn-save');
+            btn.innerText = "MENGIRIM..."; btn.disabled = true;
 
             const now = new Date();
             const d = now.getDate(), m = now.getMonth() + 1, y = now.getFullYear();
 
             try {
-                // 1. CEK/BUAT LOG HARIAN
-                let { data: log, error: logErr } = await _sb.from('chslr_log')
-                    .select('*')
-                    .eq('mesin_id', currentMachineId)
-                    .eq('bulan', m)
-                    .eq('tahun', y)
-                    .maybeSingle();
-
-                if (logErr) throw logErr;
+                // 1. Cek Log Harian
+                let { data: log } = await _sb.from('chslr_log')
+                    .select('*').eq('mesin_id', currentMachineId).eq('bulan', m).eq('tahun', y).maybeSingle();
 
                 if (!log) {
-                    // Buat Log Baru
-                    const { data: nLog, error: nLogErr } = await _sb.from('chslr_log')
+                    const { data: nLog } = await _sb.from('chslr_log')
                         .insert({ mesin_id: currentMachineId, bulan: m, tahun: y, pelaksana_names: [name] })
-                        .select()
-                        .single();
-                    if(nLogErr) throw nLogErr;
+                        .select().single();
                     log = nLog;
                 } else {
-                    // Update Nama jika belum ada
                     if (!log.pelaksana_names.includes(name)) {
-                        const updatedNames = [...log.pelaksana_names, name];
-                        await _sb.from('chslr_log').update({ pelaksana_names: updatedNames }).eq('id', log.id);
+                        await _sb.from('chslr_log')
+                            .update({ pelaksana_names: [...log.pelaksana_names, name] }).eq('id', log.id);
                     }
                 }
 
-                // 2. PERSIAPAN DATA ITEMS
+                // 2. Simpan Item
                 const { data: items } = await _sb.from('chslr_items').select('id');
                 const results = items.map(i => {
-                    const statusVal = document.querySelector(`input[name="status-${i.id}"]:checked`).value;
-                    const noteVal = document.getElementById(`note-${i.id}`)?.value || "";
-                    
+                    const status = document.querySelector(`input[name="status-${i.id}"]:checked`).value;
                     return {
                         log_id: log.id,
                         item_id: i.id,
                         tanggal: d,
-                        status: statusVal,
-                        keterangan: (statusVal === 'NG') ? noteVal : "", // Pastikan kosong jika OK
+                        status: status,
+                        // Ambil catatan hanya jika NG (sebenarnya sudah diclear di toggleNote, tapi double check)
+                        keterangan: (status === 'NG') ? document.getElementById(`note-${i.id}`).value : "",
                         signature: sigPad.toDataURL()
                     };
                 });
 
-                // 3. HAPUS DATA LAMA (HARI INI) & INSERT BARU
                 await _sb.from('chslr_result').delete().eq('log_id', log.id).eq('tanggal', d);
-                
-                const { error: resErr } = await _sb.from('chslr_result').insert(results);
-                if(resErr) throw resErr;
+                const { error } = await _sb.from('chslr_result').insert(results);
+                if (error) throw error;
 
-                // SUKSES
-                alert("✅ LAPORAN BERHASIL DISIMPAN!");
+                alert("✅ Sukses!");
                 location.reload();
 
-            } catch (err) {
-                console.error(err);
-                alert("GAGAL: " + (err.message || "Terjadi kesalahan sistem"));
-                btn.disabled = false; 
-                btn.innerHTML = originalContent;
-                btn.classList.remove('opacity-75');
+            } catch (e) {
+                alert("Error: " + e.message);
+                btn.innerText = "Kirim Laporan"; btn.disabled = false;
             }
         }
     </script>
