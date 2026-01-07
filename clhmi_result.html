@@ -5,17 +5,20 @@
     <title>AF.SP 05.13 Rev-00 – CHECKLIST HARIAN MESIN INJECTION</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* CSS TETAP SAMA SEPERTI SEBELUMNYA (TIDAK ADA YANG DIUBAH DI STYLE) */
         @page { size: A4 landscape; margin: 5mm; }
         body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 7pt; margin: 0; padding: 10px; background: #f4f4f4; }
         .sheet { background: white; padding: 5mm; margin: auto; width: 285mm; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
         table { border-collapse: collapse; width: 100%; table-layout: fixed; }
         td, th { border: 1px solid black; padding: 2px 1px; vertical-align: middle; }
+
+        /* Header & Info */
         .header-table td { border: 2px solid black; height: 45px; font-weight: bold; }
         .logo-img { height: 35px; }
         .info-table { border: none; margin: 8px 0; }
         .info-table td { border: none; text-align: left; padding: 0; font-size: 8pt; }
         .dot-line { border-bottom: 1px dotted #000; min-width: 130px; display: inline-block; padding-left: 5px; font-weight: bold; }
+
+        /* Main Table */
         .bg-gray { background-color: #dfdfdf; font-weight: bold; text-align: left; padding-left: 5px; }
         .col-no { width: 22px; text-align: center; }
         .col-nama { width: 185px; text-align: left; padding-left: 5px; }
@@ -23,16 +26,25 @@
         .col-std { width: 135px; text-align: center; font-size: 6.5pt; word-wrap: break-word; }
         .col-metode { width: 75px; text-align: center; }
         .col-catatan { width: 60px; text-align: center; }
+        
+        /* Style Sel Tanggal */
         .date-cell { width: 24px; font-weight: bold; text-align: center; font-size: 9pt; }
-        .st-ok { color: #16a34a; } 
-        .st-ng { background: #e21c1c; color: white; font-weight: bold; }
-        .st-na { background: #ffff00; color: black; font-weight: bold; }
+        
+        /* WARNA STATUS (INI YANG BIKIN CENTANG HIJAU) */
+        .st-ok { color: #15803d; font-weight: 900; font-size: 10pt; } /* Hijau Tebal */
+        .st-ng { background: #dc2626; color: white; font-weight: bold; } /* Merah */
+        .st-na { background: #facc15; color: black; font-weight: bold; } /* Kuning */
+
+        /* Paraf */
         .sig-cell { height: 46px !important; padding: 0 !important; background: white; text-align: center; vertical-align: middle; line-height: 0; }
         .sig-img { max-height: 38px !important; max-width: 20px !important; width: auto; height: auto; object-fit: contain; mix-blend-mode: multiply; display: inline-block; }
+
+        /* Footer */
         .footer-box { border: 1px solid black; height: 110px; padding: 8px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
         .footer-title { font-size: 7pt; font-weight: bold; text-align: center; }
         .sig-super-img { max-height: 65px; mix-blend-mode: multiply; }
         .name-display { font-weight: bold; text-decoration: underline; text-transform: uppercase; font-size: 8.5pt; }
+
         .no-print { background: #003366; color: white; padding: 10px; margin-bottom: 10px; border-radius: 5px; display: flex; gap: 10px; align-items: center; font-weight: bold; }
         @media print { .no-print { display: none; } body { background: white; padding: 0; } .sheet { box-shadow: none; width: 100%; } }
     </style>
@@ -129,8 +141,7 @@
     const _KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const sb = supabase.createClient(_URL, _KEY);
 
-    // [PENTING] KODE ITEM DISESUAIKAN AGAR TIDAK DUPLIKAT SAAT RENDER
-    // Pastikan di database 'clhmi_items' item_kode nya juga unik seperti ini!
+    // Pastikan kode di sini SAMA dengan item_kode di database kamu!
     const MASTER_ITEMS = [
         {kode:"", kategori:"Mekanikal:", nama:""},
         {kode:"a", nama:"Nozzle visual", std:"Radius tidak rusak", met:"Visual"},
@@ -187,24 +198,19 @@
             document.getElementById(`k-sig-${i}`).innerHTML = "";
         }
 
-        // [FIX 1] JOIN KE TABEL MESIN UNTUK AMBIL TONAGE & SERIAL NO YANG BENAR
         const { data: headers, error: hErr } = await sb.from('clhmi')
             .select('*, clhmi_machine(tonage, serial_no, merk_mesin)')
             .eq('machine_id', mId).eq('bulan', parseInt(bln)).eq('tahun', parseInt(thn)).order('tanggal_isi');
 
         if(hErr || !headers || headers.length===0) { alert("Data tidak ditemukan."); return; }
 
-        // [FIX 2] PENGAMBILAN DATA RESULT LEBIH CEPAT (PAKAI .IN())
         const headerIds = headers.map(h => h.id);
         const { data: allRes } = await sb.from('clhmi_results').select('*').in('clhmi_id', headerIds);
 
         const head = headers[0];
         document.getElementById('out-merk').innerText = head.clhmi_machine?.merk_mesin || head.merk_mesin || '-';
         document.getElementById('out-sn').innerText = head.clhmi_machine?.serial_no || head.serial_no || '-';
-        
-        // Menampilkan Tonage dari tabel Mesin jika di header kosong
         document.getElementById('out-ton').innerText = (head.clhmi_machine?.tonage || head.tonage || '-') + ' T';
-        
         document.getElementById('out-bln').innerText = document.getElementById('month-select').options[bln-1].text;
         document.getElementById('out-thn').innerText = thn;
 
@@ -219,15 +225,19 @@
             }
             if(!item.nama) return;
 
+            // Ambil kode pendek (misal 'debu_a' jadi 'a')
+            let displayCode = item.kode;
+            if(item.kode.includes('_')) displayCode = item.kode.split('_')[1];
+
             let row = `<tr>
-                <td class="col-no">${item.kode.split('_')[1] || item.kode}</td> <td class="col-nama">${item.nama}</td>
+                <td class="col-no">${displayCode}</td>
+                <td class="col-nama">${item.nama}</td>
                 <td class="col-empty"></td>
                 <td class="col-std">${item.std}</td>
                 <td class="col-metode">${item.met}</td>
                 <td class="col-catatan"></td>`;
 
             for(let d=1; d<=31; d++) {
-                // Pencocokan Item Kode dan Tanggal
                 const f = allRes.find(r => 
                     r.item_kode === item.kode && 
                     new Date(r.tanggal_cek).getDate() === d
@@ -235,11 +245,20 @@
 
                 let sym = '', cls = '';
                 if(f) {
-                    if(item.kode === 'i') { 
+                    if(item.kode === 'i') {
                         sym = f.value || '';
                     } else {
-                        sym = f.status==='OK'?'✓':f.status==='NG'?'x':f.status==='NA'?'o':'';
-                        cls = f.status==='OK'?'st-ok':f.status==='NG'?'st-ng':f.status==='NA'?'st-na':'';
+                        // LOGIKA GANTI OK JADI CENTANG
+                        if(f.status === 'OK') {
+                            sym = '✓'; // Simbol Centang
+                            cls = 'st-ok'; // Warna Hijau
+                        } else if(f.status === 'NG') {
+                            sym = 'X';
+                            cls = 'st-ng'; // Merah
+                        } else if(f.status === 'NA') {
+                            sym = 'O';
+                            cls = 'st-na'; // Kuning
+                        }
                     }
                 }
                 row += `<td class="date-cell ${cls}">${sym}</td>`;
@@ -247,21 +266,21 @@
             tbody.innerHTML += row + "</tr>";
         });
 
+        // Mapping Paraf Pelaksana & Koordinator
         headers.forEach(h => {
             const d = new Date(h.tanggal_isi).getDate();
             if(h.paraf) document.getElementById(`p-sig-${d}`).innerHTML = `<img src="${h.paraf}" class="sig-img">`;
             if(h.paraf_coord) document.getElementById(`k-sig-${d}`).innerHTML = `<img src="${h.paraf_coord}" class="sig-img">`;
         });
 
-        // [FIX 3] LOGIKA TANDA TANGAN SUPERINTENDENT (CLOSED & VERIFIED_BY)
-        // Kita cari status 'closed' karena itu status final dari Superintendent
-        const fin = headers.find(h => h.status_form==='closed');
+        // Mapping Tanda Tangan Superintendent
+        const fin = headers.find(h => h.status_form === 'closed');
         const sigBox = document.getElementById('out-sig-super');
         const nameBox = document.getElementById("out-name-super");
         
         if(fin?.paraf_super) {
             sigBox.innerHTML = `<img src="${fin.paraf_super}" class="sig-super-img">`;
-            nameBox.innerText = (fin.verified_by || '').toUpperCase(); // Pakai verified_by sesuai DB
+            nameBox.innerText = (fin.verified_by || '').toUpperCase();
         } else {
             sigBox.innerHTML = `<span style="color:#ccc;font-style:italic;font-size:7pt;">Belum Disahkan</span>`;
             nameBox.innerText = "-";
