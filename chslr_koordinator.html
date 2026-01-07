@@ -20,9 +20,16 @@
             overscroll-behavior: none; user-select: none;
             font-family: 'Inter', sans-serif; background-color: #f8fafc;
         }
+        a { text-decoration: none; color: inherit; }
 
         /* --- HALAMAN DASHBOARD (LIST) --- */
-        #page-list { height: 100dvh; display: flex; flex-direction: column; overflow-y: auto; padding-bottom: 20px;}
+        #page-list { 
+            height: 100dvh; 
+            display: flex; 
+            flex-direction: column; 
+            overflow-y: auto; 
+            padding-bottom: 90px; /* Supaya list terbawah tidak ketutup Nav */
+        }
         
         .card-log {
             background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px;
@@ -36,6 +43,16 @@
         }
         .st-pending { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; }
         
+        /* --- BOTTOM NAV (FIXED) --- */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            height: 70px; background: white; border-top: 2px solid #000;
+            display: flex; justify-content: space-around; align-items: center;
+            z-index: 40; padding-bottom: 10px;
+        }
+        .nav-btn { display: flex; align-items: center; justify-content: center; width: 50px; height: 50px; color: #000; transition: opacity 0.2s; }
+        .nav-btn:active { opacity: 0.4; transform: scale(0.95); }
+
         /* --- HALAMAN SCANNER --- */
         #page-scanner {
             display: none; flex-direction: column; height: 100dvh; position: absolute; top:0; left:0; width:100%;
@@ -79,6 +96,13 @@
                 <p class="text-xs font-bold uppercase">Memuat Antrean...</p>
             </div>
         </div>
+    </div>
+
+    <div class="bottom-nav" id="main-nav">
+        <a href="index.html" class="nav-btn"><i class="fa-solid fa-house text-xl"></i></a>
+        <a href="menu_utama.html" class="nav-btn"><i class="fa-solid fa-bars text-xl"></i></a>
+        <a href="download_data.html" class="nav-btn"><i class="fa-solid fa-download text-xl"></i></a>
+        <a href="informasi_akun.html" class="nav-btn"><i class="fa-solid fa-user text-xl"></i></a>
     </div>
 
     <div id="page-scanner">
@@ -194,6 +218,7 @@
         function startVerification(logStr) {
             activeLog = JSON.parse(decodeURIComponent(logStr));
             document.getElementById('page-list').style.display = 'none';
+            document.getElementById('main-nav').style.display = 'none'; // Hide Nav saat scan
             document.getElementById('page-scanner').style.display = 'flex';
             document.getElementById('target-mesin').innerText = activeLog.mesin_id;
             if(!scanner) scanner = new Html5Qrcode("reader");
@@ -204,6 +229,7 @@
             if(scanner) scanner.stop().then(() => scanner.clear());
             document.getElementById('page-scanner').style.display = 'none';
             document.getElementById('page-list').style.display = 'block';
+            document.getElementById('main-nav').style.display = 'flex'; // Show Nav kembali
             activeLog = null;
         }
 
@@ -217,7 +243,6 @@
             }
         }
 
-        // --- UPDATE UTAMA: LOGIC FETCH NG YANG LEBIH KUAT ---
         async function openReviewForm() {
             document.getElementById('page-scanner').style.display = 'none';
             document.getElementById('page-form').style.display = 'block';
@@ -229,17 +254,14 @@
 
             const today = new Date().getDate();
 
-            // 1. AMBIL SEMUA HASIL HARI INI (Tanpa Join Table dulu biar aman)
+            // AMBIL DATA (Manual Matching Fix)
             const { data: results } = await _sb.from('chslr_result')
-                .select('*') // Ambil semua kolom
+                .select('*')
                 .eq('log_id', activeLog.id)
-                .eq('tanggal', today); // WAJIB FILTER TANGGAL HARI INI
+                .eq('tanggal', today); 
 
-            // 2. AMBIL MASTER ITEM (Manual Matching)
             const { data: items } = await _sb.from('chslr_items').select('id, item_name');
 
-            // 3. GABUNGKAN MANUAL (Supaya ga error kalau FK hilang)
-            // Kita cari item yang statusnya NG atau punya keterangan
             let findings = [];
             if (results && items) {
                 findings = results.filter(r => r.status === 'NG' || (r.keterangan && r.keterangan.trim() !== "")).map(res => {
