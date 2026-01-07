@@ -26,12 +26,12 @@
         .col-std { width: 135px; text-align: center; font-size: 6.5pt; word-wrap: break-word; }
         .col-metode { width: 75px; text-align: center; }
         .col-catatan { width: 60px; text-align: center; }
-        .date-cell { width: 24px; font-weight: bold; }
+        .date-cell { width: 24px; font-weight: bold; text-align: center; }
 
         .st-ng { background: #e21c1c; color: white; font-weight: bold; }
         .st-na { background: #ffff00; color: black; font-weight: bold; }
 
-        /* PARAF HARIAN – DIJAMIN 100% CENTER & TIDAK KELUAR KOLOM */
+        /* PARAF HARIAN */
         .sig-cell {
             height: 46px !important;
             padding: 0 !important;
@@ -112,8 +112,6 @@
             <tr id="date-row"></tr>
         </thead>
         <tbody id="main-body"></tbody>
-
-        <!-- PARAF PELAKSANA & KOORDINATOR – SUDAH 100% CENTER & TIDAK KELUAR KOLOM -->
         <tbody>
             <tr>
                 <td colspan="6" style="text-align:right; font-weight:bold; background:#f9f9f9; padding-right:8px;">Paraf Pelaksana</td>
@@ -210,24 +208,35 @@
         const thn = document.getElementById('year-select').value;
         if(!mId || !bln || !thn) return;
 
+        // Reset Signature
         for(let i=1; i<=31; i++) {
             document.getElementById(`p-sig-${i}`).innerHTML = "";
             document.getElementById(`k-sig-${i}`).innerHTML = "";
         }
 
-        const { data: headers } = await sb.from('clhmi').select('*').eq('machine_id', mId).eq('bulan', parseInt(bln)).eq('tahun', parseInt(thn)).order('tanggal_isi');
-        if(!headers || headers.length===0) { alert("Data tidak ditemukan."); return; }
+        // AMBIL DATA HEADER & JOIN MESIN
+        const { data: headers, error: hErr } = await sb.from('clhmi')
+            .select('*, clhmi_machine(tonage, serial_no, merk_mesin)')
+            .eq('machine_id', mId)
+            .eq('bulan', parseInt(bln))
+            .eq('tahun', parseInt(thn))
+            .order('tanggal_isi');
 
-        let allRes = [];
-        for(const h of headers) {
-            const { data: r } = await sb.from('clhmi_results').select('*').eq('clhmi_id', h.id);
-            allRes = allRes.concat(r || []);
-        }
+        if(hErr || !headers || headers.length===0) { alert("Data laporan tidak ditemukan."); return; }
+
+        // AMBIL SEMUA HASIL SEKALIGUS
+        const headerIds = headers.map(h => h.id);
+        const { data: allRes, error: rErr } = await sb.from('clhmi_results')
+            .select('*')
+            .in('clhmi_id', headerIds);
+
+        if(rErr) { alert("Gagal mengambil detail hasil."); return; }
 
         const head = headers[0];
-        document.getElementById('out-merk').innerText = head.merk_mesin || '-';
-        document.getElementById('out-sn').innerText = head.serial_no || '-';
-        document.getElementById('out-ton').innerText = head.tonage || '-';
+        // Tarik data dari Join tabel Mesin jika kolom di clhmi kosong
+        document.getElementById('out-merk').innerText = head.clhmi_machine?.merk_mesin || head.merk_mesin || '-';
+        document.getElementById('out-sn').innerText = head.clhmi_machine?.serial_no || head.serial_no || '-';
+        document.getElementById('out-ton').innerText = (head.clhmi_machine?.tonage || head.tonage || '-') + ' T';
         document.getElementById('out-bln').innerText = document.getElementById('month-select').options[bln-1].text;
         document.getElementById('out-thn').innerText = thn;
 
@@ -251,10 +260,15 @@
                 <td class="col-catatan"></td>`;
 
             for(let d=1; d<=31; d++) {
-                const f = allRes.find(r => r.item_kode === item.kode && parseInt(r.tanggal_cek.split('-')[2]) === d);
+                // Cari data result berdasarkan item_kode dan hari tanggal
+                const f = allRes.find(r => 
+                    r.item_kode === item.kode && 
+                    new Date(r.tanggal_cek).getDate() === d
+                );
+
                 let sym = '', cls = '';
                 if(f) {
-                    if(item.kode === 'i') {
+                    if(item.kode === 'i') { // Running Hour (jam)
                         sym = f.value || '';
                     } else {
                         sym = f.status==='OK'?'√':f.status==='NG'?'x':f.status==='NA'?'o':'';
@@ -266,18 +280,20 @@
             tbody.innerHTML += row + "</tr>";
         });
 
+        // Isi Paraf Harian
         headers.forEach(h => {
-            const d = parseInt(h.tanggal_isi.split('-')[2]);
+            const d = new Date(h.tanggal_isi).getDate();
             if(h.paraf) document.getElementById(`p-sig-${d}`).innerHTML = `<img src="${h.paraf}" class="sig-img">`;
             if(h.paraf_coord) document.getElementById(`k-sig-${d}`).innerHTML = `<img src="${h.paraf_coord}" class="sig-img">`;
         });
 
-        const fin = headers.find(h => h.status_form==='finalized') || headers[headers.length-1];
+        // Paraf Superintendent (Pengesahan Akhir)
+        const fin = headers.find(h => h.status_form==='closed');
         const sigBox = document.getElementById('out-sig-super');
-        const nameBox = document.getElementById('out-name-super');
+        const nameBox = document.getElementById("out-name-super");
         if(fin?.paraf_super) {
             sigBox.innerHTML = `<img src="${fin.paraf_super}" class="sig-super-img">`;
-            nameBox.innerText = (fin.approved_by||'').toUpperCase();
+            nameBox.innerText = (fin.verified_by || '').toUpperCase();
         } else {
             sigBox.innerHTML = `<span style="color:#ccc;font-style:italic;font-size:7pt;">Belum Disahkan</span>`;
             nameBox.innerText = "-";
