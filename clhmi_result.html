@@ -5,43 +5,37 @@
     <title>AF.SP 05.13 Rev-00 – CHECKLIST HARIAN MESIN INJECTION</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* SETUP KERTAS A4 LANDSCAPE */
         @page { size: A4 landscape; margin: 5mm; }
         body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 7pt; margin: 0; padding: 10px; background: #f4f4f4; }
         .sheet { background: white; padding: 5mm; margin: auto; width: 285mm; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
         
-        /* SETUP TABLE */
         table { border-collapse: collapse; width: 100%; table-layout: fixed; }
         td, th { border: 1px solid black; padding: 2px 1px; vertical-align: middle; }
 
-        /* HEADER & INFO */
         .header-table td { border: 2px solid black; height: 45px; font-weight: bold; }
         .logo-img { height: 35px; }
         .info-table { border: none; margin: 8px 0; }
         .info-table td { border: none; text-align: left; padding: 0; font-size: 8pt; }
         .dot-line { border-bottom: 1px dotted #000; min-width: 130px; display: inline-block; padding-left: 5px; font-weight: bold; }
 
-        /* FORMAT KOLOM SESUAI UKURAN */
         .bg-gray { background-color: #dfdfdf; font-weight: bold; text-align: left; padding-left: 5px; }
-        .col-no { width: 20px; text-align: center; }
-        .col-nama { width: 190px; text-align: left; padding-left: 5px; }
+        .col-no { width: 22px; text-align: center; }
+        .col-nama { width: 185px; text-align: left; padding-left: 5px; }
         .col-empty { width: 10px; }
-        .col-std { width: 130px; text-align: center; font-size: 6.5pt; word-wrap: break-word; }
-        .col-metode { width: 70px; text-align: center; }
+        .col-std { width: 135px; text-align: center; font-size: 6.5pt; word-wrap: break-word; }
+        .col-metode { width: 75px; text-align: center; }
         .col-catatan { width: 60px; text-align: center; }
         .date-cell { width: 24px; font-weight: bold; text-align: center; font-size: 9pt; }
 
-        /* VISUALISASI STATUS (OK -> CENTANG) */
+        /* STATUS CHECKMARKS */
         .st-ok { color: #008000; font-weight: 900; font-size: 11pt; } 
         .st-ng { background: #ff0000; color: white; font-weight: bold; }
         .st-na { background: #ffff00; color: black; font-weight: bold; }
 
-        /* PARAF */
         .sig-cell { height: 46px !important; padding: 0 !important; background: white; text-align: center; vertical-align: middle; line-height: 0; }
         .sig-img { max-height: 38px !important; max-width: 20px !important; object-fit: contain; mix-blend-mode: multiply; display: inline-block; }
         .sig-super-img { max-height: 65px; mix-blend-mode: multiply; }
 
-        /* FOOTER */
         .footer-box { border: 1px solid black; height: 110px; padding: 8px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
         .name-display { font-weight: bold; text-decoration: underline; text-transform: uppercase; font-size: 8.5pt; }
 
@@ -141,7 +135,7 @@
     const _KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const sb = supabase.createClient(_URL, _KEY);
 
-    // [PENTING] DAFTAR ITEM INI SAMA PERSIS 100% DENGAN CSV & DATABASE
+    // MASTER ITEMS SAMA PERSIS DENGAN CSV
     const MASTER_ITEMS = [
         {kode:"", kategori:"Mekanikal:", nama:""},
         {kode:"a", nama:"Nozzle visual", std:"Radius tidak rusak, tidak ada leleah material meler", met:"Visual"},
@@ -192,7 +186,6 @@
         const thn = document.getElementById('year-select').value;
         if(!mId || !bln || !thn) return;
 
-        // Reset Signature
         for(let i=1; i<=31; i++) {
             document.getElementById(`p-sig-${i}`).innerHTML = "";
             document.getElementById(`k-sig-${i}`).innerHTML = "";
@@ -205,15 +198,12 @@
         if(hErr || !headers || headers.length === 0) { alert("Tidak ada data laporan."); return; }
 
         const headerIds = headers.map(h => h.id);
-        
-        // QUERY JOIN UTAMA: Ambil hasil + Nama Pengecekan Asli dari DB
         const { data: allRes, error: rErr } = await sb.from('clhmi_results')
             .select('item_kode, status, value, tanggal_cek, clhmi_items(nama_pengecekan)')
             .in('clhmi_id', headerIds);
 
-        if(rErr) { alert("Gagal mengambil detail checklist."); return; }
+        if(rErr) { alert("Gagal mengambil detail."); return; }
 
-        // Isi Header
         const head = headers[0];
         document.getElementById('out-merk').innerText = head.clhmi_machine?.merk_mesin || '-';
         document.getElementById('out-sn').innerText = head.clhmi_machine?.serial_no || '-';
@@ -221,7 +211,6 @@
         document.getElementById('out-bln').innerText = document.getElementById('month-select').options[bln-1].text;
         document.getElementById('out-thn').innerText = thn;
 
-        // Render Tabel
         const tbody = document.getElementById('main-body');
         tbody.innerHTML = "";
         let curCat = "";
@@ -242,7 +231,6 @@
                 <td class="col-catatan"></td>`;
 
             for(let d=1; d<=31; d++) {
-                // LOGIKA PENCOCOKAN: Tanggal + Nama Persis
                 const f = allRes.find(r => {
                     const dbDate = parseInt(r.tanggal_cek.split('-')[2]);
                     const itemNameMatch = r.clhmi_items && r.clhmi_items.nama_pengecekan.trim() === item.nama.trim();
@@ -251,27 +239,22 @@
 
                 let sym = '', cls = '';
                 if(f) {
-                    if(item.kode === 'i') {
-                        sym = f.value || '';
-                    } else {
-                        if(f.status === 'OK') { sym = '✓'; cls = 'st-ok'; }
-                        else if(f.status === 'NG') { sym = 'X'; cls = 'st-ng'; }
-                        else if(f.status === 'NA') { sym = 'O'; cls = 'st-na'; }
-                    }
+                    // SEKARANG SEMUA ITEM, TERMASUK RUNNING HOUR, MENGGUNAKAN LOGIKA CENTANG
+                    if(f.status === 'OK') { sym = '✓'; cls = 'st-ok'; }
+                    else if(f.status === 'NG') { sym = 'X'; cls = 'st-ng'; }
+                    else if(f.status === 'NA') { sym = 'O'; cls = 'st-na'; }
                 }
                 row += `<td class="date-cell ${cls}">${sym}</td>`;
             }
             tbody.innerHTML += row + "</tr>";
         });
 
-        // Paraf
         headers.forEach(h => {
             const d = parseInt(h.tanggal_isi.split('-')[2]);
             if(h.paraf) document.getElementById(`p-sig-${d}`).innerHTML = `<img src="${h.paraf}" class="sig-img">`;
             if(h.paraf_coord) document.getElementById(`k-sig-${d}`).innerHTML = `<img src="${h.paraf_coord}" class="sig-img">`;
         });
 
-        // Tanda Tangan Superintendent
         const fin = headers.find(h => h.status_form === 'closed');
         if(fin?.paraf_super) {
             document.getElementById('out-sig-super').innerHTML = `<img src="${fin.paraf_super}" class="sig-super-img">`;
