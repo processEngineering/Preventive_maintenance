@@ -14,7 +14,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
     <style>
-        /* RESET KHUSUS APP HP */
         * { -webkit-tap-highlight-color: transparent; }
         body, html {
             height: 100%; width: 100%; overflow: hidden;
@@ -49,6 +48,9 @@
         #page-form { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #f8fafc; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 100px; z-index: 60; display: none; }
         .form-ng:checked + div { background-color: #fee2e2; border-color: #ef4444; color: #b91c1c; }
         .form-ok:checked + div { background-color: #dcfce7; border-color: #22c55e; color: #15803d; }
+        
+        /* Animasi error */
+        .ring-error { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.5); border-color: #ef4444 !important; }
     </style>
 </head>
 <body>
@@ -110,7 +112,7 @@
                 <canvas id="signature-pad" class="w-full h-32 bg-gray-50 border border-dashed border-gray-300 rounded-xl touch-none"></canvas>
             </div>
 
-            <div class="pt-4">
+            <div class="pt-4 pb-20">
                 <button onclick="saveAll()" id="btn-save" class="w-full bg-black text-white font-black py-4 rounded-xl shadow-lg active:scale-95 transition-transform uppercase tracking-widest text-sm flex items-center justify-center gap-2">
                     <span>Kirim Laporan</span> <i class="fa-solid fa-paper-plane"></i>
                 </button>
@@ -166,6 +168,7 @@
                     lastCategory = item.kategori;
                 }
 
+                // SAYA TAMBAHKAN data-item-name AGAR BISA DILACAK SAAT VALIDASI
                 const itemHtml = `
                     <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-3">
                         <div class="flex justify-between items-start mb-3">
@@ -185,8 +188,8 @@
                             </label>
                         </div>
                         <div id="box-${item.id}" class="hidden mt-3 animate-in fade-in slide-in-from-top-2">
-                            <label class="text-[10px] font-bold text-red-500 ml-1">Keterangan Masalah:</label>
-                            <textarea id="note-${item.id}" rows="2" placeholder="Wajib diisi..." class="w-full bg-red-50 border border-red-200 rounded-lg p-2 text-xs font-bold outline-none text-red-900 placeholder-red-300 mt-1"></textarea>
+                            <label class="text-[10px] font-bold text-red-500 ml-1">Keterangan Masalah (Wajib):</label>
+                            <textarea id="note-${item.id}" data-item-name="${item.item_name}" rows="2" placeholder="Jelaskan detail kerusakan..." class="w-full bg-red-50 border border-red-200 rounded-lg p-2 text-xs font-bold outline-none text-red-900 placeholder-red-300 mt-1"></textarea>
                         </div>
                     </div>
                 `;
@@ -198,19 +201,47 @@
             const el = document.getElementById(`box-${id}`);
             const ta = document.getElementById(`note-${id}`);
             if(show) { el.classList.remove('hidden'); ta.focus(); }
-            else { el.classList.add('hidden'); ta.value = ''; }
+            else { 
+                el.classList.add('hidden'); 
+                ta.value = ''; 
+                ta.classList.remove('ring-error'); // Hapus merah jika kembali ke OK
+            }
         }
 
         async function saveAll() {
             const name = document.getElementById('technician-name').value.trim();
-            const generalNote = document.getElementById('general-note').value.trim(); // GET CATATAN
+            const generalNote = document.getElementById('general-note').value.trim();
 
-            if(!name || sigPad.isEmpty()) return alert("⚠️ Lengkapi Nama & Tanda Tangan!");
+            // 1. CEK NAMA & TTD
+            if(!name) {
+                document.getElementById('technician-name').focus();
+                return alert("⚠️ Mohon isi Nama Pelaksana!");
+            }
+            if(sigPad.isEmpty()) {
+                document.querySelector('canvas').scrollIntoView({behavior: "smooth", block: "center"});
+                return alert("⚠️ Mohon isi Tanda Tangan!");
+            }
             
+            // 2. CEK ITEM NG (DETEKSI SPESIFIK)
             const ngs = document.querySelectorAll('input[value="NG"]:checked');
             for(let r of ngs) {
                 const id = r.name.replace('st-', '');
-                if(!document.getElementById(`note-${id}`).value.trim()) return alert("⚠️ Catatan NG Wajib Diisi!");
+                const noteEl = document.getElementById(`note-${id}`);
+                
+                // JIKA KOTAK CATATAN NG KOSONG
+                if(!noteEl.value.trim()) {
+                    const itemName = noteEl.getAttribute('data-item-name');
+                    
+                    // A. Scroll ke item tersebut
+                    noteEl.scrollIntoView({behavior: "smooth", block: "center"});
+                    
+                    // B. Kasih warna merah (Highlight)
+                    noteEl.classList.add('ring-error');
+                    noteEl.focus();
+
+                    // C. Kasih Alert Spesifik
+                    return alert(`⚠️ CATATAN KOSONG!\n\nAnda memilih NG pada item:\n"${itemName}"\n\nHarap isi keterangan kerusakannya di kotak yang saya tandai merah.`);
+                }
             }
 
             const btn = document.getElementById('btn-save');
@@ -220,33 +251,28 @@
             const d = now.getDate(), m = now.getMonth()+1, y = now.getFullYear();
 
             try {
-                // 1. UPDATE/INSERT LOG (Header)
                 let { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', currentMachineId).eq('bulan', m).eq('tahun', y).maybeSingle();
                 
                 if(!log) {
-                    // Log Baru: Simpan Nama & Catatan
                     const { data: nLog } = await _sb.from('chslr_log').insert({ 
                         mesin_id: currentMachineId, 
                         bulan: m, 
                         tahun: y, 
                         pelaksana_names: [name],
-                        catatan: generalNote // SAVE CATATAN BARU
+                        catatan: generalNote
                     }).select().single();
                     log = nLog;
                 } else {
-                    // Log Lama: Update Nama (jika baru) & Update Catatan
                     let updatedNames = log.pelaksana_names;
                     if(!log.pelaksana_names.includes(name)) {
                         updatedNames = [...log.pelaksana_names, name];
                     }
-                    
                     await _sb.from('chslr_log').update({ 
                         pelaksana_names: updatedNames,
-                        catatan: generalNote // OVERWRITE CATATAN
+                        catatan: generalNote 
                     }).eq('id', log.id);
                 }
 
-                // 2. INSERT ITEM RESULTS
                 const { data: items } = await _sb.from('chslr_items').select('id');
                 const results = items.map(i => {
                     const st = document.querySelector(`input[name="st-${i.id}"]:checked`).value;
