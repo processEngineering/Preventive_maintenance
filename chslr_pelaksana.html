@@ -49,8 +49,10 @@
         .form-ng:checked + div { background-color: #fee2e2; border-color: #ef4444; color: #b91c1c; }
         .form-ok:checked + div { background-color: #dcfce7; border-color: #22c55e; color: #15803d; }
         
-        /* Animasi error */
-        .ring-error { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.5); border-color: #ef4444 !important; }
+        /* Animasi Transisi */
+        .hidden-transition { display: none; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -99,9 +101,14 @@
 
             <div id="checklist-container" class="space-y-2"></div>
 
-            <div>
-                <label class="text-[10px] font-bold uppercase text-gray-500 ml-1">Catatan Tambahan (Opsional)</label>
-                <textarea id="general-note" rows="3" class="w-full mt-1 border-2 border-gray-300 rounded-xl p-3 font-bold text-sm outline-none focus:border-black transition-colors" placeholder="Tulis catatan umum kondisi mesin..."></textarea>
+            <div id="bottom-note-container" class="fade-in">
+                <div class="bg-green-50 border-2 border-green-200 rounded-2xl p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-thumbs-up text-green-600"></i>
+                        <label class="text-[10px] font-bold uppercase text-green-700">Kondisi Mesin Prima (Semua OK)</label>
+                    </div>
+                    <textarea id="general-note" rows="2" class="w-full bg-white border border-green-300 rounded-xl p-3 font-bold text-sm outline-none focus:border-green-600 transition-colors" placeholder="Tambahkan catatan harian (opsional)..."></textarea>
+                </div>
             </div>
 
             <div class="bg-white rounded-2xl border border-gray-300 p-4">
@@ -163,56 +170,93 @@
             let lastCategory = "";
 
             items.forEach((item, i) => {
+                // Header Kategori
                 if (item.kategori && item.kategori !== lastCategory) {
                     container.insertAdjacentHTML('beforeend', `<div class="mt-6 mb-3 flex items-center gap-2"><div class="h-8 w-1 bg-black rounded-full"></div><h3 class="font-black text-sm uppercase text-gray-800 tracking-tight leading-tight">${item.kategori}</h3></div>`);
                     lastCategory = item.kategori;
                 }
 
-                // SAYA TAMBAHKAN data-item-name AGAR BISA DILACAK SAAT VALIDASI
                 const itemHtml = `
-                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-3">
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <p class="font-bold text-sm text-gray-800 leading-snug">${item.item_name}</p>
-                                <p class="text-[10px] text-gray-500 font-medium mt-1 bg-gray-50 px-2 py-1 rounded inline-block">Std: ${item.standard}</p>
-                            </div>
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-3 transition-all" id="card-${item.id}">
+                        <div class="mb-3">
+                            <p class="font-bold text-sm text-gray-800 leading-snug">${item.item_name}</p>
+                            <p class="text-[10px] text-gray-500 font-medium mt-1 bg-gray-50 px-2 py-1 rounded inline-block">Std: ${item.standard}</p>
                         </div>
+                        
                         <div class="grid grid-cols-2 gap-3">
                             <label class="cursor-pointer group">
-                                <input type="radio" name="st-${item.id}" value="OK" class="hidden form-ok" checked onclick="togNote(${item.id}, false)">
+                                <input type="radio" name="st-${item.id}" value="OK" class="hidden form-ok" checked onchange="handleStatusChange('${item.id}', 'OK')">
                                 <div class="py-3 text-center border-2 border-gray-100 rounded-lg font-black text-xs text-gray-300 transition-all uppercase group-active:scale-95">OK</div>
                             </label>
                             <label class="cursor-pointer group">
-                                <input type="radio" name="st-${item.id}" value="NG" class="hidden form-ng" onclick="togNote(${item.id}, true)">
+                                <input type="radio" name="st-${item.id}" value="NG" class="hidden form-ng" onchange="handleStatusChange('${item.id}', 'NG')">
                                 <div class="py-3 text-center border-2 border-gray-100 rounded-lg font-black text-xs text-gray-300 transition-all uppercase group-active:scale-95">NG</div>
                             </label>
                         </div>
-                        <div id="box-${item.id}" class="hidden mt-3 animate-in fade-in slide-in-from-top-2">
-                            <label class="text-[10px] font-bold text-red-500 ml-1">Keterangan Masalah (Wajib):</label>
-                            <textarea id="note-${item.id}" data-item-name="${item.item_name}" rows="2" placeholder="Jelaskan detail kerusakan..." class="w-full bg-red-50 border border-red-200 rounded-lg p-2 text-xs font-bold outline-none text-red-900 placeholder-red-300 mt-1"></textarea>
+
+                        <div id="ng-box-${item.id}" class="hidden-transition mt-3 bg-red-50 p-3 rounded-lg border border-red-200 fade-in">
+                            <label class="text-[10px] font-bold text-red-600 mb-1 block">Jelaskan Kerusakan (Wajib):</label>
+                            <textarea id="note-${item.id}" data-item-name="${item.item_name}" rows="2" class="w-full bg-white border border-red-300 rounded-md p-2 text-xs font-bold outline-none focus:ring-2 focus:ring-red-500 text-red-900 placeholder-red-300"></textarea>
                         </div>
                     </div>
                 `;
                 container.insertAdjacentHTML('beforeend', itemHtml);
             });
+
+            // Cek status awal (biasanya semua OK)
+            checkGlobalStatus();
         }
 
-        window.togNote = (id, show) => {
-            const el = document.getElementById(`box-${id}`);
-            const ta = document.getElementById(`note-${id}`);
-            if(show) { el.classList.remove('hidden'); ta.focus(); }
-            else { 
-                el.classList.add('hidden'); 
-                ta.value = ''; 
-                ta.classList.remove('ring-error'); // Hapus merah jika kembali ke OK
+        // --- FUNGSI LOGIKA BARU ---
+        
+        // 1. Handle Perubahan Radio Button per Item
+        window.handleStatusChange = function(itemId, status) {
+            const ngBox = document.getElementById(`ng-box-${itemId}`);
+            const noteInput = document.getElementById(`note-${itemId}`);
+
+            if (status === 'NG') {
+                // Munculkan Kotak NG
+                ngBox.style.display = 'block'; 
+                noteInput.focus(); // Langsung fokus ke kotak input
+            } else {
+                // Sembunyikan Kotak NG & Bersihkan isinya
+                ngBox.style.display = 'none';
+                noteInput.value = ''; 
+            }
+
+            // Cek Status Global (untuk menampilkan/menyembunyikan catatan bawah)
+            checkGlobalStatus();
+        }
+
+        // 2. Cek Apakah Ada NG di Seluruh Form?
+        function checkGlobalStatus() {
+            // Cari apakah ada radio button NG yang terpilih
+            const anyNG = document.querySelector('input[value="NG"]:checked');
+            const bottomNote = document.getElementById('bottom-note-container');
+            const generalInput = document.getElementById('general-note');
+
+            if (anyNG) {
+                // Kalo ada NG -> Sembunyikan Catatan Bawah
+                bottomNote.style.display = 'none';
+                generalInput.value = ''; // Reset nilai kalau disembunyikan (opsional)
+            } else {
+                // Kalo Semua OK -> Munculkan Catatan Bawah
+                bottomNote.style.display = 'block';
             }
         }
 
         async function saveAll() {
             const name = document.getElementById('technician-name').value.trim();
-            const generalNote = document.getElementById('general-note').value.trim();
+            
+            // Tentukan Catatan mana yang diambil
+            // Jika Bottom Note muncul (artinya semua OK), ambil nilainya. Jika hidden, kosongkan.
+            let generalNoteValue = "";
+            const bottomNoteContainer = document.getElementById('bottom-note-container');
+            if (bottomNoteContainer.style.display !== 'none') {
+                generalNoteValue = document.getElementById('general-note').value.trim();
+            }
 
-            // 1. CEK NAMA & TTD
+            // VALIDASI DASAR
             if(!name) {
                 document.getElementById('technician-name').focus();
                 return alert("⚠️ Mohon isi Nama Pelaksana!");
@@ -222,25 +266,16 @@
                 return alert("⚠️ Mohon isi Tanda Tangan!");
             }
             
-            // 2. CEK ITEM NG (DETEKSI SPESIFIK)
+            // VALIDASI ITEM NG (WAJIB ISI)
             const ngs = document.querySelectorAll('input[value="NG"]:checked');
             for(let r of ngs) {
                 const id = r.name.replace('st-', '');
                 const noteEl = document.getElementById(`note-${id}`);
                 
-                // JIKA KOTAK CATATAN NG KOSONG
                 if(!noteEl.value.trim()) {
-                    const itemName = noteEl.getAttribute('data-item-name');
-                    
-                    // A. Scroll ke item tersebut
                     noteEl.scrollIntoView({behavior: "smooth", block: "center"});
-                    
-                    // B. Kasih warna merah (Highlight)
-                    noteEl.classList.add('ring-error');
                     noteEl.focus();
-
-                    // C. Kasih Alert Spesifik
-                    return alert(`⚠️ CATATAN KOSONG!\n\nAnda memilih NG pada item:\n"${itemName}"\n\nHarap isi keterangan kerusakannya di kotak yang saya tandai merah.`);
+                    return alert(`⚠️ CATATAN KOSONG!\n\nItem "${noteEl.getAttribute('data-item-name')}" Status NG.\nHarap jelaskan kerusakannya.`);
                 }
             }
 
@@ -255,21 +290,17 @@
                 
                 if(!log) {
                     const { data: nLog } = await _sb.from('chslr_log').insert({ 
-                        mesin_id: currentMachineId, 
-                        bulan: m, 
-                        tahun: y, 
-                        pelaksana_names: [name],
-                        catatan: generalNote
+                        mesin_id: currentMachineId, bulan: m, tahun: y, pelaksana_names: [name],
+                        catatan: generalNoteValue // Simpan Catatan Bawah (jika ada)
                     }).select().single();
                     log = nLog;
                 } else {
                     let updatedNames = log.pelaksana_names;
-                    if(!log.pelaksana_names.includes(name)) {
-                        updatedNames = [...log.pelaksana_names, name];
-                    }
+                    if(!log.pelaksana_names.includes(name)) updatedNames = [...log.pelaksana_names, name];
+                    
                     await _sb.from('chslr_log').update({ 
                         pelaksana_names: updatedNames,
-                        catatan: generalNote 
+                        catatan: generalNoteValue // Update Catatan Bawah
                     }).eq('id', log.id);
                 }
 
@@ -278,6 +309,7 @@
                     const st = document.querySelector(`input[name="st-${i.id}"]:checked`).value;
                     return {
                         log_id: log.id, item_id: i.id, tanggal: d, status: st,
+                        // Jika NG, ambil note item. Jika OK, kosong.
                         keterangan: (st === 'NG') ? document.getElementById(`note-${i.id}`).value : "",
                         signature: sigPad.toDataURL()
                     };
