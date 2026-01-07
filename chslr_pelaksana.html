@@ -97,6 +97,11 @@
 
             <div id="checklist-container" class="space-y-2"></div>
 
+            <div>
+                <label class="text-[10px] font-bold uppercase text-gray-500 ml-1">Catatan Tambahan (Opsional)</label>
+                <textarea id="general-note" rows="3" class="w-full mt-1 border-2 border-gray-300 rounded-xl p-3 font-bold text-sm outline-none focus:border-black transition-colors" placeholder="Tulis catatan umum kondisi mesin..."></textarea>
+            </div>
+
             <div class="bg-white rounded-2xl border border-gray-300 p-4">
                 <div class="flex justify-between items-center mb-2">
                     <label class="text-[10px] font-bold uppercase text-gray-500">Tanda Tangan</label>
@@ -149,32 +154,18 @@
             sigPad = new SignaturePad(canvas, { backgroundColor: 'rgb(249, 250, 251)' });
         }
 
-        // --- UPDATE PENTING: LOGIC GROUPING KATEGORI ---
         async function loadItems() {
             const container = document.getElementById('checklist-container');
-            // Ambil data sort by urutan
             const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
             container.innerHTML = "";
-
             let lastCategory = "";
 
             items.forEach((item, i) => {
-                // 1. CEK KATEGORI BARU
-                // Jika kategori beda dari baris sebelumnya, buat HEADER BARU
                 if (item.kategori && item.kategori !== lastCategory) {
-                    const catHtml = `
-                        <div class="mt-6 mb-3 flex items-center gap-2">
-                            <div class="h-8 w-1 bg-black rounded-full"></div>
-                            <h3 class="font-black text-sm uppercase text-gray-800 tracking-tight leading-tight">
-                                ${item.kategori}
-                            </h3>
-                        </div>
-                    `;
-                    container.insertAdjacentHTML('beforeend', catHtml);
+                    container.insertAdjacentHTML('beforeend', `<div class="mt-6 mb-3 flex items-center gap-2"><div class="h-8 w-1 bg-black rounded-full"></div><h3 class="font-black text-sm uppercase text-gray-800 tracking-tight leading-tight">${item.kategori}</h3></div>`);
                     lastCategory = item.kategori;
                 }
 
-                // 2. RENDER ITEM
                 const itemHtml = `
                     <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-3">
                         <div class="flex justify-between items-start mb-3">
@@ -212,6 +203,8 @@
 
         async function saveAll() {
             const name = document.getElementById('technician-name').value.trim();
+            const generalNote = document.getElementById('general-note').value.trim(); // GET CATATAN
+
             if(!name || sigPad.isEmpty()) return alert("⚠️ Lengkapi Nama & Tanda Tangan!");
             
             const ngs = document.querySelectorAll('input[value="NG"]:checked');
@@ -227,14 +220,33 @@
             const d = now.getDate(), m = now.getMonth()+1, y = now.getFullYear();
 
             try {
+                // 1. UPDATE/INSERT LOG (Header)
                 let { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', currentMachineId).eq('bulan', m).eq('tahun', y).maybeSingle();
+                
                 if(!log) {
-                    const { data: nLog } = await _sb.from('chslr_log').insert({ mesin_id: currentMachineId, bulan: m, tahun: y, pelaksana_names: [name] }).select().single();
+                    // Log Baru: Simpan Nama & Catatan
+                    const { data: nLog } = await _sb.from('chslr_log').insert({ 
+                        mesin_id: currentMachineId, 
+                        bulan: m, 
+                        tahun: y, 
+                        pelaksana_names: [name],
+                        catatan: generalNote // SAVE CATATAN BARU
+                    }).select().single();
                     log = nLog;
-                } else if(!log.pelaksana_names.includes(name)) {
-                    await _sb.from('chslr_log').update({ pelaksana_names: [...log.pelaksana_names, name] }).eq('id', log.id);
+                } else {
+                    // Log Lama: Update Nama (jika baru) & Update Catatan
+                    let updatedNames = log.pelaksana_names;
+                    if(!log.pelaksana_names.includes(name)) {
+                        updatedNames = [...log.pelaksana_names, name];
+                    }
+                    
+                    await _sb.from('chslr_log').update({ 
+                        pelaksana_names: updatedNames,
+                        catatan: generalNote // OVERWRITE CATATAN
+                    }).eq('id', log.id);
                 }
 
+                // 2. INSERT ITEM RESULTS
                 const { data: items } = await _sb.from('chslr_items').select('id');
                 const results = items.map(i => {
                     const st = document.querySelector(`input[name="st-${i.id}"]:checked`).value;
