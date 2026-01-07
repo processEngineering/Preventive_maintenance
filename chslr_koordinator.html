@@ -36,10 +36,9 @@
         }
         .st-pending { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; }
         
-        /* --- HALAMAN SCANNER (FULLSCREEN FIXED) --- */
+        /* --- HALAMAN SCANNER --- */
         #page-scanner {
-            display: none; /* Hidden Default */
-            flex-direction: column; height: 100dvh; position: absolute; top:0; left:0; width:100%;
+            display: none; flex-direction: column; height: 100dvh; position: absolute; top:0; left:0; width:100%;
             background: white; z-index: 100;
         }
         .scan-area { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
@@ -57,7 +56,7 @@
         .l-right { right: 15%; transform-origin: bottom right; transform: rotate(-20deg); }
         .scan-badge { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: white; border: 2px solid #000; border-radius: 6px; padding: 4px 14px; font-weight: 800; font-size: 11px; letter-spacing: 1px; box-shadow: 2px 2px 0 rgba(0,0,0,0.1); }
 
-        /* --- HALAMAN REVIEW FORM --- */
+        /* --- HALAMAN FORM --- */
         #page-form { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #f8fafc; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 100px; z-index: 60; display: none; }
     </style>
 </head>
@@ -82,7 +81,6 @@
         </div>
     </div>
 
-
     <div id="page-scanner">
         <div class="pt-12 pb-4 text-center z-20 bg-white">
             <div class="inline-block border-2 border-black rounded-full px-8 py-2 bg-white shadow-sm">
@@ -92,26 +90,21 @@
                 Scan QR Code pada mesin <br> <span id="target-mesin" class="font-black text-black text-sm">...</span> <br> untuk membuka lembar kerja.
             </p>
         </div>
-
         <div class="scan-area">
             <div class="frame-box">
                 <div class="bracket tl"></div><div class="bracket tr"></div><div class="bracket bl"></div><div class="bracket br"></div>
                 <div id="reader"></div>
             </div>
             <div class="trapezoid-area">
-                <div class="scan-badge">SCAN VERIFIKASI</div>
-                <div class="line l-left"></div>
-                <div class="line l-right"></div>
+                <div class="scan-badge">SCAN VERIFIKASI</div><div class="line l-left"></div><div class="line l-right"></div>
             </div>
         </div>
-
         <div class="bg-white border-t-2 border-black p-4 flex justify-center z-50">
             <button onclick="closeScanner()" class="bg-gray-100 text-gray-500 font-bold py-3 px-8 rounded-xl uppercase text-xs hover:bg-red-50 hover:text-red-600 transition-colors">
                 <i class="fa-solid fa-xmark mr-1"></i> Batalkan
             </button>
         </div>
     </div>
-
 
     <div id="page-form" class="animate-[slideUp_0.3s_ease-out]">
         <div class="sticky top-0 bg-white/95 backdrop-blur border-b border-gray-200 p-4 z-50 flex justify-between items-center shadow-sm">
@@ -127,9 +120,8 @@
             </div>
 
             <div id="findings-list" class="space-y-3">
-                <div class="text-center py-4 bg-green-50 rounded-xl border border-green-200">
-                    <i class="fa-solid fa-thumbs-up text-green-500 mb-1"></i>
-                    <p class="text-[10px] font-bold text-green-700 uppercase">Tidak ada temuan NG.</p>
+                <div class="text-center py-10">
+                    <i class="fa-solid fa-spinner fa-spin text-gray-300"></i>
                 </div>
             </div>
 
@@ -160,71 +152,50 @@
     </div>
 
     <script>
-        // CONFIG
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
         
-        let activeLog = null;
-        let scanner = null;
-        let sigPadKoor = null;
+        let activeLog = null, scanner = null, sigPadKoor = null;
 
         window.onload = loadQueue;
 
-        // 1. LOAD ANTREAN
         async function loadQueue() {
             const now = new Date();
-            const { data: logs, error } = await _sb.from('chslr_log')
+            // Ambil Log Bulan Ini yg BELUM diverifikasi
+            const { data: logs } = await _sb.from('chslr_log')
                 .select('*')
                 .eq('bulan', now.getMonth()+1)
                 .eq('tahun', now.getFullYear())
-                .eq('status_verifikasi', false) // Hanya yg belum diapprove
+                .eq('status_verifikasi', false)
                 .order('created_at', { ascending: false });
 
             const container = document.getElementById('log-container');
             container.innerHTML = "";
 
             if (!logs || logs.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-20 opacity-50">
-                        <i class="fa-regular fa-folder-open text-4xl mb-2"></i>
-                        <p class="text-xs font-bold uppercase">Tidak ada antrean.</p>
-                    </div>`;
+                container.innerHTML = `<div class="text-center py-20 opacity-50"><i class="fa-regular fa-folder-open text-4xl mb-2"></i><p class="text-xs font-bold uppercase">Tidak ada antrean.</p></div>`;
                 return;
             }
 
             logs.forEach(log => {
-                // Tampilkan card
                 const names = log.pelaksana_names ? log.pelaksana_names.join(', ') : 'Tanpa Nama';
                 const time = new Date(log.created_at).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
-                
-                const html = `
+                container.insertAdjacentHTML('beforeend', `
                     <div class="card-log" onclick="startVerification('${encodeURIComponent(JSON.stringify(log))}')">
-                        <div class="flex justify-between items-start mb-2">
-                            <span class="status-badge st-pending">BUTUH VERIFIKASI</span>
-                            <span class="text-[10px] font-bold text-gray-400">${time}</span>
-                        </div>
+                        <div class="flex justify-between items-start mb-2"><span class="status-badge st-pending">BUTUH VERIFIKASI</span><span class="text-[10px] font-bold text-gray-400">${time}</span></div>
                         <h3 class="font-black text-gray-800 text-lg uppercase tracking-tight mb-1">${log.mesin_id}</h3>
-                        <div class="flex items-center gap-2 text-gray-500">
-                            <i class="fa-regular fa-user text-[10px]"></i>
-                            <p class="text-[10px] font-bold uppercase truncate">${names}</p>
-                        </div>
+                        <div class="flex items-center gap-2 text-gray-500"><i class="fa-regular fa-user text-[10px]"></i><p class="text-[10px] font-bold uppercase truncate">${names}</p></div>
                     </div>
-                `;
-                container.insertAdjacentHTML('beforeend', html);
+                `);
             });
         }
 
-        // 2. BUKA SCANNER VERIFIKASI
         function startVerification(logStr) {
             activeLog = JSON.parse(decodeURIComponent(logStr));
-            
-            // Set UI
             document.getElementById('page-list').style.display = 'none';
             document.getElementById('page-scanner').style.display = 'flex';
             document.getElementById('target-mesin').innerText = activeLog.mesin_id;
-
-            // Start Camera
             if(!scanner) scanner = new Html5Qrcode("reader");
             scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, onScanSuccess);
         }
@@ -237,61 +208,75 @@
         }
 
         async function onScanSuccess(decodedText) {
-            // MATCHING NAMA MESIN
             if (activeLog.mesin_id.toLowerCase().trim() === decodedText.toLowerCase().trim()) {
                 if(navigator.vibrate) navigator.vibrate(100);
-                await scanner.stop(); 
-                scanner.clear();
-                openReviewForm(); // Masuk Form
+                await scanner.stop(); scanner.clear();
+                openReviewForm();
             } else {
                 alert("❌ QR SALAH!\nIni mesin: " + decodedText + "\nTarget: " + activeLog.mesin_id);
             }
         }
 
-        // 3. BUKA FORM REVIEW
+        // --- UPDATE UTAMA: LOGIC FETCH NG YANG LEBIH KUAT ---
         async function openReviewForm() {
             document.getElementById('page-scanner').style.display = 'none';
             document.getElementById('page-form').style.display = 'block';
-
-            // Isi Header
             document.getElementById('verif-machine-name').innerText = activeLog.mesin_id;
             document.getElementById('verif-pelaksana').innerText = "Pelaksana: " + (activeLog.pelaksana_names ? activeLog.pelaksana_names.join(', ') : '-');
 
-            // Load Temuan NG Hari Ini
-            const { data: results } = await _sb.from('chslr_result')
-                .select('status, keterangan, chslr_items(item_name)')
-                .eq('log_id', activeLog.id);
-
             const listContainer = document.getElementById('findings-list');
-            listContainer.innerHTML = "";
-            
-            // Filter hanya NG atau yang ada keterangan
-            const findings = results ? results.filter(r => r.status === 'NG' || r.keterangan) : [];
+            listContainer.innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin"></i> Loading Data...</div>';
 
+            const today = new Date().getDate();
+
+            // 1. AMBIL SEMUA HASIL HARI INI (Tanpa Join Table dulu biar aman)
+            const { data: results } = await _sb.from('chslr_result')
+                .select('*') // Ambil semua kolom
+                .eq('log_id', activeLog.id)
+                .eq('tanggal', today); // WAJIB FILTER TANGGAL HARI INI
+
+            // 2. AMBIL MASTER ITEM (Manual Matching)
+            const { data: items } = await _sb.from('chslr_items').select('id, item_name');
+
+            // 3. GABUNGKAN MANUAL (Supaya ga error kalau FK hilang)
+            // Kita cari item yang statusnya NG atau punya keterangan
+            let findings = [];
+            if (results && items) {
+                findings = results.filter(r => r.status === 'NG' || (r.keterangan && r.keterangan.trim() !== "")).map(res => {
+                    const itemDetail = items.find(i => i.id === res.item_id);
+                    return {
+                        item_name: itemDetail ? itemDetail.item_name : 'Unknown Item',
+                        status: res.status,
+                        keterangan: res.keterangan
+                    };
+                });
+            }
+
+            listContainer.innerHTML = "";
             if (findings.length > 0) {
                 listContainer.innerHTML = `<p class="text-[10px] font-black uppercase text-red-500 ml-1 mb-1">Daftar Temuan Masalah:</p>`;
                 findings.forEach(f => {
-                    const html = `
-                        <div class="bg-red-50 border border-red-100 p-3 rounded-xl">
+                    listContainer.insertAdjacentHTML('beforeend', `
+                        <div class="bg-red-50 border border-red-100 p-3 rounded-xl mb-2">
                             <div class="flex justify-between items-start">
-                                <p class="text-[10px] font-black uppercase text-gray-800 w-3/4">${f.chslr_items.item_name}</p>
+                                <p class="text-[10px] font-black uppercase text-gray-800 w-3/4">${f.item_name}</p>
                                 <span class="bg-red-500 text-white text-[8px] font-bold px-2 py-0.5 rounded">NG</span>
                             </div>
                             <p class="text-[10px] font-bold text-red-700 mt-1 italic">"${f.keterangan}"</p>
                         </div>
-                    `;
-                    listContainer.insertAdjacentHTML('beforeend', html);
+                    `);
                 });
             } else {
                 listContainer.innerHTML = `
                     <div class="text-center py-4 bg-green-50 rounded-xl border border-green-200">
                         <i class="fa-solid fa-thumbs-up text-green-500 mb-1"></i>
                         <p class="text-[10px] font-bold text-green-700 uppercase">Semua Kondisi OK.</p>
+                        ${activeLog.catatan ? `<p class="text-[10px] text-gray-500 mt-2 italic border-t border-green-200 pt-2">"${activeLog.catatan}"</p>` : ''}
                     </div>
                 `;
             }
 
-            // Init Signature
+            // Init TTD
             const canvas = document.getElementById('signature-pad-koor');
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
             canvas.width = canvas.offsetWidth * ratio; canvas.height = canvas.offsetHeight * ratio;
@@ -299,14 +284,12 @@
             sigPadKoor = new SignaturePad(canvas, { backgroundColor: 'rgb(249, 250, 251)' });
         }
 
-        // 4. SUBMIT APPROVAL
         async function submitApproval() {
             const name = document.getElementById('koor-name').value.trim();
             if(!name || sigPadKoor.isEmpty()) return alert("⚠️ Isi Nama & Paraf!");
-
+            
             const btn = document.getElementById('btn-approve');
-            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> MEMPROSES...';
-            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> MEMPROSES...'; btn.disabled = true;
 
             const { error } = await _sb.from('chslr_log').update({
                 koordinator_nama: name,
