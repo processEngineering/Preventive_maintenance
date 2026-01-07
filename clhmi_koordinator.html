@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Verifikasi Koordinator - AKG Maintenance</title>
+    <title>Koordinator - AKG Maintenance</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -28,6 +28,7 @@
             padding: 40px 20px 120px 20px; position: relative; align-items: center;
         }
 
+        /* HEADER KAPSUL (Sesuai image_96fbfb.png) */
         .header-capsule {
             border: var(--border-thick) solid var(--text-dark); border-radius: 50px;
             padding: 15px 50px; text-align: center; margin-bottom: 30px; display: inline-block;
@@ -42,7 +43,7 @@
             box-shadow: 0 5px 0px var(--text-dark); cursor: pointer; margin-bottom: 15px; width: 100%;
         }
 
-        /* SCANNER PERSPEKTIF */
+        /* SCANNER PERSPEKTIF (Sesuai image_96fbfb.png) */
         #scanner-section { display: none; width: 100%; text-align: center; }
         .scanner-frame { width: 250px; height: 250px; border: 3px solid var(--text-dark); position: relative; margin: 0 auto 10px auto; border-radius: 4px; overflow: hidden; }
         #reader { width: 100%; height: 100%; }
@@ -55,23 +56,26 @@
         .diagonal-lines-svg { position: absolute; top: 25px; left: 0; width: 100%; height: 100%; z-index: 1; }
         .diagonal-lines-svg line { stroke: var(--text-dark); stroke-width: 2; }
 
-        /* DETAIL SECTION */
+        /* --- RINGKASAN KONDISI AKTUAL (image_a5f024.png) --- */
         #detail-section { display: none; width: 100%; }
+        .summary-title { font-size: 14px; font-weight: 800; text-transform: uppercase; margin-bottom: 10px; display: block; }
         .summary-card {
             width: 100%; border: var(--border-thick) solid var(--text-dark); border-radius: 18px;
-            padding: 20px; margin-bottom: 25px; background: #f0fdf4; /* Hijau Soft */
-            border-left: 8px solid var(--success);
+            padding: 20px; margin-bottom: 25px; background: #f0fdf4; border-left: 8px solid var(--success);
         }
         .summary-text { font-size: 14px; font-weight: 700; color: #000; font-style: italic; line-height: 1.4; }
 
+        /* TEMUAN MASALAH */
         .finding-box { border: 2px solid var(--danger); border-radius: 15px; padding: 15px; margin-bottom: 25px; background: #fff; }
         .finding-item { border-bottom: 1px solid #fee2e2; padding: 10px 0; }
         .finding-item:last-child { border: none; }
         .finding-label { font-weight: 800; font-size: 13px; display: block; color: var(--danger); }
         .finding-note { font-size: 12px; font-weight: 600; color: #000; }
 
-        /* FORM INPUT */
+        /* INPUTS */
+        .label-small { font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 5px; display: block; color: #64748b; }
         input, textarea { width: 100%; padding: 16px; border: var(--border-thick) solid var(--text-dark); border-radius: 12px; font-size: 14px; font-weight: 700; outline: none; margin-bottom: 15px; background: white; }
+        
         .canvas-wrapper { border: var(--border-thick) dashed #000; border-radius: 20px; background: #fff; height: 150px; }
         canvas { width: 100%; height: 100%; touch-action: none; border-radius: 20px; }
 
@@ -103,9 +107,9 @@
     </div>
 
     <div id="detail-section">
-        <p style="font-size: 14px; font-weight: 800; text-transform: uppercase; margin-bottom: 12px;">RINGKASAN KONDISI AKTUAL</p>
+        <span class="summary-title">RINGKASAN KONDISI AKTUAL</span>
         <div class="summary-card">
-            <p id="actual-summary-text" class="summary-text">Memuat laporan pelaksana...</p>
+            <p id="actual-summary-text" class="summary-text">Memuat laporan teknisi...</p>
         </div>
 
         <div id="finding-section" style="display:none;">
@@ -114,9 +118,12 @@
         </div>
 
         <p style="font-size: 11px; font-weight: 800; text-transform: uppercase; margin-top: 30px; margin-bottom: 10px;">Verifikasi Koordinator:</p>
+        <span class="label-small">Nama Koordinator</span>
         <input type="text" id="nama_koordinator" oninput="validateForm()" placeholder="NAMA LENGKAP KOORDINATOR">
+        <span class="label-small">Catatan Tambahan</span>
         <textarea id="catatan_coord" rows="3" placeholder="Instruksi perbaikan jika ada..."></textarea>
 
+        <span class="label-small">Tanda Tangan Digital</span>
         <div class="canvas-wrapper"><canvas id="canvas"></canvas></div>
         <button onclick="clearCanvas()" style="float:right; border:none; background:none; color:red; font-size:10px; font-weight:800; padding:10px;">HAPUS ✕</button>
         <div style="clear:both;"></div>
@@ -141,12 +148,17 @@
     let activeHdr = null, drawing = false, hasParaf = false, html5QrCode = null;
     const cvs = document.getElementById("canvas"), ctx = cvs.getContext("2d");
 
+    // 1. Ambil Antrian Laporan yang sudah disubmit teknisi
     async function loadQueue() {
-        const { data, error } = await sb.from('clhmi').select('*').or('status_form.eq.submitted,status_form.eq.draft').order('created_at', { ascending: false });
-        if (error) { console.error(error); return; }
+        const { data, error } = await sb.from('clhmi').select('*')
+            .or('status_form.eq.submitted,status_form.eq.draft')
+            .order('created_at', { ascending: false });
+        
+        if (error) return;
         const container = document.getElementById("queue-container");
         container.innerHTML = "";
         if (!data || data.length === 0) { container.innerHTML = `<p style="text-align:center; padding:40px; font-weight:600;">✅ Tidak ada antrian</p>`; return; }
+        
         data.forEach(item => {
             const div = document.createElement("div"); div.className = "list-item";
             div.onclick = () => { activeHdr = item; document.getElementById("list-section").style.display = "none"; document.getElementById("scanner-section").style.display = "block"; };
@@ -155,6 +167,7 @@
         });
     }
 
+    // 2. Scan QR Mesin untuk memastikan koordinator di lokasi
     function startScan() {
         html5QrCode = new Html5Qrcode("reader");
         html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 200 }, (text) => {
@@ -162,12 +175,13 @@
         }).catch(err => console.error(err));
     }
 
+    // 3. AMBIL HASIL PENGECEKAN (Relasi clhmi_results & clhmi_items)
     async function fetchResults() {
         try {
             document.getElementById("scanner-section").style.display = "none";
             document.getElementById("detail-section").style.display = "block";
 
-            // AMBIL DATA DARI clhmi_results SESUAI SCHEMA BARU
+            // Mengambil status, catatan item, dan catatan pelaksana kondisional
             const { data: results, error } = await sb.from('clhmi_results')
                 .select('status, catatan_item, catatan_pelaksana, clhmi_items(nama_pengecekan)')
                 .eq('clhmi_id', activeHdr.id);
@@ -179,32 +193,24 @@
             const findingContainer = document.getElementById("finding-container");
             const findingSection = document.getElementById("finding-section");
 
-            // LOGIKA: Ambil narasi dari kolom catatan_pelaksana di baris yang tersedia
+            // TAMPILKAN CATATAN PELAKSANA (YANG DIAMBIL DARI TABEL clhmi_results)
             const catatanUtama = results.find(r => r.catatan_pelaksana !== null && r.catatan_pelaksana !== "")?.catatan_pelaksana;
-            
-            summaryTextEl.innerText = catatanUtama || (ngItems.length > 0 ? "Unit dilaporkan mengalami kerusakan di beberapa poin." : "Laporan teknisi menyatakan unit dalam kondisi normal.");
+            summaryTextEl.innerText = catatanUtama || (ngItems.length > 0 ? "Teknisi melaporkan temuan masalah pada unit ini." : "Unit dilaporkan dalam kondisi normal.");
 
+            // Tampilkan Detail NG jika ada
             if (ngItems.length > 0) {
                 findingSection.style.display = "block";
                 findingContainer.innerHTML = "";
                 ngItems.forEach(item => {
-                    findingContainer.innerHTML += `
-                        <div class="finding-item">
-                            <span class="finding-label">${item.clhmi_items?.nama_pengecekan || 'Cek Item'}</span>
-                            <span class="finding-note">Masalah: ${item.catatan_item || 'Tidak ada detail'}</span>
-                        </div>`;
+                    findingContainer.innerHTML += `<div class="finding-item"><span class="finding-label">${item.clhmi_items?.nama_pengecekan || 'Item'}</span><span class="finding-note">Masalah: ${item.catatan_item || '-'}</span></div>`;
                 });
-            } else {
-                findingSection.style.display = "none";
-            }
+            } else { findingSection.style.display = "none"; }
+            
             initCanvas();
-        } catch (e) {
-            alert("Gagal memuat detail: " + e.message);
-            console.error(e);
-        }
+        } catch (e) { alert("Gagal memuat detail: " + e.message); }
     }
 
-    // --- CANVAS LOGIC ---
+    // --- LOGIKA TANDA TANGAN ---
     function initCanvas() {
         const r = cvs.getBoundingClientRect(); cvs.width = r.width; cvs.height = r.height;
         ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.strokeStyle = "#000";
@@ -219,6 +225,7 @@
     function clearCanvas() { ctx.clearRect(0, 0, cvs.width, cvs.height); hasParaf = false; validateForm(); }
     function validateForm() { document.getElementById("btn-submit").disabled = !(document.getElementById("nama_koordinator").value.trim().length > 2 && hasParaf); }
 
+    // --- SUBMIT APPROVAL ---
     async function submitApproval() {
         const btn = document.getElementById("btn-submit"); btn.disabled = true; btn.innerText = "MENYIMPAN...";
         try {
@@ -229,10 +236,7 @@
             }).eq('id', activeHdr.id);
             if(error) throw error;
             alert("✅ VERIFIKASI SELESAI!"); location.reload();
-        } catch (e) {
-            alert("Gagal Simpan: " + e.message);
-            btn.disabled = false; btn.innerText = "APPROVE LAPORAN";
-        }
+        } catch (e) { alert("Gagal: " + e.message); btn.disabled = false; }
     }
     window.onload = loadQueue;
 </script>
