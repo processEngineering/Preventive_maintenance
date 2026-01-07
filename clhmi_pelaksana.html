@@ -19,38 +19,26 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-
         body { background-color: white; display: flex; justify-content: center; min-height: 100vh; color: var(--text-dark); }
 
         .app-container {
-            width: 100%;
-            max-width: 420px;
-            background: white;
-            display: flex;
-            flex-direction: column;
-            padding: 40px 20px 120px 20px;
-            position: relative;
-            align-items: center;
+            width: 100%; max-width: 420px; background: white;
+            display: flex; flex-direction: column;
+            padding: 40px 20px 120px 20px; position: relative; align-items: center;
         }
 
-        /* HEADER KAPSUL */
         .header-capsule {
-            border: var(--border-thick) solid var(--text-dark);
-            border-radius: 50px;
-            padding: 12px 35px;
-            text-align: center;
-            margin-bottom: 25px;
-            display: inline-block;
+            border: var(--border-thick) solid var(--text-dark); border-radius: 50px;
+            padding: 12px 35px; text-align: center; margin-bottom: 25px; display: inline-block;
         }
         .header-capsule h1 { font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
 
         .instruction-text { text-align: center; font-size: 13px; font-style: italic; margin-bottom: 30px; line-height: 1.5; color: #475569; }
 
-        /* SCANNER UI PERSPEKTIF */
+        /* SCANNER UI */
         #step-scan { width: 100%; display: flex; flex-direction: column; align-items: center; }
         .scanner-frame { width: 250px; height: 250px; background: #f1f5f9; border: 3px solid var(--text-dark); position: relative; margin-bottom: 10px; border-radius: 8px; overflow: hidden; }
         #reader { width: 100%; height: 100%; }
-
         .perspective-area { position: relative; width: 100%; height: 120px; display: flex; justify-content: center; overflow: hidden; }
         .btn-scan-trigger { position: relative; z-index: 2; background: white; border: 2px solid var(--text-dark); border-radius: 8px; padding: 8px 24px; font-size: 12px; font-weight: 900; text-transform: uppercase; cursor: pointer; box-shadow: 0 4px 0px var(--text-dark); top: 0; }
         .diagonal-lines-svg { position: absolute; top: 15px; left: 0; width: 100%; height: 100%; z-index: 1; }
@@ -64,7 +52,7 @@
         .info-detail span { font-size: 10px; color: #64748b; text-transform: uppercase; display: block; font-weight: 800; }
         .info-detail strong { font-size: 13px; font-weight: 800; }
 
-        input, select, textarea { width: 100%; padding: 14px; border: 2px solid var(--text-dark); border-radius: 10px; font-size: 14px; font-weight: 700; outline: none; margin-bottom: 15px; }
+        input, select, textarea { width: 100%; padding: 14px; border: 2px solid var(--text-dark); border-radius: 10px; font-size: 14px; font-weight: 700; outline: none; margin-bottom: 15px; background: white; }
 
         /* CHECKLIST CARDS */
         .category-header { font-size: 12px; font-weight: 800; color: var(--primary); margin: 30px 0 12px; text-transform: uppercase; background: #f1f5f9; padding: 10px 15px; border-radius: 8px; border-left: 4px solid var(--primary); }
@@ -84,7 +72,7 @@
 
         /* BOTTOM NAV */
         .bottom-nav { position: fixed; bottom: 0; width: 100%; max-width: 420px; background: white; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-around; padding: 15px 0; z-index: 100; }
-        .nav-item { text-decoration: none; color: var(--text-dark); font-size: 24px; transition: 0.2s; }
+        .nav-item { text-decoration: none; color: var(--text-dark); font-size: 24px; }
         .nav-item.active { color: #000; }
     </style>
 </head>
@@ -126,6 +114,9 @@
             <p style="text-align:center; padding:30px; font-size:12px; color:#94a3b8; font-weight:600;">Memuat data checklist...</p>
         </div>
 
+        <p class="form-section-title">Catatan Umum / Laporan Pelaksana</p>
+        <textarea id="catatan_umum_pelaksana" rows="3" placeholder="Contoh: Kondisi aman, mesin siap digunakan."></textarea>
+
         <p class="form-section-title">Konfirmasi & Paraf</p>
         <div class="signature-pad"><canvas id="canvas"></canvas></div>
         <button class="btn-clear-sig" onclick="resetCanvas()">Hapus Paraf ✕</button>
@@ -149,7 +140,6 @@
     let scanner = null, mData = null, drawing = false, fetchedItems = [];
     const cvs = document.getElementById("canvas"), ctx = cvs.getContext("2d");
 
-    // --- INISIALISASI SCANNER ---
     function initScanner() {
         document.querySelector('.instruction-text').style.display = 'none';
         scanner = new Html5Qrcode("reader");
@@ -159,31 +149,22 @@
 
     async function handleScanSuccess(text) {
         if (scanner) await scanner.stop();
-        // Cek data mesin di tabel clhmi_machine
         const { data, error } = await sb.from("clhmi_machine").select("*").eq("merk_mesin", text.trim()).single();
         if (error || !data) { alert("⚠️ Mesin Tidak Terdaftar!"); location.reload(); return; }
-        
         mData = data;
         fetchChecklistItems();
     }
 
-    // --- AMBIL DATA ITEM DARI SUPABASE ---
     async function fetchChecklistItems() {
-        const { data, error } = await sb.from('clhmi_items')
-            .select('*')
-            .eq('aktif', true)
-            .order('urutan', { ascending: true });
-
+        const { data, error } = await sb.from('clhmi_items').select('*').eq('aktif', true).order('urutan', { ascending: true });
         if (error) { alert("Gagal memuat item: " + error.message); return; }
         fetchedItems = data;
         renderForm();
     }
 
-    // --- RENDER FORM BERDASARKAN DATA DB ---
     function renderForm() {
         document.getElementById("step-scan").style.display = "none";
         document.getElementById("step-form").style.display = "block";
-        
         document.getElementById("m_merk").innerText = mData.merk_mesin;
         document.getElementById("m_serial").innerText = mData.serial_no;
         document.getElementById("m_ton").innerText = mData.tonage + " Ton";
@@ -197,50 +178,36 @@
                 currentKategori = item.kategori;
                 container.innerHTML += `<div class="category-header">${currentKategori}</div>`;
             }
-
-            // Logic khusus untuk Running Hour
             const isRunningHour = item.nama_pengecekan.toLowerCase().includes("running hour");
-
             container.innerHTML += `
                 <div class="check-card">
                     <label class="check-label">${item.nama_pengecekan}</label>
                     <span class="check-standard">Standar: ${item.standard || '-'}</span>
                     <span class="check-method">Metode: ${item.metode || '-'}</span>
-                    
-                    <select id="st_${item.id}" class="input-field" onchange="toggleNG('${item.id}', this)" style="margin-bottom: ${isRunningHour ? '15px' : '0'};">
-                        <option value="OK">🟢 OK (Kondisi Baik)</option>
-                        <option value="NG">🔴 NG (Ada Kelainan)</option>
-                        <option value="NA">⚪ NA (Tidak Ada)</option>
+                    <select id="st_${item.id}" onchange="toggleNG('${item.id}', this)" style="margin-bottom: ${isRunningHour ? '15px' : '0'};">
+                        <option value="OK">🟢 OK</option>
+                        <option value="NG">🔴 NG</option>
+                        <option value="NA">⚪ NA</option>
                     </select>
-
-                    ${isRunningHour ? 
-                        `<input type="number" id="val_${item.id}" class="input-field" placeholder="Input Jam Aktual" style="margin-bottom:0;">` 
-                        : ''
-                    }
-
+                    ${isRunningHour ? `<input type="number" id="val_${item.id}" placeholder="Input Jam Aktual">` : ''}
                     <div id="ng_container_${item.id}" class="ng-container">
-                        <textarea id="note_${item.id}" class="input-field" placeholder="Detail temuan kelainan..."></textarea>
+                        <textarea id="note_${item.id}" placeholder="Detail temuan kelainan..."></textarea>
                     </div>
-                </div>
-            `;
+                </div>`;
         });
         setTimeout(setupCanvas, 100);
     }
 
-    function toggleNG(id, el) {
-        document.getElementById("ng_container_" + id).style.display = (el.value === "NG") ? "block" : "none";
-    }
+    function toggleNG(id, el) { document.getElementById("ng_container_" + id).style.display = (el.value === "NG") ? "block" : "none"; }
 
-    // --- SIGNATURE PAD LOGIC ---
     function setupCanvas() {
-        cvs.width = cvs.offsetWidth; cvs.height = cvs.offsetHeight;
+        const r = cvs.getBoundingClientRect(); cvs.width = r.width; cvs.height = r.height;
         ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.strokeStyle = "#000";
         const getXY = (e) => {
-            const r = cvs.getBoundingClientRect();
-            return {
-                x: (e.touches ? e.touches[0].clientX : e.clientX) - r.left,
-                y: (e.touches ? e.touches[0].clientY : e.clientY) - r.top
-            };
+            const rect = cvs.getBoundingClientRect();
+            const x = e.touches ? e.touches[0].clientX : e.clientX;
+            const y = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: x - rect.left, y: y - rect.top };
         };
         ['mousedown', 'touchstart'].forEach(evt => cvs.addEventListener(evt, e => { drawing = true; ctx.beginPath(); const p = getXY(e); ctx.moveTo(p.x, p.y); if(e.touches) e.preventDefault(); }, {passive:false}));
         ['mousemove', 'touchmove'].forEach(evt => cvs.addEventListener(evt, e => { if(!drawing) return; const p = getXY(e); ctx.lineTo(p.x, p.y); ctx.stroke(); if(e.touches) e.preventDefault(); }, {passive:false}));
@@ -248,31 +215,31 @@
     }
     function resetCanvas() { ctx.clearRect(0,0,cvs.width,cvs.height); }
 
-    // --- SUBMIT DATA KE DUA TABEL (clhmi & clhmi_results) ---
     async function processSubmit() {
         const nama = document.getElementById("nama_pelaksana").value.trim();
+        const catatan_pel = document.getElementById("catatan_umum_pelaksana").value.trim();
         if (nama.length < 3) return alert("Mohon isi Nama Anda.");
         if (cvs.toDataURL().length < 1500) return alert("Mohon bubuhkan paraf.");
 
         const btn = document.getElementById("btnSubmit");
         btn.disabled = true; btn.innerText = "Mengirim...";
 
-        // 1. Simpan Header ke tabel clhmi
+        // 1. Simpan Header ke tabel clhmi (Termasuk catatan_pelaksana)
         const { data: hdr, error: e1 } = await sb.from("clhmi").insert([{
             machine_id: mData.id, merk_mesin: mData.merk_mesin, serial_no: mData.serial_no,
-            pelaksana: nama, paraf: cvs.toDataURL(), status_form: 'submitted',
+            pelaksana: nama, 
+            catatan_pelaksana: catatan_pel, // KOLOM BARU
+            paraf: cvs.toDataURL(), status_form: 'submitted',
             tanggal_isi: new Date().toISOString().split('T')[0]
         }]).select().single();
 
         if (e1) { alert("Header Error: " + e1.message); btn.disabled = false; return; }
 
-        // 2. Simpan Detail ke tabel clhmi_results
+        // 2. Simpan Detail
         const results = fetchedItems.map(item => {
             const valInput = document.getElementById("val_" + item.id);
             return {
-                clhmi_id: hdr.id,
-                item_id: item.id,
-                item_kode: item.item_kode,
+                clhmi_id: hdr.id, item_id: item.id, item_kode: item.item_kode,
                 status: document.getElementById("st_" + item.id).value,
                 catatan_item: document.getElementById("note_" + item.id).value || null,
                 value: valInput ? valInput.value : null
@@ -280,14 +247,8 @@
         });
 
         const { error: e2 } = await sb.from("clhmi_results").insert(results);
-        
-        if (!e2) {
-             alert("✅ Laporan Maintenance Berhasil Dikirim!");
-             location.reload();
-        } else {
-             alert("Detail Error: " + e2.message);
-             btn.disabled = false;
-        }
+        if (!e2) { alert("✅ Berhasil dikirim!"); location.reload(); }
+        else { alert("Error: " + e2.message); btn.disabled = false; }
     }
 </script>
 </body>
