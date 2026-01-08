@@ -6,12 +6,9 @@
     <title>AF.SP 05.14.Rev-00 - REPORT</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* === PAGE SETUP (A4 LANDSCAPE) === */
-        @page {
-            size: A4 landscape; /* Paksa kertas Landscape */
-            margin: 0mm; /* Hapus margin browser supaya Header/Footer URL hilang */
-        }
-
+        /* === GLOBAL RESET === */
+        * { box-sizing: border-box; }
+        
         body {
             margin: 0; padding: 0;
             background: #ccc;
@@ -21,52 +18,65 @@
             print-color-adjust: exact;
         }
 
-        /* === SHEET SIMULATION (Tampilan Layar) === */
+        /* === TAMPILAN LAYAR (PREVIEW) === */
         .sheet {
             background: white;
-            width: 297mm;
-            height: 209mm; /* Ukuran A4 Landscape */
+            width: 297mm; /* Lebar A4 Landscape */
+            min-height: 210mm; /* Tinggi A4 Landscape */
             margin: 20px auto;
             padding: 5mm 10mm;
-            box-sizing: border-box;
             position: relative;
             box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
 
-        /* === PRINT MODE (Tampilan PDF) === */
+        /* === KONFIGURASI CETAK/PDF (ENGINE GOOGLE CHROME) === */
         @media print {
-            body, html {
-                background: white;
-                margin: 0;
-                padding: 0;
-                height: 100%;
-                width: 100%;
-                overflow: hidden; /* Potong yang tumpah */
+            /* 1. Paksa Kertas A4 Landscape Tanpa Margin Browser */
+            @page {
+                size: A4 landscape;
+                margin: 0 !important; 
             }
 
+            /* 2. Kunci Body & HTML agar tidak boleh lebih dari 1 halaman */
+            html, body {
+                width: 297mm;
+                height: 210mm;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: hidden !important; /* POTONG sisa hantu halaman 2 */
+                background: white;
+            }
+
+            /* 3. Sembunyikan tombol kontrol */
+            .no-print { display: none !important; }
+
+            /* 4. STRATEGI ABSOLUTE FIT */
             .sheet {
-                margin: 0;
-                box-shadow: none;
+                margin: 0 !important;
+                padding: 5mm 8mm !important; /* Padding cetak aman */
                 border: none;
-                /* TEKNIK SCALE JITU: */
-                /* Kita kecilkan jadi 70% supaya PASTI MUAT 1 HALAMAN */
-                transform: scale(0.70); 
-                transform-origin: top center;
+                box-shadow: none;
                 
-                /* Karena dikecilkan, kita harus lebarkan containernya */
-                /* Hitungan: 100 / 0.70 = ~142% */
-                width: 142%; 
-                
-                /* Posisi diatur dikit biar pas tengah */
+                /* Cabut dari flow agar tidak mendorong halaman baru */
                 position: absolute;
                 top: 0;
-                left: -21%; /* Geser kiri setengah dari sisa lebar agar tengah */
+                left: 0;
+                
+                /* TEKNIK SCALING PASTI MUAT */
+                /* Scale 0.72 adalah titik manis (Sweet Spot) untuk tabel padat */
+                transform: scale(0.72); 
+                transform-origin: top left; /* Titik nol di kiri atas */
+                
+                /* KOMPENSASI LEBAR: Karena di-scale down, container harus dilebarkan 
+                   Rumus: 100% / 0.72 = 138.8% */
+                width: 138.8%; 
+                
+                /* Pastikan background putih tercetak */
+                background-color: white !important;
             }
-
-            .no-print { display: none !important; }
         }
 
-        /* === UTILS === */
+        /* === UTILS (Tabel & Garis) === */
         table { border-collapse: collapse; width: 100%; }
         td, th { border: 1px solid black; padding: 2px 4px; vertical-align: middle; }
         .no-border { border: none !important; }
@@ -93,9 +103,9 @@
         .main-table th { background-color: #f2f2f2; height: 25px; font-size: 8pt; text-align: center; }
         .main-table td { height: 16px; font-size: 7.5pt; padding: 0 2px; }
 
-        /* Column Widths */
+        /* Column Widths (Dioptimalkan) */
         .col-no { width: 25px; }
-        .col-jenis { width: 220px; text-align: left !important; padding-left: 5px !important; }
+        .col-jenis { width: 200px; text-align: left !important; padding-left: 5px !important; }
         .col-std { width: 140px; text-align: left !important; padding-left: 5px !important; font-style: italic; font-size: 7pt; }
         .col-date { width: 17px; font-size: 7pt; text-align: center; }
 
@@ -105,7 +115,7 @@
         
         .sig-img { width: 100%; height: 30px; object-fit: contain; mix-blend-mode: multiply; display: block; margin: 0 auto; }
         .ng-text { color: red; font-weight: bold; }
-        .ok-text { font-family: sans-serif; }
+        .ok-text { font-family: sans-serif; font-weight: bold; }
 
         /* === FOOTER SECTION === */
         .footer-container { display: flex; justify-content: space-between; margin-top: 10px; }
@@ -117,9 +127,15 @@
         .sig-box { border: 1px solid black; height: 65px; width: 100%; margin: 2px 0; display: flex; align-items: center; justify-content: center; }
         .super-img { max-height: 60px; max-width: 90%; mix-blend-mode: multiply; }
 
-        /* CONTROLS */
-        .no-print { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #222; padding: 10px; border-radius: 8px; color: white; display: flex; gap: 10px; z-index: 9999; }
-        select, button { padding: 5px; cursor: pointer; }
+        /* CONTROLS (TOMBOL) */
+        .no-print { 
+            position: fixed; top: 10px; left: 50%; transform: translateX(-50%); 
+            background: #222; padding: 10px; border-radius: 8px; color: white; 
+            display: flex; gap: 10px; z-index: 9999; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        select, button { padding: 5px 10px; cursor: pointer; font-weight: bold; }
+        button { background: #ffc107; border: none; border-radius: 4px; }
+        button:hover { background: #e0a800; }
     </style>
 </head>
 <body>
@@ -141,7 +157,7 @@
         <table class="header-table">
             <tr>
                 <td class="logo-cell">
-                    <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" style="width: 100px;">
+                    <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" style="width: 80px;">
                 </td>
                 <td class="title-cell font-bold">
                     CHECKLIST HARIAN STAND LABEL DAN ROBOT
@@ -227,6 +243,7 @@
             const sel = document.getElementById('f-mesin');
             data?.forEach(d => sel.innerHTML += `<option>${d.nama_mesin}</option>`);
 
+            // Default Date
             document.getElementById('f-bulan').value = 1; 
             document.getElementById('f-tahun').value = 2026;
             loadData();
@@ -280,6 +297,7 @@
                 subIdx++;
             });
 
+            // Signatures Logic
             const rPel = document.getElementById('row-pel');
             const rCek = document.getElementById('row-cek');
             while(rPel.cells.length > 1) rPel.deleteCell(1);
