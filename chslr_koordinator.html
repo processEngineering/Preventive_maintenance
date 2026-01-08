@@ -2,357 +2,285 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#ffffff">
-    <title>Koordinator Verifikasi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Koordinator - Verifikasi CHSLR</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
 
     <style>
-        /* === RESET & CORE === */
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; outline: none; }
-        body, html { height: 100%; width: 100%; overflow: hidden; font-family: 'Inter', sans-serif; background-color: #ffffff; color: #000; }
-
-        /* === APP SHELL === */
-        #app-shell { display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; background: white; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.05); }
-        .app-content { flex: 1; overflow-y: auto; position: relative; padding: 20px; padding-bottom: 100px; display: flex; flex-direction: column; align-items: center; }
-
-        /* === UI COMPONENTS === */
-        .header-pill { border: 3px solid #000; border-radius: 99px; padding: 12px 40px; text-align: center; font-weight: 900; text-transform: uppercase; font-size: 16px; letter-spacing: 1px; background: white; margin-top: 10px; margin-bottom: 25px; box-shadow: 4px 4px 0 rgba(0,0,0,0.15); }
-
-        .card-item { width: 100%; background: white; border: 3px solid #000; border-radius: 16px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 5px 5px 0 #000; transition: transform 0.1s; cursor: pointer; }
-        .card-item:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 #000; }
-        .card-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; align-items: center; }
-        .lbl { font-weight: 700; color: #333; }
-        .val { font-weight: 800; text-transform: uppercase; text-align: right; }
-        .badge-status { display: block; width: 100%; background: #000; color: #fff; text-align: center; font-size: 10px; font-weight: 800; padding: 6px; border-radius: 6px; margin-top: 8px; text-transform: uppercase; }
-
-        .info-box { width: 100%; background: #f8f9fa; border: 3px solid #000; border-radius: 16px; padding: 15px; margin-bottom: 20px; box-shadow: 4px 4px 0 #000; }
-        .info-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px; align-items: flex-start; }
-        .i-lbl { font-weight: 700; width: 35%; }
-        .i-sep { font-weight: 700; width: 5%; text-align: center; }
-        .i-val { font-weight: 900; width: 60%; text-align: right; text-transform: uppercase; line-height: 1.2; }
-
-        .label-input { font-size: 12px; font-weight: 800; margin-bottom: 5px; align-self: flex-start; margin-left: 5px; }
-        .input-field { width: 100%; border: 3px solid #000; border-radius: 12px; padding: 12px; font-weight: 700; font-size: 13px; text-align: center; background: white; outline: none; margin-bottom: 15px; box-shadow: 3px 3px 0 rgba(0,0,0,0.1); }
-        .input-field:focus { box-shadow: 3px 3px 0 #000; }
-
-        .sig-wrapper { width: 100%; height: 130px; background: white; border: 3px solid #000; border-radius: 16px; position: relative; overflow: hidden; margin-bottom: 20px; background-image: radial-gradient(#ccc 1px, transparent 1px); background-size: 10px 10px; }
-        canvas { display: block; width: 100%; height: 100%; }
-
-        .btn-main { background: #000; color: #fff; width: 100%; padding: 15px; border: 3px solid #000; border-radius: 14px; font-weight: 900; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 4px 4px 0 rgba(0,0,0,0.3); transition: all 0.1s; }
-        .btn-main:active { transform: translateY(2px); box-shadow: 2px 2px 0 rgba(0,0,0,0.3); }
-        .btn-main:disabled { background: #888; border-color: #888; cursor: not-allowed; }
-
-        .btn-link { background: none; border: none; font-weight: 800; font-size: 11px; text-decoration: underline; padding: 10px; margin-top: 5px; cursor: pointer; }
-
-        .scanner-box { position: relative; width: 260px; height: 260px; margin: 20px 0; border: 4px solid #000; border-radius: 20px; overflow: hidden; background: #000; }
-        #reader { width: 100%; height: 100%; }
-        #reader video { object-fit: cover; width: 100%; height: 100%; }
-
-        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; height: 80px; background: white; border-top: 3px solid #000; display: flex; justify-content: space-around; align-items: center; z-index: 50; padding-bottom: 10px; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; color: #999; text-decoration: none; }
-        .nav-item.active { color: #000; }
-        .nav-item i { font-size: 22px; margin-bottom: 4px; }
-        .nav-item span { font-size: 9px; font-weight: 800; text-transform: uppercase; }
-
-        .hidden { display: none !important; }
-        .text-red-custom { color: #dc2626 !important; }
-        .animate-up { animation: slideUp 0.3s ease-out; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        body { background-color: #f3f4f6; }
+        .canvas-container { border: 2px dashed #cbd5e1; background: white; border-radius: 8px; }
     </style>
 </head>
-<body>
+<body class="text-gray-800">
 
-    <div id="app-shell">
+    <nav class="bg-blue-800 text-white p-4 shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="font-bold text-xl">🛡️ Koordinator Panel</h1>
+            <button onclick="fetchLogs()" class="text-sm bg-blue-600 px-3 py-1 rounded hover:bg-blue-500">Refresh Data</button>
+        </div>
+    </nav>
 
-        <main class="app-content">
-            <div class="header-pill">Koordinator</div>
+    <div class="container mx-auto p-4 max-w-5xl">
+        
+        <div class="bg-white p-4 rounded-lg shadow mb-6 flex gap-4 items-end">
+            <div class="w-full">
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Nama Koordinator (Anda)</label>
+                <input type="text" id="coordName" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Masukkan nama Anda...">
+            </div>
+        </div>
 
-            <div id="view-list" class="w-full flex flex-col items-center animate-up">
-                <div class="w-full flex justify-between items-end mb-4 px-1">
-                    <h2 class="text-sm font-black uppercase">Antrean Verifikasi</h2>
-                    <button onclick="loadQueue()" class="text-[10px] font-bold underline">Refresh</button>
-                </div>
-                <div id="log-container" class="w-full">
-                    <div class="text-center py-10 opacity-50"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i></div>
-                </div>
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                <h2 class="font-bold text-lg text-gray-700">Daftar Laporan Masuk</h2>
+                <span id="loadingText" class="text-sm text-gray-500 hidden">Memuat data...</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 text-gray-600 uppercase text-xs">
+                        <tr>
+                            <th class="p-4">Tanggal</th>
+                            <th class="p-4">Mesin ID</th>
+                            <th class="p-4">Pelaksana</th>
+                            <th class="p-4">Catatan Pelaksana</th>
+                            <th class="p-4 text-center">Status</th>
+                            <th class="p-4 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logTableBody" class="text-sm divide-y divide-gray-200">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="verifyModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all">
+            
+            <div class="bg-blue-800 p-4 text-white flex justify-between">
+                <h3 class="font-bold">Verifikasi Laporan</h3>
+                <button onclick="closeModal()" class="text-white hover:text-gray-300">&times;</button>
             </div>
 
-            <div id="view-scanner" class="hidden w-full flex flex-col items-center h-full animate-up">
-                <p class="text-[11px] font-bold text-center uppercase mb-6 px-6 leading-relaxed">
-                    Scan QR Code pada mesin<br>untuk membuka form verifikasi.
-                </p>
-                <div class="scanner-box">
-                    <div id="reader"></div>
-                </div>
-                <div class="bg-black text-white px-4 py-1 rounded-full text-[10px] font-bold uppercase mb-6">Scanning...</div>
-                <button onclick="backToList()" class="btn-link">Batalkan Scan</button>
-            </div>
-
-            <div id="view-form" class="hidden w-full flex flex-col items-center animate-up">
-                <div class="info-box">
-                    <div class="info-row">
-                        <span class="i-lbl">MESIN</span> <span class="i-sep">:</span> <span id="form-mesin" class="i-val">...</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="i-lbl">PELAKSANA</span> <span class="i-sep">:</span> <span id="form-pelaksana" class="i-val">...</span>
-                    </div>
-                    <div class="info-row border-t border-dashed border-gray-400 mt-2 pt-2">
-                        <span class="i-lbl">CATATAN</span> <span class="i-sep">:</span> 
-                        <span id="form-catatan-pel" class="i-val">...</span>
-                    </div>
-                </div>
-
-                <label class="label-input">NAMA KOORDINATOR</label>
-                <input type="text" id="koor-name" class="input-field" placeholder="Nama Lengkap">
-
-                <label class="label-input">CATATAN KOORDINATOR (OPSIONAL)</label>
-                <textarea id="koor-remark" rows="2" class="input-field resize-none !text-left" placeholder="Tulis catatan jika ada..."></textarea>
+            <div class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="selectedLogId">
                 
-                <div class="w-full flex justify-between items-end mb-1 px-1">
-                    <label class="label-input !mb-0">PARAF</label>
-                    <button onclick="clearPad()" class="text-[9px] font-bold text-red-600 underline uppercase">Hapus</button>
-                </div>
-                <div class="sig-wrapper">
-                    <canvas id="signature-pad-koor"></canvas>
+                <div class="bg-gray-50 p-3 rounded text-sm space-y-1 border">
+                    <p><strong>Mesin:</strong> <span id="modalMesin"></span></p>
+                    <p><strong>Periode:</strong> <span id="modalPeriode"></span></p>
+                    <p><strong>Pelaksana:</strong> <span id="modalPelaksana"></span></p>
+                    <div class="mt-2 pt-2 border-t border-gray-200">
+                        <p class="text-xs text-gray-500 uppercase">Catatan Pelaksana:</p>
+                        <p id="modalCatatan" class="text-gray-800 italic">test</p>
+                    </div>
                 </div>
 
-                <button onclick="submitApproval()" id="btn-approve" class="btn-main">VERIFIKASI & SIMPAN</button>
-                <button onclick="backToList()" class="btn-link">Kembali / Batal</button>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Catatan / Remark Koordinator</label>
+                    <textarea id="coordRemark" rows="2" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-blue-500 focus:border-blue-500" placeholder="OK, Lanjut..."></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Tanda Tangan Koordinator</label>
+                    <div class="canvas-container h-40 relative">
+                        <canvas id="signatureCanvas" class="w-full h-full block"></canvas>
+                        <div class="absolute bottom-2 right-2 text-xs text-gray-400 select-none">Area Tanda Tangan</div>
+                    </div>
+                    <button onclick="clearSignature()" class="text-xs text-red-500 mt-1 hover:underline">Hapus Tanda Tangan</button>
+                </div>
             </div>
-        </main>
 
-        <nav class="bottom-nav">
-            <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i><span>Home</span></a>
-            <a href="menu_utama.html" class="nav-item"><i class="fa-solid fa-bars"></i><span>Menu</span></a>
-            <a href="download_data.html" class="nav-item"><i class="fa-solid fa-download"></i><span>Data</span></a>
-            <a href="informasi_akun.html" class="nav-item"><i class="fa-solid fa-user"></i><span>Akun</span></a>
-        </nav>
-
+            <div class="p-4 border-t bg-gray-50 flex justify-end space-x-2">
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded text-sm">Batal</button>
+                <button onclick="submitVerification()" class="px-6 py-2 bg-green-600 text-white rounded font-semibold hover:bg-green-700 text-sm shadow-lg">✅ Verifikasi & Simpan</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
-        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
-        const _sb = supabase.createClient(SB_URL, SB_KEY);
+        // ==========================================
+        // 1. KONFIGURASI SUPABASE (ISI DISINI YA!)
+        // ==========================================
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co'; 
+        const SUPABASE_KEY = 'YOUR_ANON_KEY_HERE';
         
-        let activeLog = null;
-        let scanner = null;
-        let sigPadKoor = null;
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        window.onload = function() {
-            loadQueue();
-            const canvas = document.getElementById('signature-pad-koor');
+        // Global Variables
+        let signaturePad;
+
+        // ==========================================
+        // 2. INISIALISASI
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchLogs();
+            initSignaturePad();
+        });
+
+        function initSignaturePad() {
+            const canvas = document.getElementById('signatureCanvas');
+            // Resize canvas agar tidak pecah di high DPI screen
             function resizeCanvas() {
-                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                const ratio =  Math.max(window.devicePixelRatio || 1, 1);
                 canvas.width = canvas.offsetWidth * ratio;
                 canvas.height = canvas.offsetHeight * ratio;
                 canvas.getContext("2d").scale(ratio, ratio);
             }
             window.addEventListener("resize", resizeCanvas);
             resizeCanvas();
-            sigPadKoor = new SignaturePad(canvas, { backgroundColor: 'rgba(255, 255, 255, 0)' });
-        };
-
-        function clearPad() { if(sigPadKoor) sigPadKoor.clear(); }
-
-        function switchView(viewId) {
-            ['view-list', 'view-scanner', 'view-form'].forEach(id => document.getElementById(id).classList.add('hidden'));
-            document.getElementById(viewId).classList.remove('hidden');
+            
+            signaturePad = new SignaturePad(canvas, { backgroundColor: 'rgba(255, 255, 255, 0)' });
         }
 
-        async function backToList() {
-            if(scanner) {
-                try {
-                    if(scanner.getState() === Html5QrcodeScannerState.SCANNING) await scanner.stop();
-                } catch(e) {}
-                try { scanner.clear(); } catch(e) {}
-            }
-            switchView('view-list');
-            activeLog = null;
-            loadQueue();
+        function clearSignature() {
+            signaturePad.clear();
         }
 
-        async function loadQueue() {
-            const now = new Date();
-            const todayDate = now.getDate();
-            const currentMonth = now.getMonth() + 1;
-            const currentYear = now.getFullYear();
+        // ==========================================
+        // 3. AMBIL DATA DARI SUPABASE
+        // ==========================================
+        async function fetchLogs() {
+            const loading = document.getElementById('loadingText');
+            const tbody = document.getElementById('logTableBody');
+            
+            loading.classList.remove('hidden');
+            tbody.innerHTML = ''; // Clear table
 
-            const container = document.getElementById('log-container');
-            container.innerHTML = '<div class="text-center py-10 opacity-50"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i></div>';
-
-            const { data: logs } = await _sb.from('chslr_log')
+            // Query ke tabel chslr_log
+            // Mengambil semua data, diurutkan dari yang terbaru
+            const { data, error } = await supabase
+                .from('chslr_log')
                 .select('*')
-                .eq('bulan', currentMonth)
-                .eq('tahun', currentYear)
-                .neq('status_verifikasi', true); 
+                .order('created_at', { ascending: false });
 
-            if (!logs || logs.length === 0) {
-                container.innerHTML = `<div class="text-center py-10 opacity-40 border-2 border-dashed border-gray-300 rounded-xl"><p class="font-bold text-xs uppercase">Tidak ada antrean.</p></div>`;
+            loading.classList.add('hidden');
+
+            if (error) {
+                alert('Gagal mengambil data: ' + error.message);
                 return;
             }
 
-            container.innerHTML = "";
-            let count = 0;
-
-            for (let log of logs) {
-                const { data: results } = await _sb.from('chslr_result')
-                    .select('id') 
-                    .eq('log_id', log.id)
-                    .eq('tanggal', todayDate) 
-                    .limit(1);
-
-                if (results && results.length > 0) {
-                    count++;
-                    const names = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
-                    const dateStr = `${todayDate}/${currentMonth}/${currentYear}`;
-                    container.insertAdjacentHTML('beforeend', `
-                        <div class="card-item" onclick="startScanner('${encodeURIComponent(JSON.stringify(log))}')">
-                            <div class="card-row"><span class="lbl">MESIN</span> <span class="val">${log.mesin_id}</span></div>
-                            <div class="card-row"><span class="lbl">PELAKSANA</span> <span class="val" style="font-size:10px;">${names}</span></div>
-                            <div class="card-row"><span class="lbl">TANGGAL</span> <span class="val">${dateStr}</span></div>
-                            <div class="badge-status">KETUK UNTUK VERIFIKASI</div>
-                        </div>`);
-                }
-            }
-
-            if(count === 0) {
-                container.innerHTML = `<div class="text-center py-10 opacity-40 border-2 border-dashed border-gray-300 rounded-xl"><p class="font-bold text-xs uppercase">Menunggu Pelaksana...</p></div>`;
-            }
+            renderTable(data);
         }
 
-        function startScanner(logStr) {
-            activeLog = JSON.parse(decodeURIComponent(logStr));
-            switchView('view-scanner');
-            if(!scanner) scanner = new Html5Qrcode("reader");
-            const config = { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 };
-            scanner.start({ facingMode: "environment" }, config, onScanSuccess).catch(err => { alert("Kamera error: " + err); backToList(); });
-        }
-
-        async function onScanSuccess(decodedText) {
-            if (activeLog.mesin_id.toLowerCase().trim() === decodedText.toLowerCase().trim()) {
-                if(navigator.vibrate) navigator.vibrate(100);
-                try { if(scanner.getState() === Html5QrcodeScannerState.SCANNING) await scanner.stop(); scanner.clear(); } catch(e){}
-                openForm();
-            } else {
-                alert(`❌ QR SALAH!\nTarget: ${activeLog.mesin_id}`);
-            }
-        }
-
-        // --- 3. FORM APPROVAL (LOGIKA FINAL SUPER ROBUST) ---
-        async function openForm() {
-            switchView('view-form');
-            document.getElementById('form-mesin').innerText = activeLog.mesin_id;
-            document.getElementById('form-pelaksana').innerText = activeLog.pelaksana_names ? activeLog.pelaksana_names.join(', ') : '-';
-            document.getElementById('koor-name').value = "";
-            document.getElementById('koor-remark').value = "";
-            sigPadKoor.clear();
+        function renderTable(logs) {
+            const tbody = document.getElementById('logTableBody');
             
-            const noteEl = document.getElementById('form-catatan-pel');
-            noteEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
-            noteEl.className = "i-val"; 
+            if (logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500">Belum ada data laporan.</td></tr>';
+                return;
+            }
 
-            // 1. AMBIL ULANG CATATAN DARI LOG (HEADER) - SUPAYA FRESH
-            const { data: freshLog } = await _sb.from('chslr_log')
-                .select('catatan')
-                .eq('id', activeLog.id)
-                .single();
-            
-            // Simpan catatan header ini, antisipasi jika OK
-            const catatanHeader = (freshLog && freshLog.catatan) ? freshLog.catatan : "";
-
-            // 2. AMBIL RESULT HARI INI (DETAIL) - UNTUK CEK NG
-            const today = new Date().getDate();
-            const { data: results } = await _sb.from('chslr_result')
-                .select('status, keterangan, chslr_items(item_name)')
-                .eq('log_id', activeLog.id)
-                .eq('tanggal', today);
-
-            // 3. LOGIKA PENENTUAN CATATAN (PRIORITAS NG)
-            let finalNote = "";
-            let hasNG = false;
-            let ngNotes = [];
-
-            // Cek apakah ada data Result sama sekali?
-            if (results && results.length > 0) {
+            logs.forEach(log => {
+                const createdDate = new Date(log.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit' });
+                const isVerified = log.status_verifikasi; // Kolom boolean
                 
-                // Scan Status NG
-                results.forEach(r => {
-                    if (r.status === 'NG') {
-                        hasNG = true;
-                        const item = r.chslr_items ? r.chslr_items.item_name : 'Item';
-                        const ket = r.keterangan || 'Rusak';
-                        ngNotes.push(`${item}: ${ket}`);
-                    }
-                });
+                // Styling status badge
+                const statusBadge = isVerified 
+                    ? `<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-bold">Terverifikasi</span>`
+                    : `<span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-bold">Pending</span>`;
 
-                if (hasNG) {
-                    // KONDISI 1: ADA NG -> TAMPILKAN KETERANGAN DETAIL DARI TABEL RESULT
-                    finalNote = "NG: " + ngNotes.join(' | ');
-                    noteEl.classList.add('text-red-custom'); 
-                } else {
-                    // KONDISI 2: SEMUA OK -> TAMPILKAN CATATAN DARI TABEL LOG (HEADER)
-                    if (catatanHeader.trim() !== "") {
-                        finalNote = catatanHeader; 
-                    } else {
-                        finalNote = "KONDISI OK (AMAN)";
-                    }
-                    noteEl.classList.remove('text-red-custom');
-                }
+                // Tombol Aksi (Disabled jika sudah verifikasi)
+                const actionBtn = isVerified
+                    ? `<button disabled class="text-gray-400 cursor-not-allowed">Selesai</button>`
+                    : `<button onclick='openModal(${JSON.stringify(log).replace(/'/g, "&apos;")})' class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 shadow text-xs">🔍 Cek & Verif</button>`;
 
-            } else {
-                // FALLBACK JIKA RESULT KOSONG (TAPI SEHARUSNYA TIDAK KARENA SUDAH DIFILTER DI DEPAN)
-                // TETAP USAHAKAN AMBIL DARI LOG
-                if (catatanHeader.trim() !== "") {
-                    finalNote = catatanHeader;
-                } else {
-                    finalNote = "-";
-                }
-                noteEl.classList.remove('text-red-custom');
-            }
+                const pelaksana = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
 
-            noteEl.innerText = finalNote;
-            
-            const canvas = document.getElementById('signature-pad-koor');
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext("2d").scale(ratio, ratio);
+                const row = `
+                    <tr class="hover:bg-gray-50 transition border-b">
+                        <td class="p-4 whitespace-nowrap text-gray-500">${createdDate}</td>
+                        <td class="p-4 font-semibold text-blue-900">${log.mesin_id || '-'}</td>
+                        <td class="p-4">${pelaksana}</td>
+                        <td class="p-4 text-gray-600 truncate max-w-xs">${log.catatan_pelaksana || '-'}</td>
+                        <td class="p-4 text-center">${statusBadge}</td>
+                        <td class="p-4 text-center">${actionBtn}</td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
         }
 
-        async function submitApproval() {
-            const name = document.getElementById('koor-name').value.trim();
-            const remark = document.getElementById('koor-remark').value.trim();
-            const btn = document.getElementById('btn-approve');
+        // ==========================================
+        // 4. LOGIKA MODAL & VERIFIKASI
+        // ==========================================
+        function openModal(log) {
+            // Cek nama koordinator dulu
+            const coordName = document.getElementById('coordName').value.trim();
+            if (!coordName) {
+                alert("Harap isi 'Nama Koordinator' di bagian atas halaman dulu ya!");
+                document.getElementById('coordName').focus();
+                return;
+            }
 
-            if(!name) return alert("⚠️ Nama Koordinator wajib diisi!");
-            if(sigPadKoor.isEmpty()) return alert("⚠️ Harap tanda tangan dulu!");
+            // Isi data ke modal
+            document.getElementById('selectedLogId').value = log.id;
+            document.getElementById('modalMesin').textContent = log.mesin_id;
+            document.getElementById('modalPeriode').textContent = `${log.bulan} / ${log.tahun}`;
+            document.getElementById('modalPelaksana').textContent = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
+            document.getElementById('modalCatatan').textContent = log.catatan_pelaksana || '(Tidak ada catatan)';
+            
+            // Reset input koordinator
+            document.getElementById('coordRemark').value = '';
+            signaturePad.clear();
 
-            btn.innerHTML = 'MENYIMPAN...'; btn.disabled = true;
+            // Tampilkan modal
+            const modal = document.getElementById('verifyModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            // Fix canvas render issue saat modal muncul
+            setTimeout(() => {
+                const canvas = document.getElementById('signatureCanvas');
+                const ratio =  Math.max(window.devicePixelRatio || 1, 1);
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
+                signaturePad.clear(); // Clear lagi agar bersih
+            }, 100);
+        }
 
-            try {
-                const { error } = await _sb.from('chslr_log').update({
-                    koordinator_nama: name,
-                    signature_koordinator: sigPadKoor.toDataURL(),
+        function closeModal() {
+            const modal = document.getElementById('verifyModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function submitVerification() {
+            const id = document.getElementById('selectedLogId').value;
+            const remark = document.getElementById('coordRemark').value;
+            const namaKoordinator = document.getElementById('coordName').value;
+
+            if (signaturePad.isEmpty()) {
+                alert('Tanda tangan Koordinator wajib diisi!');
+                return;
+            }
+
+            // Ambil gambar tanda tangan (Base64)
+            const signatureData = signaturePad.toDataURL('image/png');
+
+            if (!confirm('Apakah Anda yakin ingin memverifikasi laporan ini?')) return;
+
+            // Update ke Supabase
+            // Kita update kolom: status_verifikasi, koordinator_nama, signature_koordinator, remark_koordinator
+            const { error } = await supabase
+                .from('chslr_log')
+                .update({
                     status_verifikasi: true,
+                    koordinator_nama: namaKoordinator,
+                    signature_koordinator: signatureData,
                     remark_koordinator: remark
-                }).eq('id', activeLog.id);
+                })
+                .eq('id', id);
 
-                if (error) throw error;
-
-                alert("✅ VERIFIKASI BERHASIL!");
-                await backToList();
-
-            } catch (err) {
-                alert("Gagal menyimpan: " + err.message);
-                btn.innerHTML = 'VERIFIKASI & SIMPAN'; btn.disabled = false;
+            if (error) {
+                alert('Gagal update database: ' + error.message);
+            } else {
+                alert('Berhasil diverifikasi! ✅');
+                closeModal();
+                fetchLogs(); // Refresh tabel
             }
         }
     </script>
