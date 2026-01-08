@@ -259,14 +259,14 @@
             noteEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
             noteEl.className = "i-val"; 
 
-            // 1. AMBIL ULANG CATATAN DARI LOG (HEADER) - SUPAYA FRESH
+            // 1. PERBAIKAN DI SINI: SELECT 'catatan_pelaksana' BUKAN 'catatan'
             const { data: freshLog } = await _sb.from('chslr_log')
-                .select('catatan')
+                .select('catatan_pelaksana') // <--- SUDAH DIPERBAIKI SESUAI SQL
                 .eq('id', activeLog.id)
                 .single();
             
-            // Simpan catatan header ini, antisipasi jika OK
-            const catatanHeader = (freshLog && freshLog.catatan) ? freshLog.catatan : "";
+            // Simpan catatan header ini
+            const catatanHeader = (freshLog && freshLog.catatan_pelaksana) ? freshLog.catatan_pelaksana : "";
 
             // 2. AMBIL RESULT HARI INI (DETAIL) - UNTUK CEK NG
             const today = new Date().getDate();
@@ -275,51 +275,44 @@
                 .eq('log_id', activeLog.id)
                 .eq('tanggal', today);
 
-            // 3. LOGIKA PENENTUAN CATATAN (PRIORITAS NG)
-            let finalNote = "";
+            // 3. LOGIKA PENENTUAN CATATAN (GABUNGAN NG + HEADER)
+            let ngList = [];
             let hasNG = false;
-            let ngNotes = [];
 
-            // Cek apakah ada data Result sama sekali?
             if (results && results.length > 0) {
-                
-                // Scan Status NG
                 results.forEach(r => {
                     if (r.status === 'NG') {
                         hasNG = true;
                         const item = r.chslr_items ? r.chslr_items.item_name : 'Item';
                         const ket = r.keterangan || 'Rusak';
-                        ngNotes.push(`${item}: ${ket}`);
+                        ngList.push(`${item} (${ket})`);
                     }
                 });
+            }
 
-                if (hasNG) {
-                    // KONDISI 1: ADA NG -> TAMPILKAN KETERANGAN DETAIL DARI TABEL RESULT
-                    finalNote = "NG: " + ngNotes.join(' | ');
-                    noteEl.classList.add('text-red-custom'); 
-                } else {
-                    // KONDISI 2: SEMUA OK -> TAMPILKAN CATATAN DARI TABEL LOG (HEADER)
-                    if (catatanHeader.trim() !== "") {
-                        finalNote = catatanHeader; 
-                    } else {
-                        finalNote = "KONDISI OK (AMAN)";
-                    }
-                    noteEl.classList.remove('text-red-custom');
-                }
+            // MERAKIT TEXT FINAL
+            let displayText = "";
 
-            } else {
-                // FALLBACK JIKA RESULT KOSONG (TAPI SEHARUSNYA TIDAK KARENA SUDAH DIFILTER DI DEPAN)
-                // TETAP USAHAKAN AMBIL DARI LOG
+            if (hasNG) {
+                // Jika ada NG, tampilkan paling depan + warna merah
+                displayText = "⚠️ NG: " + ngList.join(', ');
                 if (catatanHeader.trim() !== "") {
-                    finalNote = catatanHeader;
+                    displayText += " | 📝 Note: " + catatanHeader; // Tambahkan catatan pelaksana jika ada
+                }
+                noteEl.classList.add('text-red-custom');
+            } else {
+                // Jika tidak ada NG
+                if (catatanHeader.trim() !== "") {
+                    displayText = "📝 " + catatanHeader;
                 } else {
-                    finalNote = "-";
+                    displayText = "✅ KONDISI OK (AMAN)";
                 }
                 noteEl.classList.remove('text-red-custom');
             }
 
-            noteEl.innerText = finalNote;
+            noteEl.innerText = displayText;
             
+            // Re-render canvas
             const canvas = document.getElementById('signature-pad-koor');
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
             canvas.width = canvas.offsetWidth * ratio;
