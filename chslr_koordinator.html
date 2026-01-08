@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ffffff">
-    <title>Koordinator Verifikasi - Real Data</title>
+    <title>Koordinator Verifikasi - FIX</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -248,7 +248,7 @@
             }
         }
 
-        // --- 3. FORM & LOGIC CATATAN (REAL DATA ONLY) ---
+        // --- 3. FORM & LOGIC CATATAN (REAL DATA FIX) ---
         async function openForm() {
             switchView('view-form');
             document.getElementById('form-mesin').innerText = activeLog.mesin_id;
@@ -261,10 +261,10 @@
             noteEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
             noteEl.className = "i-val"; 
 
-            // 1. QUERY RESULT (Untuk cek NG)
+            // 1. QUERY RESULT (HANYA YANG NG)
             const today = new Date().getDate();
             const { data: results } = await _sb.from('chslr_result')
-                .select('status, keterangan, chslr_items(item_name)') 
+                .select('item_id, status, keterangan')  // Ambil item_id saja
                 .eq('log_id', activeLog.id)
                 .eq('tanggal', today);
 
@@ -275,28 +275,33 @@
                 .single();
             const catatanHeader = (freshLog && freshLog.catatan_pelaksana) ? freshLog.catatan_pelaksana : "";
 
-            // 3. --- LOGIKA PENENTUAN CATATAN ---
+            // 3. --- LOGIKA MANUAL FETCH ITEM NAME (FIX MASALAH NG) ---
             let ngMessages = [];
             
             if (results && results.length > 0) {
-                results.forEach(r => {
+                // Loop satu per satu untuk ambil nama item
+                for (const r of results) {
                     if (r.status === 'NG') {
-                        // AMBIL DARI 'keterangan' (REAL DATA)
-                        const item = r.chslr_items ? r.chslr_items.item_name : 'Item';
-                        const ket = r.keterangan || '-'; // Jika keterangan null, tampilkan strip
-                        ngMessages.push(`${item}: ${ket}`);
+                        // AMBIL NAMA ITEM MANUAL (Bypass Foreign Key Issue)
+                        const { data: itemData } = await _sb.from('chslr_items')
+                            .select('item_name')
+                            .eq('id', r.item_id)
+                            .single();
+                        
+                        const itemName = itemData ? itemData.item_name : 'Item';
+                        const ket = r.keterangan || '-';
+                        ngMessages.push(`${itemName}: ${ket}`);
                     }
-                });
+                }
             }
 
-            // TAMPILKAN REAL DATA TANPA "SAFE TEXT"
+            // TAMPILKAN REAL DATA
             if (ngMessages.length > 0) {
-                // KONDISI ADA NG: Tampilkan Keterangan dari Item NG
+                // KONDISI ADA NG: Tampilkan Item + Keterangan
                 noteEl.innerHTML = ngMessages.join('<br>'); 
                 noteEl.classList.add('text-red-custom');
             } else {
                 // KONDISI TIDAK ADA NG: Tampilkan Catatan Pelaksana (Header)
-                // Jika kosong tampilkan strip, jika ada isi tampilkan apa adanya.
                 noteEl.innerText = (catatanHeader.trim() === "") ? "-" : catatanHeader;
                 noteEl.classList.remove('text-red-custom');
             }
