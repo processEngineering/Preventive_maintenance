@@ -229,11 +229,19 @@
 
         async function backToList() {
             if(scanner) {
-                try { await scanner.stop(); scanner.clear(); } catch(e){}
+                try {
+                    // Cek status sebelum stop untuk menghindari error
+                    if(scanner.getState() === Html5QrcodeScannerState.SCANNING || scanner.getState() === Html5QrcodeScannerState.PAUSED) {
+                        await scanner.stop();
+                    }
+                    scanner.clear();
+                } catch (e) {
+                    console.log("Scanner cleanup handled:", e);
+                }
             }
             switchView('view-list');
             activeLog = null;
-            loadQueue();
+            loadQueue(); // Refresh data agar item yg sudah diverifikasi hilang
         }
 
         // --- 1. LOAD QUEUE (FILTERED) ---
@@ -261,6 +269,7 @@
             let foundAny = false;
 
             for (let log of logs) {
+                // Cek apakah ada inputan pelaksana di hari ini?
                 const { data: results } = await _sb.from('chslr_result')
                     .select('id') 
                     .eq('log_id', log.id)
@@ -288,6 +297,7 @@
             }
         }
 
+        // --- 2. SCANNER ---
         function startScanner(logStr) {
             activeLog = JSON.parse(decodeURIComponent(logStr));
             switchView('view-scanner');
@@ -298,13 +308,21 @@
         async function onScanSuccess(decodedText) {
             if (activeLog.mesin_id.toLowerCase().trim() === decodedText.toLowerCase().trim()) {
                 if(navigator.vibrate) navigator.vibrate(100);
-                try { await scanner.stop(); scanner.clear(); } catch(e){}
+                
+                try { 
+                    if(scanner.getState() === Html5QrcodeScannerState.SCANNING) {
+                        await scanner.stop(); 
+                    }
+                    scanner.clear(); 
+                } catch(e){}
+                
                 openForm();
             } else {
                 alert("❌ QR SALAH!\nTarget: " + activeLog.mesin_id);
             }
         }
 
+        // --- 3. FORM APPROVAL ---
         async function openForm() {
             switchView('view-form');
             document.getElementById('form-mesin').innerText = activeLog.mesin_id;
@@ -380,7 +398,7 @@
                 if (error) throw error;
 
                 alert("✅ DATA BERHASIL DISIMPAN!");
-                await backToList();
+                await backToList(); // Panggil fungsi backToList yang sudah aman untuk refresh list
 
             } catch (err) {
                 alert("GAGAL MENYIMPAN:\n" + (err.message || JSON.stringify(err)));
