@@ -92,7 +92,7 @@
             box-shadow: 4px 4px 0 #000; margin-top: 10px;
         }
         .btn-submit:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
-        .btn-submit:disabled { background: #ccc; box-shadow: none; transform: none; }
+        .btn-submit:disabled { background: #ccc; box-shadow: none; transform: none; cursor: not-allowed; }
 
         /* Scanner */
         .camera-frame { width: 260px; height: 260px; position: relative; margin: 0 auto; }
@@ -135,8 +135,12 @@
                 <div class="w-full max-w-[340px] text-right mb-4">
                     <button onclick="loadQueue()" class="text-xs font-bold underline">Refresh Data</button>
                 </div>
+                
                 <div id="log-container" class="w-full flex flex-col items-center">
-                    <div class="text-center py-10 font-bold text-xs uppercase">Mencari Laporan...</div>
+                    <div class="text-center py-10 font-bold text-xs uppercase">
+                        <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>
+                        Mencari Laporan...
+                    </div>
                 </div>
             </div>
 
@@ -221,6 +225,7 @@
             sigPadKoor = new SignaturePad(canvas, { backgroundColor: 'rgb(255, 255, 255)' });
         }
 
+        // --- NAVIGATION ---
         function switchView(viewId) {
             document.getElementById('view-list').classList.add('hidden');
             document.getElementById('view-scanner').classList.add('hidden');
@@ -235,6 +240,7 @@
             loadQueue();
         }
 
+        // --- 1. LOAD QUEUE ---
         async function loadQueue() {
             const now = new Date();
             const todayDate = now.getDate();
@@ -288,6 +294,7 @@
             }
         }
 
+        // --- 2. SCANNER ---
         function startScanner(logStr) {
             activeLog = JSON.parse(decodeURIComponent(logStr));
             switchView('view-scanner');
@@ -305,6 +312,7 @@
             }
         }
 
+        // --- 3. FORM APPROVAL (LOGIKA PERBAIKAN) ---
         async function openForm() {
             switchView('view-form');
             document.getElementById('form-mesin').innerText = activeLog.mesin_id;
@@ -320,11 +328,13 @@
                 .eq('log_id', activeLog.id)
                 .eq('tanggal', today);
 
-            let finalNote = "-";
+            let finalNote = "";
             let hasNG = false;
             let ngNotes = [];
 
+            // CEK APAKAH RESULT ADA ISINYA
             if (results && results.length > 0) {
+                // Loop cari NG
                 results.forEach(r => {
                     if (r.status === 'NG') {
                         hasNG = true;
@@ -335,10 +345,11 @@
                 });
 
                 if (hasNG) {
+                    // KONDISI 1: ADA NG -> Ambil Keterangan dari Result
                     finalNote = "NG: " + ngNotes.join(' | ');
                     noteEl.classList.add('text-red-600'); 
                 } else {
-                    // JIKA SEMUA OK, AMBIL DARI LOG (Catatan Pelaksana di footer form)
+                    // KONDISI 2: OK SEMUA -> Ambil Catatan dari Log (activeLog.catatan)
                     if (activeLog.catatan && activeLog.catatan.trim() !== "") {
                         finalNote = activeLog.catatan;
                     } else {
@@ -347,7 +358,14 @@
                     noteEl.classList.add('text-black');
                 }
             } else {
-                finalNote = "Data belum tersedia.";
+                // FALLBACK: JIKA RESULT KOSONG (Tapi harusnya ada karena dashboard nge-cek)
+                // Coba ambil dari Log langsung sebagai backup terakhir
+                if (activeLog.catatan && activeLog.catatan.trim() !== "") {
+                    finalNote = activeLog.catatan;
+                } else {
+                    finalNote = "KONDISI OK (AMAN)";
+                }
+                noteEl.classList.add('text-black');
             }
 
             noteEl.innerText = finalNote;
@@ -361,32 +379,32 @@
         async function submitApproval() {
             const name = document.getElementById('koor-name').value.trim();
             const remark = document.getElementById('koor-remark').value.trim();
-
-            // Validasi Input
-            if(!activeLog || !activeLog.id) {
-                return alert("Error: ID Laporan tidak ditemukan. Silakan refresh.");
-            }
-            if(!name || sigPadKoor.isEmpty()) {
-                return alert("⚠️ NAMA & PARAF WAJIB DIISI!");
-            }
-            
             const btn = document.getElementById('btn-approve');
-            btn.innerText = 'MEMPROSES...'; btn.disabled = true;
 
-            // Proses Update ke Database
-            const { error } = await _sb.from('chslr_log').update({
-                koordinator_nama: name,
-                signature_koordinator: sigPadKoor.toDataURL(),
-                status_verifikasi: true,
-                remark_koordinator: remark
-            }).eq('id', activeLog.id);
+            // --- TRY CATCH BLOCK AGAR TOMBOL TIDAK MENTOK ---
+            try {
+                if(!activeLog || !activeLog.id) throw new Error("ID Laporan hilang. Refresh halaman.");
+                if(!name) throw new Error("Nama Koordinator wajib diisi!");
+                if(sigPadKoor.isEmpty()) throw new Error("Paraf wajib diisi!");
 
-            if (error) {
-                alert("Gagal menyimpan: " + error.message);
-                btn.innerText = 'SUBMIT LAPORAN'; btn.disabled = false;
-            } else {
-                alert("✅ DATA BERHASIL DISIMPAN!");
+                btn.innerText = 'MEMPROSES...'; btn.disabled = true;
+
+                const { error } = await _sb.from('chslr_log').update({
+                    koordinator_nama: name,
+                    signature_koordinator: sigPadKoor.toDataURL(),
+                    status_verifikasi: true,
+                    remark_koordinator: remark
+                }).eq('id', activeLog.id);
+
+                if (error) throw error;
+
+                alert("✅ DATA TERVERIFIKASI!");
                 backToList();
+
+            } catch (err) {
+                alert("Gagal: " + err.message);
+                btn.innerText = 'SUBMIT LAPORAN'; 
+                btn.disabled = false;
             }
         }
     </script>
