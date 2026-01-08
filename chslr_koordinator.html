@@ -33,7 +33,9 @@
             display: flex; flex-direction: column; align-items: center;
         }
 
-        /* === WIREFRAME STYLE === */
+        /* === WIREFRAME STYLE (TEGAS & TEBAL) === */
+        
+        /* Header Pill */
         .header-pill {
             border: 3px solid #000; border-radius: 99px;
             padding: 12px 40px; text-align: center; font-weight: 900;
@@ -42,22 +44,26 @@
             box-shadow: 4px 4px 0 rgba(0,0,0,0.15);
         }
 
+        /* Card List */
         .card-item {
             width: 100%; background: white; border: 3px solid #000; border-radius: 16px;
             padding: 15px; margin-bottom: 15px; position: relative;
-            box-shadow: 5px 5px 0 #000; transition: transform 0.1s; cursor: pointer;
+            box-shadow: 5px 5px 0 #000; transition: transform 0.1s;
+            cursor: pointer;
         }
         .card-item:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 #000; }
         
         .card-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; align-items: center; }
         .lbl { font-weight: 700; color: #333; }
         .val { font-weight: 800; text-transform: uppercase; text-align: right; }
+        
         .badge-status {
             display: block; width: 100%; background: #000; color: #fff;
             text-align: center; font-size: 10px; font-weight: 800;
             padding: 6px; border-radius: 6px; margin-top: 8px; text-transform: uppercase;
         }
 
+        /* Form Info Box */
         .info-box {
             width: 100%; background: #f8f9fa; border: 3px solid #000; border-radius: 16px;
             padding: 15px; margin-bottom: 20px; box-shadow: 4px 4px 0 #000;
@@ -67,6 +73,7 @@
         .i-sep { font-weight: 700; width: 5%; text-align: center; }
         .i-val { font-weight: 900; width: 60%; text-align: right; text-transform: uppercase; line-height: 1.2; }
 
+        /* Inputs */
         .label-input { font-size: 12px; font-weight: 800; margin-bottom: 5px; align-self: flex-start; margin-left: 5px; }
         
         .input-field {
@@ -77,6 +84,7 @@
         }
         .input-field:focus { box-shadow: 3px 3px 0 #000; }
 
+        /* Signature Canvas */
         .sig-wrapper {
             width: 100%; height: 130px; background: white;
             border: 3px solid #000; border-radius: 16px;
@@ -86,6 +94,7 @@
         }
         canvas { display: block; width: 100%; height: 100%; }
 
+        /* Buttons */
         .btn-main {
             background: #000; color: #fff; width: 100%; padding: 15px;
             border: 3px solid #000; border-radius: 14px;
@@ -109,6 +118,7 @@
         #reader { width: 100%; height: 100%; }
         #reader video { object-fit: cover; width: 100%; height: 100%; }
 
+        /* Bottom Nav */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%; height: 80px;
             background: white; border-top: 3px solid #000;
@@ -120,8 +130,9 @@
         .nav-item i { font-size: 22px; margin-bottom: 4px; }
         .nav-item span { font-size: 9px; font-weight: 800; text-transform: uppercase; }
 
+        /* Utilities */
         .hidden { display: none !important; }
-        .text-red-custom { color: #dc2626 !important; }
+        .text-red-600 { color: #dc2626 !important; }
         .animate-up { animation: slideUp 0.3s ease-out; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -131,6 +142,7 @@
     <div id="app-shell">
 
         <main class="app-content">
+            
             <div class="header-pill">Koordinator</div>
 
             <div id="view-list" class="w-full flex flex-col items-center animate-up">
@@ -238,6 +250,7 @@
             loadQueue();
         }
 
+        // --- 1. LOAD QUEUE ---
         async function loadQueue() {
             const now = new Date();
             const todayDate = now.getDate();
@@ -247,6 +260,7 @@
             const container = document.getElementById('log-container');
             container.innerHTML = '<div class="text-center py-10 opacity-50"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i></div>';
 
+            // Ambil semua log bulan ini yang BELUM diverifikasi
             const { data: logs } = await _sb.from('chslr_log')
                 .select('*')
                 .eq('bulan', currentMonth)
@@ -262,6 +276,7 @@
             let count = 0;
 
             for (let log of logs) {
+                // Cek apakah hari ini ada inputan result?
                 const { data: results } = await _sb.from('chslr_result')
                     .select('id') 
                     .eq('log_id', log.id)
@@ -287,6 +302,7 @@
             }
         }
 
+        // --- 2. SCANNER ---
         function startScanner(logStr) {
             activeLog = JSON.parse(decodeURIComponent(logStr));
             switchView('view-scanner');
@@ -305,8 +321,11 @@
             }
         }
 
+        // --- 3. FORM APPROVAL (LOGIKA FINAL 2 CATATAN) ---
         async function openForm() {
             switchView('view-form');
+            
+            // UI Reset
             document.getElementById('form-mesin').innerText = activeLog.mesin_id;
             document.getElementById('form-pelaksana').innerText = activeLog.pelaksana_names ? activeLog.pelaksana_names.join(', ') : '-';
             document.getElementById('koor-name').value = "";
@@ -317,10 +336,13 @@
             noteEl.innerHTML = 'Loading...';
             noteEl.className = "i-val"; 
 
-            // --- PERBAIKAN LOGIKA DISINI ---
-            // 1. Ambil Log Terbaru (Untuk memastikan kolom catatan terambil jika OK)
-            const { data: freshLog } = await _sb.from('chslr_log').select('catatan').eq('id', activeLog.id).single();
-            const logNote = freshLog ? freshLog.catatan : "";
+            // 1. Ambil Log Terbaru (Untuk mendapatkan kolom 'catatan' jika OK)
+            const { data: freshLog } = await _sb.from('chslr_log')
+                .select('catatan')
+                .eq('id', activeLog.id)
+                .single();
+            
+            const logNote = (freshLog && freshLog.catatan) ? freshLog.catatan : "";
 
             // 2. Ambil Result Hari Ini (Untuk Cek NG)
             const today = new Date().getDate();
@@ -329,11 +351,13 @@
                 .eq('log_id', activeLog.id)
                 .eq('tanggal', today);
 
+            // LOGIKA KONDISIONAL
             let finalNote = "-";
             let hasNG = false;
             let ngNotes = [];
 
             if (results && results.length > 0) {
+                // Cek NG dulu
                 results.forEach(r => {
                     if (r.status === 'NG') {
                         hasNG = true;
@@ -344,13 +368,13 @@
                 });
 
                 if (hasNG) {
-                    // KONDISI 1: ADA NG -> AMBIL DARI RESULT
+                    // KONDISI 1: JIKA ADA NG -> AMBIL DARI TABEL RESULT (DETAIL)
                     finalNote = "NG: " + ngNotes.join(', ');
                     noteEl.classList.add('text-red-custom'); 
                 } else {
-                    // KONDISI 2: OK SEMUA -> AMBIL DARI LOG (freshLog.catatan)
-                    if (logNote && logNote.trim() !== "") {
-                        finalNote = logNote;
+                    // KONDISI 2: JIKA OK -> AMBIL DARI TABEL LOG (HEADER - CATATAN PELAKSANA)
+                    if (logNote.trim() !== "") {
+                        finalNote = logNote; // Ambil dari kolom 'catatan' di chslr_log
                     } else {
                         finalNote = "KONDISI OK (AMAN)";
                     }
@@ -380,6 +404,7 @@
             btn.innerHTML = 'MENYIMPAN...'; btn.disabled = true;
 
             try {
+                // Update ke chslr_log
                 const { error } = await _sb.from('chslr_log').update({
                     koordinator_nama: name,
                     signature_koordinator: sigPadKoor.toDataURL(),
@@ -393,7 +418,7 @@
                 await backToList();
 
             } catch (err) {
-                alert("Gagal: " + err.message);
+                alert("Gagal menyimpan: " + err.message);
                 btn.innerHTML = 'VERIFIKASI & SIMPAN'; btn.disabled = false;
             }
         }
