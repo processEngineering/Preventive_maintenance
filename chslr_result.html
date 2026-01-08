@@ -3,121 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CHECKLIST HARIAN STAND LABEL DAN ROBOT</title>
+    <title>AF.SP 05.14.Rev-00 - REPORT</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* === RESET TOTAL UNTUK PRINT === */
+        /* === PAGE SETUP (A4 LANDSCAPE - EXCEL LOOK) === */
         @page {
             size: A4 landscape;
-            margin: 0; /* HAPUS MARGIN KERTAS DEFAULT */
+            margin: 0; 
         }
 
         body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, Helvetica, sans-serif;
+            margin: 0; padding: 0;
             background: #ccc;
+            font-family: Arial, sans-serif;
+            font-size: 8pt;
             -webkit-print-color-adjust: exact;
         }
 
-        /* TAMPILAN MODE EDIT (LAYAR) */
+        /* === SHEET SIMULATION === */
         .sheet {
             background: white;
             width: 297mm;
-            min-height: 210mm;
+            height: 209mm; /* Pas A4 */
             margin: 20px auto;
-            padding: 10mm;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            padding: 5mm 10mm;
             box-sizing: border-box;
             position: relative;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
 
-        /* === SETTING KHUSUS PRINT (JURUS ANTI BOCOR) === */
         @media print {
-            body, html {
-                width: 297mm;
-                height: 210mm;
-                overflow: hidden; /* Potong yang tumpah */
-                background: white;
-            }
-
+            body { background: white; }
             .sheet {
+                margin: 0;
+                box-shadow: none;
                 width: 100%;
                 height: 100%;
-                margin: 0;
-                padding: 5mm 10mm; /* Margin aman buatan sendiri */
-                box-shadow: none;
-                border: none;
-                
-                /* PAKSA KECILKAN KONTEN AGAR MUAT 1 HALAMAN */
-                transform: scale(0.90); 
+                padding: 5mm 10mm;
+                transform: scale(0.95); /* Scaling aman agar tidak terpotong */
                 transform-origin: top center;
             }
-
             .no-print { display: none !important; }
         }
 
-        /* === CSS TABEL & KONTEN === */
-        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; border: 2px solid black; }
-        .header-table td { border: 1px solid black; padding: 2px 5px; vertical-align: middle; }
-        
-        .title-cell { text-align: center; font-weight: bold; font-size: 14pt; text-transform: uppercase; width: 60%; }
-        .doc-info { font-size: 8pt; width: 25%; }
-        .doc-info table { width: 100%; border: none; }
-        .doc-info td { border: none; padding: 0px; }
+        /* === UTILS === */
+        table { border-collapse: collapse; width: 100%; }
+        td, th { border: 1px solid black; padding: 2px 4px; vertical-align: middle; }
+        .no-border { border: none !important; }
+        .text-center { text-align: center; }
+        .text-left { text-align: left; }
+        .text-right { text-align: right; }
+        .font-bold { font-weight: bold; }
+        .uppercase { text-transform: uppercase; }
 
-        .info-section { 
-            width: 100%; margin-bottom: 5px; font-weight: bold; font-size: 10pt; 
-            display: flex; justify-content: space-between; align-items: flex-end;
-        }
+        /* === HEADER SECTION === */
+        .header-table { margin-bottom: 5px; border: 2px solid black; }
+        .logo-cell { width: 100px; text-align: center; border-right: 1px solid black; }
+        .title-cell { font-size: 14pt; text-align: center; border-right: 1px solid black; width: 50%; }
+        .meta-cell { font-size: 7.5pt; width: 25%; padding: 0; }
+        .meta-table td { border: none; padding: 1px 4px; }
 
-        /* TABEL UTAMA - DIPADATKAN */
-        .main-table { 
-            width: 100%; border-collapse: collapse; border: 2px solid black; 
-            table-layout: fixed; 
-        }
-        .main-table th, .main-table td { 
-            border: 1px solid black; 
-            padding: 0px 2px; /* Padding kiri kanan tipis */
-            font-size: 8pt; 
-            text-align: center;
-            vertical-align: middle;
-            height: 14px; /* TINGGI BARIS DIPAKSA PENDEK */
-            line-height: 1.1;
-        }
-        
-        .main-table th { background-color: #f0f0f0; font-weight: bold; height: 20px; }
+        /* === INFO SECTION === */
+        .info-table { margin-bottom: 5px; border: none; }
+        .info-table td { border: none; padding: 1px; font-weight: bold; font-size: 9pt; }
+        .dots { border-bottom: 1px dotted black; display: inline-block; min-width: 150px; padding-left: 5px; }
 
+        /* === MAIN CHECKLIST TABLE === */
+        .main-table { border: 2px solid black; table-layout: fixed; }
+        .main-table th { background-color: #f2f2f2; height: 25px; font-size: 8pt; text-align: center; }
+        .main-table td { height: 16px; font-size: 7.5pt; padding: 0 2px; }
+
+        /* Column Widths (Pixel Perfect for A4) */
         .col-no { width: 25px; }
         .col-jenis { width: 220px; text-align: left !important; padding-left: 5px !important; }
-        .col-std { width: 150px; text-align: left !important; padding-left: 5px !important; }
-        .col-tgl { width: auto; font-size: 7pt; }
+        .col-std { width: 140px; text-align: left !important; padding-left: 5px !important; font-style: italic; font-size: 7pt; }
+        .col-date { width: 17px; font-size: 7pt; text-align: center; }
 
-        .category-row { background-color: #ddd; font-weight: bold; text-align: left !important; padding-left: 5px !important; }
-        .item-text { text-align: left !important; padding-left: 5px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .std-text { text-align: left !important; padding-left: 5px !important; font-size: 7pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* Special Rows */
+        .cat-row { background-color: #bfbfbf; font-weight: bold; text-align: left !important; padding-left: 5px !important; }
+        .sig-row td { height: 35px; vertical-align: middle; } /* Tinggi baris paraf */
         
-        .ok-mark { font-family: sans-serif; font-size: 9pt; }
-        .ng-mark { color: red; font-weight: bold; font-size: 9pt; }
-        .sig-img { width: 100%; height: 22px; object-fit: contain; mix-blend-mode: multiply; display: block; margin: 0 auto; }
+        .sig-img { width: 100%; height: 30px; object-fit: contain; mix-blend-mode: multiply; display: block; margin: 0 auto; }
+        .ng-text { color: red; font-weight: bold; }
+        .ok-text { font-family: sans-serif; }
 
-        /* FOOTER */
-        .footer-section { display: flex; justify-content: space-between; margin-top: 5px; font-size: 9pt; }
-        .legend-table { border: none; width: 100%; }
-        .legend-table td { border: none; padding: 1px; vertical-align: top; font-size: 8pt; }
+        /* === FOOTER SECTION === */
+        .footer-container { display: flex; justify-content: space-between; margin-top: 10px; }
         
-        .approval-box { width: 250px; text-align: center; margin-right: 20px; }
-        .sig-box-super { border: 1px solid black; height: 60px; width: 100%; margin-bottom: 2px; position: relative; display: flex; align-items: center; justify-content: center; }
-        .super-img { max-height: 55px; max-width: 90%; mix-blend-mode: multiply; }
+        /* Legend Box */
+        .legend-box { width: 60%; font-size: 8pt; }
+        .legend-table td { border: none; padding: 1px; vertical-align: top; }
+        
+        /* Approval Box */
+        .approval-box { width: 220px; text-align: center; font-weight: bold; font-size: 9pt; }
+        .sig-box { border: 1px solid black; height: 65px; width: 100%; margin: 2px 0; display: flex; align-items: center; justify-content: center; }
+        .super-img { max-height: 60px; max-width: 90%; mix-blend-mode: multiply; }
 
-        /* CONTROL PANEL */
-        .no-print {
-            position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
-            background: #222; padding: 10px 20px; border-radius: 8px; color: white;
-            display: flex; gap: 10px; z-index: 9999; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        }
-        select, button { padding: 5px 10px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; }
-        .btn-blue { background: #3b82f6; color: white; }
+        /* CONTROLS */
+        .no-print { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #222; padding: 10px; border-radius: 8px; color: white; display: flex; gap: 10px; z-index: 9999; }
+        select, button { padding: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -130,23 +114,22 @@
             <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
             <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
         </select>
-        <select id="f-tahun">
-            <option value="2026">2026</option><option value="2027">2027</option>
-        </select>
-        <button class="btn-blue" onclick="loadReport()">TAMPILKAN DATA</button>
-        <button onclick="window.print()">🖨️ PRINT (A4)</button>
+        <select id="f-tahun"><option value="2026">2026</option><option value="2027">2027</option></select>
+        <button onclick="loadData()">TAMPILKAN</button>
+        <button onclick="window.print()">PRINT</button>
     </div>
 
     <div class="sheet">
-        
         <table class="header-table">
             <tr>
-                <td style="width: 15%; text-align: center;">
-                    <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" style="width: 90px;">
+                <td class="logo-cell">
+                    <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" style="width: 100px;">
                 </td>
-                <td class="title-cell">CHECKLIST HARIAN STAND LABEL DAN ROBOT</td>
-                <td class="doc-info">
-                    <table>
+                <td class="title-cell font-bold">
+                    CHECKLIST HARIAN STAND LABEL DAN ROBOT
+                </td>
+                <td class="meta-cell">
+                    <table class="meta-table">
                         <tr><td>No Dokumen</td><td>: AF.SP 05.14.Rev-00</td></tr>
                         <tr><td>Tanggal Terbit</td><td>: 02 Agustus 2024</td></tr>
                         <tr><td>Halaman</td><td>: 1/1</td></tr>
@@ -156,15 +139,21 @@
             </tr>
         </table>
 
-        <div class="info-section">
-            <div style="display: flex; flex-direction: column; gap: 2px;">
-                <div>MERK MESIN : <span id="val-mesin" style="margin-left: 10px; border-bottom: 1px dotted black; min-width: 150px; display:inline-block;">-</span></div>
-                <div>TONAGE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <span id="val-ton" style="margin-left: 10px; border-bottom: 1px dotted black; min-width: 150px; display:inline-block;">-</span></div>
-            </div>
-            <div style="text-align: right; padding-right: 50px;">
-                BULAN : <span id="val-bulan" style="margin-left: 10px; border-bottom: 1px dotted black; min-width: 150px; display:inline-block;">-</span>
-            </div>
-        </div>
+        <table class="info-table">
+            <tr>
+                <td width="100">MERK MESIN</td>
+                <td width="10">:</td>
+                <td width="300"><span id="txt-mesin" class="dots"></span></td>
+                <td class="text-right">BULAN :</td>
+                <td width="150"><span id="txt-bulan" class="dots"></span></td>
+            </tr>
+            <tr>
+                <td>TONAGE</td>
+                <td>:</td>
+                <td><span id="txt-ton" class="dots"></span></td>
+                <td colspan="2"></td>
+            </tr>
+        </table>
 
         <table class="main-table">
             <thead>
@@ -174,34 +163,36 @@
                     <th rowspan="2" class="col-std">Standard</th>
                     <th colspan="31">Tanggal</th>
                 </tr>
-                <tr id="date-header"></tr>
+                <tr id="date-row">
+                    </tr>
             </thead>
-            <tbody id="checklist-body"></tbody>
-            <tbody id="sig-body">
-                <tr id="row-sig-pel">
-                    <td colspan="3" style="text-align: right; font-weight: bold; padding-right: 10px;">Paraf Pelaksana</td>
-                </tr>
-                <tr id="row-sig-cek">
-                    <td colspan="3" style="text-align: right; font-weight: bold; padding-right: 10px;">Paraf Pengecek</td>
-                </tr>
+            <tbody id="table-body">
+                </tbody>
+            <tbody>
+                <tr class="sig-row" id="row-pel">
+                    <td colspan="3" class="text-right font-bold" style="padding-right: 10px;">Paraf Pelaksana</td>
+                    </tr>
+                <tr class="sig-row" id="row-cek">
+                    <td colspan="3" class="text-right font-bold" style="padding-right: 10px;">Paraf Pengecek</td>
+                    </tr>
             </tbody>
         </table>
 
-        <div class="footer-section">
-            <div style="width: 60%;">
+        <div class="footer-container">
+            <div class="legend-box">
                 <table class="legend-table">
-                    <tr><td colspan="2" style="font-weight: bold; text-decoration: underline;">Beri tanda :</td></tr>
-                    <tr><td width="20" align="center">√</td><td>Bila item yang diperiksa baik, sesuai standar</td></tr>
-                    <tr><td align="center">x</td><td>Bila terjadi penyimpangan / kerusakan pada item yang diperiksa.</td></tr>
-                    <tr><td align="center">o</td><td>Bila mesin dalam proses perbaikan</td></tr>
+                    <tr><td colspan="2" class="font-bold" style="text-decoration: underline;">Beri tanda :</td></tr>
+                    <tr><td width="20" class="text-center">√</td><td>Bila item yang diperiksa baik, sesuai standar</td></tr>
+                    <tr><td class="text-center">x</td><td>Bila terjadi penyimpangan / kerusakan pada item yang diperiksa.</td></tr>
+                    <tr><td class="text-center">o</td><td>Bila mesin dalam proses perbaikan</td></tr>
                 </table>
             </div>
 
             <div class="approval-box">
-                <div style="font-weight: bold; margin-bottom: 2px;">DIKETAHUI</div>
-                <div class="sig-box-super" id="box-super"></div>
-                <div id="val-super-name" style="font-weight: bold; text-transform: uppercase; margin-top: 2px; text-decoration: underline;">( ........................ )</div>
-                <div style="font-weight: bold; margin-top: 2px;">MECHANIC SUPERINTENDENT</div>
+                <div style="margin-bottom: 2px;">DIKETAHUI</div>
+                <div class="sig-box" id="super-sig-box"></div>
+                <div id="super-name-txt" style="text-transform: uppercase; border-top: 1px solid black; display: inline-block; width: 90%; padding-top: 2px;">( ........................ )</div>
+                <div style="font-size: 8pt; margin-top: 2px;">MECHANIC SUPERINTENDENT</div>
             </div>
         </div>
 
@@ -213,93 +204,107 @@
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
         async function init() {
-            const dh = document.getElementById('date-header');
-            for(let i=1; i<=31; i++) dh.innerHTML += `<th class="col-tgl">${i}</th>`;
+            // Render Date Header 1-31
+            const dr = document.getElementById('date-row');
+            for(let i=1; i<=31; i++) dr.innerHTML += `<th class="col-date">${i}</th>`;
 
-            const { data: m } = await _sb.from('chslr_mesin').select('nama_mesin');
+            // Load Options
+            const { data } = await _sb.from('chslr_mesin').select('nama_mesin');
             const sel = document.getElementById('f-mesin');
-            m?.forEach(x => sel.innerHTML += `<option>${x.nama_mesin}</option>`);
+            data?.forEach(d => sel.innerHTML += `<option>${d.nama_mesin}</option>`);
 
             document.getElementById('f-bulan').value = 1; 
             document.getElementById('f-tahun').value = 2026;
-            
-            loadReport();
+            loadData();
         }
 
-        async function loadReport() {
-            const mesin = document.getElementById('f-mesin').value;
-            const bln = document.getElementById('f-bulan').value;
-            const thn = document.getElementById('f-tahun').value;
+        async function loadData() {
+            const m = document.getElementById('f-mesin').value;
+            const b = document.getElementById('f-bulan').value;
+            const t = document.getElementById('f-tahun').value;
+
+            // 1. Headers
+            document.getElementById('txt-mesin').innerText = m;
+            document.getElementById('txt-bulan').innerText = document.getElementById('f-bulan').options[b-1].text.toUpperCase() + " " + t;
             
-            document.getElementById('val-mesin').innerText = mesin;
-            document.getElementById('val-bulan').innerText = document.getElementById('f-bulan').options[bln-1].text.toUpperCase() + " " + thn;
+            const { data: mData } = await _sb.from('chslr_mesin').select('tonage').eq('nama_mesin', m).single();
+            document.getElementById('txt-ton').innerText = mData?.tonage || '-';
 
-            const { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', mesin).eq('bulan', bln).eq('tahun', thn).maybeSingle();
-            const { data: mData } = await _sb.from('chslr_mesin').select('tonage').eq('nama_mesin', mesin).single();
-            document.getElementById('val-ton').innerText = mData?.tonage || '-';
-
+            // 2. Fetch Log & Results
+            const { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', m).eq('bulan', b).eq('tahun', t).maybeSingle();
             const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
             const { data: res } = log ? await _sb.from('chslr_result').select('*').eq('log_id', log.id) : { data: [] };
 
-            const tbody = document.getElementById('checklist-body');
+            // 3. Render Items
+            const tbody = document.getElementById('table-body');
             tbody.innerHTML = "";
-            
-            let currentCat = "";
-            let rowCount = 1;
-            let subIndex = 0; 
-            const letters = "abcdefghijklmnopqrstuvwxyz";
+            let curCat = "", rowNum = 1, subIdx = 0;
+            const abjad = "abcdefghijklmnopqrstuvwxyz";
 
             items.forEach(item => {
-                if(item.kategori && item.kategori !== currentCat) {
-                    currentCat = item.kategori;
-                    subIndex = 0;
-                    tbody.innerHTML += `<tr class="category-row"><td align="center">${rowCount}</td><td colspan="32" class="item-text">${currentCat}</td></tr>`;
-                    rowCount++;
+                // Category Header
+                if(item.kategori !== curCat) {
+                    curCat = item.kategori;
+                    subIdx = 0;
+                    tbody.innerHTML += `
+                        <tr class="cat-row">
+                            <td class="text-center">${rowNum}</td>
+                            <td colspan="32" class="uppercase">${curCat}</td>
+                        </tr>`;
+                    rowNum++;
                 }
 
-                let row = `<tr><td align="center">${letters[subIndex] || '-'}</td><td class="item-text">${item.item_name}</td><td class="std-text">${item.standard || ''}</td>`;
+                // Item Row
+                let html = `<tr>
+                    <td class="text-center">${abjad[subIdx] || '-'}</td>
+                    <td class="col-jenis">${item.item_name}</td>
+                    <td class="col-std">${item.standard || ''}</td>`;
                 
                 for(let d=1; d<=31; d++) {
                     const r = res.find(x => x.item_id === item.id && x.tanggal === d);
-                    let symbol = "", cls = "";
-                    if(r) {
-                        if(r.status === 'OK') { symbol = "√"; cls="ok-mark"; }
-                        else if(r.status === 'NG') { symbol = "x"; cls="ng-mark"; }
-                    }
-                    row += `<td class="${cls}">${symbol}</td>`;
+                    let val = "";
+                    if(r) val = r.status === 'OK' ? '<span class="ok-text">√</span>' : '<span class="ng-text">x</span>';
+                    html += `<td class="col-date">${val}</td>`;
                 }
-                row += `</tr>`;
-                tbody.innerHTML += row;
-                subIndex++;
+                html += `</tr>`;
+                tbody.innerHTML += html;
+                subIdx++;
             });
 
-            const rowPel = document.getElementById('row-sig-pel');
-            const rowCek = document.getElementById('row-sig-cek');
-            while(rowPel.cells.length > 1) rowPel.deleteCell(1);
-            while(rowCek.cells.length > 1) rowCek.deleteCell(1);
+            // 4. Render Signatures
+            const rPel = document.getElementById('row-pel');
+            const rCek = document.getElementById('row-cek');
+            
+            // Clear existing cells (keep header)
+            while(rPel.cells.length > 1) rPel.deleteCell(1);
+            while(rCek.cells.length > 1) rCek.deleteCell(1);
 
             for(let d=1; d<=31; d++) {
-                const dayRes = res.filter(r => r.tanggal === d && r.signature);
-                const tdPel = rowPel.insertCell();
-                if(dayRes.length > 0) tdPel.innerHTML = `<img src="${dayRes[0].signature}" class="sig-img">`;
+                // Pelaksana
+                const dayRes = res.filter(x => x.tanggal === d && x.signature);
+                let cellPel = rPel.insertCell();
+                cellPel.className = "col-date";
+                if(dayRes.length > 0) cellPel.innerHTML = `<img src="${dayRes[0].signature}" class="sig-img">`;
 
-                const hasData = res.some(r => r.tanggal === d);
-                const tdCek = rowCek.insertCell();
+                // Pengecek
+                const hasData = res.some(x => x.tanggal === d);
+                let cellCek = rCek.insertCell();
+                cellCek.className = "col-date";
                 if(log?.status_verifikasi && log?.signature_koordinator && hasData) {
-                    tdCek.innerHTML = `<img src="${log.signature_koordinator}" class="sig-img">`;
+                    cellCek.innerHTML = `<img src="${log.signature_koordinator}" class="sig-img">`;
                 }
             }
 
-            const superBox = document.getElementById('box-super');
-            const superName = document.getElementById('val-super-name');
-
+            // 5. Superintendent Footer
+            const supBox = document.getElementById('super-sig-box');
+            const supName = document.getElementById('super-name-txt');
+            
             if(log?.status_final && log?.signature_superintendent) {
-                superBox.innerHTML = `<img src="${log.signature_superintendent}" class="super-img">`;
-                // TAMPILKAN NAMA SUPERINTENDENT DARI DATABASE
-                superName.innerText = log.superintendent_nama ? `( ${log.superintendent_nama} )` : "( ........................ )";
+                supBox.innerHTML = `<img src="${log.signature_superintendent}" class="super-img">`;
+                supName.innerText = `( ${log.superintendent_nama || '........................'} )`;
             } else {
-                superBox.innerHTML = "";
-                superName.innerText = "( ........................ )";
+                supBox.innerHTML = "";
+                supName.innerText = "( ........................ )";
             }
         }
 
