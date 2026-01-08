@@ -236,7 +236,7 @@
             loadQueue();
         }
 
-        // --- 1. LOAD QUEUE (WITH FILTER FIX) ---
+        // --- 1. LOAD QUEUE (FIXED "ILANG SEMUA" & "DOUBLE LIST") ---
         async function loadQueue() {
             const now = new Date();
             const todayDate = now.getDate();
@@ -246,11 +246,12 @@
             const container = document.getElementById('log-container');
             container.innerHTML = '<div class="text-center py-10 font-bold text-xs">Mencari laporan...</div>';
 
+            // FILTER: HANYA YANG BELUM TRUE (Menangkap FALSE dan NULL)
             const { data: logs, error } = await _sb.from('chslr_log')
                 .select('*')
                 .eq('bulan', currentMonth)
                 .eq('tahun', currentYear)
-                .eq('status_verifikasi', false); // <<<--- FILTER UTAMA: HANYA YANG BELUM DIVERIFIKASI
+                .neq('status_verifikasi', true); 
 
             if (!logs || logs.length === 0) {
                 container.innerHTML = `<div class="input-box text-center opacity-50 !shadow-none">Tidak ada antrean laporan.</div>`;
@@ -258,36 +259,43 @@
             }
 
             container.innerHTML = "";
-            let foundAny = false;
-
+            
+            // Tampilkan SEMUA mesin yang belum diverifikasi
             for (let log of logs) {
+                // Cek status inputan pelaksana hari ini (Hanya untuk label)
                 const { data: results } = await _sb.from('chslr_result')
                     .select('id') 
                     .eq('log_id', log.id)
                     .eq('tanggal', todayDate) 
                     .limit(1);
 
-                if (results && results.length > 0) {
-                    foundAny = true;
-                    const names = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
-                    const dateStr = `${todayDate}/${currentMonth}/${currentYear}`;
-
-                    container.insertAdjacentHTML('beforeend', `
-                        <div class="card-item" onclick="startScanner('${encodeURIComponent(JSON.stringify(log))}')">
-                            <div class="card-row"><span class="lbl">nama mesin</span><span class="lbl">:</span><span class="val">${log.mesin_id}</span></div>
-                            <div class="card-row"><span class="lbl">nama pelaksana</span><span class="lbl">:</span><span class="val text-right">${names}</span></div>
-                            <div class="card-row"><span class="lbl">tanggal cek</span><span class="lbl">:</span><span class="val">${dateStr}</span></div>
-                            <div class="mt-2 text-center bg-black text-white text-[9px] font-bold py-1">KLIK UNTUK VERIFIKASI</div>
-                        </div>
-                    `);
+                const hasInput = (results && results.length > 0);
+                const names = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
+                const dateStr = `${todayDate}/${currentMonth}/${currentYear}`;
+                
+                // STATUS TEXT
+                let statusText = "MENUNGGU PELAKSANA";
+                let statusColor = "bg-gray-400";
+                
+                if(hasInput) {
+                    statusText = "SIAP VERIFIKASI";
+                    statusColor = "bg-black";
                 }
-            }
 
-            if (!foundAny) {
-                container.innerHTML = `<div class="input-box text-center opacity-50 !shadow-none">Belum ada laporan pelaksana hari ini.</div>`;
+                container.insertAdjacentHTML('beforeend', `
+                    <div class="card-item" onclick="startScanner('${encodeURIComponent(JSON.stringify(log))}')">
+                        <div class="card-row"><span class="lbl">nama mesin</span><span class="lbl">:</span><span class="val">${log.mesin_id}</span></div>
+                        <div class="card-row"><span class="lbl">nama pelaksana</span><span class="lbl">:</span><span class="val text-right">${names}</span></div>
+                        <div class="card-row"><span class="lbl">tanggal cek</span><span class="lbl">:</span><span class="val">${dateStr}</span></div>
+                        <div class="mt-2 text-center ${statusColor} text-white text-[9px] font-bold py-1">
+                            ${statusText}
+                        </div>
+                    </div>
+                `);
             }
         }
 
+        // --- 2. SCANNER ---
         function startScanner(logStr) {
             activeLog = JSON.parse(decodeURIComponent(logStr));
             switchView('view-scanner');
@@ -305,6 +313,7 @@
             }
         }
 
+        // --- 3. FORM APPROVAL ---
         async function openForm() {
             switchView('view-form');
             document.getElementById('form-mesin').innerText = activeLog.mesin_id;
@@ -320,7 +329,7 @@
                 .eq('log_id', activeLog.id)
                 .eq('tanggal', today);
 
-            let finalNote = "-";
+            let finalNote = "BELUM ADA INPUT";
             let hasNG = false;
             let ngNotes = [];
 
@@ -345,13 +354,11 @@
                     }
                     noteEl.classList.add('text-black');
                 }
-            } else {
-                finalNote = activeLog.catatan ? activeLog.catatan : "Data belum tersedia.";
-            }
+            } 
 
             noteEl.innerText = finalNote;
             
-            // Reset form input
+            // Reset form
             document.getElementById('koor-name').value = '';
             document.getElementById('koor-remark').value = '';
             sigPadKoor.clear();
