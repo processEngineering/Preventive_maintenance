@@ -6,138 +6,115 @@
     <title>CHECKLIST HARIAN STAND LABEL DAN ROBOT</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* === PAGE SETUP (A4 LANDSCAPE - FIT 1 PAGE) === */
-        @page { 
-            size: A4 landscape; 
-            margin: 5mm; /* Margin tipis agar muat */
-        }
-        
-        body { 
-            font-family: Arial, Helvetica, sans-serif; 
-            font-size: 8pt; /* Font sedikit diperkecil agar muat vertikal */
-            margin: 0; padding: 10px; 
-            background: #ccc; 
-            -webkit-print-color-adjust: exact; /* Pastikan warna background tercetak */
-        }
-        
-        .sheet {
-            background: white;
-            width: 287mm; /* Lebar aman A4 landscape dikurangi margin */
-            height: 195mm; /* Tinggi aman agar tidak lompat halaman */
-            margin: 0 auto;
-            padding: 5mm;
-            box-shadow: 0 0 10px rgba(0,0,0,0.3);
-            box-sizing: border-box;
-            position: relative;
-            display: flex;
-            flex-direction: column;
+        /* === RESET TOTAL UNTUK PRINT === */
+        @page {
+            size: A4 landscape;
+            margin: 0; /* HAPUS MARGIN KERTAS DEFAULT */
         }
 
-        /* === PRINT FORCE 1 PAGE === */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #ccc;
+            -webkit-print-color-adjust: exact;
+        }
+
+        /* TAMPILAN MODE EDIT (LAYAR) */
+        .sheet {
+            background: white;
+            width: 297mm;
+            min-height: 210mm;
+            margin: 20px auto;
+            padding: 10mm;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* === SETTING KHUSUS PRINT (JURUS ANTI BOCOR) === */
         @media print {
-            body { 
-                background: white; 
-                margin: 0; 
-                padding: 0;
-                /* Trik jitu memaksa muat 1 halaman */
-                transform: scale(0.98); 
-                transform-origin: top left;
-                width: 102%; /* Kompensasi scale */
+            body, html {
+                width: 297mm;
+                height: 210mm;
+                overflow: hidden; /* Potong yang tumpah */
+                background: white;
             }
-            .sheet { 
-                box-shadow: none; 
-                border: none; 
-                margin: 0; 
-                padding: 0; 
+
+            .sheet {
                 width: 100%;
-                height: auto;
+                height: 100%;
+                margin: 0;
+                padding: 5mm 10mm; /* Margin aman buatan sendiri */
+                box-shadow: none;
+                border: none;
+                
+                /* PAKSA KECILKAN KONTEN AGAR MUAT */
+                transform: scale(0.90); 
+                transform-origin: top center;
             }
+
             .no-print { display: none !important; }
         }
 
-        /* === HEADER SECTION === */
-        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 3px; border: 2px solid black; }
+        /* === CSS TABEL & KONTEN === */
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; border: 2px solid black; }
         .header-table td { border: 1px solid black; padding: 2px 5px; vertical-align: middle; }
         
-        .title-cell { text-align: center; font-weight: bold; font-size: 13pt; text-transform: uppercase; width: 55%; }
-        .doc-info { font-size: 7pt; width: 25%; }
+        .title-cell { text-align: center; font-weight: bold; font-size: 14pt; text-transform: uppercase; width: 60%; }
+        .doc-info { font-size: 8pt; width: 25%; }
         .doc-info table { width: 100%; border: none; }
         .doc-info td { border: none; padding: 0px; }
 
-        /* === MACHINE INFO SECTION === */
         .info-section { 
-            width: 100%; margin-bottom: 2px; font-weight: bold; font-size: 9pt; 
+            width: 100%; margin-bottom: 5px; font-weight: bold; font-size: 10pt; 
             display: flex; justify-content: space-between; align-items: flex-end;
         }
-        .info-left { display: flex; flex-direction: column; gap: 2px; }
-        .info-right { text-align: right; padding-right: 50px; }
 
-        /* === MAIN CHECKLIST TABLE === */
+        /* TABEL UTAMA - DIPADATKAN */
         .main-table { 
             width: 100%; border-collapse: collapse; border: 2px solid black; 
             table-layout: fixed; 
         }
         .main-table th, .main-table td { 
             border: 1px solid black; 
-            padding: 1px; /* Padding sangat tipis */
-            font-size: 7pt; 
+            padding: 0px 2px; /* Padding kiri kanan tipis */
+            font-size: 8pt; 
             text-align: center;
             vertical-align: middle;
-            height: 13px; /* Tinggi baris dipadatkan */
-            line-height: 1;
+            height: 14px; /* TINGGI BARIS DIPAKSA PENDEK */
+            line-height: 1.1;
         }
         
-        .main-table th { background-color: #f0f0f0; font-weight: bold; height: 18px; }
+        .main-table th { background-color: #f0f0f0; font-weight: bold; height: 20px; }
 
-        /* Column Widths */
-        .col-no { width: 22px; }
-        .col-jenis { width: 200px; text-align: left !important; padding-left: 3px !important; }
-        .col-std { width: 120px; text-align: left !important; padding-left: 3px !important; }
-        .col-tgl { width: 18px; font-size: 6.5pt; }
+        .col-no { width: 25px; }
+        .col-jenis { width: 220px; text-align: left !important; padding-left: 5px !important; }
+        .col-std { width: 150px; text-align: left !important; padding-left: 5px !important; }
+        .col-tgl { width: auto; font-size: 7pt; }
 
-        /* Styling Item Rows */
-        .category-row { 
-            background-color: #ddd; font-weight: bold; text-align: left !important; padding-left: 5px !important; 
-        }
-        .item-text { text-align: left !important; padding-left: 3px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .std-text { text-align: left !important; padding-left: 3px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .category-row { background-color: #ddd; font-weight: bold; text-align: left !important; padding-left: 5px !important; }
+        .item-text { text-align: left !important; padding-left: 5px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .std-text { text-align: left !important; padding-left: 5px !important; font-size: 7pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
-        /* Checkmarks */
-        .ok-mark { font-family: 'Deja Vu Sans', sans-serif; font-size: 8pt; }
-        .ng-mark { color: red; font-weight: bold; font-size: 8pt; }
-        
-        /* Signatures */
-        .sig-img { 
-            width: 100%; height: 25px; object-fit: contain; /* Tinggi tanda tangan disesuaikan */
-            mix-blend-mode: multiply; display: block; margin: 0 auto;
-        }
+        .ok-mark { font-family: sans-serif; font-size: 9pt; }
+        .ng-mark { color: red; font-weight: bold; font-size: 9pt; }
+        .sig-img { width: 100%; height: 22px; object-fit: contain; mix-blend-mode: multiply; display: block; margin: 0 auto; }
 
-        /* === FOOTER SECTION === */
-        .footer-section { 
-            display: flex; justify-content: space-between; margin-top: 5px; 
-            font-size: 8pt; 
-        }
-        
-        .legend-box { width: 65%; }
+        /* FOOTER */
+        .footer-section { display: flex; justify-content: space-between; margin-top: 5px; font-size: 9pt; }
         .legend-table { border: none; width: 100%; }
-        .legend-table td { border: none; padding: 1px; vertical-align: top; }
+        .legend-table td { border: none; padding: 1px; vertical-align: top; font-size: 8pt; }
         
-        .approval-box { 
-            width: 220px; text-align: center; margin-right: 10px;
-        }
-        .approval-title { font-weight: bold; margin-bottom: 2px; }
-        .sig-box-super { 
-            border: 1px solid black; height: 50px; width: 100%; /* Kotak TTD diperkecil sedikit */
-            margin-bottom: 2px; position: relative;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .super-img { max-height: 45px; max-width: 90%; mix-blend-mode: multiply; }
+        .approval-box { width: 250px; text-align: center; margin-right: 20px; }
+        .sig-box-super { border: 1px solid black; height: 60px; width: 100%; margin-bottom: 2px; position: relative; display: flex; align-items: center; justify-content: center; }
+        .super-img { max-height: 55px; max-width: 90%; mix-blend-mode: multiply; }
 
-        /* === UI CONTROLS === */
+        /* CONTROL PANEL */
         .no-print {
             position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
-            background: #333; padding: 10px 20px; border-radius: 8px; color: white;
-            display: flex; gap: 10px; z-index: 999; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            background: #222; padding: 10px 20px; border-radius: 8px; color: white;
+            display: flex; gap: 10px; z-index: 9999; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
         select, button { padding: 5px 10px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; }
         .btn-blue { background: #3b82f6; color: white; }
@@ -157,7 +134,7 @@
             <option value="2026">2026</option><option value="2027">2027</option>
         </select>
         <button class="btn-blue" onclick="loadReport()">TAMPILKAN DATA</button>
-        <button onclick="window.print()">🖨️ PRINT</button>
+        <button onclick="window.print()">🖨️ PRINT (A4)</button>
     </div>
 
     <div class="sheet">
@@ -180,11 +157,11 @@
         </table>
 
         <div class="info-section">
-            <div class="info-left">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
                 <div>MERK MESIN : <span id="val-mesin" style="margin-left: 10px; border-bottom: 1px dotted black; min-width: 150px; display:inline-block;">-</span></div>
                 <div>TONAGE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <span id="val-ton" style="margin-left: 10px; border-bottom: 1px dotted black; min-width: 150px; display:inline-block;">-</span></div>
             </div>
-            <div class="info-right">
+            <div style="text-align: right; padding-right: 50px;">
                 BULAN : <span id="val-bulan" style="margin-left: 10px; border-bottom: 1px dotted black; min-width: 150px; display:inline-block;">-</span>
             </div>
         </div>
@@ -211,7 +188,7 @@
         </table>
 
         <div class="footer-section">
-            <div class="legend-box">
+            <div style="width: 60%;">
                 <table class="legend-table">
                     <tr><td colspan="2" style="font-weight: bold; text-decoration: underline;">Beri tanda :</td></tr>
                     <tr><td width="20" align="center">√</td><td>Bila item yang diperiksa baik, sesuai standar</td></tr>
@@ -221,7 +198,7 @@
             </div>
 
             <div class="approval-box">
-                <div class="approval-title">DIKETAHUI</div>
+                <div style="font-weight: bold; margin-bottom: 2px;">DIKETAHUI</div>
                 <div class="sig-box-super" id="box-super"></div>
                 <div style="border-top: 1px solid black; width: 80%; margin: 0 auto;"></div>
                 <div style="font-weight: bold; margin-top: 2px;">MECHANIC SUPERINTENDENT</div>
