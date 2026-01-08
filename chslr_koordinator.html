@@ -221,7 +221,6 @@
             sigPadKoor = new SignaturePad(canvas, { backgroundColor: 'rgb(255, 255, 255)' });
         }
 
-        // --- NAVIGATION ---
         function switchView(viewId) {
             document.getElementById('view-list').classList.add('hidden');
             document.getElementById('view-scanner').classList.add('hidden');
@@ -236,7 +235,6 @@
             loadQueue();
         }
 
-        // --- 1. LOAD QUEUE (Cari yang diisi hari ini) ---
         async function loadQueue() {
             const now = new Date();
             const todayDate = now.getDate();
@@ -270,13 +268,16 @@
                     foundAny = true;
                     const names = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
                     const dateStr = `${todayDate}/${currentMonth}/${currentYear}`;
-                    
+                    const isVerified = log.status_verifikasi; 
+
                     container.insertAdjacentHTML('beforeend', `
                         <div class="card-item" onclick="startScanner('${encodeURIComponent(JSON.stringify(log))}')">
                             <div class="card-row"><span class="lbl">nama mesin</span><span class="lbl">:</span><span class="val">${log.mesin_id}</span></div>
                             <div class="card-row"><span class="lbl">nama pelaksana</span><span class="lbl">:</span><span class="val text-right">${names}</span></div>
                             <div class="card-row"><span class="lbl">tanggal cek</span><span class="lbl">:</span><span class="val">${dateStr}</span></div>
-                            <div class="mt-2 text-center bg-black text-white text-[9px] font-bold py-1">KLIK UNTUK VERIFIKASI</div>
+                            <div class="mt-2 text-center bg-black text-white text-[9px] font-bold py-1">
+                                ${isVerified ? 'SUDAH DIVERIFIKASI (EDIT)' : 'KLIK UNTUK VERIFIKASI'}
+                            </div>
                         </div>
                     `);
                 }
@@ -287,7 +288,6 @@
             }
         }
 
-        // --- 2. SCANNER ---
         function startScanner(logStr) {
             activeLog = JSON.parse(decodeURIComponent(logStr));
             switchView('view-scanner');
@@ -305,7 +305,6 @@
             }
         }
 
-        // --- 3. FORM APPROVAL (LOGIKA FINAL) ---
         async function openForm() {
             switchView('view-form');
             document.getElementById('form-mesin').innerText = activeLog.mesin_id;
@@ -321,29 +320,25 @@
                 .eq('log_id', activeLog.id)
                 .eq('tanggal', today);
 
-            // === LOGIKA KONDISIONAL SESUAI PERMINTAAN ===
-            let finalNote = "";
+            let finalNote = "-";
             let hasNG = false;
             let ngNotes = [];
 
             if (results && results.length > 0) {
-                // Cek NG
                 results.forEach(r => {
                     if (r.status === 'NG') {
                         hasNG = true;
                         const item = r.chslr_items ? r.chslr_items.item_name : 'Item';
-                        const ket = r.keterangan ? r.keterangan : '-';
+                        const ket = r.keterangan ? r.keterangan : 'Rusak';
                         ngNotes.push(`${item}: ${ket}`);
                     }
                 });
 
                 if (hasNG) {
-                    // KONDISI 1: ADA NG -> Ambil KETERANGAN dari RESULT
                     finalNote = "NG: " + ngNotes.join(' | ');
-                    noteEl.classList.add('text-red-600');
+                    noteEl.classList.add('text-red-600'); 
                 } else {
-                    // KONDISI 2: OK SEMUA -> Ambil CATATAN dari LOG (activeLog)
-                    // Jika kosong, tampilkan "OK"
+                    // JIKA SEMUA OK, AMBIL DARI LOG (Catatan Pelaksana di footer form)
                     if (activeLog.catatan && activeLog.catatan.trim() !== "") {
                         finalNote = activeLog.catatan;
                     } else {
@@ -352,13 +347,11 @@
                     noteEl.classList.add('text-black');
                 }
             } else {
-                // Fallback jika result tidak terbaca
-                finalNote = activeLog.catatan ? activeLog.catatan : "Data belum tersedia.";
+                finalNote = "Data belum tersedia.";
             }
 
             noteEl.innerText = finalNote;
             
-            // Isi data existing
             if(activeLog.koordinator_nama) document.getElementById('koor-name').value = activeLog.koordinator_nama;
             if(activeLog.remark_koordinator) document.getElementById('koor-remark').value = activeLog.remark_koordinator;
 
@@ -369,26 +362,31 @@
             const name = document.getElementById('koor-name').value.trim();
             const remark = document.getElementById('koor-remark').value.trim();
 
-            if(!name || sigPadKoor.isEmpty()) return alert("⚠️ HARAP ISI NAMA & PARAF!");
+            // Validasi Input
+            if(!activeLog || !activeLog.id) {
+                return alert("Error: ID Laporan tidak ditemukan. Silakan refresh.");
+            }
+            if(!name || sigPadKoor.isEmpty()) {
+                return alert("⚠️ NAMA & PARAF WAJIB DIISI!");
+            }
             
             const btn = document.getElementById('btn-approve');
             btn.innerText = 'MEMPROSES...'; btn.disabled = true;
 
-            try {
-                const { error } = await _sb.from('chslr_log').update({
-                    koordinator_nama: name,
-                    signature_koordinator: sigPadKoor.toDataURL(),
-                    status_verifikasi: true,
-                    remark_koordinator: remark
-                }).eq('id', activeLog.id);
+            // Proses Update ke Database
+            const { error } = await _sb.from('chslr_log').update({
+                koordinator_nama: name,
+                signature_koordinator: sigPadKoor.toDataURL(),
+                status_verifikasi: true,
+                remark_koordinator: remark
+            }).eq('id', activeLog.id);
 
-                if(error) throw error;
-
-                alert("✅ DATA TERVERIFIKASI!");
-                backToList();
-            } catch (err) {
-                alert("Gagal: " + err.message);
+            if (error) {
+                alert("Gagal menyimpan: " + error.message);
                 btn.innerText = 'SUBMIT LAPORAN'; btn.disabled = false;
+            } else {
+                alert("✅ DATA BERHASIL DISIMPAN!");
+                backToList();
             }
         }
     </script>
