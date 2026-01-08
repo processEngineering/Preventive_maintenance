@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ffffff">
-    <title>Koordinator Verifikasi</title>
+    <title>Koordinator Verifikasi Final</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -179,6 +179,7 @@
             loadQueue();
         }
 
+        // --- 1. LOAD QUEUE (MENAMPILKAN DAFTAR) ---
         async function loadQueue() {
             const now = new Date();
             const todayDate = now.getDate();
@@ -203,6 +204,7 @@
             let count = 0;
 
             for (let log of logs) {
+                // Cek apakah pelaksana sudah input hari ini
                 const { data: results } = await _sb.from('chslr_result')
                     .select('id') 
                     .eq('log_id', log.id)
@@ -228,6 +230,7 @@
             }
         }
 
+        // --- 2. SCANNER LOGIC ---
         function startScanner(logStr) {
             activeLog = JSON.parse(decodeURIComponent(logStr));
             switchView('view-scanner');
@@ -246,7 +249,7 @@
             }
         }
 
-        // --- 3. FORM APPROVAL (LOGIKA FINAL SUPER ROBUST) ---
+        // --- 3. FORM & LOGIC CATATAN (CORE UPDATE) ---
         async function openForm() {
             switchView('view-form');
             document.getElementById('form-mesin').innerText = activeLog.mesin_id;
@@ -259,59 +262,52 @@
             noteEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
             noteEl.className = "i-val"; 
 
-            // 1. PERBAIKAN DI SINI: SELECT 'catatan_pelaksana' BUKAN 'catatan'
-            const { data: freshLog } = await _sb.from('chslr_log')
-                .select('catatan_pelaksana') // <--- SUDAH DIPERBAIKI SESUAI SQL
-                .eq('id', activeLog.id)
-                .single();
-            
-            // Simpan catatan header ini
-            const catatanHeader = (freshLog && freshLog.catatan_pelaksana) ? freshLog.catatan_pelaksana : "";
-
-            // 2. AMBIL RESULT HARI INI (DETAIL) - UNTUK CEK NG
+            // 1. QUERY RESULT (DETAIL) UNTUK CEK STATUS & KETERANGAN
             const today = new Date().getDate();
             const { data: results } = await _sb.from('chslr_result')
-                .select('status, keterangan, chslr_items(item_name)')
+                .select('status, keterangan, chslr_items(item_name)') // Mengambil Keterangan + Nama Item
                 .eq('log_id', activeLog.id)
                 .eq('tanggal', today);
 
-            // 3. LOGIKA PENENTUAN CATATAN (GABUNGAN NG + HEADER)
-            let ngList = [];
-            let hasNG = false;
+            // 2. QUERY LOG (HEADER) SEBAGAI CADANGAN
+            const { data: freshLog } = await _sb.from('chslr_log')
+                .select('catatan_pelaksana') 
+                .eq('id', activeLog.id)
+                .single();
+            const catatanHeader = (freshLog && freshLog.catatan_pelaksana) ? freshLog.catatan_pelaksana : "";
 
+            // 3. --- LOGIKA INTI PENENTUAN CATATAN ---
+            let ngMessages = [];
+            
+            // Filter hanya yang NG
             if (results && results.length > 0) {
                 results.forEach(r => {
                     if (r.status === 'NG') {
-                        hasNG = true;
+                        // AMBIL DARI 'keterangan' (SESUAI REQUEST)
                         const item = r.chslr_items ? r.chslr_items.item_name : 'Item';
-                        const ket = r.keterangan || 'Rusak';
-                        ngList.push(`${item} (${ket})`);
+                        const ket = r.keterangan || '(Tanpa Keterangan)';
+                        ngMessages.push(`${item}: ${ket}`);
                     }
                 });
             }
 
-            // MERAKIT TEXT FINAL
-            let displayText = "";
-
-            if (hasNG) {
-                // Jika ada NG, tampilkan paling depan + warna merah
-                displayText = "⚠️ NG: " + ngList.join(', ');
-                if (catatanHeader.trim() !== "") {
-                    displayText += " | 📝 Note: " + catatanHeader; // Tambahkan catatan pelaksana jika ada
-                }
+            // TENTUKAN TAMPILAN
+            if (ngMessages.length > 0) {
+                // KASUS 1: ADA NG
+                // Tampilkan gabungan semua Keterangan dari item yang NG
+                noteEl.innerHTML = "⚠️ <b>PERLU PERHATIAN!</b><br>" + ngMessages.join('<br>');
                 noteEl.classList.add('text-red-custom');
             } else {
-                // Jika tidak ada NG
+                // KASUS 2: SEMUA OK
+                // Tampilkan catatan umum (Header) atau pesan Aman
                 if (catatanHeader.trim() !== "") {
-                    displayText = "📝 " + catatanHeader;
+                    noteEl.innerText = "📝 " + catatanHeader;
                 } else {
-                    displayText = "✅ KONDISI OK (AMAN)";
+                    noteEl.innerText = "✅ AMAN (Tidak ada catatan)";
                 }
                 noteEl.classList.remove('text-red-custom');
             }
 
-            noteEl.innerText = displayText;
-            
             // Re-render canvas
             const canvas = document.getElementById('signature-pad-koor');
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
