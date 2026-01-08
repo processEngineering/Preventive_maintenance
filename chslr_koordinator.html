@@ -128,19 +128,14 @@
     <div id="app-shell">
 
         <main class="app-content">
-            
             <div class="header-pill">Koordinator</div>
 
             <div id="view-list" class="w-full flex flex-col items-center">
                 <div class="w-full max-w-[340px] text-right mb-4">
                     <button onclick="loadQueue()" class="text-xs font-bold underline">Refresh Data</button>
                 </div>
-                
                 <div id="log-container" class="w-full flex flex-col items-center">
-                    <div class="text-center py-10 font-bold text-xs uppercase">
-                        <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>
-                        Mencari Laporan...
-                    </div>
+                    <div class="text-center py-10 font-bold text-xs uppercase">Mencari Laporan...</div>
                 </div>
             </div>
 
@@ -312,7 +307,7 @@
             }
         }
 
-        // --- 3. FORM APPROVAL (LOGIKA PERBAIKAN) ---
+        // --- 3. FORM APPROVAL ---
         async function openForm() {
             switchView('view-form');
             document.getElementById('form-mesin').innerText = activeLog.mesin_id;
@@ -328,13 +323,11 @@
                 .eq('log_id', activeLog.id)
                 .eq('tanggal', today);
 
-            let finalNote = "";
+            let finalNote = "-";
             let hasNG = false;
             let ngNotes = [];
 
-            // CEK APAKAH RESULT ADA ISINYA
             if (results && results.length > 0) {
-                // Loop cari NG
                 results.forEach(r => {
                     if (r.status === 'NG') {
                         hasNG = true;
@@ -345,11 +338,9 @@
                 });
 
                 if (hasNG) {
-                    // KONDISI 1: ADA NG -> Ambil Keterangan dari Result
                     finalNote = "NG: " + ngNotes.join(' | ');
                     noteEl.classList.add('text-red-600'); 
                 } else {
-                    // KONDISI 2: OK SEMUA -> Ambil Catatan dari Log (activeLog.catatan)
                     if (activeLog.catatan && activeLog.catatan.trim() !== "") {
                         finalNote = activeLog.catatan;
                     } else {
@@ -358,14 +349,7 @@
                     noteEl.classList.add('text-black');
                 }
             } else {
-                // FALLBACK: JIKA RESULT KOSONG (Tapi harusnya ada karena dashboard nge-cek)
-                // Coba ambil dari Log langsung sebagai backup terakhir
-                if (activeLog.catatan && activeLog.catatan.trim() !== "") {
-                    finalNote = activeLog.catatan;
-                } else {
-                    finalNote = "KONDISI OK (AMAN)";
-                }
-                noteEl.classList.add('text-black');
+                finalNote = activeLog.catatan ? activeLog.catatan : "Data belum tersedia.";
             }
 
             noteEl.innerText = finalNote;
@@ -381,14 +365,18 @@
             const remark = document.getElementById('koor-remark').value.trim();
             const btn = document.getElementById('btn-approve');
 
-            // --- TRY CATCH BLOCK AGAR TOMBOL TIDAK MENTOK ---
+            // --- PENGAMANAN ERROR (TRY-CATCH) ---
             try {
-                if(!activeLog || !activeLog.id) throw new Error("ID Laporan hilang. Refresh halaman.");
-                if(!name) throw new Error("Nama Koordinator wajib diisi!");
+                if(!activeLog || !activeLog.id) {
+                    throw new Error("ID Laporan hilang/corrupt. Silakan refresh halaman.");
+                }
+                if(!name) throw new Error("Nama Koordinator belum diisi!");
                 if(sigPadKoor.isEmpty()) throw new Error("Paraf wajib diisi!");
 
-                btn.innerText = 'MEMPROSES...'; btn.disabled = true;
+                btn.innerText = 'MEMPROSES...'; 
+                btn.disabled = true;
 
+                // --- PROSES SIMPAN KE TABEL chslr_log ---
                 const { error } = await _sb.from('chslr_log').update({
                     koordinator_nama: name,
                     signature_koordinator: sigPadKoor.toDataURL(),
@@ -396,13 +384,14 @@
                     remark_koordinator: remark
                 }).eq('id', activeLog.id);
 
-                if (error) throw error;
+                if (error) throw error; // Lempar error database ke catch
 
-                alert("✅ DATA TERVERIFIKASI!");
+                alert("✅ DATA BERHASIL DISIMPAN!");
                 backToList();
 
             } catch (err) {
-                alert("Gagal: " + err.message);
+                // TANGKAP SEMUA ERROR DISINI
+                alert("GAGAL MENYIMPAN:\n" + (err.message || JSON.stringify(err)));
                 btn.innerText = 'SUBMIT LAPORAN'; 
                 btn.disabled = false;
             }
