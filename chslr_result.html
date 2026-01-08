@@ -3,335 +3,326 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan Pengecekan Mesin</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <title>AF.SP 05.14.Rev-00 - REPORT</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* Import Google Font untuk tampilan profesional */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        /* === PAGE SETUP (A4 LANDSCAPE - EXCEL LOOK) === */
+        @page {
+            size: A4 landscape;
+            margin: 0; 
+        }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6; /* Abu-abu muda untuk layar */
-            color: #1f2937;
+            margin: 0; padding: 0;
+            background: #ccc;
+            font-family: Arial, sans-serif;
+            font-size: 8pt;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
-        /* Container Dokumen (Visual Kertas di Layar) */
-        .page-container {
-            width: 210mm;
-            min-height: 297mm;
-            margin: 40px auto;
+        /* === SHEET SIMULATION === */
+        .sheet {
             background: white;
-            padding: 15mm;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            width: 297mm;
+            height: 209mm; /* Pas A4 */
+            margin: 20px auto;
+            padding: 5mm 10mm;
+            box-sizing: border-box;
             position: relative;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
 
-        /* Styling Tabel Custom */
-        .check-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem; /* Ukuran font sedikit dikecilkan agar muat */
-        }
-        .check-table th, .check-table td {
-            border: 1px solid #9ca3af;
-            padding: 6px 8px;
-        }
-        .check-table th {
-            background-color: #e5e7eb;
-            text-align: center;
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-        }
-        
-        /* Checkbox Custom */
-        .status-radio {
-            accent-color: #2563eb; /* Warna biru saat dicentang */
-            transform: scale(1.2);
-        }
-
-        /* --- SETTINGAN PRINT/PDF (BAGIAN KRUSIAL) --- */
         @media print {
-            @page {
-                size: A4;
-                margin: 0; /* Margin 0 karena kita atur padding di body */
-            }
-
-            body {
-                background: white;
+            body { 
+                background: white; 
                 margin: 0;
                 padding: 0;
-                /* TEKNIK SCALE: Perkecil tampilan jadi 90% agar tabel panjang muat 1 hal */
-                /* Ubah angka 0.90 ini jika masih kurang pas */
-                transform: scale(0.92); 
-                transform-origin: top center;
-                width: 100%;
             }
-
-            .page-container {
-                width: 100%;
-                margin: 0;
-                padding: 10mm 15mm; /* Padding kertas saat print */
+            .sheet {
+                margin: 0 auto; /* Tengah */
                 box-shadow: none;
-                border: none;
+                width: 100%;
+                height: auto;
+                padding: 5mm 5mm; /* Padding sedikit dikurangi */
+                
+                /* KUNCI SUPAYA MUAT 1 HALAMAN: */
+                /* Kecilkan skala jadi 0.85 (85%) */
+                transform: scale(0.85); 
+                transform-origin: top center; 
+                
+                /* Hindari page break */
+                page-break-inside: avoid;
             }
-
-            /* Sembunyikan elemen yang tidak perlu di PDF */
-            .no-print {
-                display: none !important;
-            }
-
-            /* Pastikan background tabel tercetak */
-            * {
-                -webkit-print-color-adjust: exact !important;   
-                print-color-adjust: exact !important; 
-            }
+            .no-print { display: none !important; }
+            
+            /* Sembunyikan header/footer browser default jika muncul */
+            @page { margin: 0; }
         }
+
+        /* === UTILS === */
+        table { border-collapse: collapse; width: 100%; }
+        td, th { border: 1px solid black; padding: 2px 4px; vertical-align: middle; }
+        .no-border { border: none !important; }
+        .text-center { text-align: center; }
+        .text-left { text-align: left; }
+        .text-right { text-align: right; }
+        .font-bold { font-weight: bold; }
+        .uppercase { text-transform: uppercase; }
+
+        /* === HEADER SECTION === */
+        .header-table { margin-bottom: 5px; border: 2px solid black; }
+        .logo-cell { width: 100px; text-align: center; border-right: 1px solid black; }
+        .title-cell { font-size: 14pt; text-align: center; border-right: 1px solid black; width: 50%; }
+        .meta-cell { font-size: 7.5pt; width: 25%; padding: 0; }
+        .meta-table td { border: none; padding: 1px 4px; }
+
+        /* === INFO SECTION === */
+        .info-table { margin-bottom: 5px; border: none; }
+        .info-table td { border: none; padding: 1px; font-weight: bold; font-size: 9pt; }
+        .dots { border-bottom: 1px dotted black; display: inline-block; min-width: 150px; padding-left: 5px; }
+
+        /* === MAIN CHECKLIST TABLE === */
+        .main-table { border: 2px solid black; table-layout: fixed; }
+        .main-table th { background-color: #f2f2f2; height: 25px; font-size: 8pt; text-align: center; }
+        .main-table td { height: 16px; font-size: 7.5pt; padding: 0 2px; }
+
+        /* Column Widths (Pixel Perfect for A4) */
+        .col-no { width: 25px; }
+        .col-jenis { width: 220px; text-align: left !important; padding-left: 5px !important; }
+        .col-std { width: 140px; text-align: left !important; padding-left: 5px !important; font-style: italic; font-size: 7pt; }
+        .col-date { width: 17px; font-size: 7pt; text-align: center; }
+
+        /* Special Rows */
+        .cat-row { background-color: #bfbfbf; font-weight: bold; text-align: left !important; padding-left: 5px !important; }
+        .sig-row td { height: 35px; vertical-align: middle; } /* Tinggi baris paraf */
+        
+        .sig-img { width: 100%; height: 30px; object-fit: contain; mix-blend-mode: multiply; display: block; margin: 0 auto; }
+        .ng-text { color: red; font-weight: bold; }
+        .ok-text { font-family: sans-serif; }
+
+        /* === FOOTER SECTION === */
+        .footer-container { display: flex; justify-content: space-between; margin-top: 10px; }
+        
+        /* Legend Box */
+        .legend-box { width: 60%; font-size: 8pt; }
+        .legend-table td { border: none; padding: 1px; vertical-align: top; }
+        
+        /* Approval Box */
+        .approval-box { width: 220px; text-align: center; font-weight: bold; font-size: 9pt; }
+        .sig-box { border: 1px solid black; height: 65px; width: 100%; margin: 2px 0; display: flex; align-items: center; justify-content: center; }
+        .super-img { max-height: 60px; max-width: 90%; mix-blend-mode: multiply; }
+
+        /* CONTROLS */
+        .no-print { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #222; padding: 10px; border-radius: 8px; color: white; display: flex; gap: 10px; z-index: 9999; }
+        select, button { padding: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div class="fixed bottom-8 right-8 no-print z-50">
-        <button onclick="window.print()" class="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all transform hover:scale-105">
-            <i class="fa-solid fa-file-pdf text-xl"></i>
-            <span>Ekspor PDF</span>
-        </button>
+    <div class="no-print">
+        <select id="f-mesin"></select>
+        <select id="f-bulan">
+            <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+            <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+            <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+            <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+        </select>
+        <select id="f-tahun"><option value="2026">2026</option><option value="2027">2027</option></select>
+        <button onclick="loadData()">TAMPILKAN</button>
+        <button onclick="window.print()">EKSPOR PDF</button>
     </div>
 
-    <div class="page-container">
-        
-        <header class="border-b-2 border-black pb-4 mb-4 flex justify-between items-center">
-            <div class="flex items-center gap-4">
-                <div class="w-16 h-16 bg-gray-800 text-white flex items-center justify-center font-bold text-xs text-center rounded">
-                    LOGO<br>PERUSAHAAN
-                </div>
-                <div>
-                    <h1 class="text-2xl font-bold uppercase tracking-wide">Daily Check Sheet</h1>
-                    <p class="text-sm text-gray-600">Departemen: Injection Molding</p>
-                </div>
-            </div>
-            <div class="text-right text-xs">
-                <table class="border-collapse">
-                    <tr>
-                        <td class="font-bold pr-2">No. Dok:</td>
-                        <td>FORM-MT-001</td>
+    <div class="sheet">
+        <table class="header-table">
+            <tr>
+                <td class="logo-cell">
+                    <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" style="width: 100px;">
+                </td>
+                <td class="title-cell font-bold">
+                    CHECKLIST HARIAN STAND LABEL DAN ROBOT
+                </td>
+                <td class="meta-cell">
+                    <table class="meta-table">
+                        <tr><td>No Dokumen</td><td>: AF.SP 05.14.Rev-00</td></tr>
+                        <tr><td>Tanggal Terbit</td><td>: 02 Agustus 2024</td></tr>
+                        <tr><td>Halaman</td><td>: 1/1</td></tr>
+                        <tr><td>Tanggal Revisi</td><td>: -</td></tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <table class="info-table">
+            <tr>
+                <td width="100">MERK MESIN</td>
+                <td width="10">:</td>
+                <td width="300"><span id="txt-mesin" class="dots"></span></td>
+                <td class="text-right">BULAN :</td>
+                <td width="150"><span id="txt-bulan" class="dots"></span></td>
+            </tr>
+            <tr>
+                <td>TONAGE</td>
+                <td>:</td>
+                <td><span id="txt-ton" class="dots"></span></td>
+                <td colspan="2"></td>
+            </tr>
+        </table>
+
+        <table class="main-table">
+            <thead>
+                <tr>
+                    <th rowspan="2" class="col-no">No</th>
+                    <th rowspan="2" class="col-jenis">Jenis pengecekan</th>
+                    <th rowspan="2" class="col-std">Standard</th>
+                    <th colspan="31">Tanggal</th>
+                </tr>
+                <tr id="date-row">
                     </tr>
-                    <tr>
-                        <td class="font-bold pr-2">Revisi:</td>
-                        <td>02 / 2026</td>
+            </thead>
+            <tbody id="table-body">
+                </tbody>
+            <tbody>
+                <tr class="sig-row" id="row-pel">
+                    <td colspan="3" class="text-right font-bold" style="padding-right: 10px;">Paraf Pelaksana</td>
                     </tr>
+                <tr class="sig-row" id="row-cek">
+                    <td colspan="3" class="text-right font-bold" style="padding-right: 10px;">Paraf Pengecek</td>
+                    </tr>
+            </tbody>
+        </table>
+
+        <div class="footer-container">
+            <div class="legend-box">
+                <table class="legend-table">
+                    <tr><td colspan="2" class="font-bold" style="text-decoration: underline;">Beri tanda :</td></tr>
+                    <tr><td width="20" class="text-center">√</td><td>Bila item yang diperiksa baik, sesuai standar</td></tr>
+                    <tr><td class="text-center">x</td><td>Bila terjadi penyimpangan / kerusakan pada item yang diperiksa.</td></tr>
+                    <tr><td class="text-center">o</td><td>Bila mesin dalam proses perbaikan</td></tr>
                 </table>
             </div>
-        </header>
 
-        <section class="mb-6 bg-gray-50 p-3 rounded border border-gray-200">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                    <span class="block text-gray-500 text-xs uppercase font-bold">Nama Mesin</span>
-                    <span class="font-semibold text-lg" id="machine-name">TOSHIBA 350T</span>
-                </div>
-                <div>
-                    <span class="block text-gray-500 text-xs uppercase font-bold">Kode Aset</span>
-                    <span class="font-semibold">MC-INJ-04</span>
-                </div>
-                <div>
-                    <span class="block text-gray-500 text-xs uppercase font-bold">Tanggal</span>
-                    <span class="font-semibold" id="current-date">-</span>
-                </div>
-                <div>
-                    <span class="block text-gray-500 text-xs uppercase font-bold">Shift</span>
-                    <select class="border border-gray-300 rounded px-2 py-1 bg-white w-full">
-                        <option>Shift 1 (Pagi)</option>
-                        <option>Shift 2 (Sore)</option>
-                        <option>Shift 3 (Malam)</option>
-                    </select>
-                </div>
+            <div class="approval-box">
+                <div style="margin-bottom: 2px;">DIKETAHUI</div>
+                <div class="sig-box" id="super-sig-box"></div>
+                <div id="super-name-txt" style="text-transform: uppercase; border-top: 1px solid black; display: inline-block; width: 90%; padding-top: 2px;">( ........................ )</div>
+                <div style="font-size: 8pt; margin-top: 2px;">MECHANIC SUPERINTENDENT</div>
             </div>
-        </section>
-
-        <section class="mb-6">
-            <table class="check-table">
-                <thead>
-                    <tr>
-                        <th class="w-10">No</th>
-                        <th class="text-left w-1/3">Item Pengecekan</th>
-                        <th class="text-left">Standar</th>
-                        <th class="w-24">Status</th>
-                        <th class="w-1/3">Keterangan / Temuan</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="text-center">1</td>
-                        <td class="font-semibold">Tekanan Hidrolik</td>
-                        <td class="text-xs text-gray-600">Gauge menunjukkan 120-140 bar</td>
-                        <td class="text-center">
-                            <div class="flex justify-center gap-3">
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check1" class="status-radio"> OK</label>
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check1" class="status-radio text-red-600"> NG</label>
-                            </div>
-                        </td>
-                        <td><input type="text" class="w-full text-xs border-b border-gray-300 focus:outline-none focus:border-blue-500" placeholder="..."></td>
-                    </tr>
-                    
-                    <tr>
-                        <td class="text-center">2</td>
-                        <td class="font-semibold">Level Oli</td>
-                        <td class="text-xs text-gray-600">Di antara garis H dan L</td>
-                        <td class="text-center">
-                            <div class="flex justify-center gap-3">
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check2" class="status-radio"> OK</label>
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check2" class="status-radio"> NG</label>
-                            </div>
-                        </td>
-                        <td><input type="text" class="w-full text-xs border-b border-gray-300 focus:outline-none focus:border-blue-500" placeholder="..."></td>
-                    </tr>
-
-                    <tr>
-                        <td class="text-center">3</td>
-                        <td class="font-semibold">Safety Door (Depan)</td>
-                        <td class="text-xs text-gray-600">Sensor aktif saat pintu dibuka</td>
-                        <td class="text-center">
-                            <div class="flex justify-center gap-3">
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check3" class="status-radio"> OK</label>
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check3" class="status-radio"> NG</label>
-                            </div>
-                        </td>
-                        <td><input type="text" class="w-full text-xs border-b border-gray-300 focus:outline-none focus:border-blue-500" placeholder="..."></td>
-                    </tr>
-
-                    <tr>
-                        <td class="text-center">4</td>
-                        <td class="font-semibold">Suhu Heater Barrel</td>
-                        <td class="text-xs text-gray-600">Sesuai setting sheet (±10°C)</td>
-                        <td class="text-center">
-                            <div class="flex justify-center gap-3">
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check4" class="status-radio"> OK</label>
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check4" class="status-radio"> NG</label>
-                            </div>
-                        </td>
-                        <td><input type="text" class="w-full text-xs border-b border-gray-300 focus:outline-none focus:border-blue-500" placeholder="..."></td>
-                    </tr>
-
-                    <tr>
-                        <td class="text-center">5</td>
-                        <td class="font-semibold">Cooling Water</td>
-                        <td class="text-xs text-gray-600">Aliran lancar, tidak bocor</td>
-                        <td class="text-center">
-                            <div class="flex justify-center gap-3">
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check5" class="status-radio"> OK</label>
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check5" class="status-radio"> NG</label>
-                            </div>
-                        </td>
-                        <td><input type="text" class="w-full text-xs border-b border-gray-300 focus:outline-none focus:border-blue-500" placeholder="..."></td>
-                    </tr>
-
-                    <tr>
-                        <td class="text-center">6</td>
-                        <td class="font-semibold">Kebersihan Hopper</td>
-                        <td class="text-xs text-gray-600">Tidak ada kontaminasi material</td>
-                        <td class="text-center">
-                            <div class="flex justify-center gap-3">
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check6" class="status-radio"> OK</label>
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check6" class="status-radio"> NG</label>
-                            </div>
-                        </td>
-                        <td><input type="text" class="w-full text-xs border-b border-gray-300 focus:outline-none focus:border-blue-500" placeholder="..."></td>
-                    </tr>
-                    
-                    <tr>
-                        <td class="text-center">7</td>
-                        <td class="font-semibold">Emergency Stop Button</td>
-                        <td class="text-xs text-gray-600">Berfungsi menghentikan mesin</td>
-                        <td class="text-center">
-                            <div class="flex justify-center gap-3">
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check7" class="status-radio"> OK</label>
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check7" class="status-radio"> NG</label>
-                            </div>
-                        </td>
-                        <td><input type="text" class="w-full text-xs border-b border-gray-300 focus:outline-none focus:border-blue-500" placeholder="..."></td>
-                    </tr>
-                     <tr>
-                        <td class="text-center">8</td>
-                        <td class="font-semibold">Lubrikasi / Greasing</td>
-                        <td class="text-xs text-gray-600">Grease pump otomatis bekerja</td>
-                        <td class="text-center">
-                            <div class="flex justify-center gap-3">
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check8" class="status-radio"> OK</label>
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check8" class="status-radio"> NG</label>
-                            </div>
-                        </td>
-                        <td><input type="text" class="w-full text-xs border-b border-gray-300 focus:outline-none focus:border-blue-500" placeholder="..."></td>
-                    </tr>
-                     <tr>
-                        <td class="text-center">9</td>
-                        <td class="font-semibold">Kondisi Mold</td>
-                        <td class="text-xs text-gray-600">Tidak ada sisa material/karat</td>
-                        <td class="text-center">
-                            <div class="flex justify-center gap-3">
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check9" class="status-radio"> OK</label>
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check9" class="status-radio"> NG</label>
-                            </div>
-                        </td>
-                        <td><input type="text" class="w-full text-xs border-b border-gray-300 focus:outline-none focus:border-blue-500" placeholder="..."></td>
-                    </tr>
-                     <tr>
-                        <td class="text-center">10</td>
-                        <td class="font-semibold">Area Kerja (5S)</td>
-                        <td class="text-xs text-gray-600">Bersih, tidak ada oli tumpah</td>
-                        <td class="text-center">
-                            <div class="flex justify-center gap-3">
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check10" class="status-radio"> OK</label>
-                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="check10" class="status-radio"> NG</label>
-                            </div>
-                        </td>
-                        <td><input type="text" class="w-full text-xs border-b border-gray-300 focus:outline-none focus:border-blue-500" placeholder="..."></td>
-                    </tr>
-                </tbody>
-            </table>
-        </section>
-
-        <section class="mb-8">
-            <h3 class="text-sm font-bold uppercase mb-2 border-b border-gray-300 inline-block">Catatan / Masalah Lain:</h3>
-            <textarea class="w-full border border-gray-300 rounded p-2 text-sm h-20 resize-none focus:ring-1 focus:ring-blue-500 outline-none" placeholder="Tulis catatan kerusakan atau hal abnormal di sini..."></textarea>
-        </section>
-
-        <footer class="mt-auto">
-            <div class="grid grid-cols-3 gap-8 text-center text-sm">
-                <div>
-                    <p class="mb-8 text-gray-500 font-semibold">Dibuat Oleh,</p>
-                    <div class="h-16 border-b border-gray-400 w-3/4 mx-auto mb-2">
-                        </div>
-                    <p class="font-bold">Operator</p>
-                </div>
-                <div>
-                    <p class="mb-8 text-gray-500 font-semibold">Diperiksa Oleh,</p>
-                    <div class="h-16 border-b border-gray-400 w-3/4 mx-auto mb-2">
-                        </div>
-                    <p class="font-bold">Leader / Foreman</p>
-                </div>
-                <div>
-                    <p class="mb-8 text-gray-500 font-semibold">Diketahui Oleh,</p>
-                    <div class="h-16 border-b border-gray-400 w-3/4 mx-auto mb-2">
-                        </div>
-                    <p class="font-bold">Manager</p>
-                </div>
-            </div>
-            <div class="text-center mt-8 text-[10px] text-gray-400 italic">
-                Dicetak otomatis melalui Sistem Digital Checksheet | <?php echo date('Y'); ?>
-            </div>
-        </footer>
+        </div>
 
     </div>
 
     <script>
-        // Set tanggal hari ini
-        const dateElement = document.getElementById('current-date');
-        const today = new Date();
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        dateElement.textContent = today.toLocaleDateString('id-ID', options);
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
+
+        async function init() {
+            // Render Date Header 1-31
+            const dr = document.getElementById('date-row');
+            for(let i=1; i<=31; i++) dr.innerHTML += `<th class="col-date">${i}</th>`;
+
+            // Load Options
+            const { data } = await _sb.from('chslr_mesin').select('nama_mesin');
+            const sel = document.getElementById('f-mesin');
+            data?.forEach(d => sel.innerHTML += `<option>${d.nama_mesin}</option>`);
+
+            document.getElementById('f-bulan').value = 1; 
+            document.getElementById('f-tahun').value = 2026;
+            loadData();
+        }
+
+        async function loadData() {
+            const m = document.getElementById('f-mesin').value;
+            const b = document.getElementById('f-bulan').value;
+            const t = document.getElementById('f-tahun').value;
+
+            // 1. Headers
+            document.getElementById('txt-mesin').innerText = m;
+            document.getElementById('txt-bulan').innerText = document.getElementById('f-bulan').options[b-1].text.toUpperCase() + " " + t;
+            
+            const { data: mData } = await _sb.from('chslr_mesin').select('tonage').eq('nama_mesin', m).single();
+            document.getElementById('txt-ton').innerText = mData?.tonage || '-';
+
+            // 2. Fetch Log & Results
+            const { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', m).eq('bulan', b).eq('tahun', t).maybeSingle();
+            const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
+            const { data: res } = log ? await _sb.from('chslr_result').select('*').eq('log_id', log.id) : { data: [] };
+
+            // 3. Render Items
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = "";
+            let curCat = "", rowNum = 1, subIdx = 0;
+            const abjad = "abcdefghijklmnopqrstuvwxyz";
+
+            items.forEach(item => {
+                // Category Header
+                if(item.kategori !== curCat) {
+                    curCat = item.kategori;
+                    subIdx = 0;
+                    tbody.innerHTML += `
+                        <tr class="cat-row">
+                            <td class="text-center">${rowNum}</td>
+                            <td colspan="32" class="uppercase">${curCat}</td>
+                        </tr>`;
+                    rowNum++;
+                }
+
+                // Item Row
+                let html = `<tr>
+                    <td class="text-center">${abjad[subIdx] || '-'}</td>
+                    <td class="col-jenis">${item.item_name}</td>
+                    <td class="col-std">${item.standard || ''}</td>`;
+                
+                for(let d=1; d<=31; d++) {
+                    const r = res.find(x => x.item_id === item.id && x.tanggal === d);
+                    let val = "";
+                    if(r) val = r.status === 'OK' ? '<span class="ok-text">√</span>' : '<span class="ng-text">x</span>';
+                    html += `<td class="col-date">${val}</td>`;
+                }
+                html += `</tr>`;
+                tbody.innerHTML += html;
+                subIdx++;
+            });
+
+            // 4. Render Signatures
+            const rPel = document.getElementById('row-pel');
+            const rCek = document.getElementById('row-cek');
+            
+            // Clear existing cells (keep header)
+            while(rPel.cells.length > 1) rPel.deleteCell(1);
+            while(rCek.cells.length > 1) rCek.deleteCell(1);
+
+            for(let d=1; d<=31; d++) {
+                // Pelaksana
+                const dayRes = res.filter(x => x.tanggal === d && x.signature);
+                let cellPel = rPel.insertCell();
+                cellPel.className = "col-date";
+                if(dayRes.length > 0) cellPel.innerHTML = `<img src="${dayRes[0].signature}" class="sig-img">`;
+
+                // Pengecek
+                const hasData = res.some(x => x.tanggal === d);
+                let cellCek = rCek.insertCell();
+                cellCek.className = "col-date";
+                if(log?.status_verifikasi && log?.signature_koordinator && hasData) {
+                    cellCek.innerHTML = `<img src="${log.signature_koordinator}" class="sig-img">`;
+                }
+            }
+
+            // 5. Superintendent Footer
+            const supBox = document.getElementById('super-sig-box');
+            const supName = document.getElementById('super-name-txt');
+            
+            if(log?.status_final && log?.signature_superintendent) {
+                supBox.innerHTML = `<img src="${log.signature_superintendent}" class="super-img">`;
+                supName.innerText = `( ${log.superintendent_nama || '........................'} )`;
+            } else {
+                supBox.innerHTML = "";
+                supName.innerText = "( ........................ )";
+            }
+        }
+
+        window.onload = init;
     </script>
 </body>
 </html>
