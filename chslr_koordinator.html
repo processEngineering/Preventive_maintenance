@@ -35,7 +35,7 @@
 
         /* === WIREFRAME STYLE (TEGAS & TEBAL) === */
         
-        /* Header */
+        /* Header Pill */
         .header-pill {
             border: 3px solid #000; border-radius: 50px;
             padding: 15px 50px; text-align: center; font-weight: 900;
@@ -58,11 +58,11 @@
         .lbl { font-weight: 800; }
         .val { font-weight: 700; text-transform: uppercase; }
 
-        /* Form Style */
+        /* Form Info & Input */
         .info-container {
             width: 100%; max-width: 340px;
-            background: #f3f4f6; border: 3px solid #000; border-radius: 20px;
-            padding: 15px; box-shadow: 5px 5px 0 #000; margin-bottom: 20px;
+            background: #f8fafc; border: 3px solid #000; border-radius: 20px;
+            padding: 15px; box-shadow: 5px 5px 0 #000; margin-bottom: 25px;
         }
         .info-line {
             display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 8px;
@@ -70,7 +70,7 @@
         }
         .info-title { font-weight: 800; width: 35%; }
         .info-sep { font-weight: 800; width: 5%; text-align: center; }
-        .info-data { font-weight: 900; width: 60%; text-align: right; text-transform: uppercase; line-height: 1.2; word-break: break-word; }
+        .info-data { font-weight: 900; width: 60%; text-align: right; text-transform: uppercase; line-height: 1.3; }
 
         .input-box {
             width: 100%; max-width: 340px;
@@ -97,7 +97,7 @@
         }
         .btn-submit:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
 
-        /* Scanner Style (Sesuai Gambar) */
+        /* Scanner */
         .camera-frame { width: 260px; height: 260px; position: relative; margin: 0 auto; }
         #reader { width: 100%; height: 100%; background: #eee; }
         #reader video { object-fit: cover !important; }
@@ -143,7 +143,7 @@
                 <div id="log-container" class="w-full flex flex-col items-center">
                     <div class="text-center py-10 font-bold text-xs uppercase">
                         <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>
-                        Mencari Laporan Harian...
+                        Mencari Laporan Hari Ini...
                     </div>
                 </div>
             </div>
@@ -244,7 +244,7 @@
             loadQueue();
         }
 
-        // --- LOGIKA UTAMA: FETCH ANTREAN ---
+        // --- 1. LOAD QUEUE (LOGIKA BARU - CEK TABEL RESULT) ---
         async function loadQueue() {
             const now = new Date();
             const todayDate = now.getDate();
@@ -252,17 +252,17 @@
             const currentYear = now.getFullYear();
 
             const container = document.getElementById('log-container');
-            container.innerHTML = '<div class="text-center py-10 font-bold text-xs">Mencari data...</div>';
+            container.innerHTML = '<div class="text-center py-10 font-bold text-xs">Mencari laporan hari ini...</div>';
 
-            // 1. Ambil Log Bulan Ini (Header)
+            // 1. Ambil Log Bulan Ini (Header) yang statusnya belum di approve superintendent (opsional: atau belum diverif koor)
+            // Asumsi: Koordinator memverifikasi setiap hari.
             const { data: logs, error } = await _sb.from('chslr_log')
                 .select('*')
                 .eq('bulan', currentMonth)
-                .eq('tahun', currentYear)
-                .eq('status_verifikasi', false); // Hanya yang belum diverifikasi
+                .eq('tahun', currentYear);
 
             if (!logs || logs.length === 0) {
-                container.innerHTML = `<div class="input-box text-center opacity-50 !shadow-none">Tidak ada log bulan ini.</div>`;
+                container.innerHTML = `<div class="input-box text-center opacity-50 !shadow-none">Belum ada log bulan ini.</div>`;
                 return;
             }
 
@@ -271,18 +271,21 @@
 
             // 2. Loop setiap Log untuk cek apakah ada RESULT hari ini (Detail)
             for (let log of logs) {
-                // Cek ke tabel result, adakah isian tanggal hari ini untuk log_id ini?
+                // Cek apakah ada inputan pelaksana di hari ini?
                 const { data: results } = await _sb.from('chslr_result')
-                    .select('id') // Cukup cek ID untuk performa
+                    .select('id') 
                     .eq('log_id', log.id)
-                    .eq('tanggal', todayDate)
+                    .eq('tanggal', todayDate) // KUNCI: Cek tanggal hari ini
                     .limit(1);
 
-                // Jika ada result hari ini, TAMPILKAN di antrean
+                // Jika ada result hari ini, tampilkan di antrean Koordinator
                 if (results && results.length > 0) {
                     foundAny = true;
                     const names = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
                     const dateStr = `${todayDate}/${currentMonth}/${currentYear}`;
+
+                    // Cek status verifikasi (opsional: bisa dikasih tanda kalau sudah diverif hari ini)
+                    const isVerified = log.status_verifikasi; 
 
                     container.insertAdjacentHTML('beforeend', `
                         <div class="card-item" onclick="startScanner('${encodeURIComponent(JSON.stringify(log))}')">
@@ -295,18 +298,20 @@
                             <div class="card-row">
                                 <span class="lbl">tanggal cek</span> <span class="lbl">:</span> <span class="val">${dateStr}</span>
                             </div>
-                            <div class="mt-2 text-center bg-black text-white text-[9px] font-bold py-1">KLIK UNTUK VERIFIKASI</div>
+                            <div class="mt-2 text-center bg-black text-white text-[9px] font-bold py-1">
+                                ${isVerified ? 'SUDAH DIVERIFIKASI (EDIT)' : 'KLIK UNTUK VERIFIKASI'}
+                            </div>
                         </div>
                     `);
                 }
             }
 
             if (!foundAny) {
-                container.innerHTML = `<div class="input-box text-center opacity-50 !shadow-none">Semua mesin hari ini sudah diverifikasi atau belum ada laporan masuk.</div>`;
+                container.innerHTML = `<div class="input-box text-center opacity-50 !shadow-none">Belum ada laporan pelaksana hari ini.</div>`;
             }
         }
 
-        // --- SCANNER ---
+        // --- 2. SCANNER ---
         function startScanner(logStr) {
             activeLog = JSON.parse(decodeURIComponent(logStr));
             switchView('view-scanner');
@@ -324,7 +329,7 @@
             }
         }
 
-        // --- FORM LOGIC (KONDISIONAL PENTING) ---
+        // --- 3. FORM APPROVAL (LOGIKA KONDISIONAL CATATAN) ---
         async function openForm() {
             switchView('view-form');
             document.getElementById('form-mesin').innerText = activeLog.mesin_id;
@@ -357,22 +362,29 @@
                 });
 
                 if (hasNG) {
-                    // JIKA ADA NG -> TAMPILKAN DETAIL ITEM DAN KETERANGANNYA
+                    // KONDISI A: JIKA ADA NG -> AMBIL KETERANGAN DARI TABEL RESULT
                     finalNote = ngNotes.join(' | ');
-                    noteEl.classList.add('text-red-600'); // Merah jika NG
+                    noteEl.classList.add('text-red-600'); 
                 } else {
-                    // JIKA SEMUA OK -> AMBIL CATATAN UMUM DARI chslr_log (jika ada)
+                    // KONDISI B: JIKA SEMUA OK -> AMBIL CATATAN DARI TABEL LOG (Pelaksana Note)
                     if (activeLog.catatan && activeLog.catatan.trim() !== "") {
-                        finalNote = "OK - " + activeLog.catatan;
+                        finalNote = activeLog.catatan; // Ambil dari chslr_log
                     } else {
                         finalNote = "KONDISI OK (AMAN)";
                     }
                     noteEl.classList.add('text-black');
                 }
+            } else {
+                // Jika result kosong (error case)
+                finalNote = "Data checklist tidak ditemukan.";
             }
 
             noteEl.innerText = finalNote;
             
+            // Isi data existing jika sudah pernah verif
+            if(activeLog.koordinator_nama) document.getElementById('koor-name').value = activeLog.koordinator_nama;
+            if(activeLog.remark_koordinator) document.getElementById('koor-remark').value = activeLog.remark_koordinator;
+
             setTimeout(initSigPad, 100);
         }
 
@@ -385,7 +397,7 @@
             const btn = document.getElementById('btn-approve');
             btn.innerText = 'MEMPROSES...'; btn.disabled = true;
 
-            // UPDATE STATUS VERIFIKASI JADI TRUE
+            // UPDATE chslr_log
             const { error } = await _sb.from('chslr_log').update({
                 koordinator_nama: name,
                 signature_koordinator: sigPadKoor.toDataURL(),
