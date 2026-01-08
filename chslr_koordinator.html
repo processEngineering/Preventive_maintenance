@@ -228,8 +228,18 @@
             document.getElementById(viewId).classList.remove('hidden');
         }
 
-        function backToList() {
-            if(scanner) scanner.stop().then(() => scanner.clear());
+        // --- PERBAIKAN UTAMA: BACK TO LIST YANG AMAN ---
+        async function backToList() {
+            if(scanner) {
+                try {
+                    // Coba stop, kalau error (karena sudah stop) kita abaikan saja
+                    await scanner.stop();
+                    scanner.clear();
+                } catch (e) {
+                    // Silent error agar tidak mengganggu flow submit
+                    console.log("Scanner cleanup handled:", e);
+                }
+            }
             switchView('view-list');
             activeLog = null;
             loadQueue();
@@ -300,7 +310,10 @@
         async function onScanSuccess(decodedText) {
             if (activeLog.mesin_id.toLowerCase().trim() === decodedText.toLowerCase().trim()) {
                 if(navigator.vibrate) navigator.vibrate(100);
-                await scanner.stop(); scanner.clear();
+                
+                // Pastikan stop selesai dulu sebelum pindah
+                try { await scanner.stop(); scanner.clear(); } catch(e){}
+                
                 openForm();
             } else {
                 alert("❌ QR SALAH!\nTarget: " + activeLog.mesin_id);
@@ -365,18 +378,18 @@
             const remark = document.getElementById('koor-remark').value.trim();
             const btn = document.getElementById('btn-approve');
 
-            // --- PENGAMANAN ERROR (TRY-CATCH) ---
+            // --- TRY CATCH UTAMA ---
             try {
                 if(!activeLog || !activeLog.id) {
-                    throw new Error("ID Laporan hilang/corrupt. Silakan refresh halaman.");
+                    throw new Error("ID Laporan hilang. Silakan refresh halaman.");
                 }
-                if(!name) throw new Error("Nama Koordinator belum diisi!");
-                if(sigPadKoor.isEmpty()) throw new Error("Paraf wajib diisi!");
+                if(!name || sigPadKoor.isEmpty()) {
+                    throw new Error("⚠️ NAMA & PARAF WAJIB DIISI!");
+                }
 
-                btn.innerText = 'MEMPROSES...'; 
-                btn.disabled = true;
+                btn.innerText = 'MEMPROSES...'; btn.disabled = true;
 
-                // --- PROSES SIMPAN KE TABEL chslr_log ---
+                // --- PROSES SAVE ---
                 const { error } = await _sb.from('chslr_log').update({
                     koordinator_nama: name,
                     signature_koordinator: sigPadKoor.toDataURL(),
@@ -384,13 +397,15 @@
                     remark_koordinator: remark
                 }).eq('id', activeLog.id);
 
-                if (error) throw error; // Lempar error database ke catch
+                if (error) throw error; // Lempar error Supabase ke catch
 
                 alert("✅ DATA BERHASIL DISIMPAN!");
-                backToList();
+                
+                // Panggil backToList yang sudah diamankan
+                await backToList();
 
             } catch (err) {
-                // TANGKAP SEMUA ERROR DISINI
+                // TANGKAP ERROR AGAR TIDAK HANG
                 alert("GAGAL MENYIMPAN:\n" + (err.message || JSON.stringify(err)));
                 btn.innerText = 'SUBMIT LAPORAN'; 
                 btn.disabled = false;
