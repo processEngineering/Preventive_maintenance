@@ -55,7 +55,6 @@
         .lbl { font-weight: 800; }
         .val { font-weight: 700; text-transform: uppercase; }
 
-        /* Form Info & Input */
         .info-container {
             width: 100%; max-width: 340px;
             background: #f8fafc; border: 3px solid #000; border-radius: 20px;
@@ -93,7 +92,7 @@
             box-shadow: 4px 4px 0 #000; margin-top: 10px;
         }
         .btn-submit:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
-        .btn-submit:disabled { background: #ccc; border-color: #999; box-shadow: none; transform: none; }
+        .btn-submit:disabled { background: #ccc; box-shadow: none; transform: none; }
 
         /* Scanner */
         .camera-frame { width: 260px; height: 260px; position: relative; margin: 0 auto; }
@@ -129,6 +128,7 @@
     <div id="app-shell">
 
         <main class="app-content">
+            
             <div class="header-pill">Koordinator</div>
 
             <div id="view-list" class="w-full flex flex-col items-center">
@@ -236,7 +236,7 @@
             loadQueue();
         }
 
-        // --- 1. LOAD QUEUE ---
+        // --- 1. LOAD QUEUE (Cari yang diisi hari ini) ---
         async function loadQueue() {
             const now = new Date();
             const todayDate = now.getDate();
@@ -270,16 +270,13 @@
                     foundAny = true;
                     const names = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
                     const dateStr = `${todayDate}/${currentMonth}/${currentYear}`;
-                    const isVerified = log.status_verifikasi; 
-
+                    
                     container.insertAdjacentHTML('beforeend', `
                         <div class="card-item" onclick="startScanner('${encodeURIComponent(JSON.stringify(log))}')">
                             <div class="card-row"><span class="lbl">nama mesin</span><span class="lbl">:</span><span class="val">${log.mesin_id}</span></div>
                             <div class="card-row"><span class="lbl">nama pelaksana</span><span class="lbl">:</span><span class="val text-right">${names}</span></div>
                             <div class="card-row"><span class="lbl">tanggal cek</span><span class="lbl">:</span><span class="val">${dateStr}</span></div>
-                            <div class="mt-2 text-center bg-black text-white text-[9px] font-bold py-1">
-                                ${isVerified ? 'SUDAH DIVERIFIKASI (EDIT)' : 'KLIK UNTUK VERIFIKASI'}
-                            </div>
+                            <div class="mt-2 text-center bg-black text-white text-[9px] font-bold py-1">KLIK UNTUK VERIFIKASI</div>
                         </div>
                     `);
                 }
@@ -308,7 +305,7 @@
             }
         }
 
-        // --- 3. FORM APPROVAL (LOGIKA FINAL FIX) ---
+        // --- 3. FORM APPROVAL (LOGIKA FINAL) ---
         async function openForm() {
             switchView('view-form');
             document.getElementById('form-mesin').innerText = activeLog.mesin_id;
@@ -318,49 +315,50 @@
             noteEl.innerText = "Memuat data...";
             noteEl.className = "info-data";
 
-            // FETCH DATA RESULT (DETAIL)
             const today = new Date().getDate();
             const { data: results } = await _sb.from('chslr_result')
                 .select('status, keterangan, chslr_items(item_name)')
                 .eq('log_id', activeLog.id)
                 .eq('tanggal', today);
 
-            // LOGIKA KONDISIONAL
-            let finalNote = "-";
+            // === LOGIKA KONDISIONAL SESUAI PERMINTAAN ===
+            let finalNote = "";
             let hasNG = false;
             let ngNotes = [];
 
             if (results && results.length > 0) {
+                // Cek NG
                 results.forEach(r => {
                     if (r.status === 'NG') {
                         hasNG = true;
                         const item = r.chslr_items ? r.chslr_items.item_name : 'Item';
-                        const ket = r.keterangan ? r.keterangan : 'Rusak';
+                        const ket = r.keterangan ? r.keterangan : '-';
                         ngNotes.push(`${item}: ${ket}`);
                     }
                 });
 
                 if (hasNG) {
-                    // KONDISI 1: ADA NG -> AMBIL DARI RESULT
+                    // KONDISI 1: ADA NG -> Ambil KETERANGAN dari RESULT
                     finalNote = "NG: " + ngNotes.join(' | ');
-                    noteEl.classList.add('text-red-600'); 
+                    noteEl.classList.add('text-red-600');
                 } else {
-                    // KONDISI 2: OK SEMUA -> AMBIL DARI LOG (HEADER)
-                    // Ambil ulang data Log terbaru untuk memastikan catatan terambil
-                    const { data: freshLog } = await _sb.from('chslr_log').select('catatan').eq('id', activeLog.id).single();
-                    if(freshLog && freshLog.catatan) {
-                        finalNote = freshLog.catatan;
+                    // KONDISI 2: OK SEMUA -> Ambil CATATAN dari LOG (activeLog)
+                    // Jika kosong, tampilkan "OK"
+                    if (activeLog.catatan && activeLog.catatan.trim() !== "") {
+                        finalNote = activeLog.catatan;
                     } else {
                         finalNote = "KONDISI OK (AMAN)";
                     }
                     noteEl.classList.add('text-black');
                 }
             } else {
-                finalNote = "Data belum tersedia.";
+                // Fallback jika result tidak terbaca
+                finalNote = activeLog.catatan ? activeLog.catatan : "Data belum tersedia.";
             }
 
             noteEl.innerText = finalNote;
             
+            // Isi data existing
             if(activeLog.koordinator_nama) document.getElementById('koor-name').value = activeLog.koordinator_nama;
             if(activeLog.remark_koordinator) document.getElementById('koor-remark').value = activeLog.remark_koordinator;
 
@@ -371,8 +369,7 @@
             const name = document.getElementById('koor-name').value.trim();
             const remark = document.getElementById('koor-remark').value.trim();
 
-            if(!activeLog) return alert("Error: Log ID hilang. Silakan refresh.");
-            if(!name || sigPadKoor.isEmpty()) return alert("⚠️ NAMA & PARAF WAJIB!");
+            if(!name || sigPadKoor.isEmpty()) return alert("⚠️ HARAP ISI NAMA & PARAF!");
             
             const btn = document.getElementById('btn-approve');
             btn.innerText = 'MEMPROSES...'; btn.disabled = true;
