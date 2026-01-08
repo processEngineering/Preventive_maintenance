@@ -220,6 +220,7 @@
             sigPadKoor = new SignaturePad(canvas, { backgroundColor: 'rgb(255, 255, 255)' });
         }
 
+        // --- NAVIGATION ---
         function switchView(viewId) {
             document.getElementById('view-list').classList.add('hidden');
             document.getElementById('view-scanner').classList.add('hidden');
@@ -227,16 +228,24 @@
             document.getElementById(viewId).classList.remove('hidden');
         }
 
+        // --- PERBAIKAN UTAMA: BACK TO LIST YANG AMAN ---
         async function backToList() {
             if(scanner) {
-                try { await scanner.stop(); scanner.clear(); } catch(e){}
+                try {
+                    // Coba stop, kalau error (karena sudah stop) kita abaikan saja
+                    await scanner.stop();
+                    scanner.clear();
+                } catch (e) {
+                    // Silent error agar tidak mengganggu flow submit
+                    console.log("Scanner cleanup handled:", e);
+                }
             }
             switchView('view-list');
             activeLog = null;
             loadQueue();
         }
 
-        // --- 1. LOAD QUEUE (FIXED "ILANG SEMUA" & "DOUBLE LIST") ---
+        // --- 1. LOAD QUEUE ---
         async function loadQueue() {
             const now = new Date();
             const todayDate = now.getDate();
@@ -246,52 +255,47 @@
             const container = document.getElementById('log-container');
             container.innerHTML = '<div class="text-center py-10 font-bold text-xs">Mencari laporan...</div>';
 
-            // FILTER: HANYA YANG BELUM TRUE (Menangkap FALSE dan NULL)
             const { data: logs, error } = await _sb.from('chslr_log')
                 .select('*')
                 .eq('bulan', currentMonth)
-                .eq('tahun', currentYear)
-                .neq('status_verifikasi', true); 
+                .eq('tahun', currentYear);
 
             if (!logs || logs.length === 0) {
-                container.innerHTML = `<div class="input-box text-center opacity-50 !shadow-none">Tidak ada antrean laporan.</div>`;
+                container.innerHTML = `<div class="input-box text-center opacity-50 !shadow-none">Belum ada log bulan ini.</div>`;
                 return;
             }
 
             container.innerHTML = "";
-            
-            // Tampilkan SEMUA mesin yang belum diverifikasi
+            let foundAny = false;
+
             for (let log of logs) {
-                // Cek status inputan pelaksana hari ini (Hanya untuk label)
                 const { data: results } = await _sb.from('chslr_result')
                     .select('id') 
                     .eq('log_id', log.id)
                     .eq('tanggal', todayDate) 
                     .limit(1);
 
-                const hasInput = (results && results.length > 0);
-                const names = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
-                const dateStr = `${todayDate}/${currentMonth}/${currentYear}`;
-                
-                // STATUS TEXT
-                let statusText = "MENUNGGU PELAKSANA";
-                let statusColor = "bg-gray-400";
-                
-                if(hasInput) {
-                    statusText = "SIAP VERIFIKASI";
-                    statusColor = "bg-black";
-                }
+                if (results && results.length > 0) {
+                    foundAny = true;
+                    const names = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
+                    const dateStr = `${todayDate}/${currentMonth}/${currentYear}`;
+                    const isVerified = log.status_verifikasi; 
 
-                container.insertAdjacentHTML('beforeend', `
-                    <div class="card-item" onclick="startScanner('${encodeURIComponent(JSON.stringify(log))}')">
-                        <div class="card-row"><span class="lbl">nama mesin</span><span class="lbl">:</span><span class="val">${log.mesin_id}</span></div>
-                        <div class="card-row"><span class="lbl">nama pelaksana</span><span class="lbl">:</span><span class="val text-right">${names}</span></div>
-                        <div class="card-row"><span class="lbl">tanggal cek</span><span class="lbl">:</span><span class="val">${dateStr}</span></div>
-                        <div class="mt-2 text-center ${statusColor} text-white text-[9px] font-bold py-1">
-                            ${statusText}
+                    container.insertAdjacentHTML('beforeend', `
+                        <div class="card-item" onclick="startScanner('${encodeURIComponent(JSON.stringify(log))}')">
+                            <div class="card-row"><span class="lbl">nama mesin</span><span class="lbl">:</span><span class="val">${log.mesin_id}</span></div>
+                            <div class="card-row"><span class="lbl">nama pelaksana</span><span class="lbl">:</span><span class="val text-right">${names}</span></div>
+                            <div class="card-row"><span class="lbl">tanggal cek</span><span class="lbl">:</span><span class="val">${dateStr}</span></div>
+                            <div class="mt-2 text-center bg-black text-white text-[9px] font-bold py-1">
+                                ${isVerified ? 'SUDAH DIVERIFIKASI (EDIT)' : 'KLIK UNTUK VERIFIKASI'}
+                            </div>
                         </div>
-                    </div>
-                `);
+                    `);
+                }
+            }
+
+            if (!foundAny) {
+                container.innerHTML = `<div class="input-box text-center opacity-50 !shadow-none">Belum ada laporan pelaksana hari ini.</div>`;
             }
         }
 
@@ -306,7 +310,10 @@
         async function onScanSuccess(decodedText) {
             if (activeLog.mesin_id.toLowerCase().trim() === decodedText.toLowerCase().trim()) {
                 if(navigator.vibrate) navigator.vibrate(100);
+                
+                // Pastikan stop selesai dulu sebelum pindah
                 try { await scanner.stop(); scanner.clear(); } catch(e){}
+                
                 openForm();
             } else {
                 alert("❌ QR SALAH!\nTarget: " + activeLog.mesin_id);
@@ -329,7 +336,7 @@
                 .eq('log_id', activeLog.id)
                 .eq('tanggal', today);
 
-            let finalNote = "BELUM ADA INPUT";
+            let finalNote = "-";
             let hasNG = false;
             let ngNotes = [];
 
@@ -354,14 +361,14 @@
                     }
                     noteEl.classList.add('text-black');
                 }
-            } 
+            } else {
+                finalNote = activeLog.catatan ? activeLog.catatan : "Data belum tersedia.";
+            }
 
             noteEl.innerText = finalNote;
             
-            // Reset form
-            document.getElementById('koor-name').value = '';
-            document.getElementById('koor-remark').value = '';
-            sigPadKoor.clear();
+            if(activeLog.koordinator_nama) document.getElementById('koor-name').value = activeLog.koordinator_nama;
+            if(activeLog.remark_koordinator) document.getElementById('koor-remark').value = activeLog.remark_koordinator;
 
             setTimeout(initSigPad, 100);
         }
@@ -371,12 +378,18 @@
             const remark = document.getElementById('koor-remark').value.trim();
             const btn = document.getElementById('btn-approve');
 
+            // --- TRY CATCH UTAMA ---
             try {
-                if(!activeLog || !activeLog.id) throw new Error("ID Laporan hilang. Silakan refresh halaman.");
-                if(!name || sigPadKoor.isEmpty()) throw new Error("⚠️ NAMA & PARAF WAJIB DIISI!");
+                if(!activeLog || !activeLog.id) {
+                    throw new Error("ID Laporan hilang. Silakan refresh halaman.");
+                }
+                if(!name || sigPadKoor.isEmpty()) {
+                    throw new Error("⚠️ NAMA & PARAF WAJIB DIISI!");
+                }
 
                 btn.innerText = 'MEMPROSES...'; btn.disabled = true;
 
+                // --- PROSES SAVE ---
                 const { error } = await _sb.from('chslr_log').update({
                     koordinator_nama: name,
                     signature_koordinator: sigPadKoor.toDataURL(),
@@ -384,12 +397,15 @@
                     remark_koordinator: remark
                 }).eq('id', activeLog.id);
 
-                if (error) throw error;
+                if (error) throw error; // Lempar error Supabase ke catch
 
                 alert("✅ DATA BERHASIL DISIMPAN!");
+                
+                // Panggil backToList yang sudah diamankan
                 await backToList();
 
             } catch (err) {
+                // TANGKAP ERROR AGAR TIDAK HANG
                 alert("GAGAL MENYIMPAN:\n" + (err.message || JSON.stringify(err)));
                 btn.innerText = 'SUBMIT LAPORAN'; 
                 btn.disabled = false;
