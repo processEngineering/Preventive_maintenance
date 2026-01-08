@@ -35,7 +35,7 @@
 
         /* === WIREFRAME STYLE (TEGAS & TEBAL) === */
         
-        /* Header Pill */
+        /* Header */
         .header-pill {
             border: 3px solid #000; border-radius: 50px;
             padding: 15px 50px; text-align: center; font-weight: 900;
@@ -58,7 +58,7 @@
         .lbl { font-weight: 800; }
         .val { font-weight: 700; text-transform: uppercase; }
 
-        /* Form Info & Input */
+        /* Form Style */
         .info-container {
             width: 100%; max-width: 340px;
             background: #f8fafc; border: 3px solid #000; border-radius: 20px;
@@ -244,7 +244,7 @@
             loadQueue();
         }
 
-        // --- 1. LOAD QUEUE (LOGIKA BARU - CEK TABEL RESULT) ---
+        // --- 1. LOAD QUEUE (CHECK TODAY'S RESULT) ---
         async function loadQueue() {
             const now = new Date();
             const todayDate = now.getDate();
@@ -254,8 +254,7 @@
             const container = document.getElementById('log-container');
             container.innerHTML = '<div class="text-center py-10 font-bold text-xs">Mencari laporan hari ini...</div>';
 
-            // 1. Ambil Log Bulan Ini (Header) yang statusnya belum di approve superintendent (opsional: atau belum diverif koor)
-            // Asumsi: Koordinator memverifikasi setiap hari.
+            // Ambil Log Bulan Ini
             const { data: logs, error } = await _sb.from('chslr_log')
                 .select('*')
                 .eq('bulan', currentMonth)
@@ -269,22 +268,18 @@
             container.innerHTML = "";
             let foundAny = false;
 
-            // 2. Loop setiap Log untuk cek apakah ada RESULT hari ini (Detail)
+            // Loop untuk cek apakah ada result HARI INI
             for (let log of logs) {
-                // Cek apakah ada inputan pelaksana di hari ini?
                 const { data: results } = await _sb.from('chslr_result')
                     .select('id') 
                     .eq('log_id', log.id)
-                    .eq('tanggal', todayDate) // KUNCI: Cek tanggal hari ini
+                    .eq('tanggal', todayDate) 
                     .limit(1);
 
-                // Jika ada result hari ini, tampilkan di antrean Koordinator
                 if (results && results.length > 0) {
                     foundAny = true;
                     const names = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
                     const dateStr = `${todayDate}/${currentMonth}/${currentYear}`;
-
-                    // Cek status verifikasi (opsional: bisa dikasih tanda kalau sudah diverif hari ini)
                     const isVerified = log.status_verifikasi; 
 
                     container.insertAdjacentHTML('beforeend', `
@@ -329,30 +324,30 @@
             }
         }
 
-        // --- 3. FORM APPROVAL (LOGIKA KONDISIONAL CATATAN) ---
+        // --- 3. FORM APPROVAL (LOGIKA PERBAIKAN CATATAN) ---
         async function openForm() {
             switchView('view-form');
             document.getElementById('form-mesin').innerText = activeLog.mesin_id;
             document.getElementById('form-pelaksana').innerText = activeLog.pelaksana_names ? activeLog.pelaksana_names.join(', ') : '-';
             
             const noteEl = document.getElementById('form-catatan-pel');
-            noteEl.innerText = "Mengambil data...";
-            noteEl.className = "info-data"; // Reset class
+            noteEl.innerText = "Memuat data...";
+            noteEl.className = "info-data"; // Reset warna
 
-            // FETCH DETAIL DARI TABEL chslr_result (HARI INI)
+            // 1. DEFAULT: AMBIL DARI TABEL LOG (Header) - Ini yang diminta User
+            let finalNote = activeLog.catatan ? activeLog.catatan : "-"; 
+
+            // 2. CEK TABEL RESULT (Detail) untuk KONDISIONAL NG
             const today = new Date().getDate();
             const { data: results } = await _sb.from('chslr_result')
                 .select('status, keterangan, chslr_items(item_name)')
                 .eq('log_id', activeLog.id)
                 .eq('tanggal', today);
 
-            // LOGIKA KONDISIONAL
-            let finalNote = "AMAN";
             let hasNG = false;
             let ngNotes = [];
 
             if (results && results.length > 0) {
-                // Cek apakah ada yang NG
                 results.forEach(r => {
                     if (r.status === 'NG') {
                         hasNG = true;
@@ -362,21 +357,16 @@
                 });
 
                 if (hasNG) {
-                    // KONDISI A: JIKA ADA NG -> AMBIL KETERANGAN DARI TABEL RESULT
-                    finalNote = ngNotes.join(' | ');
+                    // KONDISIONAL: Jika NG, Timbun catatan umum dengan Detail Kerusakan agar Koordinator Aware
+                    finalNote = "NG: " + ngNotes.join(' | ');
                     noteEl.classList.add('text-red-600'); 
                 } else {
-                    // KONDISI B: JIKA SEMUA OK -> AMBIL CATATAN DARI TABEL LOG (Pelaksana Note)
-                    if (activeLog.catatan && activeLog.catatan.trim() !== "") {
-                        finalNote = activeLog.catatan; // Ambil dari chslr_log
-                    } else {
+                    // KONDISIONAL: Jika OK, Pastikan Catatan Umum Muncul
+                    if (finalNote === "-" || finalNote === "") {
                         finalNote = "KONDISI OK (AMAN)";
                     }
                     noteEl.classList.add('text-black');
                 }
-            } else {
-                // Jika result kosong (error case)
-                finalNote = "Data checklist tidak ditemukan.";
             }
 
             noteEl.innerText = finalNote;
@@ -397,7 +387,6 @@
             const btn = document.getElementById('btn-approve');
             btn.innerText = 'MEMPROSES...'; btn.disabled = true;
 
-            // UPDATE chslr_log
             const { error } = await _sb.from('chslr_log').update({
                 koordinator_nama: name,
                 signature_koordinator: sigPadKoor.toDataURL(),
