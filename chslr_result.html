@@ -6,111 +6,134 @@
     <title>CHECKLIST HARIAN STAND LABEL DAN ROBOT</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* === PAGE SETUP (A4 LANDSCAPE) === */
-        @page { size: A4 landscape; margin: 5mm; }
+        /* === PAGE SETUP (A4 LANDSCAPE - FIT 1 PAGE) === */
+        @page { 
+            size: A4 landscape; 
+            margin: 5mm; /* Margin tipis agar muat */
+        }
         
         body { 
             font-family: Arial, Helvetica, sans-serif; 
-            font-size: 9pt; 
+            font-size: 8pt; /* Font sedikit diperkecil agar muat vertikal */
             margin: 0; padding: 10px; 
-            background: #ccc; /* Background abu di mode web */
+            background: #ccc; 
+            -webkit-print-color-adjust: exact; /* Pastikan warna background tercetak */
         }
         
         .sheet {
             background: white;
-            width: 297mm; /* Lebar A4 Landscape */
-            min-height: 210mm;
+            width: 287mm; /* Lebar aman A4 landscape dikurangi margin */
+            height: 195mm; /* Tinggi aman agar tidak lompat halaman */
             margin: 0 auto;
-            padding: 10mm;
+            padding: 5mm;
             box-shadow: 0 0 10px rgba(0,0,0,0.3);
             box-sizing: border-box;
             position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* === PRINT FORCE 1 PAGE === */
+        @media print {
+            body { 
+                background: white; 
+                margin: 0; 
+                padding: 0;
+                /* Trik jitu memaksa muat 1 halaman */
+                transform: scale(0.98); 
+                transform-origin: top left;
+                width: 102%; /* Kompensasi scale */
+            }
+            .sheet { 
+                box-shadow: none; 
+                border: none; 
+                margin: 0; 
+                padding: 0; 
+                width: 100%;
+                height: auto;
+            }
+            .no-print { display: none !important; }
         }
 
         /* === HEADER SECTION === */
-        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; border: 2px solid black; }
-        .header-table td { border: 1px solid black; padding: 5px; vertical-align: middle; }
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 3px; border: 2px solid black; }
+        .header-table td { border: 1px solid black; padding: 2px 5px; vertical-align: middle; }
         
-        .title-cell { text-align: center; font-weight: bold; font-size: 14pt; text-transform: uppercase; width: 50%; }
-        .doc-info { font-size: 8pt; width: 25%; }
+        .title-cell { text-align: center; font-weight: bold; font-size: 13pt; text-transform: uppercase; width: 55%; }
+        .doc-info { font-size: 7pt; width: 25%; }
         .doc-info table { width: 100%; border: none; }
-        .doc-info td { border: none; padding: 1px; }
+        .doc-info td { border: none; padding: 0px; }
 
         /* === MACHINE INFO SECTION === */
         .info-section { 
-            width: 100%; margin-bottom: 5px; font-weight: bold; font-size: 10pt; 
+            width: 100%; margin-bottom: 2px; font-weight: bold; font-size: 9pt; 
             display: flex; justify-content: space-between; align-items: flex-end;
         }
-        .info-left { display: flex; flex-direction: column; gap: 5px; }
+        .info-left { display: flex; flex-direction: column; gap: 2px; }
         .info-right { text-align: right; padding-right: 50px; }
 
         /* === MAIN CHECKLIST TABLE === */
         .main-table { 
             width: 100%; border-collapse: collapse; border: 2px solid black; 
-            table-layout: fixed; /* Kunci lebar kolom */
+            table-layout: fixed; 
         }
         .main-table th, .main-table td { 
             border: 1px solid black; 
-            padding: 2px; 
-            font-size: 7.5pt; 
+            padding: 1px; /* Padding sangat tipis */
+            font-size: 7pt; 
             text-align: center;
             vertical-align: middle;
-            height: 16px; /* Tinggi baris Excel */
+            height: 13px; /* Tinggi baris dipadatkan */
+            line-height: 1;
         }
         
-        .main-table th { background-color: #f0f0f0; font-weight: bold; }
+        .main-table th { background-color: #f0f0f0; font-weight: bold; height: 18px; }
 
-        /* Column Widths (Adjusted to fit 31 days) */
-        .col-no { width: 25px; }
-        .col-jenis { width: 220px; text-align: left !important; padding-left: 5px !important; }
-        .col-std { width: 130px; text-align: left !important; padding-left: 5px !important; }
-        .col-tgl { width: 18px; font-size: 7pt; }
+        /* Column Widths */
+        .col-no { width: 22px; }
+        .col-jenis { width: 200px; text-align: left !important; padding-left: 3px !important; }
+        .col-std { width: 120px; text-align: left !important; padding-left: 3px !important; }
+        .col-tgl { width: 18px; font-size: 6.5pt; }
 
         /* Styling Item Rows */
         .category-row { 
             background-color: #ddd; font-weight: bold; text-align: left !important; padding-left: 5px !important; 
         }
-        .item-text { text-align: left !important; padding-left: 5px !important; }
-        .std-text { text-align: left !important; padding-left: 5px !important; }
+        .item-text { text-align: left !important; padding-left: 3px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .std-text { text-align: left !important; padding-left: 3px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
         /* Checkmarks */
-        .ok-mark { font-family: 'Deja Vu Sans', sans-serif; font-size: 9pt; }
-        .ng-mark { color: red; font-weight: bold; font-size: 9pt; }
+        .ok-mark { font-family: 'Deja Vu Sans', sans-serif; font-size: 8pt; }
+        .ng-mark { color: red; font-weight: bold; font-size: 8pt; }
         
-        /* Signatures in Table */
+        /* Signatures */
         .sig-img { 
-            width: 100%; height: 35px; object-fit: contain; 
-            mix-blend-mode: multiply; display: block;
+            width: 100%; height: 25px; object-fit: contain; /* Tinggi tanda tangan disesuaikan */
+            mix-blend-mode: multiply; display: block; margin: 0 auto;
         }
 
         /* === FOOTER SECTION === */
         .footer-section { 
-            display: flex; justify-content: space-between; margin-top: 10px; 
-            font-size: 9pt; 
+            display: flex; justify-content: space-between; margin-top: 5px; 
+            font-size: 8pt; 
         }
         
-        .legend-box { width: 60%; }
+        .legend-box { width: 65%; }
         .legend-table { border: none; width: 100%; }
-        .legend-table td { border: none; padding: 2px; vertical-align: top; }
+        .legend-table td { border: none; padding: 1px; vertical-align: top; }
         
         .approval-box { 
-            width: 250px; text-align: center; margin-right: 20px;
+            width: 220px; text-align: center; margin-right: 10px;
         }
-        .approval-title { font-weight: bold; margin-bottom: 5px; }
+        .approval-title { font-weight: bold; margin-bottom: 2px; }
         .sig-box-super { 
-            border: 1px solid black; height: 70px; width: 100%; 
-            margin-bottom: 5px; position: relative;
+            border: 1px solid black; height: 50px; width: 100%; /* Kotak TTD diperkecil sedikit */
+            margin-bottom: 2px; position: relative;
             display: flex; align-items: center; justify-content: center;
         }
-        .super-img { max-height: 60px; max-width: 90%; mix-blend-mode: multiply; }
+        .super-img { max-height: 45px; max-width: 90%; mix-blend-mode: multiply; }
 
-        /* === UI CONTROLS (HIDDEN ON PRINT) === */
-        @media print {
-            body { background: white; margin: 0; padding: 0; }
-            .sheet { margin: 0; box-shadow: none; width: 100%; padding: 0; border: none; }
-            .no-print { display: none !important; }
-        }
-        
+        /* === UI CONTROLS === */
         .no-print {
             position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
             background: #333; padding: 10px 20px; border-radius: 8px; color: white;
@@ -142,7 +165,7 @@
         <table class="header-table">
             <tr>
                 <td style="width: 15%; text-align: center;">
-                    <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" style="width: 100px;">
+                    <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" style="width: 90px;">
                 </td>
                 <td class="title-cell">CHECKLIST HARIAN STAND LABEL DAN ROBOT</td>
                 <td class="doc-info">
@@ -174,18 +197,16 @@
                     <th rowspan="2" class="col-std">Standard</th>
                     <th colspan="31">Tanggal</th>
                 </tr>
-                <tr id="date-header">
-                    </tr>
+                <tr id="date-header"></tr>
             </thead>
-            <tbody id="checklist-body">
-                </tbody>
+            <tbody id="checklist-body"></tbody>
             <tbody id="sig-body">
                 <tr id="row-sig-pel">
                     <td colspan="3" style="text-align: right; font-weight: bold; padding-right: 10px;">Paraf Pelaksana</td>
-                    </tr>
+                </tr>
                 <tr id="row-sig-cek">
                     <td colspan="3" style="text-align: right; font-weight: bold; padding-right: 10px;">Paraf Pengecek</td>
-                    </tr>
+                </tr>
             </tbody>
         </table>
 
@@ -201,8 +222,7 @@
 
             <div class="approval-box">
                 <div class="approval-title">DIKETAHUI</div>
-                <div class="sig-box-super" id="box-super">
-                    </div>
+                <div class="sig-box-super" id="box-super"></div>
                 <div style="border-top: 1px solid black; width: 80%; margin: 0 auto;"></div>
                 <div style="font-weight: bold; margin-top: 2px;">MECHANIC SUPERINTENDENT</div>
             </div>
@@ -216,18 +236,14 @@
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
         async function init() {
-            // Fill Date Header 1-31
             const dh = document.getElementById('date-header');
             for(let i=1; i<=31; i++) dh.innerHTML += `<th class="col-tgl">${i}</th>`;
 
-            // Load Mesin List
             const { data: m } = await _sb.from('chslr_mesin').select('nama_mesin');
             const sel = document.getElementById('f-mesin');
             m?.forEach(x => sel.innerHTML += `<option>${x.nama_mesin}</option>`);
 
-            // Default Date
-            const d = new Date();
-            document.getElementById('f-bulan').value = 1; // Default Jan for now or d.getMonth()+1
+            document.getElementById('f-bulan').value = 1; 
             document.getElementById('f-tahun').value = 2026;
             
             loadReport();
@@ -238,64 +254,37 @@
             const bln = document.getElementById('f-bulan').value;
             const thn = document.getElementById('f-tahun').value;
             
-            // Render Header Info
             document.getElementById('val-mesin').innerText = mesin;
             document.getElementById('val-bulan').innerText = document.getElementById('f-bulan').options[bln-1].text.toUpperCase() + " " + thn;
 
-            // Fetch Data
-            // 1. Log Header
-            const { data: log } = await _sb.from('chslr_log')
-                .select('*')
-                .eq('mesin_id', mesin).eq('bulan', bln).eq('tahun', thn)
-                .maybeSingle();
-
-            // 2. Machine Info (Tonage)
+            const { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', mesin).eq('bulan', bln).eq('tahun', thn).maybeSingle();
             const { data: mData } = await _sb.from('chslr_mesin').select('tonage').eq('nama_mesin', mesin).single();
             document.getElementById('val-ton').innerText = mData?.tonage || '-';
 
-            // 3. Items & Results
             const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
             const { data: res } = log ? await _sb.from('chslr_result').select('*').eq('log_id', log.id) : { data: [] };
 
-            // Render Rows
             const tbody = document.getElementById('checklist-body');
             tbody.innerHTML = "";
             
             let currentCat = "";
             let rowCount = 1;
-
-            // Logic huruf (a, b, c...)
             let subIndex = 0; 
             const letters = "abcdefghijklmnopqrstuvwxyz";
 
             items.forEach(item => {
-                // RENDER KATEGORI (Jika berubah)
                 if(item.kategori && item.kategori !== currentCat) {
                     currentCat = item.kategori;
-                    // Reset sub index
                     subIndex = 0;
-                    
-                    // Baris Kategori (1, 2, 3...)
-                    let catRow = `<tr class="category-row">
-                        <td align="center">${rowCount}</td>
-                        <td colspan="32" class="item-text">${currentCat}</td>
-                    </tr>`;
-                    tbody.innerHTML += catRow;
+                    tbody.innerHTML += `<tr class="category-row"><td align="center">${rowCount}</td><td colspan="32" class="item-text">${currentCat}</td></tr>`;
                     rowCount++;
                 }
 
-                // Baris Item (a, b, c...)
-                let row = `<tr>
-                    <td align="center">${letters[subIndex] || '-'}</td>
-                    <td class="item-text">${item.item_name}</td>
-                    <td class="std-text">${item.standard || ''}</td>`;
+                let row = `<tr><td align="center">${letters[subIndex] || '-'}</td><td class="item-text">${item.item_name}</td><td class="std-text">${item.standard || ''}</td>`;
                 
-                // Fill 1-31
                 for(let d=1; d<=31; d++) {
                     const r = res.find(x => x.item_id === item.id && x.tanggal === d);
-                    let symbol = "";
-                    let cls = "";
-                    
+                    let symbol = "", cls = "";
                     if(r) {
                         if(r.status === 'OK') { symbol = "√"; cls="ok-mark"; }
                         else if(r.status === 'NG') { symbol = "x"; cls="ng-mark"; }
@@ -307,23 +296,16 @@
                 subIndex++;
             });
 
-            // RENDER SIGNATURES
             const rowPel = document.getElementById('row-sig-pel');
             const rowCek = document.getElementById('row-sig-cek');
-            
-            // Bersihkan cell lama (sisakan header)
             while(rowPel.cells.length > 1) rowPel.deleteCell(1);
             while(rowCek.cells.length > 1) rowCek.deleteCell(1);
 
             for(let d=1; d<=31; d++) {
-                // Pelaksana Sig (Per hari)
                 const dayRes = res.filter(r => r.tanggal === d && r.signature);
                 const tdPel = rowPel.insertCell();
-                if(dayRes.length > 0) {
-                    tdPel.innerHTML = `<img src="${dayRes[0].signature}" class="sig-img">`;
-                }
+                if(dayRes.length > 0) tdPel.innerHTML = `<img src="${dayRes[0].signature}" class="sig-img">`;
 
-                // Pengecek Sig (Jika verif = true, muncul di hari yg ada data)
                 const hasData = res.some(r => r.tanggal === d);
                 const tdCek = rowCek.insertCell();
                 if(log?.status_verifikasi && log?.signature_koordinator && hasData) {
@@ -331,7 +313,6 @@
                 }
             }
 
-            // SUPERINTENDENT BOX
             const superBox = document.getElementById('box-super');
             if(log?.status_final && log?.signature_superintendent) {
                 superBox.innerHTML = `<img src="${log.signature_superintendent}" class="super-img">`;
