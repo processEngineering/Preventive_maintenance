@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ffffff">
-    <title>Koordinator Verifikasi</title>
+    <title>Koordinator Verifikasi (BW)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -14,11 +14,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
     <style>
+        /* RESET & BASE */
         * { -webkit-tap-highlight-color: transparent; }
         body, html {
             height: 100%; width: 100%; overflow: hidden;
             overscroll-behavior: none; user-select: none;
-            font-family: 'Inter', sans-serif; background-color: #f8fafc;
+            font-family: 'Inter', sans-serif; background-color: #ffffff; color: #000;
         }
         a { text-decoration: none; color: inherit; }
 
@@ -28,30 +29,35 @@
             display: flex; 
             flex-direction: column; 
             overflow-y: auto; 
-            padding-bottom: 90px; /* Supaya list terbawah tidak ketutup Nav */
+            padding-bottom: 90px; /* Space untuk Nav Bawah */
         }
         
         .card-log {
-            background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px;
-            margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            transition: all 0.2s; cursor: pointer; position: relative; overflow: hidden;
+            background: white; border: 2px solid #000; padding: 16px;
+            margin-bottom: 12px; box-shadow: 4px 4px 0 #000;
+            transition: all 0.1s; cursor: pointer; position: relative; overflow: hidden;
         }
-        .card-log:active { transform: scale(0.98); background: #f1f5f9; }
-        .status-badge {
-            font-size: 10px; font-weight: 800; text-transform: uppercase;
-            padding: 4px 10px; border-radius: 99px; letter-spacing: 0.5px;
-        }
-        .st-pending { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; }
+        .card-log:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
         
-        /* --- BOTTOM NAV (FIXED) --- */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            height: 70px; background: white; border-top: 2px solid #000;
-            display: flex; justify-content: space-around; align-items: center;
-            z-index: 40; padding-bottom: 10px;
+        .status-badge {
+            font-size: 10px; font-weight: 900; text-transform: uppercase;
+            padding: 4px 10px; border: 1px solid #000; background: #000; color: #fff;
         }
-        .nav-btn { display: flex; align-items: center; justify-content: center; width: 50px; height: 50px; color: #000; transition: opacity 0.2s; }
-        .nav-btn:active { opacity: 0.4; transform: scale(0.95); }
+
+        /* --- BOTTOM NAV (FIXED) --- */
+        .bottom-nav { 
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            height: 80px; background: white; border-top: 3px solid #000; 
+            display: flex; justify-content: space-around; align-items: center; 
+            z-index: 50; padding-bottom: 10px; transition: transform 0.3s ease;
+        }
+        .nav-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 60px; height: 60px; color: #000; transition: opacity 0.2s; }
+        .nav-btn i { font-size: 20px; margin-bottom: 4px; }
+        .nav-btn span { font-size: 9px; font-weight: 800; text-transform: uppercase; }
+        .nav-btn:active { transform: scale(0.9); opacity: 0.6; }
+        
+        /* Helper untuk sembunyikan Nav saat Scan/Form */
+        .nav-hidden { transform: translateY(100%); }
 
         /* --- HALAMAN SCANNER --- */
         #page-scanner {
@@ -60,32 +66,39 @@
         }
         .scan-area { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
         .frame-box { position: relative; width: 70vw; height: 70vw; max-width: 300px; max-height: 300px; z-index: 10; }
-        #reader { width: 100%; height: 100%; background: #eee; border-radius: 4px; overflow: hidden; }
-        #reader video { object-fit: cover !important; border-radius: 4px; }
+        #reader { width: 100%; height: 100%; background: #eee; border: 2px solid #000; overflow: hidden; }
+        #reader video { object-fit: cover !important; }
+        
         .bracket { position: absolute; width: 40px; height: 40px; border: 0 solid #000; z-index: 20; }
-        .tl { top: -2px; left: -2px; border-top-width: 6px; border-left-width: 6px; }
-        .tr { top: -2px; right: -2px; border-top-width: 6px; border-right-width: 6px; }
-        .bl { bottom: -2px; left: -2px; border-bottom-width: 6px; border-left-width: 6px; }
-        .br { bottom: -2px; right: -2px; border-bottom-width: 6px; border-right-width: 6px; }
+        .tl { top: -6px; left: -6px; border-top-width: 8px; border-left-width: 8px; }
+        .tr { top: -6px; right: -6px; border-top-width: 8px; border-right-width: 8px; }
+        .bl { bottom: -6px; left: -6px; border-bottom-width: 8px; border-left-width: 8px; }
+        .br { bottom: -6px; right: -6px; border-bottom-width: 8px; border-right-width: 8px; }
+
         .trapezoid-area { position: absolute; bottom: 0; left: 0; right: 0; height: 30%; pointer-events: none; z-index: 15; }
-        .line { position: absolute; bottom: 0; width: 2px; height: 100%; background: #000; }
+        .line { position: absolute; bottom: 0; width: 3px; height: 100%; background: #000; }
         .l-left { left: 15%; transform-origin: bottom left; transform: rotate(20deg); }
         .l-right { right: 15%; transform-origin: bottom right; transform: rotate(-20deg); }
-        .scan-badge { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: white; border: 2px solid #000; border-radius: 6px; padding: 4px 14px; font-weight: 800; font-size: 11px; letter-spacing: 1px; box-shadow: 2px 2px 0 rgba(0,0,0,0.1); }
+        .scan-badge { 
+            position: absolute; top: -15px; left: 50%; transform: translateX(-50%); 
+            background: white; border: 2px solid #000; padding: 6px 18px; 
+            font-weight: 900; font-size: 12px; letter-spacing: 1px; 
+            box-shadow: 4px 4px 0 #000; 
+        }
 
         /* --- HALAMAN FORM --- */
-        #page-form { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #f8fafc; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 100px; z-index: 60; display: none; }
+        #page-form { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #fff; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 100px; z-index: 60; display: none; }
     </style>
 </head>
 <body>
 
     <div id="page-list">
-        <div class="sticky top-0 bg-white/90 backdrop-blur border-b border-gray-200 p-5 z-20 flex justify-between items-center shadow-sm">
+        <div class="sticky top-0 bg-white border-b-2 border-black p-5 z-20 flex justify-between items-center">
             <div>
-                <h1 class="text-xl font-black uppercase tracking-tight text-gray-900">Antrean Verifikasi</h1>
-                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Koordinator Area</p>
+                <h1 class="text-xl font-black uppercase tracking-tight">Antrean Verifikasi</h1>
+                <p class="text-[10px] font-bold uppercase tracking-widest mt-1 text-gray-500">Koordinator Area</p>
             </div>
-            <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center border border-blue-100">
+            <div class="w-10 h-10 border-2 border-black rounded-full flex items-center justify-center">
                 <i class="fa-solid fa-user-shield"></i>
             </div>
         </div>
@@ -99,19 +112,19 @@
     </div>
 
     <div class="bottom-nav" id="main-nav">
-        <a href="index.html" class="nav-btn"><i class="fa-solid fa-house text-xl"></i></a>
-        <a href="menu_utama.html" class="nav-btn"><i class="fa-solid fa-bars text-xl"></i></a>
-        <a href="download_data.html" class="nav-btn"><i class="fa-solid fa-download text-xl"></i></a>
-        <a href="informasi_akun.html" class="nav-btn"><i class="fa-solid fa-user text-xl"></i></a>
+        <a href="index.html" class="nav-btn"><i class="fa-solid fa-house"></i><span>Home</span></a>
+        <a href="menu_utama.html" class="nav-btn"><i class="fa-solid fa-bars"></i><span>Menu</span></a>
+        <a href="download_data.html" class="nav-btn"><i class="fa-solid fa-download"></i><span>Data</span></a>
+        <a href="informasi_akun.html" class="nav-btn"><i class="fa-solid fa-user"></i><span>Akun</span></a>
     </div>
 
     <div id="page-scanner">
         <div class="pt-12 pb-4 text-center z-20 bg-white">
-            <div class="inline-block border-2 border-black rounded-full px-8 py-2 bg-white shadow-sm">
+            <div class="inline-block border-2 border-black px-6 py-2 bg-white shadow-[4px_4px_0_0_#000]">
                 <h1 class="text-lg font-black uppercase tracking-tight">Verifikasi Fisik</h1>
             </div>
-            <p class="mt-4 text-[11px] italic text-gray-500 px-10 leading-tight">
-                Scan QR Code pada mesin <br> <span id="target-mesin" class="font-black text-black text-sm">...</span> <br> untuk membuka lembar kerja.
+            <p class="mt-4 text-[11px] font-bold text-gray-500 px-10 leading-tight uppercase">
+                Scan QR Code pada mesin <br> <span id="target-mesin" class="font-black text-black text-sm decoration-2 underline">...</span> <br> untuk membuka lembar kerja.
             </p>
         </div>
         <div class="scan-area">
@@ -124,23 +137,22 @@
             </div>
         </div>
         <div class="bg-white border-t-2 border-black p-4 flex justify-center z-50">
-            <button onclick="closeScanner()" class="bg-gray-100 text-gray-500 font-bold py-3 px-8 rounded-xl uppercase text-xs hover:bg-red-50 hover:text-red-600 transition-colors">
+            <button onclick="closeScanner()" class="bg-white text-black font-black py-3 px-8 border-2 border-black uppercase text-xs hover:bg-black hover:text-white transition-colors">
                 <i class="fa-solid fa-xmark mr-1"></i> Batalkan
             </button>
         </div>
     </div>
 
     <div id="page-form" class="animate-[slideUp_0.3s_ease-out]">
-        <div class="sticky top-0 bg-white/95 backdrop-blur border-b border-gray-200 p-4 z-50 flex justify-between items-center shadow-sm">
+        <div class="sticky top-0 bg-white border-b-2 border-black p-4 z-50 flex justify-between items-center">
             <h2 class="font-black text-lg uppercase">Review Laporan</h2>
-            <button onclick="location.reload()" class="text-xs bg-gray-100 px-3 py-2 rounded-lg font-bold hover:bg-red-50 hover:text-red-600 transition-colors">KEMBALI</button>
+            <button onclick="location.reload()" class="text-xs bg-black text-white px-3 py-2 font-bold uppercase">KEMBALI</button>
         </div>
 
         <div class="p-5 space-y-6">
-            <div class="bg-slate-900 text-white rounded-2xl p-5 shadow-xl relative overflow-hidden">
+            <div class="border-2 border-black p-5 shadow-[6px_6px_0_0_#000] bg-white">
                 <h1 id="verif-machine-name" class="text-xl font-black uppercase mb-1">...</h1>
-                <p id="verif-pelaksana" class="text-[10px] text-slate-400 font-bold uppercase border-t border-slate-700 pt-2 mt-2">...</p>
-                <i class="fa-solid fa-check-double absolute -bottom-4 -right-4 text-8xl text-white/5 rotate-12"></i>
+                <p id="verif-pelaksana" class="text-[10px] font-bold uppercase border-t-2 border-black pt-2 mt-2 text-gray-500">...</p>
             </div>
 
             <div id="findings-list" class="space-y-3">
@@ -149,27 +161,27 @@
                 </div>
             </div>
 
-            <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+            <div class="border-2 border-black p-5 space-y-4 bg-white">
                 <div>
-                    <label class="text-[10px] font-bold uppercase text-gray-500 ml-1">Nama Koordinator</label>
-                    <input type="text" id="koor-name" class="w-full mt-1 border-2 border-gray-300 rounded-xl p-3 font-bold uppercase focus:border-black outline-none transition-colors" placeholder="NAMA LENGKAP">
+                    <label class="text-[10px] font-black uppercase text-gray-500 ml-1">Nama Koordinator</label>
+                    <input type="text" id="koor-name" class="w-full mt-1 border-2 border-black p-3 font-bold uppercase outline-none focus:bg-gray-50 transition-colors rounded-none" placeholder="NAMA LENGKAP">
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold uppercase text-gray-500 ml-1">Catatan Verifikasi</label>
-                    <textarea id="koor-remark" rows="2" class="w-full mt-1 border-2 border-gray-300 rounded-xl p-3 font-bold text-xs outline-none focus:border-black transition-colors" placeholder="Instruksi perbaikan (opsional)..."></textarea>
+                    <label class="text-[10px] font-black uppercase text-gray-500 ml-1">Catatan Verifikasi</label>
+                    <textarea id="koor-remark" rows="2" class="w-full mt-1 border-2 border-black p-3 font-bold text-xs outline-none focus:bg-gray-50 transition-colors rounded-none" placeholder="Instruksi perbaikan (opsional)..."></textarea>
                 </div>
                 <div>
                     <div class="flex justify-between items-center mb-2">
-                        <label class="text-[10px] font-bold uppercase text-gray-500">Paraf Verifikasi</label>
-                        <button onclick="sigPadKoor.clear()" class="text-[10px] text-red-500 font-bold border border-red-100 px-2 rounded">ULANG</button>
+                        <label class="text-[10px] font-black uppercase text-gray-500">Paraf Verifikasi</label>
+                        <button onclick="sigPadKoor.clear()" class="text-[10px] bg-black text-white font-bold px-2 py-1 uppercase">ULANG</button>
                     </div>
-                    <canvas id="signature-pad-koor" class="w-full h-32 bg-gray-50 border border-dashed border-gray-300 rounded-xl touch-none"></canvas>
+                    <canvas id="signature-pad-koor" class="w-full h-32 bg-gray-50 border-2 border-dashed border-gray-400 touch-none"></canvas>
                 </div>
             </div>
 
             <div class="pt-2 pb-10">
-                <button onclick="submitApproval()" id="btn-approve" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition-transform uppercase tracking-widest text-sm flex items-center justify-center gap-2">
-                    <span>APPROVE SEKARANG</span> <i class="fa-solid fa-circle-check"></i>
+                <button onclick="submitApproval()" id="btn-approve" class="w-full bg-black text-white font-black py-4 shadow-[6px_6px_0_0_#888] active:translate-y-1 active:shadow-none transition-all uppercase tracking-widest text-sm border-2 border-black flex items-center justify-center gap-2">
+                    <span>APPROVE SEKARANG</span> <i class="fa-solid fa-check"></i>
                 </button>
             </div>
         </div>
@@ -207,8 +219,8 @@
                 const time = new Date(log.created_at).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
                 container.insertAdjacentHTML('beforeend', `
                     <div class="card-log" onclick="startVerification('${encodeURIComponent(JSON.stringify(log))}')">
-                        <div class="flex justify-between items-start mb-2"><span class="status-badge st-pending">BUTUH VERIFIKASI</span><span class="text-[10px] font-bold text-gray-400">${time}</span></div>
-                        <h3 class="font-black text-gray-800 text-lg uppercase tracking-tight mb-1">${log.mesin_id}</h3>
+                        <div class="flex justify-between items-start mb-2"><span class="status-badge">BUTUH VERIFIKASI</span><span class="text-[10px] font-bold text-gray-500">${time}</span></div>
+                        <h3 class="font-black text-gray-900 text-lg uppercase tracking-tight mb-1">${log.mesin_id}</h3>
                         <div class="flex items-center gap-2 text-gray-500"><i class="fa-regular fa-user text-[10px]"></i><p class="text-[10px] font-bold uppercase truncate">${names}</p></div>
                     </div>
                 `);
@@ -218,7 +230,7 @@
         function startVerification(logStr) {
             activeLog = JSON.parse(decodeURIComponent(logStr));
             document.getElementById('page-list').style.display = 'none';
-            document.getElementById('main-nav').style.display = 'none'; // Hide Nav saat scan
+            document.getElementById('main-nav').classList.add('nav-hidden'); // Hide Nav
             document.getElementById('page-scanner').style.display = 'flex';
             document.getElementById('target-mesin').innerText = activeLog.mesin_id;
             if(!scanner) scanner = new Html5Qrcode("reader");
@@ -229,7 +241,7 @@
             if(scanner) scanner.stop().then(() => scanner.clear());
             document.getElementById('page-scanner').style.display = 'none';
             document.getElementById('page-list').style.display = 'block';
-            document.getElementById('main-nav').style.display = 'flex'; // Show Nav kembali
+            document.getElementById('main-nav').classList.remove('nav-hidden'); // Show Nav
             activeLog = null;
         }
 
@@ -276,24 +288,24 @@
 
             listContainer.innerHTML = "";
             if (findings.length > 0) {
-                listContainer.innerHTML = `<p class="text-[10px] font-black uppercase text-red-500 ml-1 mb-1">Daftar Temuan Masalah:</p>`;
+                listContainer.innerHTML = `<p class="text-[10px] font-black uppercase text-red-600 ml-1 mb-1">Daftar Temuan Masalah:</p>`;
                 findings.forEach(f => {
                     listContainer.insertAdjacentHTML('beforeend', `
-                        <div class="bg-red-50 border border-red-100 p-3 rounded-xl mb-2">
+                        <div class="border-2 border-black p-3 bg-white mb-2 shadow-[2px_2px_0_0_#000]">
                             <div class="flex justify-between items-start">
-                                <p class="text-[10px] font-black uppercase text-gray-800 w-3/4">${f.item_name}</p>
-                                <span class="bg-red-500 text-white text-[8px] font-bold px-2 py-0.5 rounded">NG</span>
+                                <p class="text-[10px] font-black uppercase w-3/4">${f.item_name}</p>
+                                <span class="bg-black text-white text-[8px] font-bold px-2 py-0.5 uppercase">NG</span>
                             </div>
-                            <p class="text-[10px] font-bold text-red-700 mt-1 italic">"${f.keterangan}"</p>
+                            <p class="text-[10px] font-bold mt-1 uppercase text-gray-600">"${f.keterangan}"</p>
                         </div>
                     `);
                 });
             } else {
                 listContainer.innerHTML = `
-                    <div class="text-center py-4 bg-green-50 rounded-xl border border-green-200">
-                        <i class="fa-solid fa-thumbs-up text-green-500 mb-1"></i>
-                        <p class="text-[10px] font-bold text-green-700 uppercase">Semua Kondisi OK.</p>
-                        ${activeLog.catatan ? `<p class="text-[10px] text-gray-500 mt-2 italic border-t border-green-200 pt-2">"${activeLog.catatan}"</p>` : ''}
+                    <div class="text-center py-4 bg-gray-50 border-2 border-dashed border-black">
+                        <i class="fa-solid fa-thumbs-up text-black mb-1"></i>
+                        <p class="text-[10px] font-bold uppercase">Semua Kondisi OK.</p>
+                        ${activeLog.catatan ? `<p class="text-[10px] text-gray-500 mt-2 italic border-t-2 border-gray-200 pt-2">"${activeLog.catatan}"</p>` : ''}
                     </div>
                 `;
             }
@@ -311,7 +323,7 @@
             if(!name || sigPadKoor.isEmpty()) return alert("⚠️ Isi Nama & Paraf!");
             
             const btn = document.getElementById('btn-approve');
-            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> MEMPROSES...'; btn.disabled = true;
+            btn.innerHTML = 'MEMPROSES...'; btn.disabled = true;
 
             const { error } = await _sb.from('chslr_log').update({
                 koordinator_nama: name,
