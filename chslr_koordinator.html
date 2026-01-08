@@ -33,7 +33,7 @@
             display: flex; flex-direction: column; align-items: center;
         }
 
-        /* === WIREFRAME STYLE (TEGAS) === */
+        /* === WIREFRAME STYLE (TEGAS & TEBAL) === */
         
         /* Header */
         .header-pill {
@@ -65,12 +65,12 @@
             padding: 15px; box-shadow: 5px 5px 0 #000; margin-bottom: 20px;
         }
         .info-line {
-            display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px;
+            display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 8px;
             align-items: flex-start;
         }
-        .info-title { font-weight: 800; width: 40%; }
-        .info-sep { font-weight: 800; width: 5%; }
-        .info-data { font-weight: 900; width: 55%; text-align: right; text-transform: uppercase; line-height: 1.2; }
+        .info-title { font-weight: 800; width: 35%; }
+        .info-sep { font-weight: 800; width: 5%; text-align: center; }
+        .info-data { font-weight: 900; width: 60%; text-align: right; text-transform: uppercase; line-height: 1.2; word-break: break-word; }
 
         .input-box {
             width: 100%; max-width: 340px;
@@ -80,7 +80,7 @@
             margin-bottom: 20px; font-weight: 800; font-size: 12px;
             text-align: center; outline: none;
         }
-        .input-box::placeholder { color: #000; text-transform: uppercase; }
+        .input-box::placeholder { color: #000; text-transform: uppercase; opacity: 0.5; }
 
         .paraf-area {
             width: 100%; max-width: 340px; height: 120px;
@@ -97,7 +97,7 @@
         }
         .btn-submit:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
 
-        /* Scanner */
+        /* Scanner Style (Sesuai Gambar) */
         .camera-frame { width: 260px; height: 260px; position: relative; margin: 0 auto; }
         #reader { width: 100%; height: 100%; background: #eee; }
         #reader video { object-fit: cover !important; }
@@ -141,7 +141,10 @@
                 </div>
                 
                 <div id="log-container" class="w-full flex flex-col items-center">
-                    <div class="text-center py-10 font-bold text-xs uppercase">Memuat Antrean...</div>
+                    <div class="text-center py-10 font-bold text-xs uppercase">
+                        <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>
+                        Mencari Laporan Harian...
+                    </div>
                 </div>
             </div>
 
@@ -171,15 +174,15 @@
                         <span class="info-title">Pelaksana</span> <span class="info-sep">:</span> <span id="form-pelaksana" class="info-data">...</span>
                     </div>
                     <div class="info-line">
-                        <span class="info-title">Catatan Pelaksana</span> <span class="info-sep">:</span> <span id="form-catatan-pel" class="info-data text-red-600">...</span>
+                        <span class="info-title">Catatan Pelaksana</span> <span class="info-sep">:</span> <span id="form-catatan-pel" class="info-data">...</span>
                     </div>
                 </div>
 
                 <p class="label-text">Nama Koordinator :</p>
-                <input type="text" id="koor-name" class="input-box" placeholder="">
+                <input type="text" id="koor-name" class="input-box" placeholder="Nama Anda">
 
                 <p class="label-text">Catatan Koordinator :</p>
-                <textarea id="koor-remark" rows="2" class="input-box resize-none" placeholder=""></textarea>
+                <textarea id="koor-remark" rows="2" class="input-box resize-none" placeholder="Isi jika perlu"></textarea>
                 
                 <p class="label-text">Paraf :</p>
                 <div class="paraf-area">
@@ -241,46 +244,69 @@
             loadQueue();
         }
 
-        // --- 1. LOAD QUEUE ---
+        // --- LOGIKA UTAMA: FETCH ANTREAN ---
         async function loadQueue() {
             const now = new Date();
-            const { data: logs } = await _sb.from('chslr_log')
-                .select('*')
-                .eq('bulan', now.getMonth()+1)
-                .eq('tahun', now.getFullYear())
-                .eq('status_verifikasi', false)
-                .order('created_at', { ascending: false });
+            const todayDate = now.getDate();
+            const currentMonth = now.getMonth() + 1;
+            const currentYear = now.getFullYear();
 
             const container = document.getElementById('log-container');
-            container.innerHTML = "";
+            container.innerHTML = '<div class="text-center py-10 font-bold text-xs">Mencari data...</div>';
+
+            // 1. Ambil Log Bulan Ini (Header)
+            const { data: logs, error } = await _sb.from('chslr_log')
+                .select('*')
+                .eq('bulan', currentMonth)
+                .eq('tahun', currentYear)
+                .eq('status_verifikasi', false); // Hanya yang belum diverifikasi
 
             if (!logs || logs.length === 0) {
-                container.innerHTML = `<div class="input-box text-center opacity-50 !shadow-none">Tidak ada antrean.</div>`;
+                container.innerHTML = `<div class="input-box text-center opacity-50 !shadow-none">Tidak ada log bulan ini.</div>`;
                 return;
             }
 
-            logs.forEach(log => {
-                const dateObj = new Date(log.created_at);
-                const dateStr = dateObj.toLocaleDateString('id-ID', {day: '2-digit', month:'2-digit', year:'numeric'});
-                const names = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
-                
-                container.insertAdjacentHTML('beforeend', `
-                    <div class="card-item" onclick="startScanner('${encodeURIComponent(JSON.stringify(log))}')">
-                        <div class="card-row">
-                            <span class="lbl">nama mesin</span> <span class="lbl">:</span> <span class="val">${log.mesin_id}</span>
+            container.innerHTML = "";
+            let foundAny = false;
+
+            // 2. Loop setiap Log untuk cek apakah ada RESULT hari ini (Detail)
+            for (let log of logs) {
+                // Cek ke tabel result, adakah isian tanggal hari ini untuk log_id ini?
+                const { data: results } = await _sb.from('chslr_result')
+                    .select('id') // Cukup cek ID untuk performa
+                    .eq('log_id', log.id)
+                    .eq('tanggal', todayDate)
+                    .limit(1);
+
+                // Jika ada result hari ini, TAMPILKAN di antrean
+                if (results && results.length > 0) {
+                    foundAny = true;
+                    const names = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
+                    const dateStr = `${todayDate}/${currentMonth}/${currentYear}`;
+
+                    container.insertAdjacentHTML('beforeend', `
+                        <div class="card-item" onclick="startScanner('${encodeURIComponent(JSON.stringify(log))}')">
+                            <div class="card-row">
+                                <span class="lbl">nama mesin</span> <span class="lbl">:</span> <span class="val">${log.mesin_id}</span>
+                            </div>
+                            <div class="card-row">
+                                <span class="lbl">nama pelaksana</span> <span class="lbl">:</span> <span class="val text-right">${names}</span>
+                            </div>
+                            <div class="card-row">
+                                <span class="lbl">tanggal cek</span> <span class="lbl">:</span> <span class="val">${dateStr}</span>
+                            </div>
+                            <div class="mt-2 text-center bg-black text-white text-[9px] font-bold py-1">KLIK UNTUK VERIFIKASI</div>
                         </div>
-                        <div class="card-row">
-                            <span class="lbl">nama pelaksana</span> <span class="lbl">:</span> <span class="val text-right">${names}</span>
-                        </div>
-                        <div class="card-row">
-                            <span class="lbl">tanggal</span> <span class="lbl">:</span> <span class="val">${dateStr}</span>
-                        </div>
-                    </div>
-                `);
-            });
+                    `);
+                }
+            }
+
+            if (!foundAny) {
+                container.innerHTML = `<div class="input-box text-center opacity-50 !shadow-none">Semua mesin hari ini sudah diverifikasi atau belum ada laporan masuk.</div>`;
+            }
         }
 
-        // --- 2. SCANNER ---
+        // --- SCANNER ---
         function startScanner(logStr) {
             activeLog = JSON.parse(decodeURIComponent(logStr));
             switchView('view-scanner');
@@ -294,45 +320,58 @@
                 await scanner.stop(); scanner.clear();
                 openForm();
             } else {
-                alert("❌ QR SALAH!\nIni mesin: " + decodedText + "\nSeharusnya: " + activeLog.mesin_id);
+                alert("❌ QR SALAH!\nTarget Mesin: " + activeLog.mesin_id);
             }
         }
 
-        // --- 3. FORM APPROVAL (LOGIC BARU) ---
+        // --- FORM LOGIC (KONDISIONAL PENTING) ---
         async function openForm() {
             switchView('view-form');
             document.getElementById('form-mesin').innerText = activeLog.mesin_id;
             document.getElementById('form-pelaksana').innerText = activeLog.pelaksana_names ? activeLog.pelaksana_names.join(', ') : '-';
             
-            // --- LOGIKA BARU: AMBIL CATATAN DARI CHSLR_RESULT ---
-            document.getElementById('form-catatan-pel').innerText = "Memuat catatan...";
-            
-            // Fetch Keterangan dari table Result (hanya yang tidak kosong)
-            const { data: results } = await _sb.from('chslr_result')
-                .select('keterangan, status, chslr_items(item_name)')
-                .eq('log_id', activeLog.id);
+            const noteEl = document.getElementById('form-catatan-pel');
+            noteEl.innerText = "Mengambil data...";
+            noteEl.className = "info-data"; // Reset class
 
-            let noteText = "AMAN (Tidak ada catatan)";
-            let notesArr = [];
+            // FETCH DETAIL DARI TABEL chslr_result (HARI INI)
+            const today = new Date().getDate();
+            const { data: results } = await _sb.from('chslr_result')
+                .select('status, keterangan, chslr_items(item_name)')
+                .eq('log_id', activeLog.id)
+                .eq('tanggal', today);
+
+            // LOGIKA KONDISIONAL
+            let finalNote = "AMAN";
+            let hasNG = false;
+            let ngNotes = [];
 
             if (results && results.length > 0) {
-                // Filter hanya yang NG atau punya keterangan
+                // Cek apakah ada yang NG
                 results.forEach(r => {
-                    if (r.keterangan && r.keterangan.trim() !== "") {
-                        const itemName = r.chslr_items ? r.chslr_items.item_name : 'Item';
-                        notesArr.push(`${itemName}: ${r.keterangan}`);
+                    if (r.status === 'NG') {
+                        hasNG = true;
+                        const item = r.chslr_items ? r.chslr_items.item_name : 'Item';
+                        ngNotes.push(`${item}: ${r.keterangan}`);
                     }
                 });
 
-                if (notesArr.length > 0) {
-                    noteText = notesArr.join(' | ');
-                } else if (activeLog.catatan) {
-                    // Fallback ke catatan general log jika result kosong
-                    noteText = activeLog.catatan;
+                if (hasNG) {
+                    // JIKA ADA NG -> TAMPILKAN DETAIL ITEM DAN KETERANGANNYA
+                    finalNote = ngNotes.join(' | ');
+                    noteEl.classList.add('text-red-600'); // Merah jika NG
+                } else {
+                    // JIKA SEMUA OK -> AMBIL CATATAN UMUM DARI chslr_log (jika ada)
+                    if (activeLog.catatan && activeLog.catatan.trim() !== "") {
+                        finalNote = "OK - " + activeLog.catatan;
+                    } else {
+                        finalNote = "KONDISI OK (AMAN)";
+                    }
+                    noteEl.classList.add('text-black');
                 }
             }
-            
-            document.getElementById('form-catatan-pel').innerText = noteText;
+
+            noteEl.innerText = finalNote;
             
             setTimeout(initSigPad, 100);
         }
@@ -341,11 +380,12 @@
             const name = document.getElementById('koor-name').value.trim();
             const remark = document.getElementById('koor-remark').value.trim();
 
-            if(!name || sigPadKoor.isEmpty()) return alert("⚠️ HARAP ISI NAMA & PARAF!");
+            if(!name || sigPadKoor.isEmpty()) return alert("⚠️ NAMA & PARAF WAJIB!");
             
             const btn = document.getElementById('btn-approve');
             btn.innerText = 'MEMPROSES...'; btn.disabled = true;
 
+            // UPDATE STATUS VERIFIKASI JADI TRUE
             const { error } = await _sb.from('chslr_log').update({
                 koordinator_nama: name,
                 signature_koordinator: sigPadKoor.toDataURL(),
@@ -354,7 +394,7 @@
             }).eq('id', activeLog.id);
 
             if(!error) {
-                alert("✅ LAPORAN TERVERIFIKASI!");
+                alert("✅ DATA TERVERIFIKASI!");
                 backToList();
             } else {
                 alert("Gagal: " + error.message);
