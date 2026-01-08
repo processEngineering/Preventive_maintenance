@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ffffff">
-    <title>Koordinator App</title>
+    <title>Koordinator Verifikasi</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -14,193 +14,198 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
 
     <style>
-        /* RESET */
+        /* === RESET & CORE === */
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
         body, html {
             height: 100%; width: 100%; overflow: hidden;
             font-family: 'Inter', sans-serif; background-color: #ffffff; color: #000;
         }
 
-        /* --- LAYOUT UTAMA --- */
-        /* Container utama yang membagi layar jadi: Header - Konten - Footer */
-        .app-view {
-            display: flex; flex-direction: column; height: 100dvh; width: 100%;
-            position: absolute; top: 0; left: 0; background: #fff;
-        }
-        
-        .app-header {
-            flex: 0 0 auto; z-index: 50; background: white;
-            border-bottom: 2px solid #000; padding: 15px 20px;
-            display: flex; justify-content: space-between; align-items: center;
+        /* === APP SHELL LAYOUT (KUNCI AGAR RAPI) === */
+        #app-shell {
+            display: flex; flex-direction: column; 
+            height: 100dvh; /* Tinggi Dinamis Layar HP */
+            width: 100%; max-width: 480px; margin: 0 auto; /* Limit lebar di Desktop */
+            background: white; position: relative;
         }
 
+        /* Header Tetap */
+        .app-header {
+            flex: 0 0 auto; /* Tinggi pas sesuai konten */
+            padding: 15px 20px; border-bottom: 2px solid #000;
+            display: flex; justify-content: space-between; align-items: center;
+            background: white; z-index: 50;
+        }
+
+        /* Konten Tengah (Scrollable) */
         .app-content {
-            flex: 1; overflow-y: auto; position: relative;
-            padding: 20px; padding-bottom: 100px; /* Space agar tidak ketutup Nav */
+            flex: 1; /* Isi sisa ruang */
+            overflow-y: auto; overflow-x: hidden;
+            position: relative;
             -webkit-overflow-scrolling: touch;
         }
 
-        /* --- GLOBAL NAVIGATION (FIXED BOTTOM) --- */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            height: 80px; background: white; border-top: 3px solid #000;
+        /* Footer Navigasi Tetap */
+        .app-nav {
+            flex: 0 0 80px; /* Tinggi Tetap 80px */
+            border-top: 3px solid #000;
             display: flex; justify-content: space-around; align-items: center;
-            z-index: 100; padding-bottom: 15px; /* Safe Area */
+            background: white; z-index: 50; padding-bottom: 10px;
         }
-        .nav-btn { display: flex; flex-direction: column; align-items: center; width: 60px; color: #9ca3af; transition: all 0.2s; }
+
+        /* === KOMPONEN DESIGN === */
+        /* Tombol Navigasi */
+        .nav-btn { display: flex; flex-direction: column; align-items: center; width: 60px; color: #9ca3af; transition: 0.2s; }
         .nav-btn.active { color: #000; transform: translateY(-2px); }
         .nav-btn i { font-size: 20px; margin-bottom: 4px; }
         .nav-btn span { font-size: 9px; font-weight: 800; text-transform: uppercase; }
 
-        /* --- COMPONENTS --- */
-        .card-item {
-            border: 2px solid #000; padding: 16px; margin-bottom: 12px;
-            background: white; box-shadow: 4px 4px 0 rgba(0,0,0,0.1);
-            cursor: pointer; transition: transform 0.1s;
+        /* Kartu Antrean */
+        .card-log {
+            border: 2px solid #000; padding: 15px; margin-bottom: 12px;
+            background: white; box-shadow: 4px 4px 0 rgba(0,0,0,0.15);
+            transition: transform 0.1s; cursor: pointer;
         }
-        .card-item:active { transform: scale(0.98); box-shadow: 2px 2px 0 rgba(0,0,0,0.1); }
+        .card-log:active { transform: scale(0.98); box-shadow: 2px 2px 0 rgba(0,0,0,0.15); }
 
-        /* --- SCANNER SPECIFIC (WIREFRAME STYLE - SESUAI REQUEST) --- */
-        #page-scanner { z-index: 90; display: none; }
-        
-        .scan-header { text-align: center; padding-top: 3rem; margin-bottom: 2rem; }
-        .pill-box { display: inline-block; border: 2px solid #000; border-radius: 9999px; padding: 12px 40px; background: white; box-shadow: 4px 4px 0 rgba(0,0,0,1); }
-        
-        .scan-frame-container { 
-            position: relative; width: 75vw; height: 75vw; max-width: 300px; max-height: 300px; 
-            margin: 0 auto; /* Center Horizontal */
+        /* === SCANNER WIREFRAME STYLE (SAMA DENGAN PELAKSANA) === */
+        #view-scanner {
+            display: flex; flex-direction: column; height: 100%;
         }
+        .scan-header-area { flex: 0 0 auto; padding-top: 2rem; text-align: center; }
+        .pill-box { display: inline-block; border: 2px solid #000; border-radius: 9999px; padding: 10px 40px; background: white; box-shadow: 3px 3px 0 #000; }
+        
+        .scan-camera-area { 
+            flex: 1; display: flex; align-items: center; justify-content: center; 
+            position: relative; overflow: hidden; padding: 20px;
+        }
+        .frame-box { position: relative; width: 100%; max-width: 280px; aspect-ratio: 1/1; }
+        
         #reader { width: 100%; height: 100%; background: #eee; border: 2px solid #000; overflow: hidden; }
         #reader video { object-fit: cover !important; }
 
-        /* Brackets Siku Tebal */
-        .bracket { position: absolute; width: 40px; height: 40px; border: 0 solid #000; z-index: 20; }
-        .tl { top: -6px; left: -6px; border-top-width: 8px; border-left-width: 8px; }
-        .tr { top: -6px; right: -6px; border-top-width: 8px; border-right-width: 8px; }
-        .bl { bottom: -6px; left: -6px; border-bottom-width: 8px; border-left-width: 8px; }
-        .br { bottom: -6px; right: -6px; border-bottom-width: 8px; border-right-width: 8px; }
+        /* Brackets */
+        .bracket { position: absolute; width: 30px; height: 30px; border: 0 solid #000; z-index: 20; }
+        .tl { top: -5px; left: -5px; border-top-width: 6px; border-left-width: 6px; }
+        .tr { top: -5px; right: -5px; border-top-width: 6px; border-right-width: 6px; }
+        .bl { bottom: -5px; left: -5px; border-bottom-width: 6px; border-left-width: 6px; }
+        .br { bottom: -5px; right: -5px; border-bottom-width: 6px; border-right-width: 6px; }
 
-        /* Trapesium Area */
-        .trapezoid-area { position: absolute; bottom: -60px; left: 0; right: 0; height: 60px; pointer-events: none; z-index: 15; }
-        .line { position: absolute; bottom: 0; width: 3px; height: 100%; background: #000; }
-        .l-left { left: 15%; transform-origin: bottom left; transform: rotate(25deg); }
-        .l-right { right: 15%; transform-origin: bottom right; transform: rotate(-25deg); }
+        /* Trapesium */
+        .trapezoid-area { position: absolute; bottom: 0; left: 0; right: 0; height: 30%; pointer-events: none; z-index: 15; }
+        .line { position: absolute; bottom: 0; width: 2px; height: 100%; background: #000; }
+        .l-left { left: 15%; transform-origin: bottom left; transform: rotate(20deg); }
+        .l-right { right: 15%; transform-origin: bottom right; transform: rotate(-20deg); }
         .scan-badge { 
             position: absolute; top: -10px; left: 50%; transform: translateX(-50%); 
-            background: white; border: 2px solid #000; padding: 4px 16px; 
-            font-weight: 900; font-size: 11px; letter-spacing: 1px; box-shadow: 3px 3px 0 #000; 
+            background: white; border: 2px solid #000; padding: 4px 14px; 
+            font-weight: 900; font-size: 10px; letter-spacing: 1px; box-shadow: 3px 3px 0 #000; 
         }
 
-        /* Helper Views */
-        .hidden-view { display: none !important; }
+        /* Utility */
+        .hidden { display: none !important; }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-    <div id="page-list" class="app-view">
-        <div class="app-header">
+    <div id="app-shell">
+
+        <header class="app-header">
             <div>
-                <h1 class="text-xl font-black uppercase tracking-tight">Antrean</h1>
+                <h1 class="text-lg font-black uppercase tracking-tight">Verifikasi</h1>
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Koordinator</p>
             </div>
-            <div class="w-10 h-10 bg-black text-white rounded-lg flex items-center justify-center">
-                <i class="fa-solid fa-layer-group"></i>
+            <div class="w-9 h-9 bg-black text-white rounded-lg flex items-center justify-center">
+                <i class="fa-solid fa-user-check"></i>
             </div>
-        </div>
+        </header>
 
-        <div class="app-content" id="log-container">
-            <div class="flex flex-col items-center justify-center h-64 text-gray-300">
-                <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-4"></i>
-                <p class="text-[10px] font-bold uppercase tracking-widest">Memuat Data...</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="bottom-nav">
-        <a href="index.html" class="nav-btn active"><i class="fa-solid fa-house"></i><span>Home</span></a>
-        <a href="menu_utama.html" class="nav-btn"><i class="fa-solid fa-bars"></i><span>Menu</span></a>
-        <a href="download_data.html" class="nav-btn"><i class="fa-solid fa-download"></i><span>Data</span></a>
-        <a href="informasi_akun.html" class="nav-btn"><i class="fa-solid fa-user"></i><span>Akun</span></a>
-    </div>
-
-    <div id="page-scanner" class="app-view">
-        <div class="scan-header">
-            <div class="pill-box">
-                <h1 class="text-lg font-black uppercase tracking-tight">Verifikasi Fisik</h1>
-            </div>
-            <p class="mt-6 text-xs font-bold text-gray-500 uppercase px-10 leading-relaxed">
-                Scan QR Code pada mesin<br>
-                <span id="target-mesin" class="text-black decoration-2 underline">...</span>
-            </p>
-        </div>
-
-        <div class="flex-1 flex flex-col items-center justify-start pt-4 relative">
-            <div class="scan-frame-container">
-                <div class="bracket tl"></div><div class="bracket tr"></div>
-                <div class="bracket bl"></div><div class="bracket br"></div>
-                <div id="reader"></div>
-                
-                <div class="trapezoid-area">
-                    <div class="scan-badge">SCAN VERIFIKASI</div>
-                    <div class="line l-left"></div>
-                    <div class="line l-right"></div>
+        <main class="app-content bg-slate-50">
+            
+            <div id="view-list" class="p-5 fade-in">
+                <div class="mb-4 flex justify-between items-end">
+                    <h2 class="text-sm font-black uppercase">Daftar Antrean</h2>
+                    <button onclick="loadQueue()" class="text-[10px] font-bold underline">Refresh</button>
                 </div>
-            </div>
-        </div>
-
-        <div class="pb-32 flex justify-center">
-            <button onclick="closeScanner()" class="bg-white border-2 border-black text-black px-6 py-3 font-black text-xs uppercase hover:bg-black hover:text-white transition">
-                <i class="fa-solid fa-xmark mr-2"></i> Batalkan
-            </button>
-        </div>
-    </div>
-
-    <div id="page-form" class="app-view hidden-view">
-        <div class="app-header">
-            <div>
-                <h2 class="font-black text-lg uppercase">Review</h2>
-                <p class="text-[9px] font-bold text-gray-400 uppercase">Validasi Laporan</p>
-            </div>
-            <button onclick="location.reload()" class="text-[10px] font-black uppercase border border-black px-3 py-1 hover:bg-black hover:text-white transition">Kembali</button>
-        </div>
-
-        <div class="app-content space-y-6">
-            <div class="bg-black text-white p-5 rounded-xl shadow-lg relative overflow-hidden">
-                <h1 id="verif-machine-name" class="text-2xl font-black uppercase mb-1 leading-none">...</h1>
-                <div class="flex items-center gap-2 mt-4 pt-3 border-t border-white/20">
-                    <i class="fa-solid fa-user-pen text-xs"></i>
-                    <p class="text-[10px] font-bold uppercase text-gray-400">Pelaksana: <span id="verif-pelaksana" class="text-white">...</span></p>
-                </div>
-            </div>
-
-            <div>
-                <h3 class="font-black text-xs uppercase mb-3 border-b-2 border-black pb-1 inline-block">Hasil Pengecekan</h3>
-                <div id="findings-list" class="space-y-3">
+                <div id="log-container" class="space-y-3">
+                    <div class="text-center py-20 text-gray-400">
+                        <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2"></i>
+                        <p class="text-[10px] font-bold uppercase">Memuat...</p>
                     </div>
+                </div>
             </div>
 
-            <div class="bg-gray-50 border-2 border-gray-200 p-5 rounded-xl space-y-4">
-                <div>
-                    <label class="text-[10px] font-black uppercase mb-1 block text-gray-500">Nama Koordinator</label>
-                    <input type="text" id="koor-name" class="w-full bg-white border-2 border-gray-200 p-3 font-bold text-sm uppercase outline-none focus:border-black transition" placeholder="NAMA LENGKAP">
+            <div id="view-scanner" class="hidden fade-in h-full bg-white">
+                <div class="scan-header-area">
+                    <div class="pill-box"><h1 class="text-sm font-black uppercase tracking-widest">Verifikasi Fisik</h1></div>
+                    <p class="mt-4 text-[10px] font-bold text-gray-500 uppercase px-10">Scan QR Mesin:<br><span id="target-mesin" class="text-black text-xs decoration-2 underline">...</span></p>
                 </div>
-                <div>
-                    <label class="text-[10px] font-black uppercase mb-1 block text-gray-500">Catatan</label>
-                    <textarea id="koor-remark" rows="2" class="w-full bg-white border-2 border-gray-200 p-3 font-bold text-xs uppercase outline-none focus:border-black transition" placeholder="INSTRUKSI..."></textarea>
-                </div>
-                <div>
-                    <div class="flex justify-between items-center mb-1">
-                        <label class="text-[10px] font-black uppercase text-gray-500">Paraf Digital</label>
-                        <button onclick="sigPadKoor.clear()" class="text-[9px] font-bold text-red-500 uppercase">Reset</button>
+                <div class="scan-camera-area">
+                    <div class="frame-box">
+                        <div class="bracket tl"></div><div class="bracket tr"></div>
+                        <div class="bracket bl"></div><div class="bracket br"></div>
+                        <div id="reader"></div>
                     </div>
-                    <canvas id="signature-pad-koor" class="w-full h-24 bg-white border-2 border-dashed border-gray-300 rounded-lg touch-none"></canvas>
+                    <div class="trapezoid-area">
+                        <div class="scan-badge">SCAN TARGET</div>
+                        <div class="line l-left"></div><div class="line l-right"></div>
+                    </div>
+                </div>
+                <div class="p-5 text-center">
+                    <button onclick="showList()" class="bg-white border-2 border-black px-6 py-3 text-xs font-black uppercase hover:bg-black hover:text-white transition">Batalkan</button>
                 </div>
             </div>
 
-            <button onclick="submitApproval()" id="btn-approve" class="w-full bg-black text-white py-4 rounded-xl font-black uppercase tracking-widest text-sm shadow-xl active:scale-95 transition flex justify-center items-center gap-2">
-                <span>Verifikasi & Approve</span> <i class="fa-solid fa-check-circle"></i>
-            </button>
-        </div>
+            <div id="view-form" class="hidden fade-in p-5 pb-10">
+                <div class="bg-black text-white p-5 rounded-xl shadow-lg relative overflow-hidden mb-5">
+                    <h1 id="verif-machine-name" class="text-xl font-black uppercase leading-none mb-1">...</h1>
+                    <div class="border-t border-white/20 pt-2 mt-2">
+                        <p class="text-[9px] font-bold text-gray-400 uppercase">Pelaksana:</p>
+                        <p id="verif-pelaksana" class="text-xs font-bold uppercase">...</p>
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <h3 class="font-black text-xs uppercase mb-3 border-b-2 border-black pb-1 inline-block">Hasil Pengecekan</h3>
+                    <div id="findings-list" class="space-y-2">
+                        </div>
+                </div>
+
+                <div class="bg-white border-2 border-gray-200 p-4 rounded-xl space-y-4 mb-6">
+                    <div>
+                        <label class="text-[10px] font-black uppercase mb-1 block">Nama Koordinator</label>
+                        <input type="text" id="koor-name" class="w-full border-2 border-gray-200 p-3 font-bold text-xs uppercase outline-none focus:border-black transition rounded-none" placeholder="NAMA LENGKAP">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black uppercase mb-1 block">Catatan</label>
+                        <textarea id="koor-remark" rows="2" class="w-full border-2 border-gray-200 p-3 font-bold text-xs uppercase outline-none focus:border-black transition rounded-none" placeholder="INSTRUKSI..."></textarea>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[10px] font-black uppercase">Paraf</label>
+                            <button onclick="sigPadKoor.clear()" class="text-[9px] font-bold text-red-600 uppercase">Hapus</button>
+                        </div>
+                        <canvas id="signature-pad-koor" class="w-full h-24 bg-white border-2 border-dashed border-gray-300 rounded-lg touch-none"></canvas>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="showList()" class="border-2 border-gray-300 py-3 font-bold text-xs uppercase text-gray-500">Batal</button>
+                    <button onclick="submitApproval()" id="btn-approve" class="bg-black text-white py-3 font-black text-xs uppercase shadow-md active:scale-95 transition">Approve</button>
+                </div>
+            </div>
+
+        </main>
+
+        <nav class="app-nav">
+            <a href="index.html" class="nav-btn active"><i class="fa-solid fa-house"></i><span>Home</span></a>
+            <a href="menu_utama.html" class="nav-btn"><i class="fa-solid fa-bars"></i><span>Menu</span></a>
+            <a href="download_data.html" class="nav-btn"><i class="fa-solid fa-download"></i><span>Data</span></a>
+            <a href="informasi_akun.html" class="nav-btn"><i class="fa-solid fa-user"></i><span>Akun</span></a>
+        </nav>
+
     </div>
 
     <script>
@@ -210,13 +215,32 @@
         
         let activeLog = null, scanner = null, sigPadKoor = null;
 
-        // --- NAVIGATION LOGIC ---
-        function switchView(viewId) {
-            document.querySelectorAll('.app-view').forEach(el => el.classList.add('hidden-view'));
-            document.getElementById(viewId).classList.remove('hidden-view');
+        // ROUTING SEDERHANA
+        function showList() {
+            if(scanner) scanner.stop().then(() => scanner.clear());
+            document.getElementById('view-list').classList.remove('hidden');
+            document.getElementById('view-scanner').classList.add('hidden');
+            document.getElementById('view-form').classList.add('hidden');
+            loadQueue(); // Refresh data
         }
 
-        // --- INIT ---
+        function showScanner(logStr) {
+            activeLog = JSON.parse(decodeURIComponent(logStr));
+            document.getElementById('view-list').classList.add('hidden');
+            document.getElementById('view-scanner').classList.remove('hidden');
+            document.getElementById('target-mesin').innerText = activeLog.mesin_id;
+            
+            if(!scanner) scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, onScanSuccess);
+        }
+
+        function showForm() {
+            document.getElementById('view-scanner').classList.add('hidden');
+            document.getElementById('view-form').classList.remove('hidden');
+            renderForm();
+        }
+
+        // LOGIC
         window.onload = loadQueue;
 
         async function loadQueue() {
@@ -233,9 +257,9 @@
 
             if (!logs || logs.length === 0) {
                 container.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-64 text-gray-300">
-                        <i class="fa-regular fa-folder-open text-4xl mb-4"></i>
-                        <p class="text-[10px] font-black uppercase tracking-widest">Tidak ada antrean.</p>
+                    <div class="flex flex-col items-center justify-center py-20 opacity-40">
+                        <i class="fa-regular fa-folder-open text-4xl mb-3 text-gray-400"></i>
+                        <p class="text-[10px] font-black uppercase text-gray-400">Tidak ada antrean.</p>
                     </div>`;
                 return;
             }
@@ -243,50 +267,33 @@
             logs.forEach(log => {
                 const names = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
                 const time = new Date(log.created_at).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
-                
                 container.insertAdjacentHTML('beforeend', `
-                    <div class="card-item" onclick="startVerification('${encodeURIComponent(JSON.stringify(log))}')">
+                    <div class="card-log" onclick="showScanner('${encodeURIComponent(JSON.stringify(log))}')">
                         <div class="flex justify-between items-start mb-2">
                             <span class="bg-black text-white text-[9px] font-bold px-2 py-1 uppercase">Pending Review</span>
-                            <span class="text-[10px] font-bold text-gray-400">${time}</span>
+                            <span class="text-[10px] font-bold text-gray-500">${time}</span>
                         </div>
-                        <h3 class="font-black text-lg uppercase tracking-tight mb-2">${log.mesin_id}</h3>
+                        <h3 class="font-black text-lg uppercase leading-tight mb-2">${log.mesin_id}</h3>
                         <div class="border-t border-gray-100 pt-2 flex items-center gap-2">
                             <i class="fa-solid fa-user-group text-xs text-gray-400"></i>
-                            <p class="text-[10px] font-bold text-gray-500 uppercase truncate w-full">${names}</p>
+                            <p class="text-[10px] font-bold uppercase text-gray-500 truncate w-full">${names}</p>
                         </div>
                     </div>
                 `);
             });
         }
 
-        function startVerification(logStr) {
-            activeLog = JSON.parse(decodeURIComponent(logStr));
-            switchView('page-scanner');
-            document.getElementById('target-mesin').innerText = activeLog.mesin_id;
-            
-            if(!scanner) scanner = new Html5Qrcode("reader");
-            scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, onScanSuccess);
-        }
-
-        function closeScanner() {
-            if(scanner) scanner.stop().then(() => scanner.clear());
-            switchView('page-list');
-            activeLog = null;
-        }
-
         async function onScanSuccess(decodedText) {
             if (activeLog.mesin_id.toLowerCase().trim() === decodedText.toLowerCase().trim()) {
                 if(navigator.vibrate) navigator.vibrate(100);
                 await scanner.stop(); scanner.clear();
-                openReviewForm();
+                showForm();
             } else {
                 alert("❌ QR SALAH!\nTarget: " + activeLog.mesin_id);
             }
         }
 
-        async function openReviewForm() {
-            switchView('page-form');
+        async function renderForm() {
             document.getElementById('verif-machine-name').innerText = activeLog.mesin_id;
             document.getElementById('verif-pelaksana').innerText = (activeLog.pelaksana_names ? activeLog.pelaksana_names.join(', ') : '-');
 
@@ -309,10 +316,10 @@
             if (findings.length > 0) {
                 findings.forEach(f => {
                     listContainer.insertAdjacentHTML('beforeend', `
-                        <div class="border-l-4 border-red-500 bg-white shadow-sm p-4 mb-2 rounded-r-lg">
-                            <div class="flex justify-between items-start mb-2">
-                                <p class="text-[10px] font-black uppercase w-3/4 text-gray-800">${f.name}</p>
-                                <span class="bg-red-100 text-red-600 text-[8px] font-black px-2 py-1 uppercase rounded">NG</span>
+                        <div class="bg-white border-l-4 border-red-500 shadow-sm p-3 mb-2">
+                            <div class="flex justify-between items-start mb-1">
+                                <p class="text-[10px] font-black uppercase w-3/4">${f.name}</p>
+                                <span class="bg-red-50 text-red-600 text-[8px] font-black px-2 py-0.5 uppercase">NG</span>
                             </div>
                             <p class="text-[10px] font-bold italic text-red-600 uppercase">"${f.note}"</p>
                         </div>
@@ -320,14 +327,15 @@
                 });
             } else {
                 listContainer.innerHTML = `
-                    <div class="border-2 border-dashed border-gray-300 p-6 rounded-xl text-center">
-                        <i class="fa-solid fa-thumbs-up text-gray-300 text-2xl mb-2"></i>
+                    <div class="border-2 border-dashed border-gray-300 p-4 text-center rounded-xl">
+                        <i class="fa-solid fa-thumbs-up text-gray-300 mb-2"></i>
                         <p class="text-[10px] font-bold uppercase text-gray-400">Kondisi OK (Tanpa NG)</p>
-                        ${activeLog.catatan ? `<div class="mt-3 pt-3 border-t border-gray-100 text-[10px] font-bold italic text-black">"${activeLog.catatan}"</div>` : ''}
+                        ${activeLog.catatan ? `<div class="mt-2 pt-2 border-t border-gray-200 text-[10px] font-bold italic text-black">"${activeLog.catatan}"</div>` : ''}
                     </div>
                 `;
             }
 
+            // Init Canvas
             const canvas = document.getElementById('signature-pad-koor');
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
             canvas.width = canvas.offsetWidth * ratio; canvas.height = canvas.offsetHeight * ratio;
@@ -337,10 +345,10 @@
 
         async function submitApproval() {
             const name = document.getElementById('koor-name').value.trim();
-            if(!name || sigPadKoor.isEmpty()) return alert("⚠️ HARAP ISI NAMA & PARAF!");
+            if(!name || sigPadKoor.isEmpty()) return alert("⚠️ Isi Nama & Paraf!");
             
             const btn = document.getElementById('btn-approve');
-            btn.innerHTML = 'MEMPROSES...'; btn.disabled = true;
+            btn.innerHTML = 'Menyimpan...'; btn.disabled = true;
 
             const { error } = await _sb.from('chslr_log').update({
                 koordinator_nama: name,
@@ -351,10 +359,10 @@
 
             if(!error) {
                 alert("✅ TERVERIFIKASI!");
-                location.reload();
+                showList();
             } else {
                 alert("Gagal: " + error.message);
-                btn.innerHTML = 'VERIFIKASI & APPROVE'; btn.disabled = false;
+                btn.innerHTML = 'Approve'; btn.disabled = false;
             }
         }
     </script>
