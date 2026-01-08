@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ffffff">
-    <title>Koordinator Verifikasi Final</title>
+    <title>Koordinator Verifikasi - Real Data</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -179,7 +179,7 @@
             loadQueue();
         }
 
-        // --- 1. LOAD QUEUE (MENAMPILKAN DAFTAR) ---
+        // --- 1. LOAD QUEUE ---
         async function loadQueue() {
             const now = new Date();
             const todayDate = now.getDate();
@@ -204,7 +204,6 @@
             let count = 0;
 
             for (let log of logs) {
-                // Cek apakah pelaksana sudah input hari ini
                 const { data: results } = await _sb.from('chslr_result')
                     .select('id') 
                     .eq('log_id', log.id)
@@ -249,7 +248,7 @@
             }
         }
 
-        // --- 3. FORM & LOGIC CATATAN (CORE UPDATE) ---
+        // --- 3. FORM & LOGIC CATATAN (REAL DATA ONLY) ---
         async function openForm() {
             switchView('view-form');
             document.getElementById('form-mesin').innerText = activeLog.mesin_id;
@@ -262,49 +261,43 @@
             noteEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
             noteEl.className = "i-val"; 
 
-            // 1. QUERY RESULT (DETAIL) UNTUK CEK STATUS & KETERANGAN
+            // 1. QUERY RESULT (Untuk cek NG)
             const today = new Date().getDate();
             const { data: results } = await _sb.from('chslr_result')
-                .select('status, keterangan, chslr_items(item_name)') // Mengambil Keterangan + Nama Item
+                .select('status, keterangan, chslr_items(item_name)') 
                 .eq('log_id', activeLog.id)
                 .eq('tanggal', today);
 
-            // 2. QUERY LOG (HEADER) SEBAGAI CADANGAN
+            // 2. QUERY LOG (Header - Catatan Pelaksana)
             const { data: freshLog } = await _sb.from('chslr_log')
                 .select('catatan_pelaksana') 
                 .eq('id', activeLog.id)
                 .single();
             const catatanHeader = (freshLog && freshLog.catatan_pelaksana) ? freshLog.catatan_pelaksana : "";
 
-            // 3. --- LOGIKA INTI PENENTUAN CATATAN ---
+            // 3. --- LOGIKA PENENTUAN CATATAN ---
             let ngMessages = [];
             
-            // Filter hanya yang NG
             if (results && results.length > 0) {
                 results.forEach(r => {
                     if (r.status === 'NG') {
-                        // AMBIL DARI 'keterangan' (SESUAI REQUEST)
+                        // AMBIL DARI 'keterangan' (REAL DATA)
                         const item = r.chslr_items ? r.chslr_items.item_name : 'Item';
-                        const ket = r.keterangan || '(Tanpa Keterangan)';
+                        const ket = r.keterangan || '-'; // Jika keterangan null, tampilkan strip
                         ngMessages.push(`${item}: ${ket}`);
                     }
                 });
             }
 
-            // TENTUKAN TAMPILAN
+            // TAMPILKAN REAL DATA TANPA "SAFE TEXT"
             if (ngMessages.length > 0) {
-                // KASUS 1: ADA NG
-                // Tampilkan gabungan semua Keterangan dari item yang NG
-                noteEl.innerHTML = "⚠️ <b>PERLU PERHATIAN!</b><br>" + ngMessages.join('<br>');
+                // KONDISI ADA NG: Tampilkan Keterangan dari Item NG
+                noteEl.innerHTML = ngMessages.join('<br>'); 
                 noteEl.classList.add('text-red-custom');
             } else {
-                // KASUS 2: SEMUA OK
-                // Tampilkan catatan umum (Header) atau pesan Aman
-                if (catatanHeader.trim() !== "") {
-                    noteEl.innerText = "📝 " + catatanHeader;
-                } else {
-                    noteEl.innerText = "✅ AMAN (Tidak ada catatan)";
-                }
+                // KONDISI TIDAK ADA NG: Tampilkan Catatan Pelaksana (Header)
+                // Jika kosong tampilkan strip, jika ada isi tampilkan apa adanya.
+                noteEl.innerText = (catatanHeader.trim() === "") ? "-" : catatanHeader;
                 noteEl.classList.remove('text-red-custom');
             }
 
