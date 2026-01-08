@@ -7,127 +7,107 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* === GLOBAL RESET === */
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         
         body {
             margin: 0; padding: 0;
-            background: #ccc;
+            background: #ccc; /* Abu-abu di layar biasa */
             font-family: Arial, sans-serif;
             font-size: 8pt;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
         }
 
-        /* === TAMPILAN LAYAR (PREVIEW) === */
+        /* === WADAH KERTAS (UNTUK TAMPILAN LAYAR) === */
         .sheet {
             background: white;
-            width: 297mm; /* Lebar A4 Landscape */
-            min-height: 210mm; /* Tinggi A4 Landscape */
+            width: 297mm; 
+            min-height: 210mm; 
             margin: 20px auto;
-            padding: 5mm 10mm;
+            padding: 5mm; /* Padding tipis */
             position: relative;
             box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
 
-        /* === KONFIGURASI CETAK/PDF (ENGINE GOOGLE CHROME) === */
+        /* === PENGATURAN CETAK (MATIKAN HALAMAN KEDUA) === */
         @media print {
-            /* 1. Paksa Kertas A4 Landscape Tanpa Margin Browser */
             @page {
                 size: A4 landscape;
-                margin: 0 !important; 
+                margin: 0 !important; /* Hapus margin kertas */
             }
 
-            /* 2. Kunci Body & HTML agar tidak boleh lebih dari 1 halaman */
             html, body {
-                width: 297mm;
-                height: 210mm;
+                width: 100%;
+                height: 100%;
                 margin: 0 !important;
                 padding: 0 !important;
-                overflow: hidden !important; /* POTONG sisa hantu halaman 2 */
                 background: white;
+                overflow: hidden !important; /* POTONG HALAMAN KE-2 */
             }
 
-            /* 3. Sembunyikan tombol kontrol */
             .no-print { display: none !important; }
 
-            /* 4. STRATEGI ABSOLUTE FIT */
+            /* JURUS TERAKHIR: FIXED POSITION + TRANSFORM */
             .sheet {
-                margin: 0 !important;
-                padding: 5mm 8mm !important; /* Padding cetak aman */
-                border: none;
+                position: fixed; /* Cabut dari aliran dokumen */
+                top: 0; left: 0; right: 0; bottom: 0; /* Tempel ke pojok */
+                margin: auto !important; /* Posisi tengah */
                 box-shadow: none;
+                border: none;
                 
-                /* Cabut dari flow agar tidak mendorong halaman baru */
-                position: absolute;
-                top: 0;
-                left: 0;
+                /* KITA KECILKAN JADI 70% SUPAYA PASTI MUAT */
+                transform: scale(0.7); 
                 
-                /* TEKNIK SCALING PASTI MUAT */
-                /* Scale 0.72 adalah titik manis (Sweet Spot) untuk tabel padat */
-                transform: scale(0.72); 
-                transform-origin: top left; /* Titik nol di kiri atas */
+                /* Titik tengah pengecilan ada di tengah atas */
+                transform-origin: top center; 
                 
-                /* KOMPENSASI LEBAR: Karena di-scale down, container harus dilebarkan 
-                   Rumus: 100% / 0.72 = 138.8% */
-                width: 138.8%; 
+                /* Karena dikecilkan, kita perlu lebar extra agar visualnya pas */
+                width: 142%; /* 100 / 0.7 = ~142 */
                 
-                /* Pastikan background putih tercetak */
-                background-color: white !important;
+                /* Geser posisi ke kiri sedikit supaya center */
+                left: -21%; /* (142 - 100) / 2 */
             }
         }
 
-        /* === UTILS (Tabel & Garis) === */
+        /* === TABEL & GARIS === */
         table { border-collapse: collapse; width: 100%; }
-        td, th { border: 1px solid black; padding: 2px 4px; vertical-align: middle; }
-        .no-border { border: none !important; }
-        .text-center { text-align: center; }
-        .text-left { text-align: left; }
-        .text-right { text-align: right; }
-        .font-bold { font-weight: bold; }
-        .uppercase { text-transform: uppercase; }
-
-        /* === HEADER SECTION === */
+        /* Padding diperkecil jadi 1px agar tabel lebih pendek */
+        td, th { border: 1px solid black; padding: 1px 3px; vertical-align: middle; line-height: 1.1; }
+        
         .header-table { margin-bottom: 5px; border: 2px solid black; }
         .logo-cell { width: 100px; text-align: center; border-right: 1px solid black; }
-        .title-cell { font-size: 14pt; text-align: center; border-right: 1px solid black; width: 50%; }
-        .meta-cell { font-size: 7.5pt; width: 25%; padding: 0; }
-        .meta-table td { border: none; padding: 1px 4px; }
+        .title-cell { font-size: 14pt; text-align: center; width: 50%; }
+        .meta-table td { border: none; padding: 0 4px; font-size: 7pt; }
 
-        /* === INFO SECTION === */
         .info-table { margin-bottom: 5px; border: none; }
-        .info-table td { border: none; padding: 1px; font-weight: bold; font-size: 9pt; }
-        .dots { border-bottom: 1px dotted black; display: inline-block; min-width: 150px; padding-left: 5px; }
+        .info-table td { border: none; padding: 1px; font-weight: bold; font-size: 8pt; }
 
-        /* === MAIN CHECKLIST TABLE === */
+        /* === TABEL UTAMA === */
         .main-table { border: 2px solid black; table-layout: fixed; }
-        .main-table th { background-color: #f2f2f2; height: 25px; font-size: 8pt; text-align: center; }
-        .main-table td { height: 16px; font-size: 7.5pt; padding: 0 2px; }
+        .main-table th { background-color: #f2f2f2; height: 20px; font-size: 7.5pt; text-align: center; }
+        /* Tinggi baris dipaksa pendek */
+        .main-table td { height: 14px; font-size: 7pt; padding: 0 2px; }
 
-        /* Column Widths (Dioptimalkan) */
         .col-no { width: 25px; }
         .col-jenis { width: 200px; text-align: left !important; padding-left: 5px !important; }
-        .col-std { width: 140px; text-align: left !important; padding-left: 5px !important; font-style: italic; font-size: 7pt; }
-        .col-date { width: 17px; font-size: 7pt; text-align: center; }
+        .col-std { width: 140px; text-align: left !important; padding-left: 5px !important; font-style: italic; font-size: 6.5pt; }
+        .col-date { width: 17px; font-size: 6.5pt; text-align: center; }
 
-        /* Special Rows */
         .cat-row { background-color: #bfbfbf; font-weight: bold; text-align: left !important; padding-left: 5px !important; }
-        .sig-row td { height: 35px; vertical-align: middle; }
+        .sig-row td { height: 30px; vertical-align: middle; }
         
-        .sig-img { width: 100%; height: 30px; object-fit: contain; mix-blend-mode: multiply; display: block; margin: 0 auto; }
+        .sig-img { width: 100%; height: 25px; object-fit: contain; mix-blend-mode: multiply; display: block; margin: 0 auto; }
         .ng-text { color: red; font-weight: bold; }
         .ok-text { font-family: sans-serif; font-weight: bold; }
 
-        /* === FOOTER SECTION === */
-        .footer-container { display: flex; justify-content: space-between; margin-top: 10px; }
+        /* === FOOTER === */
+        .footer-container { display: flex; justify-content: space-between; margin-top: 5px; }
+        .legend-box { width: 60%; font-size: 7.5pt; }
+        .legend-table td { border: none; padding: 0; vertical-align: top; }
         
-        .legend-box { width: 60%; font-size: 8pt; }
-        .legend-table td { border: none; padding: 1px; vertical-align: top; }
-        
-        .approval-box { width: 220px; text-align: center; font-weight: bold; font-size: 9pt; }
-        .sig-box { border: 1px solid black; height: 65px; width: 100%; margin: 2px 0; display: flex; align-items: center; justify-content: center; }
-        .super-img { max-height: 60px; max-width: 90%; mix-blend-mode: multiply; }
+        .approval-box { width: 220px; text-align: center; font-weight: bold; font-size: 8pt; }
+        .sig-box { border: 1px solid black; height: 50px; width: 100%; margin: 2px 0; display: flex; align-items: center; justify-content: center; }
+        .super-img { max-height: 45px; max-width: 90%; mix-blend-mode: multiply; }
 
-        /* CONTROLS (TOMBOL) */
+        /* CONTROLS */
         .no-print { 
             position: fixed; top: 10px; left: 50%; transform: translateX(-50%); 
             background: #222; padding: 10px; border-radius: 8px; color: white; 
@@ -177,14 +157,14 @@
             <tr>
                 <td width="100">MERK MESIN</td>
                 <td width="10">:</td>
-                <td width="300"><span id="txt-mesin" class="dots"></span></td>
+                <td width="300"><span id="txt-mesin"></span></td>
                 <td class="text-right">BULAN :</td>
-                <td width="150"><span id="txt-bulan" class="dots"></span></td>
+                <td width="150"><span id="txt-bulan"></span></td>
             </tr>
             <tr>
                 <td>TONAGE</td>
                 <td>:</td>
-                <td><span id="txt-ton" class="dots"></span></td>
+                <td><span id="txt-ton"></span></td>
                 <td colspan="2"></td>
             </tr>
         </table>
@@ -224,10 +204,9 @@
                 <div style="margin-bottom: 2px;">DIKETAHUI</div>
                 <div class="sig-box" id="super-sig-box"></div>
                 <div id="super-name-txt" style="text-transform: uppercase; border-top: 1px solid black; display: inline-block; width: 90%; padding-top: 2px;">( ........................ )</div>
-                <div style="font-size: 8pt; margin-top: 2px;">MECHANIC SUPERINTENDENT</div>
+                <div style="font-size: 7pt; margin-top: 2px;">MECHANIC SUPERINTENDENT</div>
             </div>
         </div>
-
     </div>
 
     <script>
@@ -243,7 +222,6 @@
             const sel = document.getElementById('f-mesin');
             data?.forEach(d => sel.innerHTML += `<option>${d.nama_mesin}</option>`);
 
-            // Default Date
             document.getElementById('f-bulan').value = 1; 
             document.getElementById('f-tahun').value = 2026;
             loadData();
@@ -297,7 +275,6 @@
                 subIdx++;
             });
 
-            // Signatures Logic
             const rPel = document.getElementById('row-pel');
             const rCek = document.getElementById('row-cek');
             while(rPel.cells.length > 1) rPel.deleteCell(1);
