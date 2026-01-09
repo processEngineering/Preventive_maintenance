@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PMI Pelaksana</title>
+    <title>PMI Pelaksana - Input</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -156,7 +156,7 @@
             // Set Default Time
             const timeString = now.toTimeString().substring(0,5);
             document.getElementById('h_start').value = timeString;
-            document.getElementById('h_target').value = timeString; // Default Jam Sekarang
+            document.getElementById('h_target').value = timeString;
             
             // Start Scanner
             html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, onScanSuccess, ()=>{});
@@ -165,10 +165,7 @@
         // 2. SCANNER LOGIC
         async function onScanSuccess(decodedText) {
             let code = decodedText.trim();
-            
-            // Bersihkan format "AREA/MESIN/TOAD" -> "TOAD"
             if(code.includes('/')) code = code.split('/').pop().trim();
-            
             document.getElementById('scan-msg').innerText = "MENCARI: " + code;
             
             try {
@@ -178,7 +175,6 @@
                     .maybeSingle();
 
                 if(!data) throw new Error("MESIN TIDAK DITEMUKAN");
-                
                 await html5QrCode.stop(); 
                 loadForm(data);
 
@@ -187,7 +183,7 @@
             }
         }
 
-        // 3. LOAD FORM & RENDER CHECKLIST
+        // 3. LOAD FORM
         async function loadForm(machine) {
             document.getElementById('scanner-view').style.display = 'none';
             document.getElementById('form-view').style.display = 'block';
@@ -196,14 +192,12 @@
             document.getElementById('h_merk').value = machine.nama_mesin;
             document.getElementById('h_ton').value = machine.tonage || '-';
             
-            // Signature Init
             const c = document.getElementById('sig-canvas');
             const r = Math.max(window.devicePixelRatio || 1, 1);
             c.width = c.offsetWidth * r; c.height = c.offsetHeight * r;
             c.getContext("2d").scale(r, r);
             signaturePad = new SignaturePad(c, { penColor: 'black' });
 
-            // Fetch Items & Fields
             const { data: items } = await _sb.from('pmi_items').select('*').eq('aktif', true).order('urutan');
             const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
             
@@ -217,7 +211,6 @@
             let lastCat = "";
 
             items.forEach(item => {
-                // Header Kategori
                 if(item.kategori !== lastCat) {
                     lastCat = item.kategori;
                     tbody.innerHTML += `<tr class="cat-row"><td colspan="2">${lastCat}</td></tr>`;
@@ -225,12 +218,10 @@
 
                 const myFields = fields.filter(f => f.pmi_item_id === item.id);
                 
-                // RENDER NAMA ITEM & STANDARD
                 let html = `<tr><td>
                     <span class="item-name">${item.nama_item}</span>
                     <span class="item-std">${item.standard || 'Cek visual & fungsi'}</span>`;
                 
-                // RENDER INPUT FIELDS
                 myFields.forEach(f => {
                     let lbl = f.label ? `<span class="field-sub-label">${f.label}</span>` : "";
                     
@@ -255,12 +246,10 @@
             });
         }
 
-        // 4. SUBMIT DATA
+        // 4. SUBMIT DATA (LOGIKA BARU DI SINI)
         async function submitData() {
             const nama = document.getElementById('nama_pelaksana').value.trim();
             const runHours = document.getElementById('h_run_hours').value;
-            
-            // Logic Finish Jam (Pakai jam sekarang jika kosong)
             let finishInput = document.getElementById('h_finish').value;
             if(!finishInput) finishInput = new Date().toTimeString().substring(0,5);
 
@@ -271,8 +260,6 @@
 
             try {
                 // A. Insert Header
-                // PERHATIKAN: Target Selesai sekarang ambil WAKTU (h_target is time input)
-                // Database column target_selesai harus bertipe TIME atau TEXT
                 const { data: header, error: e1 } = await _sb.from('pmi_header').insert([{
                     machine_id: currentMachineId,
                     tanggal: document.getElementById('h_tanggal').value,
@@ -280,7 +267,7 @@
                     bulan: new Date().getMonth() + 1,
                     start_jam: document.getElementById('h_start').value,
                     finish_jam: finishInput,
-                    target_selesai: document.getElementById('h_target').value, // <-- JAM
+                    target_selesai: document.getElementById('h_target').value,
                     running_hours: runHours,
                     nama_pelaksana: nama,
                     signature_pelaksana: signaturePad.toDataURL(),
@@ -291,24 +278,39 @@
 
                 // B. Insert Detail Results
                 let results = [];
+                
                 loadedFields.forEach(f => {
-                    let val = null, stat = null;
-                    
+                    let status = null;
+                    let nilai_aktual = null;
+                    let keterangan = null; // Ini dia kolom baru buat catatan
+                    let hasValue = false;
+
                     if (f.tipe_input === 'radio_ok_ng') {
                         const checked = document.querySelector(`input[name="f_${f.id}"]:checked`);
-                        if(checked) stat = checked.value;
+                        if(checked) {
+                            status = checked.value;
+                            hasValue = true;
+                        }
                     } else {
                         const el = document.getElementById(`f_${f.id}`);
-                        if(el) val = el.value;
+                        if(el && el.value.trim() !== '') {
+                            hasValue = true;
+                            if(f.tipe_input === 'number') {
+                                nilai_aktual = el.value; // Angka masuk ke nilai_aktual
+                            } else {
+                                keterangan = el.value; // Teks masuk ke keterangan
+                            }
+                        }
                     }
 
-                    if (stat || (val && val.trim() !== '')) {
+                    if (hasValue) {
                         results.push({ 
                             pmi_header_id: header.id, 
                             pmi_item_id: f.pmi_item_id, 
                             pmi_item_field_id: f.id, 
-                            status: stat, 
-                            nilai_aktual: val 
+                            status: status, 
+                            nilai_aktual: nilai_aktual,
+                            keterangan: keterangan // <-- SAVE KE KETERANGAN
                         });
                     }
                 });
