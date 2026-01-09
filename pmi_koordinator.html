@@ -3,371 +3,320 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PMI Koordinator - Industrial</title>
+    <title>PMI - Koordinator Review</title>
     
-    <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        /* === GLOBAL RESET === */
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Inter', sans-serif; background: #fff; color: #000; height: 100vh; overflow: hidden; }
-        .fa, .fa-solid { font-weight: 900; }
+        /* === GLOBAL STYLES === */
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f4f4f5; margin: 0; padding: 20px; padding-bottom: 100px; }
 
-        /* === 1. DASHBOARD (LIST) === */
-        #dashboard { display: block; height: 100vh; overflow-y: auto; padding-bottom: 80px; padding-top: 50px; }
-        .top-section { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; }
-        .header-pill {
-            border: 2px solid #000; border-radius: 50px; padding: 12px 40px;
-            background: #fff; font-weight: 800; font-size: 18px; letter-spacing: 0.5px;
-            text-transform: uppercase; margin-bottom: 15px; box-shadow: 0 4px 0 rgba(0,0,0,0.1);
-        }
-        .instruction-text { text-align: center; font-size: 13px; color: #444; font-weight: 500; }
-        .container { max-width: 600px; margin: 0 auto; padding: 0 20px; }
+        /* === HEADER === */
+        .page-header { margin-bottom: 20px; border-bottom: 3px solid #000; padding-bottom: 10px; }
+        .page-title { font-size: 20px; font-weight: 800; text-transform: uppercase; margin: 0; }
+        .page-subtitle { font-size: 12px; color: #555; margin-top: 5px; }
+
+        /* === FILTER SECTION === */
+        .filter-box { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+        select { flex: 1; padding: 12px; border: 2px solid #000; font-weight: 700; border-radius: 4px; font-size: 14px; }
+        .btn-load { background: #000; color: #fff; border: none; padding: 12px 20px; font-weight: 800; cursor: pointer; border-radius: 4px; }
+
+        /* === LIST LAPORAN === */
+        .report-list { display: flex; flex-direction: column; gap: 10px; }
+        .report-card { background: #fff; padding: 15px; border-left: 6px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s; position: relative; }
+        .report-card:active { transform: scale(0.98); }
         
-        .card-pmi {
-            border: 2px solid #000; border-radius: 12px; padding: 15px; margin-bottom: 15px; cursor: pointer;
-            background: #fff; transition: 0.1s; box-shadow: 4px 4px 0 #000; 
-        }
-        .card-pmi:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .machine-id { font-weight: 900; font-size: 16px; text-transform: uppercase; }
-        .user-name { font-size: 12px; font-weight: 600; color: #555; }
-        .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 800; border: 1px solid #000; }
-        .bg-ok { background: #dcfce7; color: #166534; } .bg-ng { background: #fee2e2; color: #991b1b; }
-
-        /* === 2. SCANNER VIEW === */
-        #scanner-view {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
-            background: #fff; z-index: 500; flex-direction: column; align-items: center;
-        }
-        .scan-layout { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; position: relative; padding-top: 60px; }
-        .scan-header-pill {
-            border: 2px solid #000; border-radius: 50px; padding: 12px 50px;
-            background: #fff; font-weight: 800; font-size: 18px; margin-bottom: 20px; z-index: 20;
-        }
-        .scan-text { text-align: center; font-size: 13px; font-style: italic; color: #444; margin-bottom: 30px; z-index: 20; }
+        /* Status Colors */
+        .card-pending { border-left-color: #f59e0b; } /* Kuning (Belum dicek) */
+        .card-verified { border-left-color: #10b981; } /* Hijau (Sudah dicek) */
         
-        .camera-frame { position: relative; width: 260px; height: 260px; display: flex; align-items: center; justify-content: center; margin-bottom: 40px; z-index: 20; }
-        .qr-box { width: 100%; height: 100%; background: #000; position: relative; overflow: hidden; }
-        #reader { width: 100%; height: 100%; border: none; }
-        #reader video { object-fit: cover; width: 100%; height: 100%; }
+        .card-header { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .card-date { font-size: 11px; color: #666; font-weight: 600; }
+        .card-status { font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
+        .st-pending { background: #fef3c7; color: #d97706; }
+        .st-verified { background: #d1fae5; color: #059669; }
+
+        .card-machine { font-size: 16px; font-weight: 800; margin-bottom: 2px; }
+        .card-tech { font-size: 12px; color: #444; }
+
+        /* === MODAL DETAIL (POPUP) === */
+        #modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; display: none; align-items: flex-end; }
+        .modal-content { 
+            background: #fff; width: 100%; height: 90vh; border-radius: 15px 15px 0 0; 
+            padding: 20px; overflow-y: auto; position: relative; display: flex; flex-direction: column; 
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
+        .close-btn { font-size: 24px; font-weight: bold; cursor: pointer; }
+
+        /* Detail Table */
+        .detail-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 20px; }
+        .detail-table th { background: #eee; text-align: left; padding: 5px; border-bottom: 2px solid #000; }
+        .detail-table td { padding: 8px 5px; border-bottom: 1px solid #eee; }
+        .row-ng { background-color: #ffe4e6; } /* Highlight NG rows */
+
+        /* Approval Section */
+        .approval-box { background: #f9fafb; padding: 15px; border: 2px dashed #000; margin-top: auto; }
+        .input-label { font-size: 11px; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 5px; }
+        textarea { width: 100%; padding: 10px; border: 1px solid #ccc; font-family: inherit; font-size: 14px; margin-bottom: 10px; resize: vertical; }
         
-        .corner { position: absolute; width: 50px; height: 50px; border: 6px solid #000; z-index: 25; }
-        .tl { top: -10px; left: -10px; border-right: none; border-bottom: none; }
-        .tr { top: -10px; right: -10px; border-left: none; border-bottom: none; }
-        .bl { bottom: -10px; left: -10px; border-right: none; border-top: none; }
-        .br { bottom: -10px; right: -10px; border-left: none; border-top: none; }
-        
-        .action-area { position: relative; width: 100%; display: flex; justify-content: center; margin-top: -20px; }
-        .btn-cancel {
-            background: #fff; border: 2px solid #000; padding: 10px 30px;
-            font-weight: 800; font-size: 14px; border-radius: 8px;
-            position: relative; z-index: 30; cursor: pointer; text-transform: uppercase;
-            box-shadow: 0 4px 0 rgba(0,0,0,0.1);
-        }
-        .long-line { position: absolute; top: 50%; width: 2px; background: #000; height: 400px; z-index: 10; }
-        .line-l { left: calc(50% - 40px); transform: rotate(25deg); transform-origin: top center; }
-        .line-r { right: calc(50% - 40px); transform: rotate(-25deg); transform-origin: top center; }
-        .laser { position: absolute; width: 100%; height: 2px; background: #ef4444; z-index: 5; animation: scanAnim 2s infinite ease-in-out; }
-        @keyframes scanAnim { 0% { top: 10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
+        #sig-canvas { border: 1px solid #ccc; background: #fff; width: 100%; height: 150px; }
+        .btn-approve { width: 100%; background: #000; color: white; padding: 15px; font-weight: 800; border: none; font-size: 14px; margin-top: 10px; cursor: pointer; }
+        .btn-approve:disabled { background: #ccc; }
 
-        /* === 3. APPROVAL VIEW === */
-        #approval-view { 
-            display: none; background: #fff; width: 100%; min-height: 100vh; 
-            overflow-y: auto; padding-bottom: 100px; z-index: 600; padding-top: 40px;
-        }
-
-        .header-app-container { display: flex; justify-content: center; margin-bottom: 30px; }
-        
-        /* STYLE BOX */
-        .neo-box {
-            background: #fff; border: 2px solid #000; border-radius: 12px;
-            padding: 15px; box-shadow: 6px 6px 0px #000; margin-bottom: 25px;
-            width: 100%; font-family: inherit;
-        }
-
-        .info-row { display: flex; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
-        .info-label { width: 130px; flex-shrink: 0; text-transform: uppercase; }
-        .info-val { flex-grow: 1; }
-
-        .form-label { font-weight: 800; font-size: 13px; margin-bottom: 8px; display: block; margin-left: 5px; text-transform: uppercase; }
-
-        input.neo-box, textarea.neo-box { font-weight: 600; outline: none; }
-        input.neo-box:focus, textarea.neo-box:focus { transform: translate(2px, 2px); box-shadow: 4px 4px 0 #000; }
-
-        #sig-canvas {
-            border: 2px solid #000; border-radius: 12px; width: 100%; height: 150px;
-            box-shadow: 6px 6px 0px #000; background: #fff;
-        }
-
-        .btn-submit-neo {
-            background: #fff; border: 2px solid #000; border-radius: 12px;
-            width: 100%; padding: 15px; font-weight: 900; font-size: 16px;
-            text-transform: uppercase; box-shadow: 6px 6px 0px #000;
-            cursor: pointer; margin-top: 10px; transition: 0.1s;
-        }
-        .btn-submit-neo:active { transform: translate(4px, 4px); box-shadow: 2px 2px 0px #000; }
-
-        .section-padding { padding: 0 25px; }
-
-        /* === BOTTOM NAV === */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto;
-            width: 100%; max-width: 800px; background: white; border-top: 2px solid #000;
-            display: flex; justify-content: space-around; align-items: center;
-            padding: 16px 0; z-index: 9999; padding-bottom: env(safe-area-inset-bottom);
-        }
-        .nav-item { text-decoration: none; color: #999; font-size: 24px; width: 25%; display: flex; justify-content: center; }
+        /* Bottom Nav */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; border-top: 2px solid #000; display: flex; padding: 15px 0; z-index: 999; }
+        .nav-item { flex: 1; text-align: center; color: #ccc; font-size: 24px; text-decoration: none; }
         .nav-item.active { color: #000; }
     </style>
 </head>
 <body>
 
-    <div id="dashboard">
-        <div class="top-section">
-            <div class="header-pill">KOORDINATOR</div>
-            <div class="instruction-text">
-                PILIH DAN SCAN BARCODE MESIN<br>UNTUK VERIFIKASI
-            </div>
-        </div>
-        <div id="pmi-list" class="container">
-            <div style="text-align:center; margin-top:40px; color:#888;">Memuat data...</div>
-        </div>
+    <div class="page-header">
+        <h1 class="page-title">KOORDINATOR</h1>
+        <div class="page-subtitle">VERIFIKASI LAPORAN HARIAN</div>
     </div>
 
-    <div id="scanner-view">
-        <div class="scan-layout">
-            <div class="scan-header-pill">KOORDINATOR</div>
-            <div class="scan-text">
-                Silahkan scan Barcode Mesin: <br>
-                <strong id="target-machine-name" style="color:#000; font-size:16px;">...</strong>
-            </div>
-            <div class="camera-frame">
-                <div class="qr-box">
-                    <div id="reader"></div>
-                </div>
-                <div class="corner tl"></div><div class="corner tr"></div>
-                <div class="corner bl"></div><div class="corner br"></div>
-                <div class="laser"></div>
-            </div>
-            <div class="action-area">
-                <div class="long-line line-l"></div>
-                <div class="long-line line-r"></div>
-                <button class="btn-cancel" onclick="cancelScan()">BATAL</button>
-            </div>
-        </div>
+    <div class="filter-box">
+        <select id="sel-bulan">
+            <option value="1">Januari</option><option value="2">Februari</option>
+            <option value="3">Maret</option><option value="4">April</option>
+            <option value="5">Mei</option><option value="6">Juni</option>
+            <option value="7">Juli</option><option value="8">Agustus</option>
+            <option value="9">September</option><option value="10">Oktober</option>
+            <option value="11">November</option><option value="12">Desember</option>
+        </select>
+        <select id="sel-tahun">
+            <option value="2025" selected>2025</option>
+            <option value="2026">2026</option>
+        </select>
+        <button class="btn-load" onclick="loadReports()">LIHAT DATA</button>
     </div>
 
-    <div id="approval-view">
-        <div class="header-app-container">
-            <div class="header-pill">Koordinator</div>
-        </div>
+    <div id="report-list" class="report-list">
+        <div style="text-align:center; color:#999; margin-top:20px;">Silakan pilih bulan & tahun lalu klik LIHAT DATA</div>
+    </div>
 
-        <div class="section-padding">
-            
-            <div class="neo-box">
-                <div class="info-row">
-                    <div class="info-label">nama mesin</div>
-                    <div class="info-val">: <span id="disp-mesin"></span></div>
+    <div id="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 style="margin:0; font-size:16px;">DETAIL VERIFIKASI</h2>
+                    <span id="m-name" style="font-size:12px; color:#555;">-</span>
                 </div>
-                <div class="info-row">
-                    <div class="info-label">nama pelaksana</div>
-                    <div class="info-val">: <span id="disp-pelaksana"></span></div>
-                </div>
-                <div class="info-row">
-                    <div class="info-label">catatan pelaksana</div>
-                    <div class="info-val">: <span id="disp-catatan" style="font-weight:600; color:#333;">-</span></div>
-                </div>
-                <div class="info-row" style="margin-top:5px; border-top:1px dashed #000; padding-top:5px;">
-                    <div class="info-label">Kondisi</div>
-                    <div class="info-val">: <span id="disp-kondisi"></span></div>
-                </div>
+                <span class="close-btn" onclick="closeModal()">&times;</span>
             </div>
 
-            <label class="form-label">nama koordinator :</label>
-            <input type="text" class="neo-box" id="nama_koordinator" placeholder="">
-
-            <label class="form-label">Catatan koordinator :</label>
-            <textarea class="neo-box" id="catatan_koordinator" rows="3" placeholder=""></textarea>
-
-            <label class="form-label">paraf</label>
-            <canvas id="sig-canvas"></canvas>
-            <div style="text-align:right; margin-bottom:20px;">
-                <button onclick="signaturePad.clear()" style="background:none; border:none; color:red; font-weight:bold; font-size:12px; cursor:pointer;">HAPUS</button>
+            <div style="overflow-x:auto;">
+                <table class="detail-table">
+                    <thead><tr><th>ITEM</th><th>STATUS</th><th>KET / ACTUAL</th></tr></thead>
+                    <tbody id="detail-body"></tbody>
+                </table>
             </div>
 
-            <button class="btn-submit-neo" id="btnSave" onclick="updateVerifikasi()">submit laporan</button>
+            <div class="approval-box">
+                <label class="input-label">NAMA KOORDINATOR</label>
+                <input type="text" id="nama_koordinator" placeholder="Nama Anda..." style="width:100%; padding:8px; margin-bottom:10px; border:1px solid #ccc;">
 
+                <label class="input-label" style="color:#d97706;">CATATAN UNTUK SUPERINTENDENT</label>
+                <textarea id="catatan_koor" rows="3" placeholder="Contoh: Silahkan cek kembali item Hydrolik No. 6..."></textarea>
+
+                <label class="input-label">TANDA TANGAN KOORDINATOR</label>
+                <canvas id="sig-canvas"></canvas>
+                <div style="text-align:right;"><small onclick="signaturePad.clear()" style="text-decoration:underline; cursor:pointer;">Hapus TTD</small></div>
+
+                <button class="btn-approve" id="btnApprove" onclick="submitVerification()">VERIFIKASI & TERUSKAN</button>
+            </div>
         </div>
     </div>
 
     <nav class="bottom-nav">
         <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i></a>
-        <a href="menu_utama.html" class="nav-item active"><i class="fa-solid fa-bars"></i></a>
-        <a href="download_data.html" class="nav-item"><i class="fa-solid fa-download"></i></a>
-        <a href="informasi_akun.html" class="nav-item"><i class="fa-solid fa-circle-user"></i></a>
+        <a href="pmi_koordinator.html" class="nav-item active"><i class="fa-solid fa-check-double"></i></a>
+        <a href="pmi_result.html" class="nav-item"><i class="fa-solid fa-file-contract"></i></a>
     </nav>
 
     <script>
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
+        
+        let signaturePad;
+        let currentHeaderId = null;
 
-        const html5QrCode = new Html5Qrcode("reader");
-        const signaturePad = new SignaturePad(document.getElementById('sig-canvas'), {penColor:'black'});
-        let selectedLogId, selectedMachineName, selectedLogData;
+        // 1. INIT
+        window.onload = function() {
+            // Set Default Bulan Ini
+            const now = new Date();
+            document.getElementById('sel-bulan').value = now.getMonth() + 1;
+            document.getElementById('sel-tahun').value = now.getFullYear();
 
-        async function loadPmiList() {
-            const list = document.getElementById('pmi-list');
+            // Init Signature
+            const c = document.getElementById('sig-canvas');
+            signaturePad = new SignaturePad(c, { penColor: 'black' });
             
-            const { data: logs, error } = await _sb.from('pmi_log')
-                .select(`
-                    id, 
-                    mesin_id,
-                    nama_pelaksana, 
-                    catatan_pelaksana, 
-                    pmi_result(item_name, status, keterangan)
-                `)
-                .eq('status_verifikasi', 'Pending');
+            // Resize Canvas Helper
+            function resizeCanvas() {
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                c.width = c.offsetWidth * ratio;
+                c.height = c.offsetHeight * ratio;
+                c.getContext("2d").scale(ratio, ratio);
+            }
+            window.onresize = resizeCanvas;
+            resizeCanvas();
+        };
 
-            if(error) return list.innerHTML = `<div style='text-align:center; padding:20px; color:red;'>Error: ${error.message}</div>`;
-
-            const { data: machines } = await _sb.from('pmi_machine').select('id, machine_name');
-
-            if(!logs || !logs.length) return list.innerHTML = "<div style='text-align:center; padding:20px;'>Tidak ada laporan pending.</div>";
-
-            list.innerHTML = "";
+        // 2. LOAD REPORTS
+        async function loadReports() {
+            const bln = document.getElementById('sel-bulan').value;
+            const thn = document.getElementById('sel-tahun').value;
+            const listEl = document.getElementById('report-list');
             
-            for (const log of logs) {
-                const ngItems = log.pmi_result.filter(r => r.status !== 'OK');
-                const isNG = ngItems.length > 0;
+            listEl.innerHTML = '<div style="text-align:center;">Memuat data...</div>';
+
+            const { data: headers, error } = await _sb
+                .from('pmi_header')
+                .select(`*, pmi_machines(nama_mesin)`)
+                .eq('bulan', bln)
+                .eq('tahun', thn)
+                .order('created_at', { ascending: false });
+
+            if(error) return alert("Error: " + error.message);
+            if(!headers || headers.length === 0) {
+                listEl.innerHTML = '<div style="text-align:center; margin-top:20px;">Belum ada laporan bulan ini.</div>';
+                return;
+            }
+
+            listEl.innerHTML = "";
+            headers.forEach(h => {
+                const isVerified = h.status_verifikasi === 'Verified' || h.status_verifikasi === 'Completed';
+                const statusClass = isVerified ? 'card-verified' : 'card-pending';
+                const badgeClass = isVerified ? 'st-verified' : 'st-pending';
+                const badgeText = isVerified ? 'VERIFIED' : 'PENDING';
+
+                const html = `
+                    <div class="report-card ${statusClass}" onclick="openDetail('${h.id}')">
+                        <div class="card-header">
+                            <span class="card-date">${formatDate(h.tanggal)}</span>
+                            <span class="card-status ${badgeClass}">${badgeText}</span>
+                        </div>
+                        <div class="card-machine">${h.pmi_machines.nama_mesin}</div>
+                        <div class="card-tech"><i class="fa-solid fa-user"></i> ${h.nama_pelaksana}</div>
+                    </div>
+                `;
+                listEl.innerHTML += html;
+            });
+        }
+
+        // 3. OPEN DETAIL
+        async function openDetail(headerId) {
+            currentHeaderId = headerId;
+            document.getElementById('modal-overlay').style.display = 'flex';
+            document.getElementById('detail-body').innerHTML = '<tr><td colspan="3">Loading detail...</td></tr>';
+            
+            // Fetch Header + Results
+            const { data: header } = await _sb.from('pmi_header').select('*, pmi_machines(nama_mesin)').eq('id', headerId).single();
+            const { data: results } = await _sb.from('pmi_results')
+                .select(`*, pmi_items(nama_item, urutan), pmi_item_fields(label, tipe_input, urutan)`)
+                .eq('pmi_header_id', headerId)
+                .order('pmi_items(urutan)');
+
+            // Set Header Info
+            document.getElementById('m-name').innerText = header.pmi_machines.nama_mesin;
+            
+            // Jika sudah diverifikasi, isi formnya (readonly)
+            if(header.status_verifikasi === 'Verified' || header.status_verifikasi === 'Completed') {
+                document.getElementById('nama_koordinator').value = header.nama_koordinator || '';
+                document.getElementById('catatan_koor').value = header.catatan_koordinator || '';
+                document.getElementById('nama_koordinator').disabled = true;
+                document.getElementById('catatan_koor').disabled = true;
+                document.getElementById('btnApprove').innerText = "SUDAH DIVERIFIKASI";
+                document.getElementById('btnApprove').disabled = true;
+                signaturePad.off(); // Disable signature
+            } else {
+                // Reset Form
+                document.getElementById('nama_koordinator').value = '';
+                document.getElementById('catatan_koor').value = '';
+                document.getElementById('nama_koordinator').disabled = false;
+                document.getElementById('catatan_koor').disabled = false;
+                document.getElementById('btnApprove').innerText = "VERIFIKASI & TERUSKAN";
+                document.getElementById('btnApprove').disabled = false;
+                signaturePad.clear();
+                signaturePad.on();
+            }
+
+            // Render Table Detail
+            const tbody = document.getElementById('detail-body');
+            tbody.innerHTML = "";
+            
+            results.forEach(res => {
+                const item = res.pmi_items;
+                const field = res.pmi_item_fields;
+                const isNG = res.status === 'NG';
                 
-                let displayMachine = log.mesin_id;
-                if(machines) {
-                    const foundMachine = machines.find(m => m.id == log.mesin_id);
-                    if(foundMachine) displayMachine = foundMachine.machine_name;
+                let displayVal = "";
+                if(field.tipe_input === 'radio_ok_ng') displayVal = res.status;
+                else displayVal = res.nilai_aktual || '-';
+
+                // Gabungkan Label jika ada (Contoh: "S1: 200")
+                if(field.label && field.tipe_input !== 'radio_ok_ng') {
+                    displayVal = `<b>${field.label}:</b> ${displayVal}`;
                 }
 
-                const div = document.createElement('div');
-                div.className = 'card-pmi';
-                div.innerHTML = `
-                    <div class="card-header">
-                        <span class="machine-id">${displayMachine}</span>
-                        <span class="user-name">${log.nama_pelaksana}</span>
-                    </div>
-                    <span class="status-badge ${isNG ? 'bg-ng' : 'bg-ok'}">
-                        ${isNG ? `⚠️ ${ngItems.length} NG` : '✅ OK'}
-                    </span>
+                tbody.innerHTML += `
+                    <tr class="${isNG ? 'row-ng' : ''}">
+                        <td>${item.nama_item}</td>
+                        <td style="font-weight:bold; color:${isNG?'red':'green'}">${res.status || ''}</td>
+                        <td>${displayVal} ${res.keterangan ? '<br><small>('+res.keterangan+')</small>' : ''}</td>
+                    </tr>
                 `;
-                
-                log.finalMachineName = displayMachine;
-                div.onclick = () => openScanner(log, ngItems);
-                list.appendChild(div);
-            }
+            });
         }
 
-        function openScanner(log, ngItems) {
-            selectedLogId = log.id;
-            selectedMachineName = log.finalMachineName; 
-            selectedLogData = { ...log, ngItems: ngItems };
+        // 4. SUBMIT VERIFICATION
+        async function submitVerification() {
+            const namaKoor = document.getElementById('nama_koordinator').value.trim();
+            const catatan = document.getElementById('catatan_koor').value.trim();
 
-            document.getElementById('dashboard').style.display = 'none';
-            document.getElementById('scanner-view').style.display = 'flex';
-            document.getElementById('target-machine-name').innerText = selectedMachineName;
-            
-            const config = { fps: 20, qrbox: { width: 250, height: 250 } };
-            html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess).catch(e => alert("Camera Error: " + e));
-        }
+            if(!namaKoor) return alert("Isi Nama Koordinator!");
+            if(signaturePad.isEmpty()) return alert("Tanda Tangan Koordinator Wajib!");
 
-        function cancelScan() {
-            html5QrCode.stop().then(() => {
-                document.getElementById('scanner-view').style.display = 'none';
-                document.getElementById('dashboard').style.display = 'block';
-            }).catch(e => location.reload());
-        }
+            if(!confirm("Anda yakin ingin memverifikasi laporan ini?")) return;
 
-        async function onScanSuccess(decodedText) {
-            const scanned = decodedText.trim().toUpperCase();
-            const target = String(selectedMachineName).trim().toUpperCase();
+            document.getElementById('btnApprove').innerText = "MENYIMPAN...";
+            document.getElementById('btnApprove').disabled = true;
 
-            if(scanned === target || scanned.includes(target) || target.includes(scanned)) {
-                await html5QrCode.stop();
-                document.getElementById('scanner-view').style.display = 'none';
-                openApprovalForm();
-            } else {
-                alert(`QR TIDAK COCOK!\nScan: ${scanned}\nTarget: ${target}`);
-            }
-        }
-
-        // === LOGIKA TAMPILAN FIXED ===
-        function openApprovalForm() {
-            document.getElementById('approval-view').style.display = 'block';
-            resizeCanvas();
-
-            document.getElementById('disp-mesin').innerText = selectedMachineName;
-            document.getElementById('disp-pelaksana').innerText = selectedLogData.nama_pelaksana;
-            
-            let catatanShow = "";
-            let kondisiShow = "";
-
-            if (selectedLogData.ngItems.length > 0) {
-                // KONDISI NG: AMBIL HANYA 'KETERANGAN'
-                kondisiShow = `<span style="color:red; font-weight:800;">NG (${selectedLogData.ngItems.length} Item)</span>`;
-                
-                // HANYA AMBIL DESKRIPSI (KETERANGAN) YANG DIKETIK PELAKSANA
-                const ketList = selectedLogData.ngItems.map(item => item.keterangan || "-");
-                
-                // Gabungkan dengan koma jika ada lebih dari 1
-                catatanShow = ketList.join(", "); 
-
-            } else {
-                // KONDISI OK
-                kondisiShow = `<span style="color:green; font-weight:800;">OK (Aman)</span>`;
-                catatanShow = selectedLogData.catatan_pelaksana || "Aman";
-            }
-
-            // Render
-            document.getElementById('disp-catatan').innerHTML = catatanShow; 
-            document.getElementById('disp-kondisi').innerHTML = kondisiShow;
-        }
-
-        async function updateVerifikasi() {
-            const nama = document.getElementById('nama_koordinator').value.trim();
-            if(!nama) return alert("ISI NAMA KOORDINATOR!");
-            if(signaturePad.isEmpty()) return alert("TANDA TANGAN WAJIB!");
-
-            const btn = document.getElementById('btnSave');
-            btn.innerText = "MENGIRIM..."; btn.disabled = true;
-
-            const { error } = await _sb.from('pmi_log').update({
-                status_verifikasi: 'Verified',
-                nama_koordinator: nama,
-                catatan_koordinator: document.getElementById('catatan_koordinator').value,
+            const { error } = await _sb.from('pmi_header').update({
+                nama_koordinator: namaKoor,
+                catatan_koordinator: catatan,
                 signature_koordinator: signaturePad.toDataURL(),
-                verified_at: new Date().toISOString()
-            }).eq('id', selectedLogId);
+                status_verifikasi: 'Verified', // Update Status
+                verified_at: new Date()
+            }).eq('id', currentHeaderId);
 
             if(error) {
-                alert("Gagal Update: " + error.message);
-                btn.innerText = "SUBMIT LAPORAN"; btn.disabled = false;
+                alert("Gagal: " + error.message);
+                document.getElementById('btnApprove').disabled = false;
             } else {
-                alert("SUKSES VERIFIKASI!");
-                location.reload();
+                alert("Berhasil Diverifikasi! Data diteruskan ke Superintendent.");
+                closeModal();
+                loadReports(); // Refresh list
             }
         }
 
-        function resizeCanvas() {
-            const c = document.getElementById('sig-canvas');
-            const r = Math.max(window.devicePixelRatio || 1, 1);
-            c.width = c.offsetWidth * r; c.height = c.offsetHeight * r;
-            c.getContext("2d").scale(r, r);
+        function closeModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
         }
 
-        window.onload = loadPmiList;
+        function formatDate(str) {
+            return new Date(str).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
     </script>
 </body>
 </html>
