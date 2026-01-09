@@ -52,10 +52,11 @@
 
         .std-input { width: 100%; padding: 12px; border: 2px solid #000; font-size: 14px; font-weight: 600; border-radius: 0; }
         
-        /* INPUT KETERANGAN TUNGGAL */
-        .keterangan-input { 
-            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;
-            font-size: 12px; margin-top: 5px; background: #fff; font-family: inherit;
+        /* INPUT KETERANGAN TUNGGAL (KONDISIONAL) */
+        .shared-keterangan { 
+            width: 100%; padding: 10px; border: 2px solid #ccc; border-radius: 4px;
+            font-size: 12px; margin-top: 10px; background: #fff; font-family: inherit;
+            display: none; /* Hidden by default */
         }
         
         .section { padding: 20px; border-bottom: 2px solid #000; }
@@ -128,7 +129,7 @@
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
         const html5QrCode = new Html5Qrcode("reader");
-        let signaturePad, currentMachineId, loadedFields = [];
+        let signaturePad, currentMachineId, loadedItems = [], loadedFields = [];
 
         window.onload = function() {
             const now = new Date();
@@ -164,6 +165,7 @@
 
             const { data: items } = await _sb.from('pmi_items').select('*').eq('aktif', true).order('urutan');
             const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
+            loadedItems = items;
             loadedFields = fields;
             renderChecklist(items, fields);
         }
@@ -172,30 +174,64 @@
             const tbody = document.getElementById('checklist-body');
             tbody.innerHTML = "";
             let lastCat = "";
+
             items.forEach(item => {
                 if(item.kategori !== lastCat) {
                     lastCat = item.kategori;
                     tbody.innerHTML += `<tr class="cat-row"><td colspan="2">${lastCat}</td></tr>`;
                 }
+
                 const myFields = fields.filter(f => f.pmi_item_id === item.id);
                 let html = `<tr><td><span class="item-name">${item.nama_item}</span><span class="item-std">${item.standard || ''}</span>`;
+                
+                // Flag untuk memastikan input keterangan hanya dibuat satu kali per item
+                let keteranganAdded = false;
+
                 myFields.forEach(f => {
                     let lbl = f.label ? `<span class="field-sub-label">${f.label}</span>` : "";
                     if (f.tipe_input === 'radio_ok_ng') {
-                        // DISISAKAN HANYA SATU INPUT KETERANGAN
                         html += `<div class="field-box">${lbl}<div class="radio-group">
-                            <label class="radio-btn"><input type="radio" name="f_${f.id}" value="OK">OK</label>
-                            <label class="radio-btn"><input type="radio" name="f_${f.id}" value="NG">NG</label>
-                        </div><input type="text" id="ket_${f.id}" class="keterangan-input" placeholder="Keterangan..." /></div>`;
+                            <label class="radio-btn"><input type="radio" name="f_${f.id}" value="OK" onchange="handleKondisi('${item.id}')">OK</label>
+                            <label class="radio-btn"><input type="radio" name="f_${f.id}" value="NG" onchange="handleKondisi('${item.id}')">NG</label>
+                        </div></div>`;
                     } else if (f.tipe_input === 'number') {
-                        html += `<div class="field-box">${lbl}<input type="number" id="f_${f.id}" class="std-input" placeholder="0"></div>`;
+                        html += `<div class="field-box">${lbl}<input type="number" id="f_${f.id}" class="std-input" placeholder="0" oninput="handleKondisi('${item.id}')"></div>`;
                     } else {
-                        html += `<div class="field-box">${lbl}<input type="text" id="f_${f.id}" class="std-input" placeholder="..."></div>`;
+                        html += `<div class="field-box">${lbl}<input type="text" id="f_${f.id}" class="std-input" placeholder="..." oninput="handleKondisi('${item.id}')"></div>`;
+                    }
+
+                    if (!keteranganAdded) {
+                        html += `<input type="text" id="shared_ket_${item.id}" class="shared-keterangan" placeholder="Berikan keterangan detail..." />`;
+                        keteranganAdded = true;
                     }
                 });
                 html += `</td></tr>`;
                 tbody.innerHTML += html;
             });
+        }
+
+        function handleKondisi(itemId) {
+            const ketInput = document.getElementById(`shared_ket_${itemId}`);
+            const myFields = loadedFields.filter(f => f.pmi_item_id === itemId);
+            let showKeterangan = false;
+
+            myFields.forEach(f => {
+                if (f.tipe_input === 'radio_ok_ng') {
+                    const selected = document.querySelector(`input[name="f_${f.id}"]:checked`);
+                    if (selected && selected.value === 'NG') showKeterangan = true;
+                } else {
+                    const val = document.getElementById(`f_${f.id}`).value.trim();
+                    if (val !== "") showKeterangan = true;
+                }
+            });
+
+            if (showKeterangan) {
+                ketInput.style.display = 'block';
+                ketInput.style.borderColor = '#dc2626'; // Border merah jika dipicu
+            } else {
+                ketInput.style.display = 'none';
+                ketInput.value = "";
+            }
         }
 
         async function submitData() {
@@ -222,23 +258,27 @@
                 if(e1) throw e1;
 
                 let results = [];
-                loadedFields.forEach(f => {
-                    let status = null, nilai_aktual = null, keterangan = null, hasValue = false;
-                    if (f.tipe_input === 'radio_ok_ng') {
-                        const checked = document.querySelector(`input[name="f_${f.id}"]:checked`);
-                        if(checked) { status = checked.value; hasValue = true; }
-                        const ketEl = document.getElementById(`ket_${f.id}`);
-                        if(ketEl && ketEl.value.trim() !== '') { keterangan = ketEl.value.trim(); hasValue = true; }
-                    } else {
-                        const el = document.getElementById(`f_${f.id}`);
-                        if(el && el.value.trim() !== '') {
-                            hasValue = true;
-                            if(f.tipe_input === 'number') nilai_aktual = el.value;
-                            else keterangan = el.value;
+                loadedItems.forEach(item => {
+                    const sharedKet = document.getElementById(`shared_ket_${item.id}`).value.trim();
+                    const myFields = loadedFields.filter(f => f.pmi_item_id === item.id);
+
+                    myFields.forEach(f => {
+                        let status = null, nilai_aktual = null, hasValue = false;
+                        if (f.tipe_input === 'radio_ok_ng') {
+                            const checked = document.querySelector(`input[name="f_${f.id}"]:checked`);
+                            if(checked) { status = checked.value; hasValue = true; }
+                        } else {
+                            const el = document.getElementById(`f_${f.id}`);
+                            if(el && el.value.trim() !== '') {
+                                hasValue = true;
+                                if(f.tipe_input === 'number') nilai_aktual = el.value;
+                                else sharedKet = el.value; // Jika input text biasa, anggap sebagai keterangan item
+                            }
                         }
-                    }
-                    if (hasValue) results.push({ pmi_header_id: header.id, pmi_item_id: f.pmi_item_id, pmi_item_field_id: f.id, status, nilai_aktual, keterangan });
+                        if (hasValue) results.push({ pmi_header_id: header.id, pmi_item_id: item.id, pmi_item_field_id: f.id, status, nilai_aktual, keterangan: sharedKet });
+                    });
                 });
+
                 if(results.length > 0) await _sb.from('pmi_results').insert(results);
                 alert("LAPORAN TERKIRIM!"); window.location.href = "index.html";
             } catch (e) { alert("GAGAL: " + e.message); btn.disabled = false; }
