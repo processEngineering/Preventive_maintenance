@@ -8,11 +8,12 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        /* === GLOBAL RESET (STYLE LAMA DIPERTAHANKAN) === */
+        /* === GLOBAL RESET === */
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
         body {
@@ -22,7 +23,7 @@
             height: 100vh;
         }
 
-        .fa, .fa-solid, .fa-regular, .fa-brands { font-family: "Font Awesome 6 Free" !important; font-weight: 900; }
+        .fa, .fa-solid { font-family: "Font Awesome 6 Free" !important; font-weight: 900; }
 
         /* === VIEW 1: SCANNER === */
         #scanner-view {
@@ -59,7 +60,7 @@
         .line-right { right: 0; transform-origin: top right; transform: rotate(-20deg); }
         .scan-status { margin-top: 10px; font-weight: 800; font-size: 14px; text-transform: uppercase; }
 
-        /* === VIEW 2: FORM (PEMBARUAN STRUKTUR) === */
+        /* === VIEW 2: FORM === */
         #form-view { 
             display: none; max-width: 800px; margin: 0 auto; 
             background: white; min-height: 100vh; padding-bottom: 120px; 
@@ -75,9 +76,7 @@
             border-radius: 50px; font-weight: 800; margin-top: 15px; 
             display: inline-block; font-size: 16px; border: 3px solid #000; 
         }
-        .tonage-badge {
-            display: block; font-size: 12px; margin-top: 5px; opacity: 0.8; font-weight: 600;
-        }
+        .tonage-badge { display: block; font-size: 12px; margin-top: 5px; opacity: 0.8; font-weight: 600; }
 
         .section { padding: 20px; border-bottom: 2px solid #000; }
         label { display: block; font-size: 11px; font-weight: 800; margin-bottom: 6px; color: #000; letter-spacing: 0.5px; text-transform: uppercase; }
@@ -87,7 +86,7 @@
             font-size: 16px; background: #fff; color: #000; font-weight: 600; font-family: inherit;
         }
         
-        /* Grid untuk Header Info */
+        /* Grid Layout */
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
         /* Checklist Styles */
@@ -95,14 +94,14 @@
         table { width: 100%; border-collapse: collapse; }
         td { padding: 15px 15px; border-bottom: 1px solid #ccc; font-size: 14px; vertical-align: top; color: #000; }
         
-        /* Kategori Header (A, B, C...) */
+        /* Kategori Header */
         .cat-row td { 
             background: #e0e0e0; padding: 12px 20px; 
             border-left: 8px solid #000; color: #000; 
             font-weight: 900; font-size: 13px; text-transform: uppercase; 
         }
 
-        /* OK / NG Radio Buttons */
+        /* Input Styles */
         .status-options { display: flex; gap: 10px; margin-top: 10px; }
         .status-options label { 
             flex: 1; padding: 12px; text-align: center; background: white; 
@@ -112,7 +111,6 @@
         .status-options input { display: none; }
         .status-options label:has(input:checked) { background: #000; color: white; }
 
-        /* Keterangan Field */
         .input-ket { margin-top:10px; display: none; border: 2px solid #000 !important; }
         .input-ket.required-ng { display: block; border-bottom: 4px solid #000 !important; background-color: #f2f2f2; }
 
@@ -130,7 +128,7 @@
         }
         .btn-submit:active { transform: scale(0.98); opacity: 0.9; }
 
-        /* === BOTTOM NAVIGATION === */
+        /* === BOTTOM NAV === */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto;
             width: 100%; max-width: 800px; background: white; 
@@ -186,7 +184,7 @@
             </div>
             <div style="margin-top:15px;">
                 <label>Running Hours (Hour Meter)</label>
-                <input type="number" id="running_hours" placeholder="Contoh: 12345.5">
+                <input type="number" id="running_hours" placeholder="Contoh: 12345.5" step="0.1">
             </div>
         </div>
 
@@ -235,13 +233,14 @@
         const _sb = supabase.createClient(SB_URL, SB_KEY);
         
         const html5QrCode = new Html5Qrcode("reader");
-        let signaturePad, currentMachineId, currentMachineName, checklistItems = [];
+        let signaturePad, currentMachineId, currentMachineName;
 
         // === 1. START SCANNER ===
         window.onload = function() {
-            // Set Default Jam & Tanggal
+            // Set Default Jam & Tanggal Hari Ini
             const now = new Date();
-            document.getElementById('start_jam').value = now.toTimeString().substring(0,5);
+            const timeString = now.toTimeString().substring(0,5);
+            document.getElementById('start_jam').value = timeString;
             document.getElementById('target_selesai').valueAsDate = now;
 
             const config = { fps: 20, qrbox: { width: 250, height: 250 } };
@@ -249,24 +248,34 @@
             html5QrCode.start({ facingMode: "environment" }, config,
                 async (decodedText) => {
                     const rawCode = decodedText.trim(); 
-                    // Barcode mesin = Nama Karakter (Misal: IRON MAN) atau Kode Unik
-                    // Kita cari berdasarkan kolom 'barcode' di tabel pmi_machines
+                    document.getElementById('scan-msg').innerText = "CEK: " + rawCode;
                     
-                    document.getElementById('scan-msg').innerText = "MEMPROSES: " + rawCode;
+                    // --- LOGIKA CERDAS BACA QR ---
+                    // Ambil teks setelah garis miring terakhir (jika ada)
+                    // Contoh: "INJECT MOLD / TOAD" -> "TOAD"
+                    let cleanCode = rawCode;
+                    if (rawCode.includes("/")) {
+                        const parts = rawCode.split("/");
+                        cleanCode = parts[parts.length - 1].trim(); 
+                    }
                     
                     try {
+                        // Cari di Database (Barcode OR Nama Mesin)
                         const { data: machines, error } = await _sb.from('pmi_machines')
                             .select('*')
-                            .eq('barcode', rawCode) // Cari persis sesuai barcode
-                            .single();
+                            .or(`barcode.eq.${cleanCode},barcode.eq.${rawCode},nama_mesin.eq.${rawCode}`)
+                            .maybeSingle(); 
 
-                        if (error || !machines) throw new Error("MESIN TIDAK TERDAFTAR");
+                        if (error) { console.error(error); throw new Error("DB ERROR"); }
+                        if (!machines) { throw new Error("TIDAK TERDAFTAR"); }
 
+                        // Berhasil
                         await html5QrCode.stop();
                         showForm(machines);
 
                     } catch (err) {
-                        document.getElementById('scan-msg').innerText = err.message;
+                        document.getElementById('scan-msg').innerText = err.message + ": " + cleanCode;
+                        setTimeout(() => document.getElementById('scan-msg').innerText = "SIAP SCAN...", 3000);
                     }
                 },
                 (err) => {}
@@ -284,7 +293,7 @@
             document.getElementById('m-name').innerText = machine.nama_mesin;
             document.getElementById('m-ton').innerText = machine.tonage || '';
             
-            // Init Signature
+            // Init Signature Pad
             const c = document.getElementById('sig-canvas');
             const r = Math.max(window.devicePixelRatio || 1, 1);
             c.width = c.offsetWidth * r; c.height = c.offsetHeight * r;
@@ -292,13 +301,10 @@
             signaturePad = new SignaturePad(c, {penColor: 'black'});
 
             // Load Master Item & Fields
-            // Kita join manual di client side agar fleksibel
             const { data: items } = await _sb.from('pmi_items').select('*').eq('aktif', true).order('urutan', { ascending: true });
             const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan', { ascending: true });
             
-            checklistItems = items || [];
-            
-            renderChecklist(checklistItems, fields);
+            renderChecklist(items || [], fields || []);
             updateFormLogic();
         }
 
@@ -309,19 +315,18 @@
             let lastCat = "";
 
             items.forEach(it => {
-                // Header Kategori (Grouping A, B, C...)
+                // Buat Header Kategori Jika Berubah (A, B, C...)
                 if(it.kategori !== lastCat) {
                     lastCat = it.kategori;
                     tbody.innerHTML += `<tr class="cat-row"><td colspan="2">${lastCat}</td></tr>`;
                 }
 
-                // Cari field untuk item ini
+                // Ambil field (input) yang terkait dengan item ini
                 const myFields = allFields.filter(f => f.pmi_item_id === it.id);
                 
-                // Render Baris Item
                 let html = `<tr><td width="55%"><strong>${it.nama_item}</strong></td><td>`;
 
-                // Render Input Fields
+                // Render Input Sesuai Tipe
                 myFields.forEach(f => {
                     if (f.field_type === 'radio_ok_ng') {
                         html += `
@@ -330,10 +335,10 @@
                                 <label><input type="radio" name="f-${f.id}" value="NG" onchange="updateFormLogic()">NG</label>
                             </div>`;
                     } else if (f.field_type === 'text') {
-                        // Keterangan muncul jika NG (logic di CSS/JS nanti)
+                        // Input Keterangan (default hidden, muncul via logic JS jika NG)
                         html += `<input type="text" id="f-${f.id}" class="input-ket" placeholder="${f.field_label}..." oninput="updateFormLogic()">`;
                     } else if (f.field_type === 'number') {
-                        html += `<div style="margin-top:5px"><small>${f.field_label}</small><input type="number" id="f-${f.id}" placeholder="0"></div>`;
+                        html += `<div style="margin-top:5px"><small>${f.field_label}</small><input type="number" id="f-${f.id}" placeholder="0" step="any"></div>`;
                     }
                 });
 
@@ -342,31 +347,23 @@
             });
         }
 
-        // === 4. LOGIC VALIDASI & RINGKASAN NG ===
+        // === 4. LOGIC INTERAKSI (NG SHOW/HIDE) ===
         function updateFormLogic() {
             let hasNG = false;
             let ngListHtml = "";
 
-            // Loop semua input radio OK/NG
             const radios = document.querySelectorAll('input[type=radio][value="NG"]');
             
             radios.forEach(rad => {
+                const parentTd = rad.closest('td');
+                const textInput = parentTd.querySelector('input[type=text]'); // Cari input keterangan di sel yang sama
+
                 if (rad.checked) {
                     hasNG = true;
-                    // Cari field ID
-                    const fieldId = rad.name.replace('f-', ''); 
-                    
-                    // Cari field TEXT pasangannya (biasanya keterangan ada setelah status)
-                    // Ini pendekatan simpel: cari input text terdekat di parent yang sama
-                    const parentTd = rad.closest('td');
-                    const textInput = parentTd.querySelector('input[type=text]');
-                    
                     if(textInput) {
-                        textInput.classList.add('required-ng'); // Tampilkan box keterangan
+                        textInput.classList.add('required-ng'); // Tampilkan box input
                         
-                        // Ambil Nama Item dari kolom sebelah kiri
                         const itemName = rad.closest('tr').querySelector('strong').innerText;
-                        
                         ngListHtml += `
                             <div class="ng-item">
                                 <strong>• ${itemName}</strong><br>
@@ -374,13 +371,11 @@
                             </div>`;
                     }
                 } else {
-                    // Jika OK, sembunyikan keterangan
-                    const parentTd = rad.closest('td');
-                    const textInput = parentTd.querySelector('input[type=text]');
-                    if(textInput) textInput.classList.remove('required-ng');
+                    if(textInput) textInput.classList.remove('required-ng'); // Sembunyikan
                 }
             });
 
+            // Tampilkan ringkasan di bawah
             if (hasNG) {
                 document.getElementById('condition-all-ok').style.display = 'none';
                 document.getElementById('condition-has-ng').style.display = 'block';
@@ -391,8 +386,9 @@
             }
         }
 
-        // === 5. SUBMIT DATA (STRUKTUR BARU) ===
+        // === 5. SUBMIT DATA KE DATABASE ===
         async function submitData() {
+            // Validasi Header
             const nama = document.getElementById('nama_pelaksana').value.trim();
             const startJam = document.getElementById('start_jam').value;
             const targetSelesai = document.getElementById('target_selesai').value;
@@ -402,7 +398,7 @@
             if(signaturePad.isEmpty()) return alert("TANDA TANGAN WAJIB!");
             if(!runHours) return alert("RUNNING HOURS WAJIB DIISI!");
 
-            // Validasi Keterangan NG
+            // Validasi Keterangan NG (Tidak boleh kosong jika NG)
             const ngInputs = document.querySelectorAll('.input-ket.required-ng');
             for(let inp of ngInputs) {
                 if(!inp.value.trim()) return alert("ADA ITEM NG YANG BELUM ADA KETERANGANNYA!");
@@ -416,7 +412,7 @@
                 const catatanSave = document.getElementById('condition-has-ng').style.display === 'block' 
                     ? "" : document.getElementById('catatan_umum').value.trim();
 
-                // 1. INSERT HEADER
+                // 1. INSERT KE HEADER
                 const { data: header, error: e1 } = await _sb.from('pmi_header').insert([{
                     machine_id: currentMachineId,
                     bulan: now.getMonth()+1, 
@@ -426,7 +422,6 @@
                     target_selesai: targetSelesai,
                     running_hours: runHours,
                     finish_jam: now.toTimeString().substring(0,5), // Auto finish saat submit
-                    
                     nama_pelaksana: nama, 
                     signature_pelaksana: signaturePad.toDataURL(),
                     catatan_pelaksana: catatanSave,
@@ -435,22 +430,9 @@
 
                 if(e1) throw e1;
 
-                // 2. PREPARE DETAIL RESULTS
+                // 2. KUMPULKAN DATA RESULTS
                 let resultsPayload = [];
-                const allInputs = document.querySelectorAll('input[name^="f-"]:checked, input[type=text][id^="f-"], input[type=number][id^="f-"]');
-                
-                // Kita perlu mapping Field ID ke Item ID
-                // Cara simpel: Loop checklistItems, lalu cari value inputnya
-                // Agar akurat, kita query ulang field definitions di awal (sudah ada di var local)
-                
-                // Simplifikasi logic pengumpulan data:
-                // Kita iterate semua input yang ada di dalam tabel
-                const rows = document.querySelectorAll('#pmi-items-body tr');
-                
-                // Kita butuh mapping ID Item ke ID Fields
-                // (Logic ini disederhanakan agar tidak terlalu berat di client)
-                // Kita ambil semua input yang punya ID/NAME berawalan f-
-                
+                // Ambil semua input yang aktif (radio checked, text, number)
                 const inputs = document.querySelectorAll('[id^="f-"], [name^="f-"]:checked');
                 
                 inputs.forEach(inp => {
@@ -458,46 +440,31 @@
                     let val = inp.value;
                     let stat = null;
 
-                    // Jika radio button (Status OK/NG)
                     if(inp.type === 'radio') {
                         stat = inp.value; 
-                        val = null; // Value status masuk kolom status
+                        val = null; // Kalau radio, value masuk ke status
                     }
-
-                    // Kita cari Item ID pemilik field ini (agak tricky tanpa mapping object)
-                    // Solusi: Di renderChecklist tadi, kita bisa tanam data-item-id di input
-                    // Tapi karena kita pakai pendekatan mass insert, kita insert saja field_id nya.
-                    // Backend view akan join sendiri.
-                    
-                    // Note: Kita butuh item_id untuk insert ke pmi_results
-                    // Kita cari parent TR, lalu cari item index/id??
-                    // Revisi: Kita fetch ulang pmi_item_fields untuk mapping
                     
                     resultsPayload.push({
                         pmi_header_id: header.id,
                         pmi_item_field_id: fieldId, 
-                        // pmi_item_id: ??? (Kita perlu lookup ini)
-                        // Karena struktur tabel result mewajibkan pmi_item_id, kita harus cari tau.
-                        
                         status: stat,
                         nilai_aktual: val
                     });
                 });
                 
-                // FIX: Kita butuh item_id. 
-                // Cara terbaik: Ambil data field dari Supabase lagi untuk mapping ID -> ItemID
+                // 3. MAPPING FIELD KE ITEM ID (Wajib untuk database)
                 const { data: fieldsMap } = await _sb.from('pmi_item_fields').select('id, pmi_item_id');
                 
-                // Gabungkan data
                 const finalPayload = resultsPayload.map(res => {
                     const match = fieldsMap.find(f => f.id == res.pmi_item_field_id);
                     return {
                         ...res,
                         pmi_item_id: match ? match.pmi_item_id : null
                     };
-                }).filter(r => r.pmi_item_id); // Hapus yang invalid
+                }).filter(r => r.pmi_item_id); // Filter data valid saja
 
-                // 3. INSERT RESULTS
+                // 4. INSERT KE RESULTS
                 const { error: e2 } = await _sb.from('pmi_results').insert(finalPayload);
                 if(e2) throw e2;
 
