@@ -28,7 +28,7 @@
         #scanner-view {
             position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
             background-color: #ffffff; 
-            z-index: 100; /* Layer di bawah Navigasi */
+            z-index: 100;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
@@ -61,17 +61,13 @@
             object-fit: cover; width: 100% !important; height: 100% !important; 
         }
 
-        /* Sudut L */
-        .corner {
-            position: absolute; width: 50px; height: 50px;
-            border: 6px solid #fff; z-index: 10;
-        }
+        /* Laser & Corner Styles */
+        .corner { position: absolute; width: 50px; height: 50px; border: 6px solid #fff; z-index: 10; }
         .tl { top: 0; left: 0; border-right: none; border-bottom: none; }
         .tr { top: 0; right: 0; border-left: none; border-bottom: none; }
         .bl { bottom: 0; left: 0; border-right: none; border-top: none; }
         .br { bottom: 0; right: 0; border-left: none; border-top: none; }
 
-        /* Laser Scan */
         .laser {
             position: absolute; width: 100%; height: 2px; background: #fff;
             z-index: 5; animation: scanAnim 2s infinite ease-in-out;
@@ -79,14 +75,11 @@
         }
         @keyframes scanAnim { 0% { top: 10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
 
-        /* Connector Lines */
         .connector-area {
             height: 60px; width: 160px; position: relative; 
             display: flex; justify-content: center; margin-top: -2px; z-index: 1;
         }
-        .line {
-            position: absolute; top: 0; width: 3px; height: 100%; background-color: #000;
-        }
+        .line { position: absolute; top: 0; width: 3px; height: 100%; background-color: #000; }
         .line-left { left: 0; transform-origin: top left; transform: rotate(20deg); }
         .line-right { right: 0; transform-origin: top right; transform: rotate(-20deg); }
 
@@ -252,15 +245,11 @@
             
             html5QrCode.start({ facingMode: "environment" }, config,
                 async (decodedText) => {
-                    // LOGIKA BARU: BARCODE BERISI NAMA MESIN LANGSUNG
-                    // Kita bersihkan spasi, dan ambil raw text
                     const rawName = decodedText.trim(); 
-
                     document.getElementById('scan-msg').innerText = "MEMPROSES: " + rawName;
                     
                     try {
-                        // REVISI: Mencari berdasarkan kolom 'machine_name' (bukan ID lagi)
-                        // Menggunakan .ilike agar tidak masalah huruf besar/kecil
+                        // 1. CARI MESIN BERDASARKAN NAMA
                         const { data: machines, error } = await _sb.from('pmi_machine')
                             .select('*')
                             .ilike('machine_name', rawName); 
@@ -269,9 +258,9 @@
 
                         if (machines && machines.length > 0) {
                             await html5QrCode.stop();
+                            // 2. DAPATKAN ID DAN NAMA MESIN
                             showForm(machines[0]);
                         } else {
-                            // Coba cari Partial jika Exact Match tidak ketemu (opsional)
                             throw new Error("MESIN '" + rawName + "' TIDAK DITEMUKAN");
                         }
                     } catch (err) {
@@ -287,11 +276,11 @@
             document.getElementById('scanner-view').style.display = 'none';
             document.getElementById('form-view').style.display = 'block';
             
-            // Simpan data mesin
-            currentMachineId = machine.id; // Tetap simpan ID jika perlu relasi
-            currentMachineName = machine.machine_name; // Simpan Nama Mesin
+            // KITA SIMPAN ID MESIN UNTUK DISIMPAN DI DATABASE NANTI
+            currentMachineId = machine.id; 
+            currentMachineName = machine.machine_name; 
             
-            document.getElementById('m-name').innerText = currentMachineName; // Tampilkan nama
+            document.getElementById('m-name').innerText = currentMachineName; 
             
             const c = document.getElementById('sig-canvas');
             const r = Math.max(window.devicePixelRatio || 1, 1);
@@ -384,13 +373,12 @@
                 const now = new Date();
                 const catatanSave = hasNG ? "" : document.getElementById('catatan_umum').value.trim();
 
-                // REVISI LOG: Karena database berubah dari ID ke Nama Mesin langsung
-                // Kita masukkan 'nama_mesin' ke dalam payload insert.
-                // Jika tabel log masih butuh mesin_id (integer), uncomment baris mesin_id.
+                // === PERBAIKAN DI SINI ===
+                // Kita gunakan 'mesin_id' (yang sudah dicari berdasarkan nama tadi)
+                // agar sesuai dengan kolom yang ada di database.
                 
                 const { data: log, error: e1 } = await _sb.from('pmi_log').insert([{
-                    // mesin_id: currentMachineId,  <-- Pakai ini jika database masih butuh relasi ID
-                    nama_mesin: currentMachineName, // <-- REVISI UTAMA: Simpan nama mesin langsung
+                    mesin_id: currentMachineId, // <-- PAKE ID (HASIL PENCARIAN NAMA)
                     bulan: now.getMonth()+1, 
                     tahun: now.getFullYear(),
                     nama_pelaksana: nama, 
@@ -415,7 +403,7 @@
                 const { error: e2 } = await _sb.from('pmi_result').insert(res);
                 if(e2) throw e2;
 
-                alert("LAPORAN TERKIRIM UNTUK " + currentMachineName);
+                alert("LAPORAN TERKIRIM UNTUK: " + currentMachineName);
                 window.location.href = "index.html"; 
             } catch(e) {
                 alert("ERROR: " + e.message);
