@@ -221,11 +221,9 @@
         const signaturePad = new SignaturePad(document.getElementById('sig-canvas'), {penColor:'black'});
         let selectedLogId, selectedMachineName, selectedLogData;
 
-        // 1. LOAD LIST (FIXED: NAMA MESIN)
         async function loadPmiList() {
             const list = document.getElementById('pmi-list');
             
-            // Fetch PMI Log
             const { data: logs, error } = await _sb.from('pmi_log')
                 .select(`
                     id, 
@@ -238,7 +236,6 @@
 
             if(error) return list.innerHTML = `<div style='text-align:center; padding:20px; color:red;'>Error: ${error.message}</div>`;
 
-            // Fetch Data Mesin untuk Mapping Nama
             const { data: machines } = await _sb.from('pmi_machine').select('id, machine_name');
 
             if(!logs || !logs.length) return list.innerHTML = "<div style='text-align:center; padding:20px;'>Tidak ada laporan pending.</div>";
@@ -249,7 +246,6 @@
                 const ngItems = log.pmi_result.filter(r => r.status !== 'OK');
                 const isNG = ngItems.length > 0;
                 
-                // Cari Nama Mesin
                 let displayMachine = log.mesin_id;
                 if(machines) {
                     const foundMachine = machines.find(m => m.id == log.mesin_id);
@@ -274,11 +270,9 @@
             }
         }
 
-        // 2. SCANNER
         function openScanner(log, ngItems) {
             selectedLogId = log.id;
             selectedMachineName = log.finalMachineName; 
-            
             selectedLogData = { ...log, ngItems: ngItems };
 
             document.getElementById('dashboard').style.display = 'none';
@@ -300,7 +294,6 @@
             const scanned = decodedText.trim().toUpperCase();
             const target = String(selectedMachineName).trim().toUpperCase();
 
-            // Verifikasi Nama
             if(scanned === target || scanned.includes(target) || target.includes(scanned)) {
                 await html5QrCode.stop();
                 document.getElementById('scanner-view').style.display = 'none';
@@ -310,7 +303,7 @@
             }
         }
 
-        // 3. APPROVAL FORM (REVISI: MURNI CATATAN PELAKSANA)
+        // === REVISI LOGIKA TAMPILAN DISINI ===
         function openApprovalForm() {
             document.getElementById('approval-view').style.display = 'block';
             resizeCanvas();
@@ -318,22 +311,32 @@
             document.getElementById('disp-mesin').innerText = selectedMachineName;
             document.getElementById('disp-pelaksana').innerText = selectedLogData.nama_pelaksana;
             
-            // --- BAGIAN INI SUDAH DIREVISI ---
-            // Catatan: Selalu ambil dari database (inputan manusia)
-            const catatanManual = selectedLogData.catatan_pelaksana || "-";
-            document.getElementById('disp-catatan').innerText = catatanManual;
+            let catatanShow = "";
+            let kondisiShow = "";
 
-            // Kondisi: Hanya tampilkan status OK/NG dan jumlahnya
-            let kondisiHtml = "";
             if (selectedLogData.ngItems.length > 0) {
-                kondisiHtml = `<span style="color:red; font-weight:800;">NG (${selectedLogData.ngItems.length} Item)</span>`;
-                // Opsional: List NG Items kecil di bawah kondisi (hanya nama item) jika perlu info tambahan, tapi tidak masuk ke Notes
-                const ngNames = selectedLogData.ngItems.map(i => i.item_name).join(', ');
-                kondisiHtml += `<div style="font-size:11px; margin-top:4px; color:#991b1b; line-height:1.2;">*Item NG: ${ngNames}</div>`;
+                // KONDISI NG
+                kondisiShow = `<span style="color:red; font-weight:800;">NG (${selectedLogData.ngItems.length} Item)</span>`;
+                
+                // LOGIKA: GABUNGKAN ITEM NAME DAN KETERANGAN DARI TABLE PMI_RESULT
+                // Format: "Nama Item (Keterangan)"
+                const details = selectedLogData.ngItems.map(item => {
+                    return `• ${item.item_name} (${item.keterangan || 'Tanpa ket.'})`;
+                });
+                
+                // Masukkan ke CATATAN PELAKSANA
+                catatanShow = details.join('<br>'); 
+
             } else {
-                kondisiHtml = `<span style="color:green; font-weight:800;">OK (Aman)</span>`;
+                // KONDISI OK
+                kondisiShow = `<span style="color:green; font-weight:800;">OK (Aman)</span>`;
+                // Ambil catatan umum dari log jika ada
+                catatanShow = selectedLogData.catatan_pelaksana || "Aman";
             }
-            document.getElementById('disp-kondisi').innerHTML = kondisiHtml;
+
+            // Render ke layar
+            document.getElementById('disp-catatan').innerHTML = catatanShow; 
+            document.getElementById('disp-kondisi').innerHTML = kondisiShow;
         }
 
         async function updateVerifikasi() {
