@@ -102,7 +102,7 @@
         <div class="header-info-box">
             <div class="info-grid">
                 <div class="info-item"><span class="info-label">MERK MESIN</span><input type="text" id="h_merk" class="header-input" readonly></div>
-                <div class="info-item"><span class="info-label">TARGET SELESAI</span><input type="date" id="h_target" class="header-input"></div>
+                <div class="info-item"><span class="info-label">TARGET SELESAI</span><input type="time" id="h_target" class="header-input"></div>
                 <div class="info-item"><span class="info-label">TONAGE</span><input type="text" id="h_ton" class="header-input" readonly></div>
                 <div class="info-item"><span class="info-label">START JAM</span><input type="time" id="h_start" class="header-input"></div>
                 <div class="info-item"><span class="info-label">TANGGAL</span><input type="date" id="h_tanggal" class="header-input" readonly></div>
@@ -152,8 +152,11 @@
             const now = new Date();
             document.getElementById('h_tanggal').valueAsDate = now;
             document.getElementById('h_tahun').value = now.getFullYear();
-            document.getElementById('h_start').value = now.toTimeString().substring(0,5);
-            document.getElementById('h_target').valueAsDate = now;
+            
+            // Set Default Time
+            const timeString = now.toTimeString().substring(0,5);
+            document.getElementById('h_start').value = timeString;
+            document.getElementById('h_target').value = timeString; // Default Jam Sekarang
             
             // Start Scanner
             html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, onScanSuccess, ()=>{});
@@ -268,6 +271,8 @@
 
             try {
                 // A. Insert Header
+                // PERHATIKAN: Target Selesai sekarang ambil WAKTU (h_target is time input)
+                // Database column target_selesai harus bertipe TIME atau TEXT
                 const { data: header, error: e1 } = await _sb.from('pmi_header').insert([{
                     machine_id: currentMachineId,
                     tanggal: document.getElementById('h_tanggal').value,
@@ -275,7 +280,7 @@
                     bulan: new Date().getMonth() + 1,
                     start_jam: document.getElementById('h_start').value,
                     finish_jam: finishInput,
-                    target_selesai: document.getElementById('h_target').value,
+                    target_selesai: document.getElementById('h_target').value, // <-- JAM
                     running_hours: runHours,
                     nama_pelaksana: nama,
                     signature_pelaksana: signaturePad.toDataURL(),
