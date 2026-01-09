@@ -181,7 +181,8 @@
             if(data) {
                 data.forEach(m => {
                     const opt = document.createElement('option');
-                    opt.value = m.id; // Asumsi pakai ID, atau bisa machine_name
+                    // FIX LOGIC: GUNAKAN MACHINE_NAME SEBAGAI VALUE AGAR MATCHING TEXT
+                    opt.value = m.machine_name; 
                     opt.innerText = m.machine_name;
                     selMesin.appendChild(opt);
                 });
@@ -202,7 +203,9 @@
 
             try {
                 // Query database
-                // Cari log yang statusnya SUDAH diverifikasi Koordinator (Verified)
+                // Cari log yang statusnya 'Verified' (Sudah divalidasi Coord, Menunggu Super)
+                // ATAU 'Completed' (Jika ingin melihat yang sudah selesai juga)
+                
                 const { data, error } = await _sb.from('pmi_log')
                     .select(`
                         id, created_at, nama_mesin, mesin_id, 
@@ -211,14 +214,15 @@
                     `)
                     .eq('bulan', bln)
                     .eq('tahun', thn)
-                    .or(`mesin_id.eq.${mes},nama_mesin.eq.${mes}`) // Handle ID or Name
-                    .eq('status_verifikasi', 'Verified') 
+                    // FIX QUERY: Mencari match di kolom mesin_id ATAU nama_mesin
+                    .or(`mesin_id.eq.${mes},nama_mesin.eq.${mes}`)
+                    .eq('status_verifikasi', 'Verified') // Pastikan hanya yg sudah diverif Coord
                     .maybeSingle();
 
                 if(error) throw error;
 
                 if(!data) {
-                    document.getElementById('status-msg').innerText = "Data tidak ditemukan atau belum diverifikasi Koordinator.";
+                    document.getElementById('status-msg').innerText = "Data Laporan belum tersedia / belum diverifikasi Koordinator.";
                     return;
                 }
 
@@ -226,7 +230,7 @@
                 currentLogId = data.id;
                 document.getElementById('status-msg').style.display = 'none';
                 
-                // Format Tanggal (created_at)
+                // Format Tanggal (created_at) -> DD/MM/YYYY
                 const dateObj = new Date(data.created_at);
                 const dateStr = dateObj.getDate().toString().padStart(2,'0') + '/' + 
                                 (dateObj.getMonth()+1).toString().padStart(2,'0') + '/' + 
@@ -243,9 +247,6 @@
 
                 // Catatan Koordinator
                 document.getElementById('val-note').innerText = data.catatan_koordinator || "-";
-                if(hasNG && !data.catatan_koordinator) {
-                    document.getElementById('val-note').innerText = "PERLU PERBAIKAN (NG)";
-                }
 
                 // Show Elements
                 document.getElementById('report-card').style.display = 'block';
