@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PMI Pelaksana - Scanner & Form</title>
+    <title>Scanner Preventif Mesin</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -19,134 +19,138 @@
             --bg: #f8fafc; 
             --nav-height: 65px;
         }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; color: #1e293b; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; color: #1e293b; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
 
         /* ============================
-           1. SCANNER VIEW (DARK MODE)
+           1. SCANNER VIEW (MODERN LOOK)
            ============================ */
         #scanner-view {
             position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
-            background-color: #000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 9999; color: white;
+            background-color: #000; z-index: 9999;
         }
 
-        .scan-header { position: absolute; top: 40px; text-align: center; width: 100%; z-index: 10; }
-        .scan-header h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 1px; }
-        .scan-header p { margin: 5px 0 0; font-size: 12px; color: #aaa; }
+        /* Container Video Fullscreen */
+        #reader { 
+            width: 100%; height: 100%; 
+            border: none !important;
+        }
+        #reader video { 
+            object-fit: cover; width: 100% !important; height: 100vh !important; 
+        }
 
-        #reader { width: 100%; height: 100%; object-fit: cover; border: none !important; }
-        #reader video { object-fit: cover; height: 100vh !important; }
-
-        /* Viewfinder Overlay */
+        /* Overlay Gelap & Kotak Fokus */
         .scan-overlay {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 280px; height: 280px;
+            width: 260px; height: 260px;
+            z-index: 10;
+            /* Efek Shadow Raksasa untuk menggelapkan area luar kotak */
+            box-shadow: 0 0 0 1000vh rgba(0, 0, 0, 0.6);
             border-radius: 20px;
-            box-shadow: 0 0 0 100vh rgba(0, 0, 0, 0.7);
-            z-index: 5; overflow: hidden;
         }
-        /* Pojok Putih */
-        .corner { position: absolute; width: 40px; height: 40px; border: 4px solid white; border-radius: 4px; }
-        .tl { top: 0; left: 0; border-right: none; border-bottom: none; }
-        .tr { top: 0; right: 0; border-left: none; border-bottom: none; }
-        .bl { bottom: 0; left: 0; border-right: none; border-top: none; }
-        .br { bottom: 0; right: 0; border-left: none; border-top: none; }
+
+        /* Sudut-Sudut Putih */
+        .scan-corner {
+            position: absolute; width: 40px; height: 40px;
+            border: 5px solid white; border-radius: 5px;
+            filter: drop-shadow(0 0 5px rgba(0,0,0,0.5));
+        }
+        .tl { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+        .tr { top: -2px; right: -2px; border-left: none; border-bottom: none; }
+        .bl { bottom: -2px; left: -2px; border-right: none; border-top: none; }
+        .br { bottom: -2px; right: -2px; border-left: none; border-top: none; }
 
         /* Laser Animasi */
         .scan-laser {
-            position: absolute; top: 0; left: 0; width: 100%; height: 2px;
-            background: #ef4444; box-shadow: 0 0 10px #ef4444;
-            animation: scanMove 2s infinite linear;
+            position: absolute; top: 0; left: 10px; right: 10px; height: 2px;
+            background: #ef4444; 
+            box-shadow: 0 0 15px #ef4444, 0 0 30px #ef4444;
+            animation: scanMove 2s infinite ease-in-out;
+            opacity: 0.8;
         }
         @keyframes scanMove { 0% { top: 10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
 
-        .scan-footer { position: absolute; bottom: 50px; text-align: center; width: 100%; z-index: 10; font-size: 14px; color: #ccc; }
+        /* Teks Instruksi */
+        .scan-text {
+            position: absolute; width: 100%; text-align: center; color: white; z-index: 20;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+        .scan-title { top: 50px; font-size: 18px; font-weight: 700; letter-spacing: 1px; }
+        .scan-desc { bottom: 80px; font-size: 14px; opacity: 0.9; }
+        
+        /* Tombol Kembali (Opsional jika mau keluar dari scan) */
+        .btn-back-scan {
+            position: absolute; top: 50px; left: 20px; z-index: 30;
+            background: rgba(0,0,0,0.5); border-radius: 50%; width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center; color: white;
+            text-decoration: none; border: 1px solid rgba(255,255,255,0.3);
+        }
 
         /* ============================
            2. FORM VIEW
            ============================ */
         #form-view { display: none; max-width: 800px; margin: 0 auto; background: white; min-height: 100vh; padding-bottom: 90px; }
         
-        .header { background: var(--primary); color: white; padding: 30px 20px 40px; text-align: center; border-bottom-left-radius: 25px; border-bottom-right-radius: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .header { background: var(--primary); color: white; padding: 30px 20px 40px; text-align: center; border-bottom-left-radius: 25px; border-bottom-right-radius: 25px; }
         .machine-badge { background: var(--accent); color: black; padding: 8px 25px; border-radius: 50px; font-weight: 800; margin-top: 15px; display: inline-block; font-size: 16px; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 
         .section { padding: 20px; border-bottom: 8px solid var(--bg); }
         label { display: block; font-size: 11px; font-weight: 800; margin-bottom: 8px; color: #64748b; letter-spacing: 0.5px; text-transform: uppercase; }
-        
-        input[type="text"] { width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; transition: 0.3s; background: #f8fafc; }
+        input[type="text"] { width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; background: #f8fafc; }
         input[type="text"]:focus { border-color: var(--primary); background: white; outline: none; }
 
-        /* Checklist Table */
-        .table-container { padding: 0 0 20px; }
+        .cat-row td { background: #f1f5f9; padding: 10px 20px; border-left: 5px solid var(--primary); color: var(--primary); font-weight: 800; font-size: 12px; }
+        
         table { width: 100%; border-collapse: collapse; }
-        td { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; font-size: 14px; vertical-align: top; }
-        
-        .cat-title { background: #f1f5f9; font-weight: 800; color: var(--primary); padding: 12px 20px; border-left: 5px solid var(--primary); text-transform: uppercase; font-size: 12px; letter-spacing: 1px; margin-top: 20px; display: table-caption; width: 100%; box-sizing: border-box; }
-        /* Trick agar table caption works like a row */
-        tr.cat-row td { background: #f1f5f9; padding: 10px 20px; border-bottom: none; }
-        
-        /* Status Buttons */
-        .status-options { display: flex; gap: 8px; margin-top: 10px; }
-        .status-options label { flex: 1; padding: 10px; text-align: center; background: white; border-radius: 8px; cursor: pointer; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 13px; transition: 0.2s; }
+        td { padding: 15px 10px; border-bottom: 1px solid #f1f5f9; font-size: 14px; vertical-align: top; }
+
+        .status-options { display: flex; gap: 5px; margin-top: 10px; }
+        .status-options label { flex: 1; padding: 12px 0; text-align: center; background: white; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 700; font-size: 12px; transition: 0.2s; }
         .status-options input { display: none; }
         
-        .status-options label:has(input[value="OK"]:checked) { background: var(--success); border-color: var(--success); color: white; box-shadow: 0 2px 5px rgba(16, 185, 129, 0.4); }
-        .status-options label:has(input[value="NG"]:checked) { background: var(--danger); border-color: var(--danger); color: white; box-shadow: 0 2px 5px rgba(239, 68, 68, 0.4); }
-        .status-options label:has(input[value="Repair"]:checked) { background: #f59e0b; border-color: #f59e0b; color: white; box-shadow: 0 2px 5px rgba(245, 158, 11, 0.4); }
+        .status-options label:has(input[value="OK"]:checked) { background: var(--success); border-color: var(--success); color: white; }
+        .status-options label:has(input[value="NG"]:checked) { background: var(--danger); border-color: var(--danger); color: white; }
+        .status-options label:has(input[value="Repair"]:checked) { background: #f59e0b; border-color: #f59e0b; color: white; }
 
         .input-ket { margin-top:8px; padding:10px; font-size:13px; border:1px solid #cbd5e1; border-radius: 8px; width:100%; box-sizing:border-box; display: none; }
         .input-ket.visible { display: block; }
         .input-ket.required-ng { border: 2px solid var(--danger); background: #fef2f2; }
 
-        /* Signature */
-        #sig-canvas { border: 2px dashed #cbd5e1; width: 100%; height: 200px; border-radius: 12px; background: #fff; margin-top: 5px; touch-action: none; }
+        #sig-canvas { border: 2px dashed #cbd5e1; width: 100%; height: 200px; border-radius: 12px; background: #fff; margin-top: 5px; }
         
-        .btn-submit { width: 90%; margin: 20px auto; display: block; padding: 18px; background: var(--primary); color: white; border: none; font-weight: 800; font-size: 16px; cursor: pointer; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,51,102,0.3); transition: 0.2s; }
-        .btn-submit:active { transform: scale(0.98); }
-        .btn-submit:disabled { background: #94a3b8; cursor: not-allowed; }
+        .btn-submit { width: 90%; margin: 20px auto; display: block; padding: 18px; background: var(--primary); color: white; border: none; font-weight: 800; font-size: 16px; cursor: pointer; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,51,102,0.3); }
 
         /* ============================
-           3. BOTTOM NAVIGATION BAR
+           3. BOTTOM NAVIGATION
            ============================ */
         .bottom-nav {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: white; height: var(--nav-height);
+            position: fixed; bottom: 0; left: 0; width: 100%; background: white; height: var(--nav-height);
             display: flex; justify-content: space-around; align-items: center;
-            box-shadow: 0 -2px 15px rgba(0,0,0,0.05); z-index: 999;
-            border-top: 1px solid #f1f5f9;
-            padding-bottom: env(safe-area-inset-bottom);
+            box-shadow: 0 -2px 15px rgba(0,0,0,0.05); z-index: 999; border-top: 1px solid #f1f5f9;
         }
-
         .nav-item {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            text-decoration: none; color: #94a3b8;
-            font-size: 10px; font-weight: 600; width: 25%; height: 100%; transition: 0.2s;
+            text-decoration: none; color: #94a3b8; font-size: 10px; font-weight: 600; width: 25%;
         }
-
-        .nav-item svg { width: 22px; height: 22px; margin-bottom: 4px; stroke: currentColor; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+        .nav-item svg { width: 24px; height: 24px; margin-bottom: 4px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         .nav-item.active { color: var(--primary); }
     </style>
 </head>
 <body>
 
     <div id="scanner-view">
-        <div class="scan-header">
-            <h2>SCAN QR CODE</h2>
-            <p>Arahkan kamera ke QR Mesin</p>
-        </div>
-        
-        <div id="reader"></div>
+        <a href="menu_utama.html" class="btn-back-scan">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </a>
 
-        <div class="scan-overlay">
+        <div class="scan-text scan-title">SCAN MESIN</div>
+
+        <div id="reader"></div> <div class="scan-overlay">
             <div class="scan-laser"></div>
-            <div class="corner tl"></div><div class="corner tr"></div>
-            <div class="corner bl"></div><div class="corner br"></div>
+            <div class="scan-corner tl"></div><div class="scan-corner tr"></div>
+            <div class="scan-corner bl"></div><div class="scan-corner br"></div>
         </div>
 
-        <div class="scan-footer">
-            <div id="scan-status">Mencari kode...</div>
-        </div>
+        <div class="scan-text scan-desc" id="scan-status">Arahkan kamera ke QR Code Mesin</div>
     </div>
 
     <div id="form-view">
@@ -168,7 +172,7 @@
             <label>PARAF PELAKSANA</label>
             <canvas id="sig-canvas"></canvas>
             <div style="text-align: right; margin-top: 8px;">
-                <button onclick="signaturePad.clear()" style="border:none; color:#ef4444; background:none; font-weight:bold; cursor:pointer; font-size: 12px;">✖ ULANGI TTD</button>
+                <button onclick="signaturePad.clear()" style="border:none; color:#ef4444; background:none; font-weight:bold; cursor:pointer; font-size: 12px;">✖ HAPUS TTD</button>
             </div>
         </div>
 
@@ -179,7 +183,8 @@
                 <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                 <span>Home</span>
             </a>
-            <a href="menu_utama.html" class="nav-item active"> <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <a href="menu_utama.html" class="nav-item active">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                 <span>Menu</span>
             </a>
             <a href="download_data.html" class="nav-item">
@@ -194,152 +199,119 @@
     </div>
 
     <script>
-        // --- 1. CONFIGURATION ---
+        // CONFIG
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
         
         const html5QrCode = new Html5Qrcode("reader");
         const canvas = document.getElementById('sig-canvas');
-        let signaturePad; // Init later after resize
-        
+        let signaturePad; 
         let currentMachineId = ""; 
         let checklistItems = [];
 
-        // --- 2. SCANNER LOGIC ---
         async function startScan() {
-            // Aspek rasio agar full screen di HP
-            const config = { fps: 20, qrbox: { width: 250, height: 250 }, aspectRatio: 1.777 };
+            // Config untuk full screen aspect ratio
+            const config = { fps: 20, qrbox: { width: 250, height: 250 }, aspectRatio: window.innerHeight / window.innerWidth };
             
             html5QrCode.start({ facingMode: "environment" }, config,
                 async (decodedText) => {
                     const rawText = decodedText.trim().toUpperCase();
-                    document.getElementById('scan-status').innerText = "Kode ditemukan! Memproses...";
+                    document.getElementById('scan-status').innerText = "KODE DITEMUKAN! Mohon tunggu...";
                     document.getElementById('scan-status').style.color = "#10b981";
                     
-                    // Regex ambil text dalam kurung (NICKNAME) atau pakai full text
                     const match = rawText.match(/\(([^)]+)\)/);
                     const keyword = match ? match[1] : rawText;
 
                     try {
-                        const { data: machines, error } = await _sb.from('pmi_machine')
+                        const { data: machines } = await _sb.from('pmi_machine')
                             .select('*')
                             .or(`id.ilike.%${keyword}%,machine_name.ilike.%${keyword}%`);
 
                         if (machines && machines.length > 0) {
-                            const machine = machines[0];
-                            currentMachineId = machine.id;
-                            
-                            // Sukses -> Stop Kamera -> Buka Form
                             await html5QrCode.stop();
-                            showForm(machine);
+                            showForm(machines[0]);
                         } else {
-                            throw new Error("Mesin tidak terdaftar di database.");
+                            throw new Error("Mesin tidak terdaftar");
                         }
                     } catch (err) {
                         document.getElementById('scan-status').innerText = "❌ " + err.message;
                         document.getElementById('scan-status').style.color = "#ef4444";
                         setTimeout(() => {
-                            document.getElementById('scan-status').innerText = "Mencari kode QR mesin...";
-                            document.getElementById('scan-status').style.color = "#ccc";
-                        }, 3000);
+                            document.getElementById('scan-status').innerText = "Arahkan kamera ke QR Code Mesin";
+                            document.getElementById('scan-status').style.color = "white";
+                        }, 2500);
                     }
                 },
-                (errorMessage) => { /* Ignore errors scanning empty space */ }
-            ).catch(err => {
-                console.error(err);
-                alert("Gagal membuka kamera: " + err);
-            });
+                (errorMessage) => { /* Ignore standard scan errors */ }
+            ).catch(err => alert("Kamera Error: " + err));
         }
 
-        // --- 3. FORM RENDERING LOGIC ---
         async function showForm(machine) {
             document.getElementById('scanner-view').style.display = 'none';
             document.getElementById('form-view').style.display = 'block';
             document.getElementById('m-name').innerText = `${machine.machine_name} (${machine.tonage || '-'} Ton)`;
             
-            initSignaturePad(); // Initialize canvas size
-
-            // Fetch Checklist Items
+            initSignaturePad();
             const { data: items } = await _sb.from('pmi_items').select('*').order('sort_order', { ascending: true });
             checklistItems = items || [];
-
+            
             const tbody = document.getElementById('pmi-items-body');
-            tbody.innerHTML = ""; // Reset
+            tbody.innerHTML = "";
             let lastCat = "";
 
             checklistItems.forEach(it => {
-                // Render Category Header if changed
                 if(it.category !== lastCat) {
                     lastCat = it.category;
-                    tbody.innerHTML += `<tr class="cat-row"><td colspan="2" class="cat-title">${lastCat}</td></tr>`;
+                    tbody.innerHTML += `<tr class="cat-row"><td colspan="2">${lastCat}</td></tr>`;
                 }
-                
-                // Render Item Row
                 tbody.innerHTML += `
                     <tr>
                         <td width="55%">
                             <strong>${it.item_name}</strong><br>
-                            <small style="color:#94a3b8; font-style: italic;">Std: ${it.standard || '-'}</small>
+                            <small style="color:#94a3b8; font-style: italic;">${it.standard || ''}</small>
                         </td>
                         <td>
                             <div class="status-options">
-                                <label><input type="radio" name="st-${it.id}" value="OK" checked onclick="handleStatusChange('${it.id}')"><span>OK</span></label>
-                                <label><input type="radio" name="st-${it.id}" value="NG" onclick="handleStatusChange('${it.id}')"><span>NG</span></label>
-                                <label><input type="radio" name="st-${it.id}" value="Repair" onclick="handleStatusChange('${it.id}')"><span>RP</span></label>
+                                <label><input type="radio" name="st-${it.id}" value="OK" checked onclick="handleStatus('${it.id}')">OK</label>
+                                <label><input type="radio" name="st-${it.id}" value="NG" onclick="handleStatus('${it.id}')">NG</label>
+                                <label><input type="radio" name="st-${it.id}" value="Repair" onclick="handleStatus('${it.id}')">RP</label>
                             </div>
-                            <input type="text" id="ket-${it.id}" class="input-ket" placeholder="Keterangan kerusakan/perbaikan...">
+                            <input type="text" id="ket-${it.id}" class="input-ket" placeholder="Keterangan masalah...">
                         </td>
                     </tr>`;
             });
         }
 
-        function handleStatusChange(id) {
+        function handleStatus(id) {
             const status = document.querySelector(`input[name="st-${id}"]:checked`).value;
-            const inputKet = document.getElementById(`ket-${id}`);
-            
-            // Tampilkan kotak keterangan jika bukan OK
+            const el = document.getElementById(`ket-${id}`);
             if(status !== "OK") {
-                inputKet.classList.add('visible');
-                inputKet.classList.add('required-ng');
-                inputKet.placeholder = "Wajib isi detail masalah...";
-                inputKet.focus();
+                el.classList.add('visible', 'required-ng');
+                el.focus();
             } else {
-                inputKet.classList.remove('required-ng');
-                inputKet.classList.remove('visible'); // Opsional: sembunyikan jika OK
+                el.classList.remove('visible', 'required-ng');
             }
         }
 
-        // --- 4. SUBMIT LOGIC ---
         async function submitData() {
             const nama = document.getElementById('nama_pelaksana').value.trim();
-            
-            // Validasi Dasar
-            if(!nama) return alert("Harap isi Nama Teknisi Pelaksana!");
-            if(signaturePad.isEmpty()) return alert("Harap isi Tanda Tangan!");
+            if(!nama) return alert("Isi Nama Teknisi!");
+            if(signaturePad.isEmpty()) return alert("Tanda Tangan wajib diisi!");
 
-            // Validasi Item NG
-            for (let it of checklistItems) {
-                const statusEl = document.querySelector(`input[name="st-${it.id}"]:checked`);
-                if(!statusEl) continue; // Safety check
-                
-                const status = statusEl.value;
-                const ket = document.getElementById(`ket-${it.id}`).value.trim();
-                
-                if (status !== "OK" && ket === "") {
-                    document.getElementById(`ket-${it.id}`).focus();
-                    return alert(`Item "${it.item_name}" status ${status}. Wajib isi keterangan!`);
-                }
+            // Validasi NG
+            for(let it of checklistItems) {
+                const s = document.querySelector(`input[name="st-${it.id}"]:checked`).value;
+                const k = document.getElementById(`ket-${it.id}`).value.trim();
+                if(s !== "OK" && !k) return alert(`Item "${it.item_name}" NG/Repair wajib ada keterangan!`);
             }
 
             const btn = document.getElementById('btnSave');
-            btn.disabled = true; btn.innerText = "MENYIMPAN DATA...";
+            btn.disabled = true; btn.innerText = "MENYIMPAN...";
 
             try {
                 const now = new Date();
-                
-                // 1. Insert Log Header
-                const { data: logData, error: e1 } = await _sb.from('pmi_log').insert([{
+                const { data: log, error: e1 } = await _sb.from('pmi_log').insert([{
                     mesin_id: currentMachineId,
                     bulan: now.getMonth() + 1,
                     tahun: now.getFullYear(),
@@ -349,47 +321,36 @@
                     tanggal_pengerjaan: now.toISOString()
                 }]).select();
 
-                if (e1) throw e1;
+                if(e1) throw e1;
 
-                // 2. Insert Details
-                const logId = logData[0].id;
                 const results = checklistItems.map(it => ({
-                    log_id: logId,
+                    log_id: log[0].id,
                     item_name: it.item_name,
                     status: document.querySelector(`input[name="st-${it.id}"]:checked`).value,
                     keterangan: document.getElementById(`ket-${it.id}`).value
                 }));
 
                 const { error: e2 } = await _sb.from('pmi_result').insert(results);
-                if (e2) throw e2;
+                if(e2) throw e2;
 
-                alert("✅ LAPORAN BERHASIL DISIMPAN!");
-                window.location.href = "menu_utama.html"; // Redirect setelah sukses
+                alert("Laporan Terkirim!");
+                window.location.href = "menu_utama.html";
 
             } catch (err) {
-                console.error(err);
-                alert("Gagal Menyimpan: " + err.message);
+                alert("Gagal: " + err.message);
                 btn.disabled = false; btn.innerText = "KIRIM LAPORAN";
             }
         }
 
-        // --- 5. UTILS ---
         function initSignaturePad() {
-            // Resize canvas agar tajam di layar HP
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext("2d").scale(ratio, ratio);
-            
-            signaturePad = new SignaturePad(canvas, {
-                backgroundColor: 'rgba(255, 255, 255, 0)',
-                penColor: 'rgb(0, 0, 0)'
-            });
+            const r = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * r;
+            canvas.height = canvas.offsetHeight * r;
+            canvas.getContext("2d").scale(r, r);
+            signaturePad = new SignaturePad(canvas);
         }
 
-        // Start Scanner saat load
         window.onload = startScan;
-
     </script>
 </body>
 </html>
