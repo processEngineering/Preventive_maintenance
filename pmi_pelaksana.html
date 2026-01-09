@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PMI Pelaksana - Input</title>
+    <title>PMI Pelaksana</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -61,7 +61,7 @@
         .field-box { display: flex; flex-direction: column; margin-bottom: 8px; }
         .field-sub-label { font-size: 10px; font-weight: 700; color: #666; margin-bottom: 3px; }
         
-        .radio-group { display: flex; gap: 5px; }
+        .radio-group { display: flex; gap: 5px; margin-bottom: 5px; }
         .radio-btn { flex: 1; text-align: center; padding: 12px; border: 2px solid #000; font-weight: 800; font-size: 13px; cursor: pointer; background: #fff; transition: 0.1s; }
         .radio-btn input { display: none; }
         
@@ -70,6 +70,7 @@
         .radio-btn:has(input[value="NG"]:checked) { background: #dc2626; color: white; border-color: #dc2626; }
 
         .std-input { width: 100%; padding: 12px; border: 2px solid #000; font-size: 14px; font-weight: 600; border-radius: 0; }
+        .note-input { width: 100%; padding: 8px; border: 1px dashed #666; font-size: 12px; margin-top: 2px; display: none; } /* Hidden by default */
         
         /* Signature & Buttons */
         .section { padding: 20px; border-bottom: 2px solid #000; }
@@ -226,13 +227,15 @@
                     let lbl = f.label ? `<span class="field-sub-label">${f.label}</span>` : "";
                     
                     if (f.tipe_input === 'radio_ok_ng') {
+                        // LOGIC: Kalau Klik NG -> Muncul Textbox Keterangan
                         html += `
                             <div class="field-box">
                                 ${lbl}
                                 <div class="radio-group">
-                                    <label class="radio-btn"><input type="radio" name="f_${f.id}" value="OK">OK</label>
-                                    <label class="radio-btn"><input type="radio" name="f_${f.id}" value="NG">NG</label>
+                                    <label class="radio-btn"><input type="radio" name="f_${f.id}" value="OK" onclick="toggleNote('${f.id}', false)">OK</label>
+                                    <label class="radio-btn"><input type="radio" name="f_${f.id}" value="NG" onclick="toggleNote('${f.id}', true)">NG</label>
                                 </div>
+                                <input type="text" id="note_${f.id}" class="note-input" placeholder="Tulis masalah / kerusakan disini..." />
                             </div>`;
                     } else if (f.tipe_input === 'number') {
                         html += `<div class="field-box">${lbl}<input type="number" id="f_${f.id}" class="std-input" placeholder="0" step="any"></div>`;
@@ -246,7 +249,12 @@
             });
         }
 
-        // 4. SUBMIT DATA (LOGIKA BARU DI SINI)
+        function toggleNote(id, show) {
+            const el = document.getElementById('note_' + id);
+            if(el) el.style.display = show ? 'block' : 'none';
+        }
+
+        // 4. SUBMIT DATA (LOGIKA BARU: TEXT MASUK KETERANGAN)
         async function submitData() {
             const nama = document.getElementById('nama_pelaksana').value.trim();
             const runHours = document.getElementById('h_run_hours').value;
@@ -267,7 +275,7 @@
                     bulan: new Date().getMonth() + 1,
                     start_jam: document.getElementById('h_start').value,
                     finish_jam: finishInput,
-                    target_selesai: document.getElementById('h_target').value,
+                    target_selesai: document.getElementById('h_target').value, 
                     running_hours: runHours,
                     nama_pelaksana: nama,
                     signature_pelaksana: signaturePad.toDataURL(),
@@ -282,7 +290,7 @@
                 loadedFields.forEach(f => {
                     let status = null;
                     let nilai_aktual = null;
-                    let keterangan = null; // Ini dia kolom baru buat catatan
+                    let keterangan = null; 
                     let hasValue = false;
 
                     if (f.tipe_input === 'radio_ok_ng') {
@@ -290,16 +298,24 @@
                         if(checked) {
                             status = checked.value;
                             hasValue = true;
+                            // Jika NG, ambil catatan dari text box
+                            if(status === 'NG') {
+                                const noteEl = document.getElementById(`note_${f.id}`);
+                                if(noteEl) keterangan = noteEl.value;
+                            }
                         }
-                    } else {
+                    } else if (f.tipe_input === 'number') {
                         const el = document.getElementById(`f_${f.id}`);
                         if(el && el.value.trim() !== '') {
+                            nilai_aktual = el.value; // Angka masuk sini
                             hasValue = true;
-                            if(f.tipe_input === 'number') {
-                                nilai_aktual = el.value; // Angka masuk ke nilai_aktual
-                            } else {
-                                keterangan = el.value; // Teks masuk ke keterangan
-                            }
+                        }
+                    } else {
+                        // Tipe TEXT biasa (selain radio/number)
+                        const el = document.getElementById(`f_${f.id}`);
+                        if(el && el.value.trim() !== '') {
+                            keterangan = el.value; // TEXT masuk ke KETERANGAN
+                            hasValue = true;
                         }
                     }
 
@@ -310,7 +326,7 @@
                             pmi_item_field_id: f.id, 
                             status: status, 
                             nilai_aktual: nilai_aktual,
-                            keterangan: keterangan // <-- SAVE KE KETERANGAN
+                            keterangan: keterangan // Save text here!
                         });
                     }
                 });
