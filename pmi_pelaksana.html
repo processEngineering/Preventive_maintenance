@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PMI Pelaksana</title>
+    <title>PMI Pelaksana - Input</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -70,7 +70,7 @@
         .radio-btn:has(input[value="NG"]:checked) { background: #dc2626; color: white; border-color: #dc2626; }
 
         .std-input { width: 100%; padding: 12px; border: 2px solid #000; font-size: 14px; font-weight: 600; border-radius: 0; }
-        .note-input { width: 100%; padding: 8px; border: 1px dashed #666; font-size: 12px; margin-top: 2px; display: none; } /* Hidden by default */
+        .note-input { width: 100%; padding: 10px; border: 2px dashed #dc2626; font-size: 12px; margin-top: 5px; display: none; background: #fff5f5; } 
         
         /* Signature & Buttons */
         .section { padding: 20px; border-bottom: 2px solid #000; }
@@ -228,6 +228,7 @@
                     
                     if (f.tipe_input === 'radio_ok_ng') {
                         // LOGIC: Kalau Klik NG -> Muncul Textbox Keterangan
+                        // Kalau Klik OK -> Textbox Hilang & Isinya Dihapus (PENTING!)
                         html += `
                             <div class="field-box">
                                 ${lbl}
@@ -235,7 +236,7 @@
                                     <label class="radio-btn"><input type="radio" name="f_${f.id}" value="OK" onclick="toggleNote('${f.id}', false)">OK</label>
                                     <label class="radio-btn"><input type="radio" name="f_${f.id}" value="NG" onclick="toggleNote('${f.id}', true)">NG</label>
                                 </div>
-                                <input type="text" id="note_${f.id}" class="note-input" placeholder="Tulis masalah / kerusakan disini..." />
+                                <input type="text" id="note_${f.id}" class="note-input" placeholder="Wajib isi detail masalah / kerusakan..." />
                             </div>`;
                     } else if (f.tipe_input === 'number') {
                         html += `<div class="field-box">${lbl}<input type="number" id="f_${f.id}" class="std-input" placeholder="0" step="any"></div>`;
@@ -251,10 +252,17 @@
 
         function toggleNote(id, show) {
             const el = document.getElementById('note_' + id);
-            if(el) el.style.display = show ? 'block' : 'none';
+            if(el) {
+                el.style.display = show ? 'block' : 'none';
+                if (!show) {
+                    el.value = ""; // BERSIHKAN TEXT JIKA KLIK OK (ANTI DOBEL)
+                } else {
+                    el.focus(); // AUTO FOKUS JIKA KLIK NG
+                }
+            }
         }
 
-        // 4. SUBMIT DATA (LOGIKA BARU: TEXT MASUK KETERANGAN)
+        // 4. SUBMIT DATA (LOGIKA KONDISIONAL STRICT)
         async function submitData() {
             const nama = document.getElementById('nama_pelaksana').value.trim();
             const runHours = document.getElementById('h_run_hours').value;
@@ -284,8 +292,9 @@
 
                 if(e1) throw e1;
 
-                // B. Insert Detail Results
+                // B. Insert Detail Results (STRICT LOGIC)
                 let results = [];
+                let validationError = false; // Flag buat validasi NG
                 
                 loadedFields.forEach(f => {
                     let status = null;
@@ -293,29 +302,45 @@
                     let keterangan = null; 
                     let hasValue = false;
 
+                    // 1. CEK TIPE RADIO (OK/NG)
                     if (f.tipe_input === 'radio_ok_ng') {
                         const checked = document.querySelector(`input[name="f_${f.id}"]:checked`);
                         if(checked) {
-                            status = checked.value;
                             hasValue = true;
-                            // Jika NG, ambil catatan dari text box
-                            if(status === 'NG') {
+                            status = checked.value; // Isi Status
+                            
+                            if (status === 'OK') {
+                                keterangan = null; // MUTLAK: Jika OK, Keterangan NULL
+                            } else if (status === 'NG') {
                                 const noteEl = document.getElementById(`note_${f.id}`);
-                                if(noteEl) keterangan = noteEl.value;
+                                keterangan = noteEl ? noteEl.value.trim() : "";
+                                
+                                // VALIDASI: Jika NG tapi catatan kosong, STOP!
+                                if (!keterangan) {
+                                    alert("PENTING: Anda memilih status NG pada salah satu item.\nHarap isi detail masalahnya di kolom catatan.");
+                                    validationError = true;
+                                }
                             }
                         }
+                    
+                    // 2. CEK TIPE NUMBER
                     } else if (f.tipe_input === 'number') {
                         const el = document.getElementById(`f_${f.id}`);
                         if(el && el.value.trim() !== '') {
-                            nilai_aktual = el.value; // Angka masuk sini
                             hasValue = true;
+                            nilai_aktual = el.value; // Isi Nilai Aktual
+                            status = null;           // Status Null
+                            keterangan = null;       // Keterangan Null
                         }
+
+                    // 3. CEK TIPE TEXT (Input Biasa)
                     } else {
-                        // Tipe TEXT biasa (selain radio/number)
                         const el = document.getElementById(`f_${f.id}`);
                         if(el && el.value.trim() !== '') {
-                            keterangan = el.value; // TEXT masuk ke KETERANGAN
                             hasValue = true;
+                            keterangan = el.value;   // Isi Keterangan
+                            status = null;           // Status Null
+                            nilai_aktual = null;     // Nilai Aktual Null
                         }
                     }
 
@@ -326,10 +351,17 @@
                             pmi_item_field_id: f.id, 
                             status: status, 
                             nilai_aktual: nilai_aktual,
-                            keterangan: keterangan // Save text here!
+                            keterangan: keterangan
                         });
                     }
                 });
+
+                if (validationError) {
+                    // Jika ada error validasi NG, hapus header yg baru dibuat biar gak nyampah
+                    await _sb.from('pmi_header').delete().eq('id', header.id);
+                    btn.disabled = false; btn.innerText = "SIMPAN & KIRIM LAPORAN";
+                    return; // Stop process
+                }
 
                 if(results.length > 0) {
                     const { error: e2 } = await _sb.from('pmi_results').insert(results);
