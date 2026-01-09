@@ -3,409 +3,335 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Koordinator - Verifikasi Mesin</title>
+    <title>Koordinator - Verification App</title>
     
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-
+    
     <style>
-        /* === GLOBAL RESET & STYLE === */
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        /* === GLOBAL STYLE (HITAM PUTIH INDUSTRIAL) === */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; background: #ffffff; color: #000; margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; }
+
+        /* HEADER */
+        .header { padding: 20px; text-align: center; border-bottom: 2px solid #000; background: #fff; flex-shrink: 0; }
+        .header-badge { display: inline-block; border: 2px solid #000; border-radius: 50px; padding: 8px 30px; font-weight: 800; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* CONTAINER HALAMAN */
+        .page-container { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 80px; display: none; }
+        .active-page { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* === HALAMAN 1: LIST LAPORAN === */
+        .report-card { 
+            border: 2px solid #000; border-radius: 12px; padding: 15px; margin-bottom: 15px; 
+            cursor: pointer; transition: 0.1s; background: #fff; position: relative;
+        }
+        .report-card:active { background: #000; color: #fff; }
+        .report-card:active .card-sep { color: #fff; } /* Fix titik dua saat active */
+
+        .card-row { display: flex; font-size: 13px; font-weight: 600; margin-bottom: 4px; line-height: 1.4; }
+        .card-label { width: 130px; flex-shrink: 0; }
+        .card-sep { width: 15px; text-align: center; font-weight: 800; }
+        .card-val { flex: 1; font-weight: 800; }
+        .card-note { font-style: italic; font-weight: 400; }
+
+        /* === HALAMAN 2: SCANNER === */
+        .scan-instr { text-align: center; font-weight: 600; margin-bottom: 20px; font-size: 14px; line-height: 1.5; }
+        .scan-box { 
+            width: 100%; aspect-ratio: 1; border: 4px solid #000; border-radius: 12px; 
+            overflow: hidden; position: relative; background: #000; 
+        }
+        #reader { width: 100%; height: 100%; object-fit: cover; }
+        .btn-cancel { width: 100%; padding: 15px; border: 2px solid #000; background: #fff; font-weight: 800; margin-top: 20px; border-radius: 12px; font-size: 14px; cursor: pointer; }
+
+        /* === HALAMAN 3: APPROVAL === */
+        .machine-info { border: 2px solid #000; border-radius: 12px; padding: 15px; margin-bottom: 20px; font-weight: 800; font-size: 16px; text-align: center; background: #f4f4f5; }
         
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: #ffffff; 
-            color: #000000; 
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        /* Helpers */
-        .hidden { display: none !important; }
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-weight: 800; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; }
+        .form-input { width: 100%; border: 2px solid #000; border-radius: 12px; padding: 12px; font-size: 14px; font-family: inherit; resize: none; }
         
-        /* === HEADER === */
-        .header-container {
-            padding: 20px 0;
-            display: flex;
-            justify-content: center;
-            background: #fff;
-            flex-shrink: 0;
-        }
-
-        .header-pill {
-            border: 1px solid #000;
-            border-radius: 50px;
-            padding: 10px 40px;
-            font-weight: 800;
-            font-size: 16px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            background: #fff;
-            color: #000;
-        }
-
-        /* === CONTENT AREA === */
-        .main-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 0 20px 100px 20px; /* Bottom padding for nav */
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* === PAGE 1: LIST LAPORAN === */
-        .card-laporan {
-            border: 2px solid #000;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 15px;
-            background: #fff;
-            cursor: pointer;
-            transition: 0.1s;
-        }
-
-        .card-laporan:active {
-            background: #000;
-            color: #fff;
-        }
-
-        /* Data Row Structure inside Card */
-        .data-row {
-            display: flex;
-            margin-bottom: 4px;
-            font-size: 14px;
-            font-weight: 600;
-            line-height: 1.4;
-        }
-        
-        /* Strict alignment columns */
-        .col-label { width: 140px; flex-shrink: 0; }
-        .col-sep { width: 15px; text-align: center; flex-shrink: 0; }
-        .col-val { flex: 1; }
-
-        /* === PAGE 2: SCAN QR === */
-        .scan-instruction {
-            text-align: center;
-            margin-top: 10px;
-            margin-bottom: 30px;
-            font-size: 14px;
-            font-weight: 600;
-            line-height: 1.5;
-            white-space: pre-line; /* Handle multiline */
-        }
-
-        .scan-area-container {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 30px;
-        }
-
-        .scan-frame {
-            width: 280px;
-            height: 280px;
-            border: 2px solid #000;
-            border-radius: 4px;
-            position: relative;
-            background: #fcfcfc; /* Abu-abu sangat muda/putih */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* L-Shape Corners */
-        .corner {
-            position: absolute;
-            width: 40px;
-            height: 40px;
-            border-color: #000;
-            border-style: solid;
-            border-width: 0;
-        }
-        .tl { top: -2px; left: -2px; border-top-width: 6px; border-left-width: 6px; }
-        .tr { top: -2px; right: -2px; border-top-width: 6px; border-right-width: 6px; }
-        .bl { bottom: -2px; left: -2px; border-bottom-width: 6px; border-left-width: 6px; }
-        .br { bottom: -2px; right: -2px; border-bottom-width: 6px; border-right-width: 6px; }
-
-        .btn-scan {
-            width: 100%;
-            padding: 18px;
-            border: 2px solid #000;
-            border-radius: 12px;
-            background: #fff;
-            color: #000;
-            font-weight: 800;
-            font-size: 16px;
-            text-transform: uppercase;
-            cursor: pointer;
-        }
-        .btn-scan:active { background: #000; color: #fff; }
-
-        /* === PAGE 3: APPROVE === */
-        .info-card-small {
-            border: 2px solid #000;
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 20px;
-            background: #fff;
-            font-weight: 800;
-            font-size: 14px;
-            display: flex;
-        }
-
-        .form-label {
-            display: block;
-            font-weight: 800;
-            font-size: 14px;
-            margin-bottom: 8px;
-            text-transform: capitalize;
-        }
-
-        .input-box {
-            width: 100%;
-            border: 2px solid #000;
-            border-radius: 12px;
-            padding: 12px;
-            font-family: inherit;
-            font-size: 14px;
-            background: #fff;
-            color: #000;
-            resize: none;
-            margin-bottom: 20px;
-        }
-
-        .signature-box {
-            width: 100%;
-            height: 150px;
-            border: 2px solid #000;
-            border-radius: 12px;
-            background: #fff;
-            margin-bottom: 30px;
-        }
-        
+        .sig-box { width: 100%; height: 180px; border: 2px dashed #000; border-radius: 12px; background: #fff; }
         canvas { width: 100%; height: 100%; }
+        
+        .btn-submit { width: 100%; padding: 18px; background: #000; color: #fff; font-weight: 800; border: none; border-radius: 12px; font-size: 16px; margin-top: 10px; cursor: pointer; text-transform: uppercase; }
+        .btn-submit:disabled { background: #999; cursor: not-allowed; }
 
-        .btn-submit {
-            width: 100%;
-            padding: 18px;
-            border: 2px solid #000;
-            border-radius: 12px;
-            background: #fff;
-            color: #000;
-            font-size: 16px;
-            font-weight: 400; /* Tidak bold sesuai request */
-            cursor: pointer;
-            text-transform: lowercase; /* "submit laporan" */
-        }
-        .btn-submit:active { background: #000; color: #fff; }
+        /* LOADING & EMPTY STATE */
+        .state-msg { text-align: center; margin-top: 50px; font-weight: 600; color: #666; }
 
-        /* === BOTTOM NAV === */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 70px;
-            background: #fff;
-            border-top: 2px solid #000;
-            display: flex;
-            align-items: center;
-            justify-content: space-around;
-            z-index: 999;
-        }
-
-        .nav-item {
-            color: #000;
-            font-size: 24px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 10px;
-        }
+        /* BOTTOM NAV */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; height: 70px; background: #fff; border-top: 2px solid #000; display: flex; justify-content: space-around; align-items: center; z-index: 999; }
+        .nav-btn { background: none; border: none; font-size: 24px; color: #000; cursor: pointer; padding: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="header-container">
-        <div class="header-pill">Koordinator</div>
+    <div class="header">
+        <div class="header-badge">KOORDINATOR</div>
     </div>
 
-    <div id="page-list" class="main-content">
-        <div class="card-laporan" onclick="goToScan('Mesin Injection 01')">
-            <div class="data-row">
-                <div class="col-label">nama mesin</div><div class="col-sep">:</div><div class="col-val">Mesin Injection 01</div>
-            </div>
-            <div class="data-row">
-                <div class="col-label">kondisi mesin</div><div class="col-sep">:</div><div class="col-val">OK</div>
-            </div>
-            <div class="data-row">
-                <div class="col-label">nama pelaksana</div><div class="col-sep">:</div><div class="col-val">Yogiwan</div>
-            </div>
-            <div class="data-row">
-                <div class="col-label">catatan pelaksana</div><div class="col-sep">:</div><div class="col-val">Aman</div>
-            </div>
-        </div>
-
-        <div class="card-laporan" onclick="goToScan('CNC Milling 05')">
-            <div class="data-row">
-                <div class="col-label">nama mesin</div><div class="col-sep">:</div><div class="col-val">CNC Milling 05</div>
-            </div>
-            <div class="data-row">
-                <div class="col-label">kondisi mesin</div><div class="col-sep">:</div><div class="col-val">Perlu Perbaikan</div>
-            </div>
-            <div class="data-row">
-                <div class="col-label">nama pelaksana</div><div class="col-sep">:</div><div class="col-val">Budi Santoso</div>
-            </div>
-            <div class="data-row">
-                <div class="col-label">catatan pelaksana</div><div class="col-sep">:</div><div class="col-val">Suara kasar pada motor</div>
-            </div>
-        </div>
-
-        <div class="card-laporan" onclick="goToScan('Hydraulic Press A')">
-            <div class="data-row">
-                <div class="col-label">nama mesin</div><div class="col-sep">:</div><div class="col-val">Hydraulic Press A</div>
-            </div>
-            <div class="data-row">
-                <div class="col-label">kondisi mesin</div><div class="col-sep">:</div><div class="col-val">OK</div>
-            </div>
-            <div class="data-row">
-                <div class="col-label">nama pelaksana</div><div class="col-sep">:</div><div class="col-val">Ahmad Dani</div>
-            </div>
-            <div class="data-row">
-                <div class="col-label">catatan pelaksana</div><div class="col-sep">:</div><div class="col-val">Pengecekan rutin selesai</div>
-            </div>
+    <div id="page-list" class="page-container active-page">
+        <h3 style="margin-top:0; border-bottom:2px solid #000; padding-bottom:10px;">DAFTAR VERIFIKASI</h3>
+        <div id="report-container">
+            <div class="state-msg">Memuat data...</div>
         </div>
     </div>
 
-    <div id="page-scan" class="main-content hidden">
-        <div class="scan-instruction">
-            Silahkan scan QR code pada mesin
-            untuk melanjutkan ke halaman
-            verifikasi
+    <div id="page-scan" class="page-container">
+        <div class="scan-instr">
+            Silahkan scan QR code pada mesin<br>
+            untuk validasi fisik.
+        </div>
+        <div class="scan-box">
+            <div id="reader"></div>
+        </div>
+        <div style="text-align:center; margin-top:10px; font-weight:800;" id="scan-status">KAMERA AKTIF</div>
+        <button class="btn-cancel" onclick="showPage('page-list')">BATAL SCAN</button>
+    </div>
+
+    <div id="page-approve" class="page-container">
+        <div class="machine-info" id="view-machine-name">MESIN ABCD</div>
+
+        <div class="form-group">
+            <label class="form-label">Nama Koordinator</label>
+            <input type="text" id="inp-nama" class="form-input" placeholder="Masukkan nama anda">
         </div>
 
-        <div class="scan-area-container">
-            <div class="scan-frame">
-                <div class="corner tl"></div>
-                <div class="corner tr"></div>
-                <div class="corner bl"></div>
-                <div class="corner br"></div>
-                <div style="font-size: 12px; color: #000;">[Kamera View]</div>
+        <div class="form-group">
+            <label class="form-label">Catatan Koordinator</label>
+            <textarea id="inp-catatan" class="form-input" rows="3" placeholder="Tulis catatan untuk Superintendent..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Paraf</label>
+            <div class="sig-box">
+                <canvas id="sig-canvas"></canvas>
+            </div>
+            <div style="text-align: right; margin-top: 5px;">
+                <small onclick="clearSig()" style="text-decoration: underline; cursor: pointer; font-weight: bold;">Hapus Paraf</small>
             </div>
         </div>
 
-        <button class="btn-scan" onclick="performScan()">SCAN QR</button>
-    </div>
-
-    <div id="page-approve" class="main-content hidden">
-        <div class="info-card-small">
-            <div style="width: 100px;">nama mesin</div>
-            <div style="margin: 0 10px;">:</div>
-            <div id="approve-machine-name">abcd</div>
-        </div>
-
-        <label class="form-label">Catatan koordinator :</label>
-        <textarea class="input-box" rows="4"></textarea>
-
-        <label class="form-label">paraf</label>
-        <div class="signature-box">
-            <canvas id="sig-canvas"></canvas>
-        </div>
-        <div style="text-align: right; margin-top: -25px; margin-bottom: 20px;">
-            <button onclick="clearSig()" style="background:none; border:none; text-decoration: underline; cursor:pointer;">hapus</button>
-        </div>
-
-        <button class="btn-submit" onclick="submitLaporan()">submit laporan</button>
+        <button class="btn-submit" id="btn-submit" onclick="submitVerification()">SUBMIT LAPORAN</button>
+        <button class="btn-cancel" onclick="cancelApproval()" style="margin-top:10px; background:none; border:none; color:red; text-decoration:underline;">Batalkan</button>
     </div>
 
     <div class="bottom-nav">
-        <button class="nav-item" onclick="goHome()"><i class="fa-solid fa-house"></i></button>
-        <button class="nav-item"><i class="fa-solid fa-bars"></i></button>
-        <button class="nav-item"><i class="fa-solid fa-download"></i></button>
-        <button class="nav-item"><i class="fa-solid fa-user"></i></button>
+        <button class="nav-btn" onclick="showPage('page-list')"><i class="fa-solid fa-house"></i></button>
+        <button class="nav-btn"><i class="fa-solid fa-bars"></i></button>
+        <button class="nav-btn"><i class="fa-solid fa-user"></i></button>
     </div>
 
     <script>
-        // === LOGIC ===
-        let currentMachine = "";
-        let signaturePad;
+        // --- CONFIGURATION ---
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-        // Init Signature Pad
+        let html5QrCode = null;
+        let signaturePad = null;
+        
+        // State Data
+        let selectedReportId = null;
+        let targetBarcode = null;
+        let targetMachineName = null;
+
+        // --- 1. INITIALIZATION ---
         window.onload = function() {
-            const canvas = document.getElementById('sig-canvas');
+            loadPendingReports();
             
-            // Resize canvas logic
+            // Init Signature Pad
+            const canvas = document.getElementById('sig-canvas');
             function resizeCanvas() {
-                const ratio =  Math.max(window.devicePixelRatio || 1, 1);
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
                 canvas.width = canvas.offsetWidth * ratio;
                 canvas.height = canvas.offsetHeight * ratio;
                 canvas.getContext("2d").scale(ratio, ratio);
             }
             window.onresize = resizeCanvas;
             resizeCanvas();
-
-            signaturePad = new SignaturePad(canvas, {
-                penColor: 'black'
-            });
+            signaturePad = new SignaturePad(canvas, { penColor: 'black' });
         };
+
+        // --- 2. NAVIGATION HELPER ---
+        function showPage(pageId) {
+            document.querySelectorAll('.page-container').forEach(el => el.classList.remove('active-page'));
+            document.getElementById(pageId).classList.add('active-page');
+
+            // Logic khusus saat pindah halaman
+            if (pageId === 'page-list') {
+                stopScanner();
+                loadPendingReports(); // Refresh data
+            }
+        }
+
+        // --- 3. FETCH DATA (DASHBOARD) ---
+        async function loadPendingReports() {
+            const container = document.getElementById('report-container');
+            container.innerHTML = '<div class="state-msg">Memuat daftar laporan...</div>';
+
+            try {
+                // Ambil laporan yang statusnya MASIH PENDING
+                const { data, error } = await _sb
+                    .from('pmi_header')
+                    .select('*, pmi_machines(nama_mesin, barcode)')
+                    .eq('status_verifikasi', 'Pending') // Filter Kunci
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<div class="state-msg"><i class="fa-solid fa-check-circle"></i><br>Semua laporan sudah diverifikasi!</div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                data.forEach(item => {
+                    // Render Card
+                    const html = `
+                        <div class="report-card" onclick="startVerification('${item.id}', '${item.pmi_machines.barcode}', '${item.pmi_machines.nama_mesin}')">
+                            <div class="card-row">
+                                <div class="card-label">nama mesin</div>
+                                <div class="card-sep">:</div>
+                                <div class="card-val">${item.pmi_machines.nama_mesin}</div>
+                            </div>
+                            <div class="card-row">
+                                <div class="card-label">nama pelaksana</div>
+                                <div class="card-sep">:</div>
+                                <div class="card-val">${item.nama_pelaksana}</div>
+                            </div>
+                            <div class="card-row">
+                                <div class="card-label">tanggal</div>
+                                <div class="card-sep">:</div>
+                                <div class="card-val">${item.tanggal}</div>
+                            </div>
+                            <div style="border-top:1px dashed #ccc; margin:8px 0;"></div>
+                            <div class="card-row" style="display:block;">
+                                <div style="font-size:11px; margin-bottom:2px;">Catatan pelaksana:</div>
+                                <div class="card-note">"${item.catatan_pelaksana || 'Tidak ada catatan'}"</div>
+                            </div>
+                        </div>
+                    `;
+                    container.innerHTML += html;
+                });
+
+            } catch (err) {
+                container.innerHTML = `<div class="state-msg" style="color:red">Error: ${err.message}</div>`;
+            }
+        }
+
+        // --- 4. START VERIFICATION PROCESS ---
+        function startVerification(id, barcode, name) {
+            selectedReportId = id;
+            targetBarcode = barcode;
+            targetMachineName = name;
+
+            // Reset Form Approval
+            document.getElementById('view-machine-name').innerText = name;
+            document.getElementById('inp-nama').value = "";
+            document.getElementById('inp-catatan').value = "";
+            signaturePad.clear();
+
+            // Masuk ke Scanner Dulu (Wajib!)
+            showPage('page-scan');
+            startScanner();
+        }
+
+        // --- 5. SCANNER LOGIC ---
+        function startScanner() {
+            document.getElementById('scan-status').innerText = "MENCARI QR CODE...";
+            html5QrCode = new Html5Qrcode("reader");
+            
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 10, qrbox: 250 }, 
+                onScanSuccess, 
+                (err) => {} // Ignore errors per frame
+            ).catch(err => {
+                alert("Gagal membuka kamera: " + err);
+                showPage('page-list');
+            });
+        }
+
+        function stopScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => { html5QrCode.clear(); }).catch(err => {});
+                html5QrCode = null;
+            }
+        }
+
+        function onScanSuccess(decodedText) {
+            let scannedCode = decodedText.trim();
+            // Parsing Logic: "AREA/MESIN/TOAD" -> "TOAD"
+            if (scannedCode.includes('/')) scannedCode = scannedCode.split('/').pop().trim();
+
+            if (scannedCode === targetBarcode) {
+                // MATCH!
+                stopScanner();
+                alert("✅ QR CODE COCOK! Silakan lanjut verifikasi.");
+                showPage('page-approve'); // Buka halaman approval
+                
+                // Fix canvas size bug when switching display:none
+                setTimeout(() => {
+                    window.dispatchEvent(new Event('resize'));
+                }, 200);
+            } else {
+                // NOT MATCH
+                document.getElementById('scan-status').innerText = "❌ SALAH MESIN! Scanned: " + scannedCode;
+                // Vibration feedback if supported
+                if (navigator.vibrate) navigator.vibrate(200);
+            }
+        }
+
+        // --- 6. SUBMIT APPROVAL ---
+        async function submitVerification() {
+            const nama = document.getElementById('inp-nama').value.trim();
+            const catatan = document.getElementById('inp-catatan').value.trim();
+
+            if (!nama) return alert("Harap isi Nama Koordinator.");
+            if (signaturePad.isEmpty()) return alert("Harap isi Paraf.");
+
+            if (!confirm("Sudah yakin menyetujui laporan ini?")) return;
+
+            const btn = document.getElementById('btn-submit');
+            btn.innerText = "MENGIRIM...";
+            btn.disabled = true;
+
+            try {
+                const { error } = await _sb.from('pmi_header').update({
+                    nama_koordinator: nama,
+                    catatan_koordinator: catatan,
+                    signature_koordinator: signaturePad.toDataURL(),
+                    status_verifikasi: 'Verified', // Ubah status jadi Verified
+                    verified_at: new Date()
+                }).eq('id', selectedReportId);
+
+                if (error) throw error;
+
+                alert("SUKSES! Laporan telah diverifikasi.");
+                showPage('page-list'); // Balik ke list (item akan hilang)
+
+            } catch (err) {
+                alert("Gagal submit: " + err.message);
+            } finally {
+                btn.innerText = "SUBMIT LAPORAN";
+                btn.disabled = false;
+            }
+        }
+
+        function cancelApproval() {
+            if(confirm("Batalkan verifikasi?")) {
+                showPage('page-list');
+            }
+        }
 
         function clearSig() {
             signaturePad.clear();
-        }
-
-        // Navigation Functions
-        function hideAllPages() {
-            document.getElementById('page-list').classList.add('hidden');
-            document.getElementById('page-scan').classList.add('hidden');
-            document.getElementById('page-approve').classList.add('hidden');
-        }
-
-        function goHome() {
-            hideAllPages();
-            document.getElementById('page-list').classList.remove('hidden');
-        }
-
-        // Step 1: Click List Item
-        function goToScan(machineName) {
-            currentMachine = machineName;
-            hideAllPages();
-            document.getElementById('page-scan').classList.remove('hidden');
-        }
-
-        // Step 2: Click Scan Button
-        function performScan() {
-            // Simulasi proses scan...
-            const btn = document.querySelector('.btn-scan');
-            btn.innerText = "SCANNING...";
-            
-            setTimeout(() => {
-                btn.innerText = "SCAN QR"; // Reset text
-                goToApprove();
-            }, 800); // 0.8 detik delay
-        }
-
-        // Step 3: Go to Approval Page
-        function goToApprove() {
-            hideAllPages();
-            document.getElementById('page-approve').classList.remove('hidden');
-            // Set Machine Name
-            document.getElementById('approve-machine-name').innerText = currentMachine;
-            // Resize canvas again to ensure it renders correctly after display:none
-            window.dispatchEvent(new Event('resize'));
-        }
-
-        // Step 4: Submit
-        function submitLaporan() {
-            if (signaturePad.isEmpty()) {
-                alert("Harap isi paraf terlebih dahulu.");
-                return;
-            }
-            alert("Laporan berhasil disubmit!");
-            clearSig();
-            document.querySelector('textarea').value = "";
-            goHome();
         }
     </script>
 </body>
