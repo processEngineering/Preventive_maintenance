@@ -180,7 +180,7 @@
                 </div>
                 <div class="info-row">
                     <div class="info-label">catatan pelaksana</div>
-                    <div class="info-val">: <span id="disp-catatan" style="font-weight:500;">-</span></div>
+                    <div class="info-val">: <span id="disp-catatan" style="font-weight:600; color:#333;">-</span></div>
                 </div>
                 <div class="info-row" style="margin-top:5px; border-top:1px dashed #000; padding-top:5px;">
                     <div class="info-label">Kondisi</div>
@@ -221,11 +221,11 @@
         const signaturePad = new SignaturePad(document.getElementById('sig-canvas'), {penColor:'black'});
         let selectedLogId, selectedMachineName, selectedLogData;
 
-        // 1. LOAD LIST (DIPERBAIKI)
+        // 1. LOAD LIST (FIXED: NAMA MESIN)
         async function loadPmiList() {
             const list = document.getElementById('pmi-list');
             
-            // ERROR FIX: Hapus 'nama_mesin' dari select karena kolom itu tidak ada
+            // Fetch PMI Log
             const { data: logs, error } = await _sb.from('pmi_log')
                 .select(`
                     id, 
@@ -236,24 +236,20 @@
                 `)
                 .eq('status_verifikasi', 'Pending');
 
-            if(error) {
-                console.error(error);
-                return list.innerHTML = `<div style='text-align:center; padding:20px; color:red;'>Error: ${error.message}</div>`;
-            }
+            if(error) return list.innerHTML = `<div style='text-align:center; padding:20px; color:red;'>Error: ${error.message}</div>`;
 
-            // AMBIL DATA REFERENSI MESIN AGAR KITA BISA TAHU NAMANYA
+            // Fetch Data Mesin untuk Mapping Nama
             const { data: machines } = await _sb.from('pmi_machine').select('id, machine_name');
 
             if(!logs || !logs.length) return list.innerHTML = "<div style='text-align:center; padding:20px;'>Tidak ada laporan pending.</div>";
 
             list.innerHTML = "";
             
-            // Loop data untuk render kartu
             for (const log of logs) {
                 const ngItems = log.pmi_result.filter(r => r.status !== 'OK');
                 const isNG = ngItems.length > 0;
                 
-                // CARI NAMA MESIN DARI TABEL MESIN BERDASARKAN ID
+                // Cari Nama Mesin
                 let displayMachine = log.mesin_id;
                 if(machines) {
                     const foundMachine = machines.find(m => m.id == log.mesin_id);
@@ -272,9 +268,7 @@
                     </span>
                 `;
                 
-                // Simpan nama yang sudah ditemukan untuk dipakai saat scanning
                 log.finalMachineName = displayMachine;
-                
                 div.onclick = () => openScanner(log, ngItems);
                 list.appendChild(div);
             }
@@ -283,12 +277,9 @@
         // 2. SCANNER
         function openScanner(log, ngItems) {
             selectedLogId = log.id;
-            selectedMachineName = log.finalMachineName; // Nama Mesin (bukan ID)
+            selectedMachineName = log.finalMachineName; 
             
-            selectedLogData = {
-                ...log,
-                ngItems: ngItems
-            };
+            selectedLogData = { ...log, ngItems: ngItems };
 
             document.getElementById('dashboard').style.display = 'none';
             document.getElementById('scanner-view').style.display = 'flex';
@@ -306,11 +297,10 @@
         }
 
         async function onScanSuccess(decodedText) {
-            // VERIFIKASI BERDASARKAN NAMA
             const scanned = decodedText.trim().toUpperCase();
             const target = String(selectedMachineName).trim().toUpperCase();
 
-            // Cek kecocokan teks
+            // Verifikasi Nama
             if(scanned === target || scanned.includes(target) || target.includes(scanned)) {
                 await html5QrCode.stop();
                 document.getElementById('scanner-view').style.display = 'none';
@@ -320,28 +310,30 @@
             }
         }
 
-        // 3. APPROVAL FORM LOGIC
+        // 3. APPROVAL FORM (REVISI: MURNI CATATAN PELAKSANA)
         function openApprovalForm() {
             document.getElementById('approval-view').style.display = 'block';
             resizeCanvas();
 
-            // Populate Info Box
             document.getElementById('disp-mesin').innerText = selectedMachineName;
             document.getElementById('disp-pelaksana').innerText = selectedLogData.nama_pelaksana;
             
-            let catatanShow = "";
-            let kondisiShow = "";
+            // --- BAGIAN INI SUDAH DIREVISI ---
+            // Catatan: Selalu ambil dari database (inputan manusia)
+            const catatanManual = selectedLogData.catatan_pelaksana || "-";
+            document.getElementById('disp-catatan').innerText = catatanManual;
 
+            // Kondisi: Hanya tampilkan status OK/NG dan jumlahnya
+            let kondisiHtml = "";
             if (selectedLogData.ngItems.length > 0) {
-                kondisiShow = `<span style="color:red; font-weight:800;">NG (${selectedLogData.ngItems.length} Item)</span>`;
-                catatanShow = selectedLogData.ngItems.map(i => `${i.item_name} (${i.keterangan})`).join(", ");
+                kondisiHtml = `<span style="color:red; font-weight:800;">NG (${selectedLogData.ngItems.length} Item)</span>`;
+                // Opsional: List NG Items kecil di bawah kondisi (hanya nama item) jika perlu info tambahan, tapi tidak masuk ke Notes
+                const ngNames = selectedLogData.ngItems.map(i => i.item_name).join(', ');
+                kondisiHtml += `<div style="font-size:11px; margin-top:4px; color:#991b1b; line-height:1.2;">*Item NG: ${ngNames}</div>`;
             } else {
-                kondisiShow = `<span style="color:green; font-weight:800;">OK (Aman)</span>`;
-                catatanShow = selectedLogData.catatan_pelaksana || "Aman";
+                kondisiHtml = `<span style="color:green; font-weight:800;">OK (Aman)</span>`;
             }
-
-            document.getElementById('disp-catatan').innerText = catatanShow;
-            document.getElementById('disp-kondisi').innerHTML = kondisiShow;
+            document.getElementById('disp-kondisi').innerHTML = kondisiHtml;
         }
 
         async function updateVerifikasi() {
