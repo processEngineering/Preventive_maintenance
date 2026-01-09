@@ -65,29 +65,39 @@
         .txt-ng { color: red; font-weight: 800; }
         .txt-ok { color: green; font-weight: 800; }
 
-        /* --- STEP 1: SCANNER (UPDATED COMPACT SIZE) --- */
+        /* --- STEP 1: SCANNER (REVISI TAMPILAN) --- */
         .step-scan { 
-            background: #fff; border: 2px solid #000; padding: 20px; 
-            text-align: center; border-radius: 10px; margin-top: 10px;
+            background: #fff; padding: 20px 0;
+            text-align: center; margin-top: 10px;
         }
+        .btn-scan { background: #000; color: #fff; border: none; padding: 15px; width: 100%; font-weight: 800; font-size: 14px; border-radius: 6px; cursor: pointer; margin-top: 10px; }
         
-        /* BOX KAMERA DIPERKECIL & CENTER */
-        .camera-frame {
-            width: 250px;
-            height: 250px;
-            margin: 15px auto; /* Center horizontal */
-            border: 4px solid #000;
+        /* Box Scanner Kotak di Tengah */
+        .scanner-container {
+            width: 260px; height: 260px; 
+            background: #000; 
+            margin: 10px auto; 
             border-radius: 12px;
             overflow: hidden;
-            background: #000;
             position: relative;
-            display: none; /* Hidden by default */
+            border: 4px solid #000;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            display: none; /* Hidden awal */
         }
         
         #reader { width: 100%; height: 100%; object-fit: cover; }
+        #reader video { object-fit: cover; width: 100% !important; height: 100% !important; }
 
-        .btn-scan { background: #000; color: #fff; border: none; padding: 15px; width: 100%; font-weight: 800; font-size: 14px; border-radius: 6px; cursor: pointer; margin-top: 10px; }
-        
+        /* Garis Laser Merah (Simpel) */
+        .laser {
+            position: absolute; width: 100%; height: 2px; background: red;
+            top: 0; left: 0; z-index: 10;
+            box-shadow: 0 0 4px red;
+            animation: scanAnim 2s infinite linear;
+        }
+        @keyframes scanAnim { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
+
+
         /* --- STEP 2: APPROVAL FORM --- */
         .step-form { background: #f0fdf4; border: 2px dashed #16a34a; padding: 15px; border-radius: 8px; margin-top: 10px; display: none; }
         .lbl { font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 5px; display: block; color: #333; }
@@ -142,7 +152,7 @@
 
             <div class="modal-body">
                 <div style="font-weight:800; font-size:12px; margin-bottom:5px;">HASIL KERJA PELAKSANA:</div>
-                <div style="max-height:250px; overflow-y:auto; border:1px solid #ccc; margin-bottom:15px;">
+                <div style="max-height:250px; overflow-y:auto; border:1px solid #ccc; margin-bottom:15px; border-radius:6px;">
                     <table class="detail-tbl">
                         <thead><tr><th>ITEM</th><th>STATUS</th><th>ACTUAL</th></tr></thead>
                         <tbody id="tbl-body"></tbody>
@@ -150,13 +160,14 @@
                 </div>
 
                 <div class="step-scan" id="step-scan">
-                    <i class="fa-solid fa-qrcode" style="font-size:30px; margin-bottom:10px;"></i>
-                    <div style="font-weight:800; font-size:14px;">LANGKAH 1: SCAN MESIN</div>
-                    <div style="font-size:12px; color:#555; margin-bottom:10px;">Scan barcode mesin untuk membuka form verifikasi.</div>
+                    <div style="font-weight:800; font-size:14px; margin-bottom:5px;">VALIDASI MESIN</div>
+                    <div style="font-size:12px; color:#555; margin-bottom:10px;">Scan QR Code di mesin untuk membuka form.</div>
                     
-                    <div class="camera-frame" id="camera-box">
+                    <div class="scanner-container" id="scanner-ui">
+                        <div class="laser"></div>
                         <div id="reader"></div>
                     </div>
+
                     <button class="btn-scan" id="btn-scan-trigger" onclick="startScanner()">BUKA KAMERA</button>
                 </div>
 
@@ -207,16 +218,19 @@
         let targetBarcode = null;
         let html5QrCode = null;
 
+        // 1. INIT
         window.onload = function() {
             const now = new Date();
             document.getElementById('f-bulan').value = now.getMonth() + 1;
             document.getElementById('f-tahun').value = now.getFullYear();
         };
 
+        // 2. LOAD LIST
         async function loadList() {
             const b = document.getElementById('f-bulan').value;
             const t = document.getElementById('f-tahun').value;
             const div = document.getElementById('list-container');
+            
             div.innerHTML = '<div style="text-align:center; padding:20px;">Memuat data...</div>';
 
             const { data: headers, error } = await _sb.from('pmi_header')
@@ -224,9 +238,9 @@
                 .eq('bulan', b).eq('tahun', t)
                 .order('created_at', {ascending: false});
 
-            if(error) return alert("Gagal: " + error.message);
+            if(error) return alert("Gagal memuat: " + error.message);
             if(!headers || headers.length === 0) {
-                div.innerHTML = '<div style="text-align:center; padding:20px;">Tidak ada laporan.</div>';
+                div.innerHTML = '<div style="text-align:center; padding:20px;">Tidak ada laporan di periode ini.</div>';
                 return;
             }
 
@@ -248,12 +262,13 @@
             });
         }
 
+        // 3. OPEN DETAIL
         async function openDetail(id, barcode, isDone) {
             currentHeaderId = id;
             targetBarcode = barcode;
             document.getElementById('modal').style.display = 'flex';
             
-            // Logic UI
+            // Logic Tampilan
             if(isDone) {
                 document.getElementById('step-scan').style.display = 'none';
                 document.getElementById('step-form').style.display = 'none';
@@ -263,12 +278,12 @@
                 document.getElementById('step-form').style.display = 'none';
                 document.getElementById('msg-done').style.display = 'none';
                 
-                // Reset Kamera UI
-                document.getElementById('btn-scan-trigger').style.display = 'block';
-                document.getElementById('camera-box').style.display = 'none';
+                // Reset Scan UI
+                document.getElementById('btn-scan-trigger').style.display = 'inline-block';
+                document.getElementById('scanner-ui').style.display = 'none'; 
             }
 
-            // Load Data
+            // Load Data Table
             document.getElementById('tbl-body').innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
             const { data: h } = await _sb.from('pmi_header').select('*, pmi_machines(nama_mesin)').eq('id', id).single();
             document.getElementById('m-info').innerText = h.pmi_machines.nama_mesin + " | " + new Date(h.tanggal).toLocaleDateString('id-ID');
@@ -298,14 +313,13 @@
             });
         }
 
-        // --- SCANNER LOGIC ---
+        // 4. SCANNER LOGIC
         function startScanner() {
             document.getElementById('btn-scan-trigger').style.display = 'none';
-            document.getElementById('camera-box').style.display = 'block'; // Show Frame
+            document.getElementById('scanner-ui').style.display = 'block'; // Tampilkan kotak kamera
             
             html5QrCode = new Html5Qrcode("reader");
-            // Set QR Box size lebih kecil biar pas di frame
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 200 }, onScanMatch, (err)=>{})
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 220 }, onScanMatch, (err)=>{})
             .catch(err => alert("Kamera error: " + err));
         }
 
@@ -316,12 +330,13 @@
             if (scanned === targetBarcode) {
                 await html5QrCode.stop();
                 html5QrCode.clear();
-                unlockForm(); 
+                unlockForm(); // SUKSES
             } else {
                 alert("QR CODE SALAH! \nMesin ini: " + scanned + "\nSeharusnya: " + targetBarcode);
             }
         }
 
+        // 5. UNLOCK FORM
         function unlockForm() {
             document.getElementById('step-scan').style.display = 'none';
             document.getElementById('step-form').style.display = 'block';
@@ -338,6 +353,7 @@
             }, 300);
         }
 
+        // 6. SUBMIT
         async function submitApprove() {
             const nama = document.getElementById('inp-nama').value.trim();
             const catatan = document.getElementById('inp-catatan').value.trim();
