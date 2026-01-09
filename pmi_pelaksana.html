@@ -3,221 +3,359 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Home - Pelaksana</title>
+    <title>PMI Pelaksana - Scanner & Form</title>
     
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <style>
-        /* === RESET & GLOBAL === */
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #ffffff;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            color: #000;
+        /* === GLOBAL CONFIG === */
+        :root { 
+            --primary: #003366; 
+            --accent: #ffcc00; 
+            --success: #10b981; 
+            --danger: #ef4444; 
+            --bg: #f8fafc; 
         }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; color: #1e293b; }
 
         /* === CSS FONT AWESOME MANUAL === */
-        .fa,
-        .fa-solid,
-        .fa-regular,
-        .fa-brands {
+        .fa, .fa-solid, .fa-regular, .fa-brands {
             font-family: "Font Awesome 6 Free" !important;
             font-weight: 900;
         }
 
-        /* === 1. HEADER ATAS (CAPSULE) === */
-        .top-section {
-            padding-top: 60px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        /* === 1. SCANNER VIEW (DARK MODE INDUSTRIAL) === */
+        #scanner-view {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+            background-color: #000; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
-        .header-pill {
-            border: 1px solid #000000;
-            border-radius: 50px;
-            padding: 8px 32px;
-            background: #ffffff;
-            font-weight: 600;
-            font-size: 16px;
-            letter-spacing: 0.5px;
-            margin-bottom: 25px;
-            display: inline-block;
+        #reader { width: 100%; height: 100%; border: none !important; }
+        #reader video { object-fit: cover; width: 100% !important; height: 100vh !important; }
+
+        /* Overlay Gelap & Kotak Fokus */
+        .scan-overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 260px; height: 260px; z-index: 10;
+            box-shadow: 0 0 0 1000vh rgba(0, 0, 0, 0.7); /* Gelapkan luar kotak */
+            border-radius: 20px;
         }
 
-        /* === 2. TEKS INSTRUKSI (3 BARIS) === */
-        .instruction-text {
-            text-align: center;
-            font-size: 13px;
-            color: #333333;
-            line-height: 1.5;
-            font-weight: 400;
+        /* Sudut Putih */
+        .scan-corner {
+            position: absolute; width: 40px; height: 40px;
+            border: 4px solid white; border-radius: 4px;
+        }
+        .tl { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+        .tr { top: -2px; right: -2px; border-left: none; border-bottom: none; }
+        .bl { bottom: -2px; left: -2px; border-right: none; border-top: none; }
+        .br { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+
+        /* Laser Merah */
+        .scan-laser {
+            position: absolute; width: 100%; height: 2px;
+            background: #ef4444; box-shadow: 0 0 10px #ef4444;
+            animation: scanMove 2s infinite ease-in-out;
+        }
+        @keyframes scanMove { 0% { top: 10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
+
+        /* Teks Status */
+        .scan-status-text {
+            position: absolute; bottom: 80px; width: 100%; text-align: center;
+            color: white; font-size: 14px; z-index: 20; text-shadow: 0 2px 4px rgba(0,0,0,0.8);
         }
 
-        /* === 3. AREA SCAN QR (CENTER) === */
-        .scan-wrapper {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            position: relative;
+        /* Tombol Kembali */
+        .btn-back-scan {
+            position: absolute; top: 40px; left: 20px; z-index: 30;
+            background: rgba(255,255,255,0.2); border-radius: 50%; width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center; color: white;
+            text-decoration: none; border: 1px solid rgba(255,255,255,0.3);
         }
 
-        .qr-box {
-            width: 260px;
-            height: 260px;
-            background-color: #f0f0f0; /* Abu muda placeholder */
-            position: relative;
-            margin-bottom: 0; 
-        }
-
-        /* SUDUT L (CORNERS) - HITAM TEBAL */
-        .corner {
-            position: absolute;
-            width: 40px;
-            height: 40px;
-            border: 4px solid #000000;
-        }
-        .tl { top: 0; left: 0; border-right: none; border-bottom: none; }
-        .tr { top: 0; right: 0; border-left: none; border-bottom: none; }
-        .bl { bottom: 0; left: 0; border-right: none; border-top: none; }
-        .br { bottom: 0; right: 0; border-left: none; border-top: none; }
-
-        /* === 4. GARIS MIRING PENGHUBUNG === */
-        .connector-area {
-            height: 50px;
-            width: 140px; 
-            position: relative;
-            display: flex;
-            justify-content: center;
-        }
-
-        .line {
-            position: absolute;
-            top: 0;
-            width: 1.5px;
-            height: 100%;
-            background-color: #000000;
-        }
-
-        .line-left { left: 0; transform-origin: top left; transform: rotate(22deg); }
-        .line-right { right: 0; transform-origin: top right; transform: rotate(-22deg); }
-
-        /* === 5. TOMBOL AKSI (SCAN) === */
-        .btn-scan {
-            position: relative;
-            top: -12px;
-            background: #ffffff;
-            border: 1.5px solid #000000;
-            padding: 12px 30px;
-            font-size: 14px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            z-index: 10;
-            text-decoration: none;
-            color: #000000;
-            transition: 0.1s;
-        }
+        /* === 2. FORM VIEW === */
+        #form-view { display: none; max-width: 800px; margin: 0 auto; background: white; min-height: 100vh; padding-bottom: 90px; }
         
-        .btn-scan:active {
-            background: #000000;
-            color: white;
-        }
+        .header { background: var(--primary); color: white; padding: 30px 20px 40px; text-align: center; border-bottom-left-radius: 25px; border-bottom-right-radius: 25px; }
+        .machine-badge { background: var(--accent); color: black; padding: 8px 25px; border-radius: 50px; font-weight: 800; margin-top: 15px; display: inline-block; font-size: 16px; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 
-        /* === 6. BOTTOM NAVIGATION === */
+        .section { padding: 20px; border-bottom: 8px solid var(--bg); }
+        label { display: block; font-size: 11px; font-weight: 800; margin-bottom: 8px; color: #64748b; letter-spacing: 0.5px; text-transform: uppercase; }
+        
+        input[type="text"] { width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; background: #f8fafc; transition: 0.3s; }
+        input[type="text"]:focus { border-color: var(--primary); background: white; outline: none; }
+
+        /* Table Checklist */
+        .table-container { padding: 0 0 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; font-size: 14px; vertical-align: top; }
+        
+        /* Category Row */
+        .cat-row td { background: #f1f5f9; padding: 12px 20px; border-left: 5px solid var(--primary); color: var(--primary); font-weight: 800; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+
+        /* Radio Buttons */
+        .status-options { display: flex; gap: 8px; margin-top: 10px; }
+        .status-options label { flex: 1; padding: 10px; text-align: center; background: white; border-radius: 8px; cursor: pointer; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 13px; transition: 0.2s; }
+        .status-options input { display: none; }
+        
+        .status-options label:has(input[value="OK"]:checked) { background: var(--success); border-color: var(--success); color: white; }
+        .status-options label:has(input[value="NG"]:checked) { background: var(--danger); border-color: var(--danger); color: white; }
+        .status-options label:has(input[value="Repair"]:checked) { background: #f59e0b; border-color: #f59e0b; color: white; }
+
+        .input-ket { margin-top:8px; padding:10px; font-size:13px; border:1px solid #cbd5e1; border-radius: 8px; width:100%; box-sizing:border-box; display: none; }
+        .input-ket.visible { display: block; }
+        .input-ket.required-ng { border: 2px solid var(--danger); background: #fef2f2; }
+
+        #sig-canvas { border: 2px dashed #cbd5e1; width: 100%; height: 200px; border-radius: 12px; background: #fff; margin-top: 5px; touch-action: none; }
+        
+        .btn-submit { width: 90%; margin: 20px auto; display: block; padding: 18px; background: var(--primary); color: white; border: none; font-weight: 800; font-size: 16px; cursor: pointer; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,51,102,0.3); transition: 0.2s; }
+        .btn-submit:active { transform: scale(0.98); }
+        .btn-submit:disabled { background: #94a3b8; cursor: not-allowed; }
+
+        /* === 3. BOTTOM NAVIGATION === */
         .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0; right: 0; margin: 0 auto;
-            width: 100%;
-            max-width: 450px;
-            background: white;
-            border-top: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding: 16px 0;
-            z-index: 100;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.02);
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: white; border-top: 1px solid #e2e8f0;
+            display: flex; justify-content: space-around; align-items: center;
+            padding: 12px 0; z-index: 100;
             padding-bottom: env(safe-area-inset-bottom);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
         }
-
         .nav-item {
-            text-decoration: none;
-            color: #94a3b8; /* Abu default */
-            font-size: 22px; 
-            transition: color 0.2s ease;
-            width: 25%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            text-decoration: none; color: #94a3b8; font-size: 22px;
+            width: 25%; display: flex; justify-content: center; transition: color 0.2s;
         }
-
-        /* Warna Aktif (Hitam) */
-        .nav-item.active {
-            color: #000000;
-        }
+        .nav-item.active { color: #000000; }
     </style>
 </head>
 <body>
 
-    <div class="top-section">
-        <div class="header-pill">Pelaksana</div>
-        
-        <div class="instruction-text">
-            Silahkan scan QR code pada mesin<br>
-            untuk melanjutkan ke halaman form<br>
-            check list
+    <div id="scanner-view">
+        <a href="index.html" class="btn-back-scan">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+
+        <div id="reader"></div> <div class="scan-overlay">
+            <div class="scan-laser"></div>
+            <div class="scan-corner tl"></div><div class="scan-corner tr"></div>
+            <div class="scan-corner bl"></div><div class="scan-corner br"></div>
         </div>
+
+        <div class="scan-status-text" id="scan-msg">Arahkan kamera ke QR Code Mesin</div>
     </div>
 
-    <div class="scan-wrapper">
-        
-        <div class="qr-box">
-            <div class="corner tl"></div>
-            <div class="corner tr"></div>
-            <div class="corner bl"></div>
-            <div class="corner br"></div>
+    <div id="form-view">
+        <div class="header">
+            <h1 style="margin:0; font-size: 12px; letter-spacing: 2px; opacity: 0.9;">PREVENTIF MAINTENANCE</h1>
+            <div class="machine-badge" id="m-name">LOADING...</div>
         </div>
 
-        <div class="connector-area">
-            <div class="line line-left"></div>
-            <div class="line line-right"></div>
+        <div class="section">
+            <label>NAMA TEKNISI PELAKSANA</label>
+            <input type="text" id="nama_pelaksana" placeholder="Contoh: Budi Santoso">
         </div>
 
-        <a href="pmi_pelaksana.html" class="btn-scan">
-            <i class="fa-solid fa-qrcode" style="margin-right: 8px;"></i>
-            SCAN QR
-        </a>
+        <div class="table-container">
+            <table><tbody id="pmi-items-body"></tbody></table>
+        </div>
 
+        <div class="section">
+            <label>PARAF PELAKSANA</label>
+            <canvas id="sig-canvas"></canvas>
+            <div style="text-align: right; margin-top: 8px;">
+                <button onclick="signaturePad.clear()" style="border:none; color:#ef4444; background:none; font-weight:bold; cursor:pointer; font-size: 12px;">✖ ULANGI TTD</button>
+            </div>
+        </div>
+
+        <button class="btn-submit" id="btnSave" onclick="submitData()">KIRIM LAPORAN</button>
+
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-item">
+                <i class="fa-solid fa-house"></i>
+            </a>
+            <a href="menu_utama.html" class="nav-item">
+                <i class="fa-solid fa-bars"></i>
+            </a>
+            <a href="download_data.html" class="nav-item">
+                <i class="fa-solid fa-download"></i>
+            </a>
+            <a href="informasi_akun.html" class="nav-item">
+                <i class="fa-solid fa-circle-user"></i>
+            </a>
+        </nav>
     </div>
 
-    <nav class="bottom-nav">
-        <a href="index.html" class="nav-item active">
-            <i class="fa-solid fa-house"></i>
-        </a>
+    <script>
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
+        
+        const html5QrCode = new Html5Qrcode("reader");
+        const canvas = document.getElementById('sig-canvas');
+        let signaturePad; 
+        let currentMachineId = ""; 
+        let checklistItems = [];
 
-        <a href="menu_utama.html" class="nav-item">
-            <i class="fa-solid fa-bars"></i>
-        </a>
+        async function startScan() {
+            // Config untuk full screen aspect ratio
+            const config = { fps: 20, qrbox: { width: 250, height: 250 }, aspectRatio: window.innerHeight / window.innerWidth };
+            
+            html5QrCode.start({ facingMode: "environment" }, config,
+                async (decodedText) => {
+                    const rawText = decodedText.trim().toUpperCase();
+                    document.getElementById('scan-msg').innerText = "KODE DITEMUKAN! Mohon tunggu...";
+                    document.getElementById('scan-msg').style.color = "#10b981";
+                    
+                    // Regex ambil text dalam kurung (NICKNAME) atau pakai full text
+                    const match = rawText.match(/\(([^)]+)\)/);
+                    const keyword = match ? match[1] : rawText;
 
-        <a href="download_data.html" class="nav-item">
-            <i class="fa-solid fa-download"></i>
-        </a>
+                    try {
+                        const { data: machines } = await _sb.from('pmi_machine')
+                            .select('*')
+                            .or(`id.ilike.%${keyword}%,machine_name.ilike.%${keyword}%`);
 
-        <a href="informasi_akun.html" class="nav-item">
-            <i class="fa-solid fa-circle-user"></i>
-        </a>
-    </nav>
+                        if (machines && machines.length > 0) {
+                            await html5QrCode.stop();
+                            showForm(machines[0]);
+                        } else {
+                            throw new Error("Mesin tidak terdaftar");
+                        }
+                    } catch (err) {
+                        document.getElementById('scan-msg').innerText = "❌ " + err.message;
+                        document.getElementById('scan-msg').style.color = "#ef4444";
+                        setTimeout(() => {
+                            document.getElementById('scan-msg').innerText = "Arahkan kamera ke QR Code Mesin";
+                            document.getElementById('scan-msg').style.color = "white";
+                        }, 2500);
+                    }
+                },
+                (errorMessage) => { /* Ignore standard scan errors */ }
+            ).catch(err => console.log("Camera init error: " + err));
+        }
 
+        async function showForm(machine) {
+            document.getElementById('scanner-view').style.display = 'none';
+            document.getElementById('form-view').style.display = 'block';
+            document.getElementById('m-name').innerText = `${machine.id} - ${machine.machine_name}`;
+            currentMachineId = machine.id;
+            
+            initSignaturePad(); // Setup canvas size
+            
+            // Load Items
+            const { data: items } = await _sb.from('pmi_items').select('*').order('sort_order', { ascending: true });
+            checklistItems = items || [];
+            
+            const tbody = document.getElementById('pmi-items-body');
+            tbody.innerHTML = "";
+            let lastCat = "";
+
+            checklistItems.forEach(it => {
+                // Render Category
+                if(it.category !== lastCat) {
+                    lastCat = it.category;
+                    tbody.innerHTML += `<tr class="cat-row"><td colspan="2">${lastCat}</td></tr>`;
+                }
+                
+                // Render Item
+                tbody.innerHTML += `
+                    <tr>
+                        <td width="55%">
+                            <strong>${it.item_name}</strong><br>
+                            <small style="color:#94a3b8; font-style: italic;">${it.standard || ''}</small>
+                        </td>
+                        <td>
+                            <div class="status-options">
+                                <label><input type="radio" name="st-${it.id}" value="OK" checked onclick="handleStatus('${it.id}')">OK</label>
+                                <label><input type="radio" name="st-${it.id}" value="NG" onclick="handleStatus('${it.id}')">NG</label>
+                                <label><input type="radio" name="st-${it.id}" value="Repair" onclick="handleStatus('${it.id}')">RP</label>
+                            </div>
+                            <input type="text" id="ket-${it.id}" class="input-ket" placeholder="Keterangan kerusakan...">
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function handleStatus(id) {
+            const status = document.querySelector(`input[name="st-${id}"]:checked`).value;
+            const el = document.getElementById(`ket-${id}`);
+            if(status !== "OK") {
+                el.classList.add('visible', 'required-ng');
+                el.focus();
+            } else {
+                el.classList.remove('visible', 'required-ng');
+            }
+        }
+
+        async function submitData() {
+            const nama = document.getElementById('nama_pelaksana').value.trim();
+            if(!nama) return alert("Harap isi Nama Teknisi Pelaksana!");
+            if(signaturePad.isEmpty()) return alert("Tanda Tangan wajib diisi!");
+
+            // Validasi NG Wajib Isi Keterangan
+            for(let it of checklistItems) {
+                const s = document.querySelector(`input[name="st-${it.id}"]:checked`).value;
+                const k = document.getElementById(`ket-${it.id}`).value.trim();
+                if(s !== "OK" && !k) {
+                    document.getElementById(`ket-${it.id}`).focus();
+                    return alert(`Item "${it.item_name}" status NG/Repair. Wajib isi keterangan!`);
+                }
+            }
+
+            const btn = document.getElementById('btnSave');
+            btn.disabled = true; btn.innerText = "MENYIMPAN DATA...";
+
+            try {
+                const now = new Date();
+                
+                // 1. Insert Header Log
+                const { data: log, error: e1 } = await _sb.from('pmi_log').insert([{
+                    mesin_id: currentMachineId,
+                    bulan: now.getMonth() + 1,
+                    tahun: now.getFullYear(),
+                    nama_pelaksana: nama,
+                    signature_pelaksana: signaturePad.toDataURL(),
+                    status_verifikasi: 'Pending',
+                    tanggal_pengerjaan: now.toISOString()
+                }]).select();
+
+                if(e1) throw e1;
+
+                // 2. Insert Detail Result
+                const results = checklistItems.map(it => ({
+                    log_id: log[0].id,
+                    item_name: it.item_name,
+                    status: document.querySelector(`input[name="st-${it.id}"]:checked`).value,
+                    keterangan: document.getElementById(`ket-${it.id}`).value
+                }));
+
+                const { error: e2 } = await _sb.from('pmi_result').insert(results);
+                if(e2) throw e2;
+
+                alert("BERHASIL! Laporan tersimpan.");
+                window.location.href = "index.html"; // Balik ke home setelah simpan
+
+            } catch (err) {
+                alert("Gagal menyimpan: " + err.message);
+                btn.disabled = false; btn.innerText = "KIRIM LAPORAN";
+            }
+        }
+
+        function initSignaturePad() {
+            const r = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * r;
+            canvas.height = canvas.offsetHeight * r;
+            canvas.getContext("2d").scale(r, r);
+            signaturePad = new SignaturePad(canvas, { backgroundColor: 'transparent' });
+        }
+
+        window.onload = startScan;
+    </script>
 </body>
 </html>
