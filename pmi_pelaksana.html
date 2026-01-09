@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        /* === GLOBAL RESET (TEMA HITAM PUTIH) === */
+        /* === GLOBAL RESET === */
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
         body {
@@ -22,13 +22,13 @@
             height: 100vh;
         }
 
-        /* Fix FontAwesome Boldness */
         .fa, .fa-solid, .fa-regular, .fa-brands { font-family: "Font Awesome 6 Free" !important; font-weight: 900; }
 
         /* === VIEW 1: SCANNER === */
         #scanner-view {
             position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
-            background-color: #ffffff; z-index: 9999;
+            background-color: #ffffff; 
+            z-index: 100; /* Layer di bawah Navigasi */
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
@@ -43,13 +43,12 @@
         }
         .scan-instr { font-size: 12px; font-weight: 600; color: #333; }
 
-        /* Camera Box Container */
+        /* Camera Box */
         .scan-container {
             position: relative; width: 100%; height: 100%;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
         
-        /* Kotak Kamera */
         .qr-box {
             width: 260px; height: 260px;
             background: #000;
@@ -60,7 +59,7 @@
         #reader { width: 100%; height: 100%; border: none !important; }
         #reader video { 
             object-fit: cover; width: 100% !important; height: 100% !important; 
-            /* FILTER GRAYSCALE DIHAPUS -> KAMERA JERNIH */
+            /* KAMERA JERNIH (NORMAL) */
         }
 
         /* Sudut L */
@@ -81,7 +80,7 @@
         }
         @keyframes scanAnim { 0% { top: 10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
 
-        /* === TIANG KIRI KANAN (CONNECTORS) === */
+        /* Connector Lines (Tiang Kiri Kanan) */
         .connector-area {
             height: 60px; width: 160px; position: relative; 
             display: flex; justify-content: center; margin-top: -2px; z-index: 1;
@@ -100,6 +99,8 @@
         #form-view { 
             display: none; max-width: 800px; margin: 0 auto; 
             background: white; min-height: 100vh; padding-bottom: 100px; 
+            z-index: 150; /* Layer Form di atas scanner */
+            position: relative;
         }
         
         .header-form { 
@@ -119,8 +120,7 @@
             width: 100%; padding: 14px; border: 2px solid #000; border-radius: 0;
             font-size: 16px; background: #fff; color: #000; font-weight: 600; font-family: inherit;
         }
-        input::placeholder, textarea::placeholder { color: #888; }
-
+        
         .table-container { padding: 0 0 20px; }
         table { width: 100%; border-collapse: collapse; }
         td { padding: 15px 15px; border-bottom: 1px solid #ccc; font-size: 14px; vertical-align: top; color: #000; }
@@ -157,11 +157,14 @@
         }
         .btn-submit:active { transform: scale(0.98); opacity: 0.9; }
 
+        /* === BOTTOM NAVIGATION (FIXED DI ATAS SEMUA) === */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto;
-            width: 100%; max-width: 800px; background: white; border-top: 2px solid #000;
+            width: 100%; max-width: 800px; background: white; 
+            border-top: 2px solid #000;
             display: flex; justify-content: space-around; align-items: center;
-            padding: 16px 0; z-index: 100; padding-bottom: env(safe-area-inset-bottom);
+            padding: 16px 0; padding-bottom: env(safe-area-inset-bottom);
+            z-index: 99999; /* PASTIKAN PALING ATAS */
         }
         .nav-item { text-decoration: none; color: #999; font-size: 24px; width: 25%; display: flex; justify-content: center; }
         .nav-item.active { color: #000; } 
@@ -227,14 +230,14 @@
         </div>
 
         <button class="btn-submit" id="btnSave" onclick="submitData()">KIRIM LAPORAN</button>
-
-        <nav class="bottom-nav">
-            <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i></a>
-            <a href="menu_utama.html" class="nav-item"><i class="fa-solid fa-bars"></i></a>
-            <a href="download_data.html" class="nav-item"><i class="fa-solid fa-download"></i></a>
-            <a href="informasi_akun.html" class="nav-item"><i class="fa-solid fa-circle-user"></i></a>
-        </nav>
     </div>
+
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item active"><i class="fa-solid fa-house"></i></a>
+        <a href="menu_utama.html" class="nav-item"><i class="fa-solid fa-bars"></i></a>
+        <a href="download_data.html" class="nav-item"><i class="fa-solid fa-download"></i></a>
+        <a href="informasi_akun.html" class="nav-item"><i class="fa-solid fa-circle-user"></i></a>
+    </nav>
 
     <script>
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
@@ -244,6 +247,7 @@
         const html5QrCode = new Html5Qrcode("reader");
         let signaturePad, currentMachineId, checklistItems = [];
 
+        // AUTO START SCANNER
         window.onload = function() {
             const config = { fps: 20, qrbox: { width: 250, height: 250 } };
             
@@ -303,13 +307,9 @@
                     lastCat = it.category;
                     tbody.innerHTML += `<tr class="cat-row"><td colspan="2">${lastCat}</td></tr>`;
                 }
-                
                 tbody.innerHTML += `
                     <tr>
-                        <td width="55%">
-                            <strong>${it.item_name}</strong><br>
-                            <small>${it.standard || ''}</small>
-                        </td>
+                        <td width="55%"><strong>${it.item_name}</strong><br><small>${it.standard || ''}</small></td>
                         <td>
                             <div class="status-options">
                                 <label><input type="radio" name="st-${it.id}" value="OK" checked onchange="updateFormLogic()">OK</label>
