@@ -3,189 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pelaksana - B&W Industrial</title>
+    <title>PMI Pelaksana - Industrial B&W</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        /* === RESET & GLOBAL (HITAM PUTIH THEME) === */
+        /* === GLOBAL RESET (TEMA HITAM PUTIH) === */
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: #ffffff;
+            color: #000000;
             height: 100vh;
-            color: #000;
         }
 
-        /* FontAwesome Fix */
+        /* Fix FontAwesome Boldness */
         .fa, .fa-solid, .fa-regular, .fa-brands { font-family: "Font Awesome 6 Free" !important; font-weight: 900; }
 
-        /* === VIEW 1: SCANNER (INDUSTRIAL LOOK) === */
-        #home-view {
-            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
-            align-items: center; position: relative;
+        /* === VIEW 1: SCANNER === */
+        #scanner-view {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+            background-color: #ffffff; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
-        /* Header */
-        .top-section {
-            padding-top: 50px;
-            display: flex; flex-direction: column; align-items: center; flex-shrink: 0;
-            z-index: 20;
+        /* Header Scanner */
+        .scan-header {
+            position: absolute; top: 50px; text-align: center; z-index: 20; width: 100%;
         }
-
         .header-pill {
-            border: 2px solid #000000; border-radius: 50px; padding: 8px 32px;
-            background: #ffffff; font-weight: 700; font-size: 16px; letter-spacing: 1px;
-            margin-bottom: 20px; display: inline-block; text-transform: uppercase;
+            border: 2px solid #000; border-radius: 50px; padding: 10px 30px;
+            background: #fff; font-weight: 800; font-size: 16px; letter-spacing: 1px;
+            text-transform: uppercase; display: inline-block; margin-bottom: 10px;
         }
+        .scan-instr { font-size: 12px; font-weight: 600; color: #333; }
 
-        .instruction-text {
-            text-align: center; font-size: 13px; color: #000; line-height: 1.5; font-weight: 500;
+        /* Camera Box */
+        .scan-container {
+            position: relative; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-
-        /* Scanner Area */
-        .scan-wrapper {
-            flex-grow: 1; display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; position: relative; width: 100%;
-        }
-
+        
         .qr-box {
             width: 260px; height: 260px;
-            background-color: #f0f0f0; /* Abu muda saat loading */
+            background: #000; /* Placeholder hitam */
             position: relative; overflow: hidden;
-            /* Border luar tipis */
-            border: 1px solid #e5e5e5; 
+            border: 2px solid #000;
         }
 
-        /* Video Camera */
         #reader { width: 100%; height: 100%; border: none !important; }
-        #reader video { object-fit: cover; width: 100% !important; height: 100% !important; filter: grayscale(100%); /* Kamera jadi hitam putih biar keren */ }
+        #reader video { 
+            object-fit: cover; width: 100% !important; height: 100% !important; 
+            filter: grayscale(100%); /* KAMERA JADI HITAM PUTIH */
+        }
 
-        /* Sudut L Hitam Tebal */
+        /* Sudut L */
         .corner {
             position: absolute; width: 50px; height: 50px;
-            border: 6px solid #000000; z-index: 10;
+            border: 6px solid #fff; /* Kontras dengan video gelap */
+            z-index: 10;
         }
         .tl { top: 0; left: 0; border-right: none; border-bottom: none; }
         .tr { top: 0; right: 0; border-left: none; border-bottom: none; }
         .bl { bottom: 0; left: 0; border-right: none; border-top: none; }
         .br { bottom: 0; right: 0; border-left: none; border-top: none; }
 
-        /* Laser Hitam */
+        /* Laser Scan */
         .laser {
-            position: absolute; width: 100%; height: 2px; background: #000;
+            position: absolute; width: 100%; height: 2px; background: #fff;
             z-index: 5; animation: scanAnim 2s infinite ease-in-out;
+            box-shadow: 0 0 5px rgba(255,255,255,0.8);
         }
         @keyframes scanAnim { 0% { top: 10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
 
         /* === TIANG KIRI KANAN (CONNECTORS) === */
         .connector-area {
-            height: 60px; width: 160px; /* Lebar area garis */
-            position: relative; display: flex; justify-content: center;
+            height: 60px; width: 160px; position: relative; 
+            display: flex; justify-content: center; margin-top: -2px; z-index: 1;
         }
         .line {
-            position: absolute; top: 0; width: 2px; height: 100%; background-color: #000000;
+            position: absolute; top: 0; width: 3px; height: 100%; background-color: #000;
         }
         .line-left { left: 0; transform-origin: top left; transform: rotate(20deg); }
         .line-right { right: 0; transform-origin: top right; transform: rotate(-20deg); }
 
-        /* Status Text */
-        .scan-msg {
-            margin-top: 10px; font-size: 14px; font-weight: 800; color: #000;
-            text-transform: uppercase; letter-spacing: 1px;
+        .scan-status {
+            margin-top: 10px; font-weight: 800; font-size: 14px; text-transform: uppercase;
         }
 
-        /* =========================================
-           VIEW 2: FORM INPUT (B&W THEME)
-           ========================================= */
+        /* === VIEW 2: FORM (HITAM PUTIH) === */
         #form-view { 
-            display: none; width: 100%; max-width: 800px; margin: 0 auto; 
+            display: none; max-width: 800px; margin: 0 auto; 
             background: white; min-height: 100vh; padding-bottom: 100px; 
         }
         
         .header-form { 
             background: #000; color: white; padding: 30px 20px; 
-            text-align: center; border-bottom: 4px solid #000; 
+            text-align: center; border-bottom: 5px solid #000; 
         }
         .machine-badge { 
             background: #fff; color: #000; padding: 8px 25px; 
             border-radius: 50px; font-weight: 800; margin-top: 15px; 
-            display: inline-block; font-size: 16px; border: 2px solid #000; 
+            display: inline-block; font-size: 16px; border: 3px solid #000; 
         }
 
-        .section { padding: 20px; border-bottom: 1px solid #000; }
-        label { display: block; font-size: 11px; font-weight: 800; margin-bottom: 8px; color: #000; letter-spacing: 0.5px; text-transform: uppercase; }
-        input[type="text"] { 
-            width: 100%; padding: 14px; border: 2px solid #000; border-radius: 8px; 
-            font-size: 16px; background: #fff; color: #000; font-weight: 600;
-        }
+        .section { padding: 20px; border-bottom: 2px solid #000; }
+        label { display: block; font-size: 12px; font-weight: 800; margin-bottom: 8px; color: #000; letter-spacing: 0.5px; text-transform: uppercase; }
         
+        input[type="text"], textarea { 
+            width: 100%; padding: 14px; border: 2px solid #000; border-radius: 0; /* Kotak tegas */
+            font-size: 16px; background: #fff; color: #000; font-weight: 600; font-family: inherit;
+        }
+        input::placeholder, textarea::placeholder { color: #888; }
+
         .table-container { padding: 0 0 20px; }
         table { width: 100%; border-collapse: collapse; }
-        td { padding: 15px 20px; border-bottom: 1px solid #ccc; font-size: 14px; vertical-align: top; color: #000; }
+        td { padding: 15px 15px; border-bottom: 1px solid #ccc; font-size: 14px; vertical-align: top; color: #000; }
         
         .cat-row td { 
-            background: #f4f4f5; padding: 12px 20px; 
-            border-left: 6px solid #000; color: #000; 
-            font-weight: 800; font-size: 12px; text-transform: uppercase; 
+            background: #e0e0e0; padding: 12px 20px; 
+            border-left: 8px solid #000; color: #000; 
+            font-weight: 900; font-size: 13px; text-transform: uppercase; 
         }
 
-        /* Radio Buttons (B&W Style) */
+        /* Radio Buttons (KOTAK HITAM PUTIH) */
         .status-options { display: flex; gap: 10px; margin-top: 10px; }
         .status-options label { 
             flex: 1; padding: 12px; text-align: center; background: white; 
-            border-radius: 6px; border: 2px solid #000; font-weight: 800; font-size: 14px; 
-            color: #000; transition: 0.2s;
+            border: 2px solid #000; font-weight: 800; font-size: 14px; 
+            color: #000; transition: 0.1s; cursor: pointer;
         }
         .status-options input { display: none; }
         
-        /* Selected State: Hitam Pekat */
+        /* Selected State: Hitam Blok */
         .status-options label:has(input:checked) { 
             background: #000; color: white; 
         }
 
+        /* Input Keterangan */
         .input-ket { 
-            margin-top:8px; padding:10px; font-size:13px; 
-            border:1px solid #000; border-radius: 4px; width:100%; display: none; 
-            background: #fff; color: #000;
+            margin-top:10px; display: none; 
+            border: 2px solid #000 !important;
         }
-        .input-ket.visible { display: block; }
+        .input-ket.required-ng { 
+            display: block; 
+            border-bottom: 4px solid #000 !important; /* Indikasi wajib isi */
+            background-color: #f2f2f2;
+        }
 
-        #sig-canvas { border: 2px dashed #000; width: 100%; height: 200px; border-radius: 8px; background: #fff; margin-top: 5px; }
+        /* Area Dinamis (Logika) */
+        #dynamic-bottom-area { background: #fff; border-top: 4px solid #000; }
+        
+        #ng-summary-list {
+            border: 2px solid #000; padding: 15px; margin-top: 10px;
+        }
+        .ng-item {
+            margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 5px; font-size: 13px;
+        }
+
+        /* Signature */
+        #sig-canvas { border: 2px dashed #000; width: 100%; height: 200px; background: #fff; margin-top: 5px; }
+        
         .btn-submit { 
-            width: 90%; margin: 20px auto; display: block; padding: 20px; 
+            width: 90%; margin: 30px auto; display: block; padding: 20px; 
             background: #000; color: white; border: none; 
-            font-weight: 800; font-size: 16px; border-radius: 8px; letter-spacing: 1px;
+            font-weight: 800; font-size: 18px; letter-spacing: 2px;
+            cursor: pointer; transition: 0.2s;
         }
+        .btn-submit:active { transform: scale(0.98); opacity: 0.9; }
 
-        /* === BOTTOM NAVIGATION (B&W) === */
+        /* === BOTTOM NAVIGATION === */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto;
-            width: 100%; max-width: 450px; background: white; border-top: 2px solid #000;
+            width: 100%; max-width: 800px; background: white; border-top: 2px solid #000;
             display: flex; justify-content: space-around; align-items: center;
             padding: 16px 0; z-index: 100; padding-bottom: env(safe-area-inset-bottom);
         }
         .nav-item { text-decoration: none; color: #999; font-size: 24px; width: 25%; display: flex; justify-content: center; }
-        .nav-item.active { color: #000; } /* Icon aktif jadi hitam */
-
+        .nav-item.active { color: #000; } 
     </style>
 </head>
 <body>
 
-    <div id="home-view">
-        <div class="top-section">
-            <div class="header-pill">Pelaksana</div>
-            <div class="instruction-text">
-                ARAHKAN KAMERA KE QR MESIN<br>
-                SCANNER AKAN BERJALAN OTOMATIS
-            </div>
+    <div id="scanner-view">
+        <div class="scan-header">
+            <div class="header-pill">PELAKSANA</div>
+            <div class="scan-instr">SCAN QR CODE MESIN</div>
         </div>
 
-        <div class="scan-wrapper">
+        <div class="scan-container">
             <div class="qr-box">
                 <div class="corner tl"></div><div class="corner tr"></div>
                 <div class="corner bl"></div><div class="corner br"></div>
@@ -198,7 +209,7 @@
                 <div class="line line-right"></div>
             </div>
 
-            <div class="scan-msg" id="scan-status">SIAP SCAN...</div>
+            <div class="scan-status" id="scan-msg">SIAP SCAN...</div>
         </div>
     </div>
 
@@ -217,25 +228,40 @@
             <table><tbody id="pmi-items-body"></tbody></table>
         </div>
 
+        <div class="section" id="dynamic-bottom-area">
+            
+            <div id="condition-all-ok">
+                <label>CATATAN KOORDINATOR (OPSIONAL)</label>
+                <textarea id="catatan_umum" rows="3" placeholder="Tulis catatan jika ada..."></textarea>
+            </div>
+
+            <div id="condition-has-ng" style="display: none;">
+                <label style="text-decoration: underline;">DAFTAR TEMUAN NG</label>
+                <div id="ng-summary-list">
+                    </div>
+            </div>
+        </div>
+
         <div class="section">
             <label>PARAF PELAKSANA</label>
             <canvas id="sig-canvas"></canvas>
             <div style="text-align: right; margin-top: 5px;">
-                <button onclick="signaturePad.clear()" style="border:none; color:black; background:none; font-weight:bold; text-decoration: underline;">HAPUS TTD</button>
+                <button onclick="signaturePad.clear()" style="border:none; color:black; background:none; font-weight:bold; text-decoration: underline; cursor:pointer;">HAPUS TTD</button>
             </div>
         </div>
 
         <button class="btn-submit" id="btnSave" onclick="submitData()">KIRIM LAPORAN</button>
+
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i></a>
+            <a href="menu_utama.html" class="nav-item"><i class="fa-solid fa-bars"></i></a>
+            <a href="download_data.html" class="nav-item"><i class="fa-solid fa-download"></i></a>
+            <a href="informasi_akun.html" class="nav-item"><i class="fa-solid fa-circle-user"></i></a>
+        </nav>
     </div>
 
-    <nav class="bottom-nav">
-        <a href="index.html" class="nav-item active"><i class="fa-solid fa-house"></i></a>
-        <a href="menu_utama.html" class="nav-item"><i class="fa-solid fa-bars"></i></a>
-        <a href="download_data.html" class="nav-item"><i class="fa-solid fa-download"></i></a>
-        <a href="informasi_akun.html" class="nav-item"><i class="fa-solid fa-circle-user"></i></a>
-    </nav>
-
     <script>
+        // CONFIG
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
@@ -245,13 +271,12 @@
 
         // 1. AUTO START SCANNER
         window.onload = function() {
-            // Scanner hitam putih (grayscale filter di CSS)
             const config = { fps: 20, qrbox: { width: 250, height: 250 } };
             
             html5QrCode.start({ facingMode: "environment" }, config,
                 async (decodedText) => {
                     const rawText = decodedText.trim().toUpperCase();
-                    document.getElementById('scan-status').innerText = "MEMPROSES...";
+                    document.getElementById('scan-msg').innerText = "DATA DITEMUKAN...";
                     
                     const match = rawText.match(/\(([^)]+)\)/);
                     const keyword = match ? match[1] : rawText;
@@ -268,29 +293,36 @@
                             throw new Error("MESIN TIDAK TERDAFTAR");
                         }
                     } catch (err) {
-                        document.getElementById('scan-status').innerText = err.message;
+                        document.getElementById('scan-msg').innerText = err.message;
                     }
                 },
                 (err) => {}
             ).catch(err => console.log("Cam Error: " + err));
         };
 
-        // 2. SHOW FORM (HANYA OK & NG)
+        // 2. SHOW FORM
         async function showForm(machine) {
-            document.getElementById('home-view').style.display = 'none';
+            document.getElementById('scanner-view').style.display = 'none';
             document.getElementById('form-view').style.display = 'block';
             document.getElementById('m-name').innerText = `${machine.id} - ${machine.machine_name}`;
             currentMachineId = machine.id;
             
+            // Signature Init
             const c = document.getElementById('sig-canvas');
             const r = Math.max(window.devicePixelRatio || 1, 1);
             c.width = c.offsetWidth * r; c.height = c.offsetHeight * r;
             c.getContext("2d").scale(r, r);
             signaturePad = new SignaturePad(c, {penColor: 'black'});
 
+            // Fetch Items
             const { data: items } = await _sb.from('pmi_items').select('*').order('sort_order', { ascending: true });
             checklistItems = items || [];
             
+            renderChecklist();
+            updateFormLogic();
+        }
+
+        function renderChecklist() {
             const tbody = document.getElementById('pmi-items-body');
             tbody.innerHTML = "";
             let lastCat = "";
@@ -300,38 +332,77 @@
                     lastCat = it.category;
                     tbody.innerHTML += `<tr class="cat-row"><td colspan="2">${lastCat}</td></tr>`;
                 }
-                // HANYA OK DAN NG (Tanpa RP)
+                
+                // RENDER ROW (ONLY OK & NG)
                 tbody.innerHTML += `
                     <tr>
-                        <td width="55%"><strong>${it.item_name}</strong><br><small style="color:#666">${it.standard||''}</small></td>
+                        <td width="55%">
+                            <strong>${it.item_name}</strong><br>
+                            <small>${it.standard || ''}</small>
+                        </td>
                         <td>
                             <div class="status-options">
-                                <label><input type="radio" name="st-${it.id}" value="OK" checked onclick="togKet('${it.id}')">OK</label>
-                                <label><input type="radio" name="st-${it.id}" value="NG" onclick="togKet('${it.id}')">NG</label>
+                                <label><input type="radio" name="st-${it.id}" value="OK" checked onchange="updateFormLogic()">OK</label>
+                                <label><input type="radio" name="st-${it.id}" value="NG" onchange="updateFormLogic()">NG</label>
                             </div>
-                            <input type="text" id="ket-${it.id}" class="input-ket" placeholder="Keterangan kerusakan...">
+                            <input type="text" id="ket-${it.id}" class="input-ket" placeholder="TULIS KERUSAKAN..." oninput="updateFormLogic()">
                         </td>
                     </tr>`;
             });
         }
 
-        function togKet(id) {
-            const s = document.querySelector(`input[name="st-${id}"]:checked`).value;
-            const k = document.getElementById(`ket-${id}`);
-            // Show keterangan kalo NG
-            if(s === 'NG') k.classList.add('visible'); else k.classList.remove('visible');
+        // 3. LOGIC KONDISIONAL (REALTIME)
+        function updateFormLogic() {
+            let hasNG = false;
+            let ngListHtml = "";
+
+            checklistItems.forEach(it => {
+                const status = document.querySelector(`input[name="st-${it.id}"]:checked`).value;
+                const ketInput = document.getElementById(`ket-${it.id}`);
+                const ketValue = ketInput.value.trim();
+
+                if (status === 'NG') {
+                    hasNG = true;
+                    ketInput.classList.add('required-ng'); // Show input
+                    
+                    // Add to summary
+                    ngListHtml += `
+                        <div class="ng-item">
+                            <strong>• ${it.item_name}</strong><br>
+                            KETERANGAN: ${ketValue || '<span style="font-style:italic">Belum diisi...</span>'}
+                        </div>`;
+                } else {
+                    ketInput.classList.remove('required-ng'); // Hide input
+                }
+            });
+
+            // Toggle Areas
+            if (hasNG) {
+                document.getElementById('condition-all-ok').style.display = 'none';
+                document.getElementById('condition-has-ng').style.display = 'block';
+                document.getElementById('ng-summary-list').innerHTML = ngListHtml;
+            } else {
+                document.getElementById('condition-all-ok').style.display = 'block';
+                document.getElementById('condition-has-ng').style.display = 'none';
+            }
         }
 
-        // 3. SUBMIT
+        // 4. SUBMIT
         async function submitData() {
             const nama = document.getElementById('nama_pelaksana').value.trim();
             if(!nama) return alert("ISI NAMA TEKNISI!");
             if(signaturePad.isEmpty()) return alert("TANDA TANGAN WAJIB!");
 
+            let hasNG = false;
+
+            // Validasi NG empty
             for(let it of checklistItems) {
                 const s = document.querySelector(`input[name="st-${it.id}"]:checked`).value;
                 const k = document.getElementById(`ket-${it.id}`).value.trim();
-                if(s === "NG" && !k) return alert(`ITEM ${it.item_name} (NG) WAJIB ISI KETERANGAN!`);
+                if(s === "NG") {
+                    hasNG = true;
+                    if(!k) return alert(`ITEM ${it.item_name} STATUS NG, WAJIB ISI KETERANGAN!`);
+                }
             }
 
             const btn = document.getElementById('btnSave');
@@ -339,18 +410,30 @@
 
             try {
                 const now = new Date();
+                // Logic: Jika ada NG, catatan umum kosong
+                const catatanSave = hasNG ? "" : document.getElementById('catatan_umum').value.trim();
+
                 const { data: log, error: e1 } = await _sb.from('pmi_log').insert([{
-                    mesin_id: currentMachineId, bulan: now.getMonth()+1, tahun: now.getFullYear(),
-                    nama_pelaksana: nama, signature_pelaksana: signaturePad.toDataURL(),
-                    status_verifikasi: 'Pending', tanggal_pengerjaan: now.toISOString()
+                    mesin_id: currentMachineId, 
+                    bulan: now.getMonth()+1, 
+                    tahun: now.getFullYear(),
+                    nama_pelaksana: nama, 
+                    signature_pelaksana: signaturePad.toDataURL(),
+                    status_verifikasi: 'Pending', 
+                    tanggal_pengerjaan: now.toISOString(),
+                    catatan_pelaksana: catatanSave
                 }]).select();
+
                 if(e1) throw e1;
 
-                const res = checklistItems.map(it => ({
-                    log_id: log[0].id, item_name: it.item_name,
-                    status: document.querySelector(`input[name="st-${it.id}"]:checked`).value,
-                    keterangan: document.getElementById(`ket-${it.id}`).value
-                }));
+                const res = checklistItems.map(it => {
+                    const status = document.querySelector(`input[name="st-${it.id}"]:checked`).value;
+                    const ket = status === 'NG' ? document.getElementById(`ket-${it.id}`).value.trim() : "";
+                    return {
+                        log_id: log[0].id, item_name: it.item_name,
+                        status: status, keterangan: ket
+                    };
+                });
 
                 const { error: e2 } = await _sb.from('pmi_result').insert(res);
                 if(e2) throw e2;
