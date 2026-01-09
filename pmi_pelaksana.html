@@ -52,11 +52,11 @@
 
         .std-input { width: 100%; padding: 12px; border: 2px solid #000; font-size: 14px; font-weight: 600; border-radius: 0; }
         
-        /* INPUT KETERANGAN TUNGGAL (KONDISIONAL) */
-        .shared-keterangan { 
+        /* SINGLE KETERANGAN STYLE */
+        .single-ket-box { 
             width: 100%; padding: 10px; border: 2px solid #ccc; border-radius: 4px;
             font-size: 12px; margin-top: 10px; background: #fff; font-family: inherit;
-            display: none; /* Hidden by default */
+            display: none; /* Muncul hanya saat NG atau ada input */
         }
         
         .section { padding: 20px; border-bottom: 2px solid #000; }
@@ -184,62 +184,65 @@
                 const myFields = fields.filter(f => f.pmi_item_id === item.id);
                 let html = `<tr><td><span class="item-name">${item.nama_item}</span><span class="item-std">${item.standard || ''}</span>`;
                 
-                // Flag untuk memastikan input keterangan hanya dibuat satu kali per item
+                // MEKANISME KONTROL (FLAG): Pastikan input keterangan hanya dirender sekali per item
                 let keteranganAdded = false;
 
                 myFields.forEach(f => {
                     let lbl = f.label ? `<span class="field-sub-label">${f.label}</span>` : "";
                     if (f.tipe_input === 'radio_ok_ng') {
                         html += `<div class="field-box">${lbl}<div class="radio-group">
-                            <label class="radio-btn"><input type="radio" name="f_${f.id}" value="OK" onchange="handleKondisi('${item.id}')">OK</label>
-                            <label class="radio-btn"><input type="radio" name="f_${f.id}" value="NG" onchange="handleKondisi('${item.id}')">NG</label>
+                            <label class="radio-btn"><input type="radio" name="f_${f.id}" value="OK" onchange="toggleKet('${item.id}')">OK</label>
+                            <label class="radio-btn"><input type="radio" name="f_${f.id}" value="NG" onchange="toggleKet('${item.id}')">NG</label>
                         </div></div>`;
                     } else if (f.tipe_input === 'number') {
-                        html += `<div class="field-box">${lbl}<input type="number" id="f_${f.id}" class="std-input" placeholder="0" oninput="handleKondisi('${item.id}')"></div>`;
+                        html += `<div class="field-box">${lbl}<input type="number" id="f_${f.id}" class="std-input" placeholder="0" oninput="toggleKet('${item.id}')"></div>`;
                     } else {
-                        html += `<div class="field-box">${lbl}<input type="text" id="f_${f.id}" class="std-input" placeholder="..." oninput="handleKondisi('${item.id}')"></div>`;
-                    }
-
-                    if (!keteranganAdded) {
-                        html += `<input type="text" id="shared_ket_${item.id}" class="shared-keterangan" placeholder="Berikan keterangan detail..." />`;
-                        keteranganAdded = true;
+                        html += `<div class="field-box">${lbl}<input type="text" id="f_${f.id}" class="std-input" placeholder="..." oninput="toggleKet('${item.id}')"></div>`;
                     }
                 });
+
+                // Render satu input Keterangan di akhir item
+                html += `<input type="text" id="ket_item_${item.id}" class="single-ket-box" placeholder="Catatan laporan / detail NG..." />`;
+
                 html += `</td></tr>`;
                 tbody.innerHTML += html;
             });
         }
 
-        function handleKondisi(itemId) {
-            const ketInput = document.getElementById(`shared_ket_${itemId}`);
+        // FUNGSI KONDISIONAL (MUNCUL/HIDDEN)
+        function toggleKet(itemId) {
+            const ketEl = document.getElementById(`ket_item_${itemId}`);
             const myFields = loadedFields.filter(f => f.pmi_item_id === itemId);
-            let showKeterangan = false;
+            let mustShow = false;
 
             myFields.forEach(f => {
-                if (f.tipe_input === 'radio_ok_ng') {
-                    const selected = document.querySelector(`input[name="f_${f.id}"]:checked`);
-                    if (selected && selected.value === 'NG') showKeterangan = true;
-                } else {
+                // Cek status NG
+                const rdNG = document.querySelector(`input[name="f_${f.id}"][value="NG"]:checked`);
+                if(rdNG) mustShow = true;
+
+                // Cek jika field manual diisi
+                if(f.tipe_input !== 'radio_ok_ng') {
                     const val = document.getElementById(`f_${f.id}`).value.trim();
-                    if (val !== "") showKeterangan = true;
+                    if(val !== "") mustShow = true;
                 }
             });
 
-            if (showKeterangan) {
-                ketInput.style.display = 'block';
-                ketInput.style.borderColor = '#dc2626'; // Border merah jika dipicu
+            if(mustShow) {
+                ketEl.style.display = 'block';
+                ketEl.style.borderColor = '#dc2626'; // Highlight merah saat muncul
             } else {
-                ketInput.style.display = 'none';
-                ketInput.value = "";
+                ketEl.style.display = 'none';
+                // ketEl.value = ""; // Opsional: reset jika kembali OK
             }
         }
 
         async function submitData() {
             const nama = document.getElementById('nama_pelaksana').value.trim();
             const runHours = document.getElementById('h_run_hours').value;
-            if(!nama || !runHours || signaturePad.isEmpty()) return alert("HARAP LENGKAPI DATA!");
+            if(!nama || !runHours || signaturePad.isEmpty()) return alert("DATA BELUM LENGKAP!");
+            
             const btn = document.getElementById('btnSave');
-            btn.disabled = true; btn.innerText = "MENGIRIM...";
+            btn.disabled = true; btn.innerText = "SEDANG MENGIRIM...";
 
             try {
                 const { data: header, error: e1 } = await _sb.from('pmi_header').insert([{
@@ -259,29 +262,39 @@
 
                 let results = [];
                 loadedItems.forEach(item => {
-                    const sharedKet = document.getElementById(`shared_ket_${item.id}`).value.trim();
+                    const sharedNote = document.getElementById(`ket_item_${item.id}`).value.trim();
                     const myFields = loadedFields.filter(f => f.pmi_item_id === item.id);
 
                     myFields.forEach(f => {
-                        let status = null, nilai_aktual = null, hasValue = false;
+                        let status = null, nilai_aktual = null, hasVal = false;
                         if (f.tipe_input === 'radio_ok_ng') {
                             const checked = document.querySelector(`input[name="f_${f.id}"]:checked`);
-                            if(checked) { status = checked.value; hasValue = true; }
+                            if(checked) { status = checked.value; hasVal = true; }
                         } else {
                             const el = document.getElementById(`f_${f.id}`);
                             if(el && el.value.trim() !== '') {
-                                hasValue = true;
+                                hasVal = true;
                                 if(f.tipe_input === 'number') nilai_aktual = el.value;
-                                else sharedKet = el.value; // Jika input text biasa, anggap sebagai keterangan item
                             }
                         }
-                        if (hasValue) results.push({ pmi_header_id: header.id, pmi_item_id: item.id, pmi_item_field_id: f.id, status, nilai_aktual, keterangan: sharedKet });
+                        
+                        // Simpan jika ada aksi pada field tersebut
+                        if (hasVal) {
+                            results.push({ 
+                                pmi_header_id: header.id, 
+                                pmi_item_id: item.id, 
+                                pmi_item_field_id: f.id, 
+                                status, 
+                                nilai_aktual, 
+                                keterangan: sharedNote 
+                            });
+                        }
                     });
                 });
 
                 if(results.length > 0) await _sb.from('pmi_results').insert(results);
-                alert("LAPORAN TERKIRIM!"); window.location.href = "index.html";
-            } catch (e) { alert("GAGAL: " + e.message); btn.disabled = false; }
+                alert("LAPORAN BERHASIL DISIMPAN!"); window.location.href = "index.html";
+            } catch (e) { alert("ERROR: " + e.message); btn.disabled = false; }
         }
     </script>
 </body>
