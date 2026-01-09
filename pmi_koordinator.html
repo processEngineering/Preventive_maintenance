@@ -221,17 +221,15 @@
         const signaturePad = new SignaturePad(document.getElementById('sig-canvas'), {penColor:'black'});
         let selectedLogId, selectedMachineName, selectedLogData;
 
-        // 1. LOAD LIST
+        // 1. LOAD LIST (DIPERBAIKI)
         async function loadPmiList() {
             const list = document.getElementById('pmi-list');
             
-            // NOTE: Kita mencoba mengambil kolom 'nama_mesin' jika ada, atau fallback ke 'mesin_id'
-            // Kita juga mengambil 'pmi_machine' (jika relasi ada) sebagai cadangan.
-            const { data, error } = await _sb.from('pmi_log')
+            // ERROR FIX: Hapus 'nama_mesin' dari select karena kolom itu tidak ada
+            const { data: logs, error } = await _sb.from('pmi_log')
                 .select(`
                     id, 
                     mesin_id,
-                    nama_mesin, 
                     nama_pelaksana, 
                     catatan_pelaksana, 
                     pmi_result(item_name, status, keterangan)
@@ -243,27 +241,23 @@
                 return list.innerHTML = `<div style='text-align:center; padding:20px; color:red;'>Error: ${error.message}</div>`;
             }
 
-            if(!data || !data.length) return list.innerHTML = "<div style='text-align:center; padding:20px;'>Tidak ada laporan pending.</div>";
+            // AMBIL DATA REFERENSI MESIN AGAR KITA BISA TAHU NAMANYA
+            const { data: machines } = await _sb.from('pmi_machine').select('id, machine_name');
+
+            if(!logs || !logs.length) return list.innerHTML = "<div style='text-align:center; padding:20px;'>Tidak ada laporan pending.</div>";
 
             list.innerHTML = "";
             
             // Loop data untuk render kartu
-            for (const log of data) {
+            for (const log of logs) {
                 const ngItems = log.pmi_result.filter(r => r.status !== 'OK');
                 const isNG = ngItems.length > 0;
                 
-                // LOGIKA PINTAR: Cari Nama Mesin
-                // Prioritas 1: Kolom 'nama_mesin' di tabel pmi_log (hasil update pelaksana terakhir)
-                // Prioritas 2: Kolom 'mesin_id' (siapa tau isinya nama)
-                
-                // Kita akan menggunakan logic relasi manual jika mesin_id berupa angka, tapi 
-                // karena pelaksana sudah kirim nama, kita asumsi di sini sudah ada nama.
-                let displayMachine = log.nama_mesin || log.mesin_id;
-
-                // Jika displayMachine masih berupa angka (ID), kita coba cari namanya manual di tabel mesin (optional safety)
-                if(!isNaN(displayMachine)) {
-                     const { data: mData } = await _sb.from('pmi_machine').select('machine_name').eq('id', displayMachine).single();
-                     if(mData) displayMachine = mData.machine_name;
+                // CARI NAMA MESIN DARI TABEL MESIN BERDASARKAN ID
+                let displayMachine = log.mesin_id;
+                if(machines) {
+                    const foundMachine = machines.find(m => m.id == log.mesin_id);
+                    if(foundMachine) displayMachine = foundMachine.machine_name;
                 }
 
                 const div = document.createElement('div');
@@ -278,7 +272,7 @@
                     </span>
                 `;
                 
-                // Simpan nama yang sudah difinalisasi ke dalam object log agar scanner tau
+                // Simpan nama yang sudah ditemukan untuk dipakai saat scanning
                 log.finalMachineName = displayMachine;
                 
                 div.onclick = () => openScanner(log, ngItems);
@@ -289,7 +283,7 @@
         // 2. SCANNER
         function openScanner(log, ngItems) {
             selectedLogId = log.id;
-            selectedMachineName = log.finalMachineName; // Nama Mesin untuk verifikasi
+            selectedMachineName = log.finalMachineName; // Nama Mesin (bukan ID)
             
             selectedLogData = {
                 ...log,
@@ -312,11 +306,11 @@
         }
 
         async function onScanSuccess(decodedText) {
-            // LOGIKA VERIFIKASI BARU: BERDASARKAN NAMA
+            // VERIFIKASI BERDASARKAN NAMA
             const scanned = decodedText.trim().toUpperCase();
-            const target = selectedMachineName.trim().toUpperCase();
+            const target = String(selectedMachineName).trim().toUpperCase();
 
-            // Cek apakah hasil scan SAMA DENGAN atau MENGANDUNG nama mesin target
+            // Cek kecocokan teks
             if(scanned === target || scanned.includes(target) || target.includes(scanned)) {
                 await html5QrCode.stop();
                 document.getElementById('scanner-view').style.display = 'none';
