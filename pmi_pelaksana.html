@@ -48,6 +48,7 @@
         .field-box { display: flex; flex-direction: column; margin-bottom: 8px; }
         .field-sub-label { font-size: 10px; font-weight: 700; color: #666; margin-bottom: 3px; }
         
+        /* RADIO STYLE */
         .radio-group { display: flex; gap: 5px; margin-bottom: 5px; }
         .radio-btn { flex: 1; text-align: center; padding: 12px; border: 2px solid #000; font-weight: 800; font-size: 13px; cursor: pointer; background: #fff; transition: 0.1s; }
         .radio-btn input { display: none; }
@@ -57,8 +58,12 @@
 
         .std-input { width: 100%; padding: 12px; border: 2px solid #000; font-size: 14px; font-weight: 600; border-radius: 0; }
         
-        /* Conditional Input Style */
-        .ng-note { width: 100%; padding: 10px; border: 2px dashed #dc2626; font-size: 12px; margin-top: 5px; display: none; background: #fff5f5; } 
+        /* NOTE KHUSUS NG (Muncul Kondisional) */
+        .ng-note { 
+            width: 100%; padding: 10px; border: 2px dashed #dc2626; 
+            font-size: 12px; margin-top: 5px; display: none; background: #fff5f5; 
+            font-family: inherit;
+        } 
         
         .section { padding: 20px; border-bottom: 2px solid #000; }
         #sig-canvas { border: 2px dashed #000; width: 100%; height: 180px; background: #fff; margin-top: 5px; }
@@ -178,6 +183,7 @@
             c.getContext("2d").scale(r, r);
             signaturePad = new SignaturePad(c, { penColor: 'black' });
 
+            // Fetch Items & Fields
             const { data: items } = await _sb.from('pmi_items').select('*').eq('aktif', true).order('urutan');
             const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
             
@@ -206,7 +212,7 @@
                     let lbl = f.label ? `<span class="field-sub-label">${f.label}</span>` : "";
                     
                     if (f.tipe_input === 'radio_ok_ng') {
-                        // LOGIKA UI: NG = Muncul Input, OK = Hapus Input
+                        // FITUR CONDITIONAL: NG -> Muncul Input, OK -> Hapus Input
                         html += `
                             <div class="field-box">
                                 ${lbl}
@@ -228,11 +234,12 @@
             });
         }
 
+        // FUNGSI TOGGLE CATATAN (OTOMATIS BERSIHKAN JIKA OK)
         function toggleNote(id, show) {
             const el = document.getElementById('note_' + id);
             if(el) {
                 el.style.display = show ? 'block' : 'none';
-                if (!show) el.value = ""; // BERSIHKAN TEXT SAAT KLIK OK
+                if (!show) el.value = ""; // CLEARED IF OK
                 else el.focus();
             }
         }
@@ -249,6 +256,7 @@
             btn.disabled = true; btn.innerText = "MENGIRIM DATA...";
 
             try {
+                // A. INSERT HEADER
                 const { data: header, error: e1 } = await _sb.from('pmi_header').insert([{
                     machine_id: currentMachineId,
                     tanggal: document.getElementById('h_tanggal').value,
@@ -265,25 +273,27 @@
 
                 if(e1) throw e1;
 
+                // B. INSERT RESULTS (STRICT MAPPING)
                 let results = [];
                 let validationError = false;
                 
                 loadedFields.forEach(f => {
                     let status = null;
                     let nilai_aktual = null;
-                    let keterangan = null; // 1 Variabel untuk Text
+                    let keterangan = null; 
                     let hasValue = false;
 
                     if (f.tipe_input === 'radio_ok_ng') {
                         const checked = document.querySelector(`input[name="f_${f.id}"]:checked`);
                         if(checked) {
-                            status = checked.value; // Save OK/NG to STATUS
+                            status = checked.value; // MASUK KOLOM STATUS
                             hasValue = true;
                             
                             if (status === 'NG') {
                                 const noteEl = document.getElementById(`note_${f.id}`);
-                                keterangan = noteEl ? noteEl.value.trim() : ""; // Save text to KETERANGAN
+                                keterangan = noteEl ? noteEl.value.trim() : ""; // MASUK KOLOM KETERANGAN
                                 
+                                // VALIDASI WAJIB ISI
                                 if (!keterangan) {
                                     alert("PENTING: Anda memilih status NG.\nHarap isi detail masalahnya di kolom catatan.");
                                     validationError = true;
@@ -291,13 +301,14 @@
                             }
                         }
                     } else {
+                        // INPUT BIASA (NUMBER / TEXT)
                         const el = document.getElementById(`f_${f.id}`);
                         if(el && el.value.trim() !== '') {
                             hasValue = true;
                             if(f.tipe_input === 'number') {
-                                nilai_aktual = el.value; // Save Number to NILAI_AKTUAL
+                                nilai_aktual = el.value; // MASUK NILAI_AKTUAL
                             } else {
-                                keterangan = el.value; // Save Text to KETERANGAN
+                                keterangan = el.value; // MASUK KETERANGAN
                             }
                         }
                     }
