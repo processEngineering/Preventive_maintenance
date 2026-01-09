@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PMI - Koordinator Review</title>
+    <title>Koordinator - Verifikasi</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
@@ -13,66 +13,72 @@
     <style>
         /* === GLOBAL STYLES === */
         * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: #f4f4f5; margin: 0; padding: 20px; padding-bottom: 100px; }
+        body { font-family: 'Inter', sans-serif; background: #e5e7eb; margin: 0; padding: 20px; padding-bottom: 100px; }
 
         /* === HEADER === */
-        .page-header { margin-bottom: 20px; border-bottom: 3px solid #000; padding-bottom: 10px; }
-        .page-title { font-size: 20px; font-weight: 800; text-transform: uppercase; margin: 0; }
-        .page-subtitle { font-size: 12px; color: #555; margin-top: 5px; }
+        .page-header { background: #000; color: #fff; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .page-title { font-size: 18px; font-weight: 800; margin: 0; letter-spacing: 1px; }
+        .page-subtitle { font-size: 12px; opacity: 0.8; margin-top: 5px; }
 
-        /* === FILTER SECTION === */
-        .filter-box { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
-        select { flex: 1; padding: 12px; border: 2px solid #000; font-weight: 700; border-radius: 4px; font-size: 14px; }
-        .btn-load { background: #000; color: #fff; border: none; padding: 12px 20px; font-weight: 800; cursor: pointer; border-radius: 4px; }
+        /* === FILTER === */
+        .filter-box { background: #fff; padding: 15px; border-radius: 8px; display: flex; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        select { flex: 1; padding: 10px; border: 2px solid #ccc; border-radius: 6px; font-weight: 600; font-size: 14px; }
+        .btn-load { background: #000; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 700; cursor: pointer; }
 
-        /* === LIST LAPORAN === */
-        .report-list { display: flex; flex-direction: column; gap: 10px; }
-        .report-card { background: #fff; padding: 15px; border-left: 6px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s; position: relative; }
-        .report-card:active { transform: scale(0.98); }
+        /* === LIST CARD === */
+        .report-list { display: flex; flex-direction: column; gap: 12px; }
+        .card { background: #fff; padding: 15px; border-radius: 8px; border-left: 5px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s; }
+        .card:active { transform: scale(0.98); }
         
-        /* Status Colors */
-        .card-pending { border-left-color: #f59e0b; } /* Kuning (Belum dicek) */
-        .card-verified { border-left-color: #10b981; } /* Hijau (Sudah dicek) */
-        
-        .card-header { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .card-pending { border-left-color: #f59e0b; }
+        .card-verified { border-left-color: #10b981; }
+
+        .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
         .card-date { font-size: 11px; color: #666; font-weight: 600; }
-        .card-status { font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
-        .st-pending { background: #fef3c7; color: #d97706; }
-        .st-verified { background: #d1fae5; color: #059669; }
+        .badge { font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 10px; text-transform: uppercase; }
+        .bg-pending { background: #fef3c7; color: #d97706; }
+        .bg-verified { background: #d1fae5; color: #059669; }
 
-        .card-machine { font-size: 16px; font-weight: 800; margin-bottom: 2px; }
-        .card-tech { font-size: 12px; color: #444; }
+        .card-title { font-size: 15px; font-weight: 800; color: #000; margin-bottom: 4px; }
+        .card-sub { font-size: 12px; color: #555; display: flex; align-items: center; gap: 5px; }
 
-        /* === MODAL DETAIL (POPUP) === */
-        #modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; display: none; align-items: flex-end; }
+        /* === MODAL POPUP === */
+        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; display: none; align-items: flex-end; }
         .modal-content { 
-            background: #fff; width: 100%; height: 90vh; border-radius: 15px 15px 0 0; 
-            padding: 20px; overflow-y: auto; position: relative; display: flex; flex-direction: column; 
+            background: #fff; width: 100%; height: 92vh; border-radius: 20px 20px 0 0; 
+            padding: 0; display: flex; flex-direction: column; overflow: hidden;
             animation: slideUp 0.3s ease-out;
         }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
-        .close-btn { font-size: 24px; font-weight: bold; cursor: pointer; }
+        .modal-head { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #f9fafb; }
+        .close-btn { font-size: 24px; font-weight: bold; padding: 5px; cursor: pointer; }
 
-        /* Detail Table */
-        .detail-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 20px; }
-        .detail-table th { background: #eee; text-align: left; padding: 5px; border-bottom: 2px solid #000; }
-        .detail-table td { padding: 8px 5px; border-bottom: 1px solid #eee; }
-        .row-ng { background-color: #ffe4e6; } /* Highlight NG rows */
+        .modal-body { flex: 1; overflow-y: auto; padding: 20px; }
 
-        /* Approval Section */
-        .approval-box { background: #f9fafb; padding: 15px; border: 2px dashed #000; margin-top: auto; }
-        .input-label { font-size: 11px; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 5px; }
-        textarea { width: 100%; padding: 10px; border: 1px solid #ccc; font-family: inherit; font-size: 14px; margin-bottom: 10px; resize: vertical; }
+        /* Detail Table inside Modal */
+        .detail-tbl { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 20px; }
+        .detail-tbl th { background: #eee; text-align: left; padding: 8px; border-bottom: 2px solid #000; }
+        .detail-tbl td { padding: 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+        .row-ng { background: #fee2e2; }
+        .txt-ng { color: red; font-weight: 800; }
+        .txt-ok { color: green; font-weight: 800; }
+
+        /* Approval Form */
+        .approve-box { background: #f0fdf4; border: 2px dashed #16a34a; padding: 15px; border-radius: 8px; margin-top: 10px; }
+        .lbl { font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 5px; display: block; color: #333; }
+        .inp { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; margin-bottom: 10px; }
         
-        #sig-canvas { border: 1px solid #ccc; background: #fff; width: 100%; height: 150px; }
-        .btn-approve { width: 100%; background: #000; color: white; padding: 15px; font-weight: 800; border: none; font-size: 14px; margin-top: 10px; cursor: pointer; }
-        .btn-approve:disabled { background: #ccc; }
+        #sig-wrapper { border: 1px solid #000; background: #fff; width: 100%; height: 160px; margin-bottom: 5px; touch-action: none; }
+        canvas { width: 100%; height: 100%; }
+
+        .btn-act { width: 100%; padding: 15px; font-weight: 800; font-size: 14px; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; }
+        .btn-green { background: #16a34a; color: white; }
+        .btn-gray { background: #ccc; color: #666; cursor: not-allowed; }
 
         /* Bottom Nav */
-        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; border-top: 2px solid #000; display: flex; padding: 15px 0; z-index: 999; }
-        .nav-item { flex: 1; text-align: center; color: #ccc; font-size: 24px; text-decoration: none; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; border-top: 1px solid #ddd; display: flex; padding: 12px 0; z-index: 1000; }
+        .nav-item { flex: 1; text-align: center; color: #9ca3af; font-size: 22px; text-decoration: none; }
         .nav-item.active { color: #000; }
     </style>
 </head>
@@ -80,242 +86,232 @@
 
     <div class="page-header">
         <h1 class="page-title">KOORDINATOR</h1>
-        <div class="page-subtitle">VERIFIKASI LAPORAN HARIAN</div>
+        <div class="page-subtitle">VERIFIKASI & APPROVAL LAPORAN</div>
     </div>
 
     <div class="filter-box">
-        <select id="sel-bulan">
-            <option value="1">Januari</option><option value="2">Februari</option>
-            <option value="3">Maret</option><option value="4">April</option>
-            <option value="5">Mei</option><option value="6">Juni</option>
-            <option value="7">Juli</option><option value="8">Agustus</option>
-            <option value="9">September</option><option value="10">Oktober</option>
-            <option value="11">November</option><option value="12">Desember</option>
+        <select id="f-bulan">
+            <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+            <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+            <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+            <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
         </select>
-        <select id="sel-tahun">
+        <select id="f-tahun">
             <option value="2025" selected>2025</option>
             <option value="2026">2026</option>
         </select>
-        <button class="btn-load" onclick="loadReports()">LIHAT DATA</button>
+        <button class="btn-load" onclick="loadList()">LIHAT</button>
     </div>
 
-    <div id="report-list" class="report-list">
-        <div style="text-align:center; color:#999; margin-top:20px;">Silakan pilih bulan & tahun lalu klik LIHAT DATA</div>
+    <div id="list-container" class="report-list">
+        <div style="text-align:center; padding:20px; color:#888;">Silakan pilih periode dan klik LIHAT</div>
     </div>
 
-    <div id="modal-overlay">
+    <div id="modal">
         <div class="modal-content">
-            <div class="modal-header">
+            <div class="modal-head">
                 <div>
-                    <h2 style="margin:0; font-size:16px;">DETAIL VERIFIKASI</h2>
-                    <span id="m-name" style="font-size:12px; color:#555;">-</span>
+                    <h3 style="margin:0; font-size:15px;">DETAIL LAPORAN</h3>
+                    <div id="m-info" style="font-size:11px; color:#666;">-</div>
                 </div>
                 <span class="close-btn" onclick="closeModal()">&times;</span>
             </div>
 
-            <div style="overflow-x:auto;">
-                <table class="detail-table">
-                    <thead><tr><th>ITEM</th><th>STATUS</th><th>KET / ACTUAL</th></tr></thead>
-                    <tbody id="detail-body"></tbody>
+            <div class="modal-body">
+                <div style="font-weight:800; font-size:12px; margin-bottom:5px;">HASIL PENGECEKAN PELAKSANA:</div>
+                <table class="detail-tbl">
+                    <thead><tr><th>ITEM</th><th>STATUS</th><th>ACTUAL</th></tr></thead>
+                    <tbody id="tbl-body"></tbody>
                 </table>
-            </div>
 
-            <div class="approval-box">
-                <label class="input-label">NAMA KOORDINATOR</label>
-                <input type="text" id="nama_koordinator" placeholder="Nama Anda..." style="width:100%; padding:8px; margin-bottom:10px; border:1px solid #ccc;">
+                <div class="approve-box" id="box-approval">
+                    <div style="border-bottom:1px dashed #16a34a; padding-bottom:5px; margin-bottom:10px; font-weight:800; color:#16a34a;">
+                        AREA APPROVAL KOORDINATOR
+                    </div>
 
-                <label class="input-label" style="color:#d97706;">CATATAN UNTUK SUPERINTENDENT</label>
-                <textarea id="catatan_koor" rows="3" placeholder="Contoh: Silahkan cek kembali item Hydrolik No. 6..."></textarea>
+                    <label class="lbl">NAMA KOORDINATOR</label>
+                    <input type="text" id="inp-nama" class="inp" placeholder="Ketik nama Anda...">
 
-                <label class="input-label">TANDA TANGAN KOORDINATOR</label>
-                <canvas id="sig-canvas"></canvas>
-                <div style="text-align:right;"><small onclick="signaturePad.clear()" style="text-decoration:underline; cursor:pointer;">Hapus TTD</small></div>
+                    <label class="lbl">CATATAN UNTUK SUPERINTENDENT</label>
+                    <textarea id="inp-catatan" class="inp" rows="3" placeholder="Contoh: Mesin OK, temuan di area hydrolik harap dicek..."></textarea>
 
-                <button class="btn-approve" id="btnApprove" onclick="submitVerification()">VERIFIKASI & TERUSKAN</button>
+                    <label class="lbl">TANDA TANGAN</label>
+                    <div id="sig-wrapper">
+                        <canvas id="sig-canvas"></canvas>
+                    </div>
+                    <div style="text-align:right; margin-bottom:10px;">
+                        <span onclick="clearSig()" style="font-size:11px; color:red; text-decoration:underline; cursor:pointer;">Hapus Tanda Tangan</span>
+                    </div>
+
+                    <button id="btn-submit" class="btn-act btn-green" onclick="submitApprove()">VERIFIKASI SEKARANG</button>
+                </div>
+                
+                <div id="msg-done" style="display:none; text-align:center; padding:20px; background:#eee; border-radius:8px; margin-top:20px;">
+                    <i class="fa-solid fa-check-circle" style="font-size:30px; color:green; margin-bottom:10px;"></i><br>
+                    <b>LAPORAN SUDAH DIVERIFIKASI</b><br>
+                    <small>Menunggu Superintendent</small>
+                </div>
             </div>
         </div>
     </div>
 
     <nav class="bottom-nav">
         <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i></a>
-        <a href="pmi_koordinator.html" class="nav-item active"><i class="fa-solid fa-check-double"></i></a>
-        <a href="pmi_result.html" class="nav-item"><i class="fa-solid fa-file-contract"></i></a>
+        <a href="#" class="nav-item active"><i class="fa-solid fa-clipboard-check"></i></a>
+        <a href="pmi_result.html" class="nav-item"><i class="fa-solid fa-file-pdf"></i></a>
     </nav>
 
     <script>
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
-        
-        let signaturePad;
-        let currentHeaderId = null;
+
+        let signaturePad = null;
+        let currentReportId = null;
 
         // 1. INIT
         window.onload = function() {
-            // Set Default Bulan Ini
             const now = new Date();
-            document.getElementById('sel-bulan').value = now.getMonth() + 1;
-            document.getElementById('sel-tahun').value = now.getFullYear();
-
-            // Init Signature
-            const c = document.getElementById('sig-canvas');
-            signaturePad = new SignaturePad(c, { penColor: 'black' });
-            
-            // Resize Canvas Helper
-            function resizeCanvas() {
-                const ratio = Math.max(window.devicePixelRatio || 1, 1);
-                c.width = c.offsetWidth * ratio;
-                c.height = c.offsetHeight * ratio;
-                c.getContext("2d").scale(ratio, ratio);
-            }
-            window.onresize = resizeCanvas;
-            resizeCanvas();
+            document.getElementById('f-bulan').value = now.getMonth() + 1;
+            document.getElementById('f-tahun').value = now.getFullYear();
         };
 
-        // 2. LOAD REPORTS
-        async function loadReports() {
-            const bln = document.getElementById('sel-bulan').value;
-            const thn = document.getElementById('sel-tahun').value;
-            const listEl = document.getElementById('report-list');
+        // 2. LOAD LIST
+        async function loadList() {
+            const b = document.getElementById('f-bulan').value;
+            const t = document.getElementById('f-tahun').value;
+            const div = document.getElementById('list-container');
             
-            listEl.innerHTML = '<div style="text-align:center;">Memuat data...</div>';
+            div.innerHTML = '<div style="text-align:center; padding:20px;">Memuat data...</div>';
 
-            const { data: headers, error } = await _sb
-                .from('pmi_header')
-                .select(`*, pmi_machines(nama_mesin)`)
-                .eq('bulan', bln)
-                .eq('tahun', thn)
-                .order('created_at', { ascending: false });
+            const { data: headers, error } = await _sb.from('pmi_header')
+                .select('*, pmi_machines(nama_mesin)')
+                .eq('bulan', b).eq('tahun', t)
+                .order('created_at', {ascending: false});
 
-            if(error) return alert("Error: " + error.message);
+            if(error) return alert("Gagal memuat: " + error.message);
             if(!headers || headers.length === 0) {
-                listEl.innerHTML = '<div style="text-align:center; margin-top:20px;">Belum ada laporan bulan ini.</div>';
+                div.innerHTML = '<div style="text-align:center; padding:20px;">Tidak ada laporan di periode ini.</div>';
                 return;
             }
 
-            listEl.innerHTML = "";
+            div.innerHTML = "";
             headers.forEach(h => {
-                const isVerified = h.status_verifikasi === 'Verified' || h.status_verifikasi === 'Completed';
-                const statusClass = isVerified ? 'card-verified' : 'card-pending';
-                const badgeClass = isVerified ? 'st-verified' : 'st-pending';
-                const badgeText = isVerified ? 'VERIFIED' : 'PENDING';
-
-                const html = `
-                    <div class="report-card ${statusClass}" onclick="openDetail('${h.id}')">
-                        <div class="card-header">
-                            <span class="card-date">${formatDate(h.tanggal)}</span>
-                            <span class="card-status ${badgeClass}">${badgeText}</span>
+                const isVerif = h.status_verifikasi === 'Verified' || h.status_verifikasi === 'Completed';
+                const cls = isVerif ? 'card-verified' : 'card-pending';
+                const badge = isVerif ? '<span class="badge bg-verified">SUDAH DIVERIFIKASI</span>' : '<span class="badge bg-pending">PERLU CEK</span>';
+                
+                div.innerHTML += `
+                    <div class="card ${cls}" onclick="openDetail('${h.id}', ${isVerif})">
+                        <div class="card-top">
+                            <span class="card-date">${new Date(h.tanggal).toLocaleDateString('id-ID')}</span>
+                            ${badge}
                         </div>
-                        <div class="card-machine">${h.pmi_machines.nama_mesin}</div>
-                        <div class="card-tech"><i class="fa-solid fa-user"></i> ${h.nama_pelaksana}</div>
-                    </div>
-                `;
-                listEl.innerHTML += html;
+                        <div class="card-title">${h.pmi_machines.nama_mesin}</div>
+                        <div class="card-sub"><i class="fa-solid fa-user-gear"></i> Teknisi: ${h.nama_pelaksana}</div>
+                    </div>`;
             });
         }
 
         // 3. OPEN DETAIL
-        async function openDetail(headerId) {
-            currentHeaderId = headerId;
-            document.getElementById('modal-overlay').style.display = 'flex';
-            document.getElementById('detail-body').innerHTML = '<tr><td colspan="3">Loading detail...</td></tr>';
+        async function openDetail(id, isDone) {
+            currentReportId = id;
+            document.getElementById('modal').style.display = 'flex';
             
-            // Fetch Header + Results
-            const { data: header } = await _sb.from('pmi_header').select('*, pmi_machines(nama_mesin)').eq('id', headerId).single();
-            const { data: results } = await _sb.from('pmi_results')
-                .select(`*, pmi_items(nama_item, urutan), pmi_item_fields(label, tipe_input, urutan)`)
-                .eq('pmi_header_id', headerId)
-                .order('pmi_items(urutan)');
-
-            // Set Header Info
-            document.getElementById('m-name').innerText = header.pmi_machines.nama_mesin;
-            
-            // Jika sudah diverifikasi, isi formnya (readonly)
-            if(header.status_verifikasi === 'Verified' || header.status_verifikasi === 'Completed') {
-                document.getElementById('nama_koordinator').value = header.nama_koordinator || '';
-                document.getElementById('catatan_koor').value = header.catatan_koordinator || '';
-                document.getElementById('nama_koordinator').disabled = true;
-                document.getElementById('catatan_koor').disabled = true;
-                document.getElementById('btnApprove').innerText = "SUDAH DIVERIFIKASI";
-                document.getElementById('btnApprove').disabled = true;
-                signaturePad.off(); // Disable signature
+            // Tampilkan/Sembunyikan Form Approval
+            if(isDone) {
+                document.getElementById('box-approval').style.display = 'none';
+                document.getElementById('msg-done').style.display = 'block';
             } else {
-                // Reset Form
-                document.getElementById('nama_koordinator').value = '';
-                document.getElementById('catatan_koor').value = '';
-                document.getElementById('nama_koordinator').disabled = false;
-                document.getElementById('catatan_koor').disabled = false;
-                document.getElementById('btnApprove').innerText = "VERIFIKASI & TERUSKAN";
-                document.getElementById('btnApprove').disabled = false;
-                signaturePad.clear();
-                signaturePad.on();
+                document.getElementById('box-approval').style.display = 'block';
+                document.getElementById('msg-done').style.display = 'none';
+                
+                // RESET FORM
+                document.getElementById('inp-nama').value = "";
+                document.getElementById('inp-catatan').value = "";
+                
+                // INIT SIGNATURE (WAJIB DISINI AGAR UKURANNYA BENAR)
+                setTimeout(() => {
+                    const canvas = document.getElementById('sig-canvas');
+                    // Set ukuran canvas sesuai wrapper
+                    canvas.width = document.getElementById('sig-wrapper').offsetWidth;
+                    canvas.height = document.getElementById('sig-wrapper').offsetHeight;
+                    
+                    if(signaturePad) signaturePad.off(); // Matikan yg lama
+                    signaturePad = new SignaturePad(canvas, { penColor: 'blue' });
+                }, 300); // Delay dikit biar modal ngerender dulu
             }
 
-            // Render Table Detail
-            const tbody = document.getElementById('detail-body');
-            tbody.innerHTML = "";
+            // LOAD DATA DETAIL
+            document.getElementById('tbl-body').innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
             
-            results.forEach(res => {
-                const item = res.pmi_items;
-                const field = res.pmi_item_fields;
-                const isNG = res.status === 'NG';
-                
-                let displayVal = "";
-                if(field.tipe_input === 'radio_ok_ng') displayVal = res.status;
-                else displayVal = res.nilai_aktual || '-';
+            // Ambil Info Header
+            const { data: h } = await _sb.from('pmi_header').select('*, pmi_machines(nama_mesin)').eq('id', id).single();
+            document.getElementById('m-info').innerText = h.pmi_machines.nama_mesin + " | " + new Date(h.tanggal).toLocaleDateString('id-ID');
 
-                // Gabungkan Label jika ada (Contoh: "S1: 200")
-                if(field.label && field.tipe_input !== 'radio_ok_ng') {
-                    displayVal = `<b>${field.label}:</b> ${displayVal}`;
+            // Ambil Results
+            const { data: res } = await _sb.from('pmi_results')
+                .select(`status, nilai_aktual, keterangan, pmi_items(nama_item, urutan), pmi_item_fields(label, tipe_input)`)
+                .eq('pmi_header_id', id)
+                .order('pmi_items(urutan)');
+
+            const tbody = document.getElementById('tbl-body');
+            tbody.innerHTML = "";
+
+            res.forEach(r => {
+                const isNG = r.status === 'NG';
+                let val = r.nilai_aktual || '-';
+                if(r.pmi_item_fields.tipe_input === 'radio_ok_ng') val = r.status;
+                if(r.pmi_item_fields.label && r.pmi_item_fields.tipe_input !== 'radio_ok_ng') {
+                    val = `<b>${r.pmi_item_fields.label}:</b> ${val}`;
                 }
 
                 tbody.innerHTML += `
                     <tr class="${isNG ? 'row-ng' : ''}">
-                        <td>${item.nama_item}</td>
-                        <td style="font-weight:bold; color:${isNG?'red':'green'}">${res.status || ''}</td>
-                        <td>${displayVal} ${res.keterangan ? '<br><small>('+res.keterangan+')</small>' : ''}</td>
-                    </tr>
-                `;
+                        <td>${r.pmi_items.nama_item}</td>
+                        <td class="${isNG ? 'txt-ng':'txt-ok'}">${r.status || ''}</td>
+                        <td>${val} <br><small style="color:gray">${r.keterangan || ''}</small></td>
+                    </tr>`;
             });
         }
 
-        // 4. SUBMIT VERIFICATION
-        async function submitVerification() {
-            const namaKoor = document.getElementById('nama_koordinator').value.trim();
-            const catatan = document.getElementById('catatan_koor').value.trim();
+        // 4. SUBMIT APPROVAL
+        async function submitApprove() {
+            const nama = document.getElementById('inp-nama').value.trim();
+            const catatan = document.getElementById('inp-catatan').value.trim();
 
-            if(!namaKoor) return alert("Isi Nama Koordinator!");
-            if(signaturePad.isEmpty()) return alert("Tanda Tangan Koordinator Wajib!");
+            if(!nama) return alert("NAMA KOORDINATOR WAJIB DIISI!");
+            if(signaturePad.isEmpty()) return alert("TANDA TANGAN WAJIB!");
 
-            if(!confirm("Anda yakin ingin memverifikasi laporan ini?")) return;
+            if(!confirm("Yakin verifikasi laporan ini dan teruskan ke Superintendent?")) return;
 
-            document.getElementById('btnApprove').innerText = "MENYIMPAN...";
-            document.getElementById('btnApprove').disabled = true;
+            document.getElementById('btn-submit').innerText = "MENYIMPAN...";
+            document.getElementById('btn-submit').disabled = true;
 
             const { error } = await _sb.from('pmi_header').update({
-                nama_koordinator: namaKoor,
+                nama_koordinator: nama,
                 catatan_koordinator: catatan,
                 signature_koordinator: signaturePad.toDataURL(),
-                status_verifikasi: 'Verified', // Update Status
+                status_verifikasi: 'Verified', // Update status jadi Verified
                 verified_at: new Date()
-            }).eq('id', currentHeaderId);
+            }).eq('id', currentReportId);
 
             if(error) {
-                alert("Gagal: " + error.message);
-                document.getElementById('btnApprove').disabled = false;
+                alert("Error: " + error.message);
+                document.getElementById('btn-submit').innerText = "VERIFIKASI SEKARANG";
+                document.getElementById('btn-submit').disabled = false;
             } else {
-                alert("Berhasil Diverifikasi! Data diteruskan ke Superintendent.");
+                alert("BERHASIL DIVERIFIKASI!");
                 closeModal();
-                loadReports(); // Refresh list
+                loadList(); // Refresh list di dashboard
             }
         }
 
         function closeModal() {
-            document.getElementById('modal-overlay').style.display = 'none';
+            document.getElementById('modal').style.display = 'none';
         }
-
-        function formatDate(str) {
-            return new Date(str).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        function clearSig() {
+            if(signaturePad) signaturePad.clear();
         }
     </script>
 </body>
