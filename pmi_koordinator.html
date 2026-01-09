@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Koordinator Maintenance</title>
+    <title>Koordinator - Verification</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -90,31 +90,48 @@
         }
         .report-card:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px var(--black); background: #f0f0f0; }
 
+        .card-info { flex: 1; }
         .card-info h3 { margin: 0 0 6px 0; font-size: 16px; font-weight: 800; }
         .card-meta { font-size: 12px; font-weight: 500; margin: 0; line-height: 1.4; color: #333; }
+        
+        /* Note Pelaksana Style */
+        .pelaksana-note {
+            margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc;
+            font-size: 12px; font-style: italic; font-weight: 600; color: #000;
+        }
+        .note-ok { color: #000; }
+        .note-ng { color: #d90429; } /* Merah jika NG */
+
         .card-icon { font-size: 20px; padding-left: 10px; }
 
         /* State Message */
         .empty-state { text-align: center; margin-top: 50px; font-weight: 700; color: #555; }
 
-        /* === PAGE 2: SCANNER === */
+        /* === PAGE 2: SCANNER (KOTAK RAPI) === */
         .scan-wrapper { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .scan-viewfinder {
-            width: 280px; height: 280px; border: 4px solid var(--black);
-            border-radius: 4px; background: #000; position: relative;
-            overflow: hidden; margin-bottom: 0; z-index: 2;
-        }
-        #reader { width: 100%; height: 100%; object-fit: cover; }
         
-        .scan-perspective {
-            width: 320px; height: 80px; position: relative; margin-top: -4px;
-            z-index: 1; display: flex; justify-content: center; align-items: center;
+        .scan-box { 
+            width: 260px; height: 260px; 
+            margin: 0 auto 20px auto; 
+            border: 4px solid var(--black); 
+            border-radius: 16px; 
+            overflow: hidden; 
+            position: relative; 
+            background: #000; 
+            box-shadow: var(--shadow-hard);
         }
-        .scan-perspective::before, .scan-perspective::after {
-            content: ''; position: absolute; top: 0; width: 4px; height: 100%; background: var(--black);
+        
+        #reader { width: 100%; height: 100%; object-fit: cover; }
+        #reader video { object-fit: cover; width: 100% !important; height: 100% !important; }
+
+        /* Laser Animation */
+        .laser {
+            position: absolute; width: 100%; height: 2px; background: red;
+            top: 0; left: 0; z-index: 10;
+            box-shadow: 0 0 5px red;
+            animation: scanAnim 2s infinite linear;
         }
-        .scan-perspective::before { left: 20px; transform: skewX(20deg); }
-        .scan-perspective::after { right: 20px; transform: skewX(-20deg); }
+        @keyframes scanAnim { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
 
         .btn-scan {
             position: relative; z-index: 5; background: var(--white);
@@ -129,7 +146,7 @@
             border: var(--border-thick); border-radius: var(--radius-md);
             background: #fafafa; padding: 15px; margin-bottom: 25px;
         }
-        .summary-text { font-style: italic; font-size: 14px; line-height: 1.5; font-weight: 500; }
+        .summary-text { font-style: italic; font-size: 14px; line-height: 1.5; font-weight: 600; }
 
         .ng-section {
             border: var(--border-thick); border-radius: var(--radius-md);
@@ -199,19 +216,18 @@
         </div>
 
         <div class="scan-wrapper">
-            <div class="scan-viewfinder">
+            <div class="scan-box">
+                <div class="laser"></div>
                 <div id="reader"></div>
             </div>
-            <div class="scan-perspective">
-                <button class="btn-scan" id="btn-camera" onclick="startScanner()">BUKA KAMERA</button>
-            </div>
+            <div style="text-align:center; font-weight:800; margin-bottom:20px;" id="scan-target-name">-</div>
+            <button class="btn-scan" id="btn-camera" onclick="startScanner()">BUKA KAMERA</button>
         </div>
-        <div style="text-align:center; margin-top:20px; font-weight:800;" id="scan-target-name">-</div>
-        <button class="btn-cancel" style="margin-top:20px;" onclick="goHome()">BATAL</button>
+        <button class="btn-cancel" onclick="goHome()">BATAL</button>
     </div>
 
     <div id="page-approve" class="page-content hidden">
-        <div class="section-title">RINGKASAN KONDISI</div>
+        <div class="section-title">RINGKASAN KONDISI PELAKSANA</div>
         
         <div class="summary-card">
             <div class="summary-text" id="summary-text">Memuat ringkasan...</div>
@@ -240,7 +256,7 @@
             <div class="signature-area">
                 <canvas id="sig-canvas"></canvas>
             </div>
-            <button class="btn-clear-sig" onclick="clearSig()" style="background:none; border:none; text-decoration:underline; font-weight:bold; cursor:pointer; float:right;">HAPUS</button>
+            <button class="btn-cancel" onclick="clearSig()" style="background:none; border:none; text-decoration:underline; font-weight:bold; cursor:pointer; float:right; padding:0; width:auto;">HAPUS</button>
         </div>
 
         <button class="btn-submit" id="btn-submit" onclick="submitApproval()">SUBMIT LAPORAN</button>
@@ -319,9 +335,13 @@
             container.innerHTML = '<div class="empty-state">Memuat data...</div>';
 
             try {
-                // Fetch ONLY pending reports
+                // Fetch header BESERTA results untuk cek status OK/NG
                 const { data, error } = await _sb.from('pmi_header')
-                    .select('*, pmi_machines(nama_mesin, barcode)')
+                    .select(`
+                        id, tanggal, start_jam, nama_pelaksana, status_verifikasi,
+                        pmi_machines(nama_mesin, barcode),
+                        pmi_results(status, keterangan, pmi_items(nama_item))
+                    `)
                     .eq('status_verifikasi', 'Pending')
                     .order('created_at', {ascending: false});
 
@@ -337,13 +357,36 @@
                     const dateStr = new Date(item.tanggal).toLocaleDateString('id-ID', {
                         day: 'numeric', month: 'long', year: 'numeric'
                     });
+
+                    // LOGIKA PENENTUAN CATATAN PELAKSANA
+                    let results = item.pmi_results || [];
+                    let ngItems = results.filter(r => r.status === 'NG');
+                    
+                    let noteText = "";
+                    let noteClass = "note-ok";
+
+                    if (ngItems.length === 0) {
+                        noteText = "KONDISI MESIN OK";
+                    } else {
+                        noteClass = "note-ng";
+                        // Ambil maksimal 2 item NG untuk preview card
+                        let descriptions = ngItems.slice(0, 2).map(r => {
+                            // Prioritas: Keterangan -> Nama Item
+                            let desc = r.keterangan ? r.keterangan : r.pmi_items.nama_item;
+                            return desc; 
+                        });
+                        noteText = "NG: " + descriptions.join(", ");
+                        if(ngItems.length > 2) noteText += ", ...";
+                    }
                     
                     const html = `
                         <div class="report-card" onclick="startVerification('${item.id}', '${item.pmi_machines.barcode}', '${item.pmi_machines.nama_mesin}')">
                             <div class="card-info">
                                 <h3>${item.pmi_machines.nama_mesin}</h3>
                                 <div class="card-meta">Pelaksana: ${item.nama_pelaksana}</div>
-                                <div class="card-meta">${dateStr} • ${item.start_jam.substring(0,5)}</div>
+                                <div class="card-meta">${dateStr} • ${item.start_jam ? item.start_jam.substring(0,5) : '-'}</div>
+                                
+                                <div class="pelaksana-note ${noteClass}">"${noteText}"</div>
                             </div>
                             <div class="card-icon"><i class="fa-solid fa-arrow-right"></i></div>
                         </div>`;
@@ -369,7 +412,7 @@
         function startScanner() {
             document.getElementById('btn-camera').innerText = "KAMERA AKTIF...";
             html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 220 }, 
                 onScanSuccess, 
                 (err) => {}
             ).catch(err => alert("Gagal buka kamera: " + err));
@@ -419,28 +462,27 @@
             let ngItems = [];
             results.forEach(r => {
                 if(r.status === 'NG') {
-                    ngItems.push({
-                        item: r.pmi_items.nama_item,
-                        desc: r.nilai_aktual || r.keterangan || "Tidak ada keterangan"
-                    });
+                    // Ambil keterangan jika ada, atau gunakan nama item
+                    let desc = r.keterangan ? `${r.pmi_items.nama_item} - ${r.keterangan}` : r.pmi_items.nama_item;
+                    ngItems.push(desc);
                 }
             });
 
-            // Render Summary
+            // Render Summary (LOGIKA SAMA DENGAN LIST)
             if(ngItems.length === 0) {
-                document.getElementById('summary-text').innerText = "Kondisi mesin secara umum BAIK. Tidak ada temuan NG (No Good) dari pelaksana. Siap untuk operasi.";
+                document.getElementById('summary-text').innerText = "KONDISI MESIN OK. Pelaksana tidak melaporkan adanya temuan masalah (NG). Siap diverifikasi.";
                 document.getElementById('ng-container').classList.add('hidden');
             } else {
-                document.getElementById('summary-text').innerText = `Terdapat ${ngItems.length} item dengan kondisi NG (Tidak Normal). Perlu perhatian khusus.`;
+                document.getElementById('summary-text').innerText = `PERHATIAN: Terdapat ${ngItems.length} item dengan status NG. Mohon cek detail masalah di bawah ini sebelum menyetujui.`;
                 document.getElementById('ng-container').classList.remove('hidden');
                 
                 const list = document.getElementById('ng-list');
                 list.innerHTML = "";
-                ngItems.forEach((ng, idx) => {
+                ngItems.forEach((desc, idx) => {
                     list.innerHTML += `
                         <div class="ng-item">
-                            <span class="ng-title">${idx+1}. ${ng.item}</span>
-                            <span class="ng-desc">Kondisi: ${ng.desc}</span>
+                            <span class="ng-title">MASALAH #${idx+1}</span>
+                            <span class="ng-desc">${desc}</span>
                         </div>`;
                 });
             }
