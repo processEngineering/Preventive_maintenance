@@ -7,6 +7,7 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     
@@ -30,9 +31,10 @@
         }
         .filter-box {
             flex: 1; border: 2px solid #000; border-radius: 12px;
-            background: #fff; font-weight: 700; font-size: 14px;
+            background: #fff; font-weight: 700; font-size: 13px;
             padding: 10px; text-align: center; cursor: pointer;
             box-shadow: 3px 3px 0 #000; appearance: none; -webkit-appearance: none;
+            /* Custom Arrow Icon */
             background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23000000%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
             background-repeat: no-repeat; background-position: right .7em top 50%; background-size: .65em auto;
         }
@@ -166,6 +168,7 @@
     </nav>
 
     <script>
+        // --- KONFIGURASI SUPABASE ---
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
@@ -173,64 +176,64 @@
         const signaturePad = new SignaturePad(document.getElementById('sig-canvas'), {penColor:'black'});
         let currentLogId = null;
 
-        // 1. INIT: Load Daftar Mesin
+        // 1. INIT: Load Daftar Mesin saat Halaman Dibuka
         window.onload = async function() {
             resizeCanvas();
-            const { data } = await _sb.from('pmi_machine').select('id, machine_name');
+            // Ambil ID dan Nama Mesin
+            const { data, error } = await _sb.from('pmi_machine').select('id, machine_name');
             const selMesin = document.getElementById('sel-mesin');
+            
             if(data) {
                 data.forEach(m => {
                     const opt = document.createElement('option');
-                    // FIX LOGIC: GUNAKAN MACHINE_NAME SEBAGAI VALUE AGAR MATCHING TEXT
-                    opt.value = m.machine_name; 
-                    opt.innerText = m.machine_name;
+                    opt.value = m.id; // VALUE ADALAH ID (Penting untuk Query)
+                    opt.innerText = m.machine_name; // TEXT ADALAH NAMA (Penting untuk User)
                     selMesin.appendChild(opt);
                 });
+            } else if (error) {
+                console.error("Gagal load mesin:", error);
             }
         };
 
-        // 2. FETCH DATA: Berdasarkan Bulan, Tahun, Mesin
+        // 2. FETCH DATA: Saat Filter Berubah
         async function fetchData() {
             const bln = document.getElementById('sel-bulan').value;
             const thn = document.getElementById('sel-tahun').value;
-            const mes = document.getElementById('sel-mesin').value;
+            const mesId = document.getElementById('sel-mesin').value; // Ini berisi ID (integer)
 
-            // Hanya fetch jika ketiga filter sudah dipilih
-            if(!bln || !thn || !mes) return;
+            // Jangan jalan kalau filter belum lengkap
+            if(!bln || !thn || !mesId) return;
 
             document.getElementById('status-msg').innerText = "Mencari data...";
             resetView();
 
             try {
-                // Query database
-                // Cari log yang statusnya 'Verified' (Sudah divalidasi Coord, Menunggu Super)
-                // ATAU 'Completed' (Jika ingin melihat yang sudah selesai juga)
-                
+                // Query ke pmi_log
+                // Filter wajib: bulan, tahun, mesin_id, dan status 'Verified' (sudah di-acc koordinator)
                 const { data, error } = await _sb.from('pmi_log')
                     .select(`
-                        id, created_at, nama_mesin, mesin_id, 
-                        nama_koordinator, catatan_koordinator, status_verifikasi,
+                        id, created_at, mesin_id, 
+                        catatan_koordinator, status_verifikasi,
                         pmi_result(status)
                     `)
                     .eq('bulan', bln)
                     .eq('tahun', thn)
-                    // FIX QUERY: Mencari match di kolom mesin_id ATAU nama_mesin
-                    .or(`mesin_id.eq.${mes},nama_mesin.eq.${mes}`)
-                    .eq('status_verifikasi', 'Verified') // Pastikan hanya yg sudah diverif Coord
+                    .eq('mesin_id', mesId) // Menggunakan ID (Angka)
+                    .eq('status_verifikasi', 'Verified') 
                     .maybeSingle();
 
                 if(error) throw error;
 
                 if(!data) {
-                    document.getElementById('status-msg').innerText = "Data Laporan belum tersedia / belum diverifikasi Koordinator.";
+                    document.getElementById('status-msg').innerText = "Laporan tidak ditemukan / belum diverifikasi Koordinator.";
                     return;
                 }
 
-                // DATA DITEMUKAN -> TAMPILKAN
+                // --- DATA DITEMUKAN ---
                 currentLogId = data.id;
                 document.getElementById('status-msg').style.display = 'none';
                 
-                // Format Tanggal (created_at) -> DD/MM/YYYY
+                // Format Tanggal: DD/MM/YYYY
                 const dateObj = new Date(data.created_at);
                 const dateStr = dateObj.getDate().toString().padStart(2,'0') + '/' + 
                                 (dateObj.getMonth()+1).toString().padStart(2,'0') + '/' + 
@@ -238,30 +241,32 @@
                 
                 document.getElementById('val-date').innerText = dateStr;
 
-                // Cek Kondisi (Jika ada 1 saja NG, maka status NG)
+                // Cek Kondisi (Looping result)
+                // Jika ada SATU saja item 'NG', maka status Mesin = NG
                 const hasNG = data.pmi_result.some(r => r.status === 'NG');
                 const kondisiText = hasNG ? "NG" : "OK";
                 const kondisiEl = document.getElementById('val-kondisi');
+                
                 kondisiEl.innerText = kondisiText;
-                kondisiEl.style.color = hasNG ? '#e11d48' : '#166534'; // Merah/Hijau
+                kondisiEl.style.color = hasNG ? '#e11d48' : '#166534'; // Merah atau Hijau
 
                 // Catatan Koordinator
                 document.getElementById('val-note').innerText = data.catatan_koordinator || "-";
 
-                // Show Elements
+                // Tampilkan Elemen UI
                 document.getElementById('report-card').style.display = 'block';
                 document.getElementById('arrow-div').style.display = 'block';
                 document.getElementById('form-super').style.display = 'block';
                 
-                resizeCanvas(); // Resize lagi agar pas
+                resizeCanvas(); // Resize canvas agar responsif
 
             } catch (err) {
                 console.error(err);
-                document.getElementById('status-msg').innerText = "Terjadi kesalahan koneksi.";
+                document.getElementById('status-msg').innerText = "Error: " + err.message;
             }
         }
 
-        // 3. SUBMIT FINAL
+        // 3. SUBMIT FINAL (APPROVE)
         async function submitFinal() {
             const nama = document.getElementById('nama_super').value.trim();
             if(!nama) return alert("ISI NAMA SUPERINTENDENT");
@@ -270,8 +275,9 @@
             const btn = document.getElementById('btnSave');
             btn.innerText = "PROSES..."; btn.disabled = true;
 
+            // Update database: isi data superintendent & ubah status jadi Completed
             const { error } = await _sb.from('pmi_log').update({
-                status_verifikasi: 'Completed', // Status Final
+                status_verifikasi: 'Completed',
                 nama_superintendent: nama,
                 catatan_superintendent: document.getElementById('catatan_super').value,
                 signature_superintendent: signaturePad.toDataURL(),
@@ -279,14 +285,15 @@
             }).eq('id', currentLogId);
 
             if(error) {
-                alert("Gagal: " + error.message);
+                alert("Gagal menyimpan: " + error.message);
                 btn.innerText = "APPROVE"; btn.disabled = false;
             } else {
-                alert("LAPORAN SELESAI (COMPLETED)!");
+                alert("LAPORAN BERHASIL DI-APPROVE (COMPLETED)!");
                 location.reload(); // Refresh halaman
             }
         }
 
+        // Helper: Sembunyikan UI saat mencari ulang
         function resetView() {
             document.getElementById('report-card').style.display = 'none';
             document.getElementById('arrow-div').style.display = 'none';
@@ -294,6 +301,7 @@
             currentLogId = null;
         }
 
+        // Helper: Resize Signature Canvas
         function resizeCanvas() {
             const c = document.getElementById('sig-canvas');
             const r = Math.max(window.devicePixelRatio || 1, 1);
