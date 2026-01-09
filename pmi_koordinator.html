@@ -8,126 +8,150 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     
     <style>
         /* === GLOBAL RESET === */
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Inter', sans-serif; background: #fff; color: #000; height: 100vh; padding-bottom: 80px; }
-        .fa, .fa-solid, .fa-regular, .fa-brands { font-family: "Font Awesome 6 Free" !important; font-weight: 900; }
+        body { font-family: 'Inter', sans-serif; background: #fff; color: #000; height: 100vh; overflow: hidden; }
+        .fa, .fa-solid { font-weight: 900; }
 
-        /* === 1. DASHBOARD LIST === */
-        #dashboard { display: block; padding-top: 50px; }
+        /* === 1. DASHBOARD (LIST VIEW) === */
+        #dashboard { 
+            display: block; height: 100vh; overflow-y: auto; padding-bottom: 80px; 
+            padding-top: 50px; 
+        }
 
-        .top-section { display: flex; flex-direction: column; align-items: center; margin-bottom: 30px; }
+        .top-section { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; }
         .header-pill {
-            border: 2px solid #000; border-radius: 50px; padding: 10px 32px;
-            background: #fff; font-weight: 800; font-size: 16px; letter-spacing: 1px;
-            text-transform: uppercase; display: inline-block; margin-bottom: 10px;
+            border: 2px solid #000; border-radius: 50px; padding: 12px 40px;
+            background: #fff; font-weight: 800; font-size: 18px; letter-spacing: 0.5px;
+            text-transform: uppercase; margin-bottom: 15px; box-shadow: 0 4px 0 rgba(0,0,0,0.1);
         }
-        .instruction-text { text-align: center; font-size: 13px; color: #333; line-height: 1.5; font-weight: 500; }
+        .instruction-text { text-align: center; font-size: 13px; color: #444; line-height: 1.4; font-weight: 500; }
 
-        .list-container { max-width: 800px; margin: 0 auto; padding: 0 20px; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0 20px; }
 
+        /* Card Style */
         .card-pmi {
-            border: 2px solid #000; padding: 15px; margin-bottom: 15px; cursor: pointer;
-            transition: 0.1s; background: #fff; position: relative;
+            border: 2px solid #000; border-radius: 12px; padding: 15px; margin-bottom: 15px; cursor: pointer;
+            background: #fff; transition: 0.1s; box-shadow: 3px 3px 0 #000;
         }
-        .card-pmi:active { background: #000; color: #fff; }
+        .card-pmi:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #000; }
         
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .machine-id { font-weight: 900; font-size: 16px; text-decoration: underline; }
-        .user-name { font-size: 12px; font-weight: 600; text-transform: uppercase; }
-
-        .status-box {
-            font-size: 13px; font-weight: 700; padding: 8px; border: 1px dashed #000; 
-            display: flex; align-items: center; gap: 8px;
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .machine-id { font-weight: 900; font-size: 16px; text-transform: uppercase; }
+        .user-name { font-size: 12px; font-weight: 600; color: #555; }
+        
+        .status-badge { 
+            display: inline-block; padding: 6px 12px; border-radius: 6px; 
+            font-size: 12px; font-weight: 800; border: 1px solid #000;
         }
-        .icon-status { font-size: 16px; }
+        .bg-ok { background: #dcfce7; color: #166534; }
+        .bg-ng { background: #fee2e2; color: #991b1b; }
 
-        /* === 2. SCANNER VIEW (STRUKTUR SAMA PERSIS FOTO) === */
+        /* === 2. SCANNER VIEW (PERSIS SEPERTI GAMBAR) === */
         #scanner-view {
-            display:none; position: fixed; top:0; left:0; width:100%; height:100%;
-            background:#fff; z-index:1000; flex-direction: column; align-items: center; justify-content: center;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+            background: #fff; z-index: 500; flex-direction: column; align-items: center;
         }
 
-        /* HEADER SCANNER */
-        .scan-header {
-            position: absolute; top: 60px; /* Jarak dari atas */
-            display: flex; flex-direction: column; align-items: center; z-index: 20; width: 100%;
-        }
-        /* Menggunakan class .header-pill dan .instruction-text yang sama dengan dashboard */
-
-        /* CONTAINER TENGAH */
-        .scan-container {
-            position: relative; width: 100%; height: 100%;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        /* Layout Scanner */
+        .scan-layout {
+            display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%;
+            position: relative; padding-top: 60px; /* Space for Header */
         }
 
-        /* KOTAK KAMERA */
+        /* 1. Header Pill (Koordinator) */
+        .scan-header-pill {
+            border: 2px solid #000; border-radius: 50px; padding: 12px 50px;
+            background: #fff; font-weight: 800; font-size: 18px; margin-bottom: 20px;
+            z-index: 20;
+        }
+
+        /* 2. Text Instruksi */
+        .scan-text {
+            text-align: center; font-size: 13px; font-style: italic; color: #444;
+            max-width: 80%; margin-bottom: 30px; z-index: 20;
+        }
+
+        /* 3. Kotak Kamera (Square) */
+        .camera-frame {
+            position: relative; width: 260px; height: 260px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 40px; z-index: 20;
+        }
+        
         .qr-box {
-            width: 260px; height: 260px; background: #000;
-            position: relative; overflow: hidden; 
-            margin-bottom: 0; /* Pastikan nempel dengan tiang */
+            width: 100%; height: 100%; background: #000; position: relative; overflow: hidden;
+            /* Tidak ada border di kotak, border ada di corner L */
         }
-        #reader { width: 100%; height: 100%; border: none !important; }
-        #reader video { object-fit: cover; width: 100% !important; height: 100% !important; }
+        #reader { width: 100%; height: 100%; border: none; }
+        #reader video { object-fit: cover; width: 100%; height: 100%; }
 
-        /* SUDUT L HITAM TEBAL */
-        .corner { position: absolute; width: 40px; height: 40px; border: 4px solid #000000; z-index: 10; }
-        .tl { top:0; left:0; border-right:none; border-bottom:none; }
-        .tr { top:0; right:0; border-left:none; border-bottom:none; }
-        .bl { bottom:0; left:0; border-right:none; border-top:none; }
-        .br { bottom:0; right:0; border-left:none; border-top:none; }
+        /* Sudut L Tebal (Brackets) */
+        .corner { position: absolute; width: 50px; height: 50px; border: 6px solid #000; z-index: 25; }
+        .tl { top: -10px; left: -10px; border-right: none; border-bottom: none; }
+        .tr { top: -10px; right: -10px; border-left: none; border-bottom: none; }
+        .bl { bottom: -10px; left: -10px; border-right: none; border-top: none; }
+        .br { bottom: -10px; right: -10px; border-left: none; border-top: none; }
 
-        /* LASER MERAH */
-        .laser {
-            position: absolute; width: 100%; height: 2px; background: #ef4444; 
-            z-index: 5; animation: scanAnim 2s infinite ease-in-out; 
+        /* 4. Tombol & Garis (The "Road" Design) */
+        .action-area {
+            position: relative; width: 100%; display: flex; justify-content: center;
+            margin-top: -20px; /* Tarik ke atas mendekati kotak */
         }
-        @keyframes scanAnim { 0% { top: 10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
 
-        /* TIANG PENGHUBUNG (CONNECTOR) */
-        .connector-area {
-            height: 50px; width: 140px; position: relative; 
-            display: flex; justify-content: center;
-        }
-        .line { position: absolute; top: 0; width: 2px; height: 100%; background-color: #000; }
-        .line-left { left: 0; transform-origin: top left; transform: rotate(22deg); }
-        .line-right { right: 0; transform-origin: top right; transform: rotate(-22deg); }
-
-        /* TOMBOL BATAL (POSISI DI UJUNG TIANG) */
+        /* Tombol BATAL (Pill Style) */
         .btn-cancel {
-            position: relative; top: -12px;
-            border: 2px solid #000; background: #fff; color: #000;
-            padding: 12px 40px; font-weight: 800; cursor: pointer; text-transform: uppercase;
-            font-size: 14px; z-index: 10;
+            background: #fff; border: 2px solid #000; padding: 10px 30px;
+            font-weight: 800; font-size: 14px; border-radius: 8px;
+            position: relative; z-index: 30; cursor: pointer; text-transform: uppercase;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.1);
         }
-        .btn-cancel:active { background: #000; color: #fff; }
+        .btn-cancel:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.1); }
 
-        /* === 3. APPROVAL FORM === */
-        #approval-view { display: none; background: white; min-height: 100vh; padding-bottom: 100px; }
+        /* Garis Panjang ke Bawah (Tiang) */
+        .long-line {
+            position: absolute; top: 50%; width: 2px; background: #000;
+            height: 400px; /* Panjang sampai bawah layar */
+            z-index: 10;
+        }
+        .line-l { left: calc(50% - 40px); transform: rotate(25deg); transform-origin: top center; }
+        .line-r { right: calc(50% - 40px); transform: rotate(-25deg); transform-origin: top center; }
+
+
+        /* === 3. FORM APPROVAL === */
+        #approval-view { display: none; background: #fff; width: 100%; min-height: 100vh; overflow-y: auto; padding-bottom: 100px; z-index: 600; }
         
-        .header-app { background: #000; color: white; padding: 30px 20px; text-align: center; border-bottom: 5px solid #000; }
-        .machine-badge { background: #fff; color: #000; padding: 8px 25px; border-radius: 50px; font-weight: 800; margin-top: 15px; display: inline-block; font-size: 16px; border: 3px solid #000; }
-
-        .section { padding: 20px; border-bottom: 2px solid #000; }
-        label { display: block; font-size: 12px; font-weight: 800; margin-bottom: 8px; color: #000; letter-spacing: 0.5px; text-transform: uppercase; }
-        
-        .temuan-box { border: 2px dashed #000; padding: 15px; margin-bottom: 20px; font-size: 13px; line-height: 1.5; }
-        .temuan-title { text-decoration: underline; font-weight: 800; display: block; margin-bottom: 5px; }
-
-        input[type="text"], textarea { 
-            width: 100%; padding: 14px; border: 2px solid #000; border-radius: 0; 
-            font-family: inherit; font-weight: 600; margin-bottom: 15px;
+        .form-header {
+            text-align: center; padding: 30px 20px; border-bottom: 4px solid #000; margin-bottom: 20px;
+        }
+        .form-title { font-size: 18px; font-weight: 900; margin: 0; }
+        .target-badge { 
+            background: #000; color: #fff; padding: 5px 15px; border-radius: 20px; 
+            font-size: 14px; font-weight: 700; display: inline-block; margin-top: 10px; 
         }
 
-        #sig-canvas { border: 2px dashed #000; width: 100%; height: 200px; background: #fff; }
-        .btn-verif { 
-            width: 90%; margin: 30px auto; display: block; padding: 20px; 
-            background: #000; color: white; border: none; 
-            font-weight: 800; font-size: 16px; letter-spacing: 1px; cursor: pointer; 
+        .section { padding: 0 25px 25px; }
+        label { display: block; font-size: 12px; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; }
+        
+        .temuan-box {
+            border: 2px dashed #000; background: #f9f9f9; padding: 15px; border-radius: 8px;
+            margin-bottom: 20px; font-size: 13px;
+        }
+
+        input, textarea {
+            width: 100%; padding: 14px; border: 2px solid #000; border-radius: 8px;
+            font-weight: 600; font-family: inherit; margin-bottom: 20px;
+        }
+
+        #sig-canvas { border: 2px solid #000; width: 100%; height: 180px; border-radius: 8px; }
+
+        .btn-verif {
+            width: 100%; padding: 18px; background: #000; color: #fff; border: none;
+            font-weight: 800; font-size: 16px; border-radius: 12px; cursor: pointer;
         }
 
         /* === BOTTOM NAV === */
@@ -135,10 +159,10 @@
             position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto;
             width: 100%; max-width: 800px; background: white; border-top: 2px solid #000;
             display: flex; justify-content: space-around; align-items: center;
-            padding: 16px 0; z-index: 900; padding-bottom: env(safe-area-inset-bottom);
+            padding: 16px 0; z-index: 9999; padding-bottom: env(safe-area-inset-bottom);
         }
         .nav-item { text-decoration: none; color: #999; font-size: 24px; width: 25%; display: flex; justify-content: center; }
-        .nav-item.active { color: #000; } 
+        .nav-item.active { color: #000; }
     </style>
 </head>
 <body>
@@ -147,70 +171,63 @@
         <div class="top-section">
             <div class="header-pill">KOORDINATOR</div>
             <div class="instruction-text">
-                PILIH LAPORAN UNTUK DIVERIFIKASI<br>
-                DAN SCAN MESIN TERKAIT
+                Pilih laporan pelaksana di bawah<br>
+                untuk melakukan verifikasi
             </div>
         </div>
-
-        <div id="pmi-list" class="list-container">
-            <div style="text-align:center; padding:20px; font-style:italic; color:#666;">MEMUAT DATA...</div>
+        <div id="pmi-list" class="container">
+            <div style="text-align:center; margin-top:40px; color:#888;">Memuat data...</div>
         </div>
     </div>
 
     <div id="scanner-view">
-        
-        <div class="scan-header">
-            <div class="header-pill">SCAN: <span id="target-id" style="color:red">...</span></div>
-            <div class="instruction-text">
-                ARAHKAN KAMERA KE QR CODE<br>
-                UNTUK VERIFIKASI MESIN
-            </div>
-        </div>
-
-        <div class="scan-container">
+        <div class="scan-layout">
+            <div class="scan-header-pill">KOORDINATOR</div>
             
-            <div class="qr-box">
+            <div class="scan-text">
+                Silahkan scan QR code pada mesin<br>
+                untuk melanjutkan ke halaman Verifikasi
+            </div>
+
+            <div class="camera-frame">
+                <div class="qr-box">
+                    <div id="reader"></div> </div>
                 <div class="corner tl"></div><div class="corner tr"></div>
                 <div class="corner bl"></div><div class="corner br"></div>
-                <div class="laser"></div>
-                <div id="reader"></div>
-            </div>
-            
-            <div class="connector-area">
-                <div class="line line-left"></div>
-                <div class="line line-right"></div>
             </div>
 
-            <button class="btn-cancel" onclick="location.reload()">BATAL</button>
+            <div class="action-area">
+                <div class="long-line line-l"></div>
+                <div class="long-line line-r"></div>
+                <button class="btn-cancel" onclick="cancelScan()">BATAL</button>
+            </div>
         </div>
     </div>
 
     <div id="approval-view">
-        <div class="header-app">
-            <h1 style="margin:0; font-size: 14px; letter-spacing: 2px;">VERIFIKASI LAPORAN</h1>
-            <div class="machine-badge" id="display-machine">-</div>
+        <div class="form-header">
+            <h2 class="form-title">VERIFIKASI</h2>
+            <span class="target-badge" id="display-machine">-</span>
         </div>
 
         <div class="section">
-            <label>DETAIL TEMUAN PELAKSANA</label>
+            <label>RINGKASAN PELAKSANA</label>
             <div id="display-temuan" class="temuan-box"></div>
-            
+
             <label>NAMA KOORDINATOR</label>
-            <input type="text" id="nama_koordinator" placeholder="NAMA LENGKAP" required>
+            <input type="text" id="nama_koordinator" placeholder="Nama Lengkap">
 
-            <label>CATATAN / FEEDBACK</label>
-            <textarea id="catatan_koordinator" rows="3" placeholder="TULIS CATATAN..."></textarea>
-        </div>
+            <label>CATATAN</label>
+            <textarea id="catatan_koordinator" rows="3" placeholder="Tambahkan catatan..."></textarea>
 
-        <div class="section">
-            <label>PARAF KOORDINATOR</label>
+            <label>PARAF</label>
             <canvas id="sig-canvas"></canvas>
             <div style="text-align:right; margin-top:5px;">
-                <button onclick="signaturePad.clear()" style="color:black; font-size:12px; border:none; background:none; font-weight:800; text-decoration:underline; cursor:pointer;">HAPUS TTD</button>
+                <button onclick="signaturePad.clear()" style="border:none; background:none; font-weight:bold; color:red;">HAPUS</button>
             </div>
-        </div>
 
-        <button class="btn-verif" id="btnSave" onclick="updateVerifikasi()">VERIFIKASI SEKARANG</button>
+            <button class="btn-verif" id="btnSave" onclick="updateVerifikasi()">VERIFIKASI LAPORAN</button>
+        </div>
     </div>
 
     <nav class="bottom-nav">
@@ -226,95 +243,89 @@
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
         const html5QrCode = new Html5Qrcode("reader");
-        const signaturePad = new SignaturePad(document.getElementById('sig-canvas'), {penColor: 'black'});
-        let selectedLogId = null;
-        let selectedMachineId = "";
-        let currentTemuan = "";
+        const signaturePad = new SignaturePad(document.getElementById('sig-canvas'), {penColor:'black'});
+        let selectedLogId, selectedMachineId, currentTemuan;
 
-        // 1. LOAD LIST
+        // 1. Load Data
         async function loadPmiList() {
-            const listDiv = document.getElementById('pmi-list');
+            const list = document.getElementById('pmi-list');
             const { data, error } = await _sb.from('pmi_log')
                 .select(`id, mesin_id, nama_pelaksana, pmi_result(item_name, status, keterangan)`)
                 .eq('status_verifikasi', 'Pending');
 
-            if (error || !data || data.length === 0) {
-                return listDiv.innerHTML = "<div style='text-align:center; padding:20px; font-weight:800;'>TIDAK ADA LAPORAN PENDING</div>";
-            }
+            if(error || !data.length) return list.innerHTML = "<div style='text-align:center; margin-top:20px;'>Tidak ada laporan pending.</div>";
 
-            listDiv.innerHTML = "";
+            list.innerHTML = "";
             data.forEach(log => {
                 const ngItems = log.pmi_result.filter(r => r.status !== 'OK');
                 const isNG = ngItems.length > 0;
                 
-                const card = document.createElement('div');
-                card.className = 'card-pmi';
-                card.innerHTML = `
+                const div = document.createElement('div');
+                div.className = 'card-pmi';
+                div.innerHTML = `
                     <div class="card-header">
                         <span class="machine-id">${log.mesin_id}</span>
                         <span class="user-name">${log.nama_pelaksana}</span>
                     </div>
-                    <div class="status-box">
-                        ${isNG 
-                            ? `<i class="fa-solid fa-triangle-exclamation icon-status"></i> <span>ADA ${ngItems.length} ITEM NG</span>` 
-                            : `<i class="fa-solid fa-check icon-status"></i> <span>KONDISI OK</span>`}
-                    </div>
+                    <span class="status-badge ${isNG ? 'bg-ng' : 'bg-ok'}">
+                        ${isNG ? `⚠️ ADA ${ngItems.length} NG` : '✅ AMAN (OK)'}
+                    </span>
                 `;
-                
-                card.onclick = () => {
-                    selectedLogId = log.id;
-                    selectedMachineId = log.mesin_id;
-                    
-                    if(isNG) {
-                        currentTemuan = `<span class="temuan-title">DAFTAR NG:</span><ul style="padding-left:15px; margin:5px 0;">` + 
-                        ngItems.map(i => `<li><b>${i.item_name}</b>: ${i.keterangan}</li>`).join("") + `</ul>`;
-                    } else {
-                        currentTemuan = "✅ SEMUA ITEM OK (KONDISI NORMAL).";
-                    }
-
-                    document.getElementById('target-id').innerText = log.mesin_id;
-                    document.getElementById('scanner-view').style.display = 'flex';
-                    startScanner();
-                };
-                listDiv.appendChild(card);
+                div.onclick = () => openScanner(log, ngItems);
+                list.appendChild(div);
             });
         }
 
-        // 2. SCANNER LOGIC
-        function startScanner() {
-            const config = { fps: 20, qrbox: { width: 250, height: 250 } };
-            html5QrCode.start({ facingMode: "environment" }, config,
-                async (decodedText) => {
-                    const scanned = decodedText.toUpperCase();
-                    // Validasi: Scan harus mengandung ID Mesin yang dipilih
-                    if (scanned.includes(selectedMachineId.toUpperCase()) || selectedMachineId.toUpperCase().includes(scanned)) {
-                        await html5QrCode.stop();
-                        openApprovalForm();
-                    } else {
-                        alert("❌ QR SALAH! HARAP SCAN MESIN: " + selectedMachineId);
-                    }
-                }
-            ).catch(err => console.log(err));
-        }
-
-        function openApprovalForm() {
-            document.getElementById('scanner-view').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'none';
-            document.getElementById('approval-view').style.display = 'block';
+        // 2. Scanner Logic
+        function openScanner(log, ngItems) {
+            selectedLogId = log.id;
+            selectedMachineId = log.mesin_id;
             
-            document.getElementById('display-machine').innerText = selectedMachineId;
-            document.getElementById('display-temuan').innerHTML = currentTemuan;
-            resizeCanvas();
+            // Siapkan text temuan
+            if(ngItems.length > 0) {
+                currentTemuan = `<b style='color:red'>TEMUAN NG:</b><ul style='padding-left:15px; margin:5px 0'>` +
+                ngItems.map(i => `<li>${i.item_name}: ${i.keterangan}</li>`).join('') + `</ul>`;
+            } else {
+                currentTemuan = "<b style='color:green'>KONDISI MESIN OK</b><br>Tidak ada kerusakan ditemukan.";
+            }
+
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('scanner-view').style.display = 'flex';
+            
+            // Start Camera
+            const config = { fps: 20, qrbox: { width: 250, height: 250 } };
+            html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess).catch(e => alert(e));
         }
 
-        // 3. SUBMIT VERIFICATION
+        function cancelScan() {
+            html5QrCode.stop().then(() => {
+                document.getElementById('scanner-view').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+            }).catch(e => location.reload());
+        }
+
+        async function onScanSuccess(decodedText) {
+            const scanned = decodedText.toUpperCase();
+            if(scanned.includes(selectedMachineId.toUpperCase())) {
+                await html5QrCode.stop();
+                document.getElementById('scanner-view').style.display = 'none';
+                document.getElementById('approval-view').style.display = 'block';
+                document.getElementById('display-machine').innerText = selectedMachineId;
+                document.getElementById('display-temuan').innerHTML = currentTemuan;
+                resizeCanvas();
+            } else {
+                alert(`QR SALAH! Harap scan mesin: ${selectedMachineId}`);
+            }
+        }
+
+        // 3. Verifikasi
         async function updateVerifikasi() {
             const nama = document.getElementById('nama_koordinator').value.trim();
-            if (!nama) return alert("ISI NAMA KOORDINATOR!");
-            if (signaturePad.isEmpty()) return alert("TANDA TANGAN WAJIB!");
+            if(!nama) return alert("Isi Nama Koordinator!");
+            if(signaturePad.isEmpty()) return alert("Tanda Tangan Wajib!");
 
             const btn = document.getElementById('btnSave');
-            btn.disabled = true; btn.innerText = "MENGIRIM...";
+            btn.innerText = "MENGIRIM..."; btn.disabled = true;
 
             const { error } = await _sb.from('pmi_log').update({
                 status_verifikasi: 'Verified',
@@ -324,21 +335,20 @@
                 verified_at: new Date().toISOString()
             }).eq('id', selectedLogId);
 
-            if (error) { 
-                alert("ERROR: " + error.message); 
-                btn.disabled = false; btn.innerText = "VERIFIKASI SEKARANG";
-            } else { 
-                alert("BERHASIL DIVERIFIKASI!"); 
-                location.reload(); 
+            if(error) {
+                alert(error.message);
+                btn.innerText = "VERIFIKASI"; btn.disabled = false;
+            } else {
+                alert("SUKSES VERIFIKASI!");
+                location.reload();
             }
         }
 
         function resizeCanvas() {
-            const canvas = document.getElementById('sig-canvas');
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext("2d").scale(ratio, ratio);
+            const c = document.getElementById('sig-canvas');
+            const r = Math.max(window.devicePixelRatio || 1, 1);
+            c.width = c.offsetWidth * r; c.height = c.offsetHeight * r;
+            c.getContext("2d").scale(r, r);
         }
 
         window.onload = loadPmiList;
