@@ -15,7 +15,7 @@
             font-family: "Arial Narrow", Arial, sans-serif; 
             font-size: 9pt; 
             margin: 0; padding: 20px; 
-            background: #525659; /* Abu-abu untuk preview layar */
+            background: #525659; 
         }
 
         /* === FILTER (Sembunyi saat Print) === */
@@ -29,7 +29,7 @@
         .paper {
             background: white; width: 210mm; min-height: 297mm; 
             margin: 0 auto; padding: 0; 
-            position: relative; display: none; /* Hidden awal */
+            position: relative; display: none; 
         }
 
         /* === TABLE STYLING === */
@@ -44,7 +44,7 @@
         .kop-title { font-weight: 900; font-size: 14pt; text-align: center; font-family: Arial, sans-serif; }
         .kop-sub { font-weight: 900; font-size: 10pt; text-align: center; }
 
-        /* TABEL KANAN ATAS (Dokumen) */
+        /* TABEL KANAN ATAS */
         .doc-tbl { width: 100%; font-size: 8pt; border: none; }
         .doc-tbl td { border: none; border-bottom: 1px solid #000; padding: 1px 2px; }
         .doc-tbl tr:last-child td { border-bottom: none; }
@@ -57,10 +57,9 @@
         .main-tbl thead th { background: #d9d9d9 !important; height: 20px; font-size: 9pt; border-bottom: 2px solid #000; -webkit-print-color-adjust: exact; }
         .col-no { width: 25px; text-align: center; font-weight: bold; }
         .col-std { width: 25%; font-style: italic; }
-        .col-act { width: 30%; padding: 0 !important; } /* Padding 0 untuk Nested Table */
+        .col-act { width: 30%; padding: 0 !important; } 
         .col-ket { width: 15%; }
 
-        /* Style Baris Kategori */
         .cat-row td { 
             background: #d9d9d9 !important; 
             font-weight: bold; 
@@ -70,25 +69,20 @@
             -webkit-print-color-adjust: exact; 
         }
 
-        /* === CUSTOM ACTUAL CELLS (GRID SYSTEM) === */
-        
-        /* 1. Grid Sederhana (Tie Bar / Breaker) */
+        /* === GRID SYSTEM === */
         .grid-simple { width: 100%; border: none; }
         .grid-simple td { border: none; border-right: 1px solid #000; text-align: center; padding: 2px; }
         .grid-simple td:last-child { border-right: none; }
         .grid-head { background: #eee; font-size: 7pt; font-weight: bold; border-bottom: 1px solid #000 !important; -webkit-print-color-adjust: exact; }
         .grid-val { font-weight: bold; height: 18px; }
 
-        /* 2. Grid Pump (Complex - Valve Idling) */
         .pump-tbl { width: 100%; border: none; font-size: 8pt; }
         .pump-tbl td { border: 1px solid #000; text-align: center; }
-        /* Hilangkan border luar agar menyatu */
         .pump-tbl tr:first-child td { border-top: none; }
         .pump-tbl tr:last-child td { border-bottom: none; }
         .pump-tbl tr td:first-child { border-left: none; }
         .pump-tbl tr td:last-child { border-right: none; }
 
-        /* 3. Grid Heater */
         .heater-tbl { width: 100%; height: 100%; border: none; }
         .heater-tbl td { border-right: 1px solid #000; text-align: center; width: 50%; border-top:none; border-bottom:none; border-left:none; }
         .heater-tbl td:last-child { border-right: none; }
@@ -105,7 +99,6 @@
             body { background: white; padding: 0; }
             .no-print { display: none; }
             .paper { display: block; margin: 0; border: none; }
-            /* Paksa background color tercetak */
             th, .cat-row td, .grid-head, .pump-tbl td[style*="background"] {
                 -webkit-print-color-adjust: exact; 
                 print-color-adjust: exact;
@@ -242,7 +235,7 @@
     async function renderReport(head) {
         document.getElementById('report-view').style.display = 'block';
         
-        // Isi Info Mesin
+        // Info Mesin & TTD (Tidak berubah)
         const m = head.pmi_machines || {};
         document.getElementById('v_mesin').innerText = m.nama_mesin || '-';
         document.getElementById('v_ton').innerText = m.tonage || '-';
@@ -253,7 +246,6 @@
         document.getElementById('v_finish').innerText = (head.finish_jam||'').substring(0,5);
         document.getElementById('v_hm').innerText = head.running_hours;
 
-        // Isi Tanda Tangan
         document.getElementById('nm_1').innerText = head.nama_pelaksana || '........';
         document.getElementById('nm_2').innerText = head.nama_koordinator || '........';
         document.getElementById('nm_3').innerText = head.nama_superintendent || '........';
@@ -286,15 +278,29 @@
             const myFields = fields.filter(f => f.pmi_item_id === item.id);
             let actHtml = '';
 
-            // === FIX: BERSIHKAN ANGKA DI NAMA ITEM (Agar tidak Double) ===
-            // Contoh: "1. Pompa" -> "Pompa"
-            let displayName = item.nama_item.replace(/^[0-9]+[\.\)\s]*\s*/, '');
+            // === LOGIKA PEMISAH NO DAN NAMA ===
+            // 1. Ambil nama asli dari database
+            let rawName = item.nama_item;
+            
+            // 2. Default value (jika tidak ada angka di string)
+            let finalNo = item.urutan; // Fallback ke urutan DB jika regex gagal
+            let finalName = rawName;
 
+            // 3. Cek apakah string dimulai dengan angka (contoh "1. Pompa" atau "10 Ejector")
+            // Regex: ^(\d+)  -> Tangkap angka di awal
+            // [\.\)\s]+      -> Tangkap pemisah (titik, kurung tutup, spasi)
+            // \s* -> Spasi opsional
+            // (.*)           -> Tangkap sisa teks (Nama Item)
+            let match = rawName.match(/^(\d+)[\.\)\s]+\s*(.*)$/);
+            
+            if (match) {
+                finalNo = match[1];  // Angka (misal: "1")
+                finalName = match[2]; // Nama (misal: "Pompa")
+            }
+
+            // === RENDER TABLE ACTUAL (Pump, Heater, etc) ===
             const lowerName = item.nama_item.toLowerCase();
 
-            // === RENDER LOGIC ===
-
-            // 1. KASUS PUMP (Nested Table Rumit)
             if(lowerName.includes('pump 1') || lowerName.includes('pump 2')) {
                 let f50 = myFields.find(f => f.label.includes('50'))?.id;
                 let f100 = myFields.find(f => f.label.includes('100'))?.id;
@@ -308,29 +314,20 @@
 
                 actHtml = `
                 <table class="pump-tbl">
-                    <tr>
-                        <td colspan="4" style="background:#eee; font-weight:bold; font-size:7pt;">Valve Idling Sett:</td>
-                    </tr>
+                    <tr><td colspan="4" style="background:#eee; font-weight:bold; font-size:7pt;">Valve Idling Sett:</td></tr>
                     <tr>
                         <td style="background:#eee; font-weight:bold;">50</td>
                         <td style="background:#eee; font-weight:bold;">100</td>
                         <td style="background:#eee; font-weight:bold;">150</td>
                         <td style="background:#eee; font-weight:bold;">200</td>
                     </tr>
+                    <tr><td colspan="4" style="text-align:left; font-size:7pt; border-bottom:1px solid #000;">Actual Display / Pressure Gauge:</td></tr>
                     <tr>
-                        <td colspan="4" style="text-align:left; font-size:7pt; border-bottom:1px solid #000;">Actual Display / Pressure Gauge:</td>
-                    </tr>
-                    <tr>
-                        <td style="height:20px;">${v50}</td>
-                        <td>${v100}</td>
-                        <td>${v150}</td>
-                        <td>${v200}</td>
+                        <td style="height:20px;">${v50}</td><td>${v100}</td><td>${v150}</td><td>${v200}</td>
                     </tr>
                 </table>`;
             }
-            // 2. KASUS HEATER (Zone 1 - Nozzle)
             else if(lowerName.includes('heater zone') || lowerName.includes('zone nozzle') || lowerName.includes('zone 1')) {
-                // Asumsi: Field 1 = Display Mesin, Field 2 = Thermo Gun
                 let fDisp = myFields[0];
                 let fThermo = myFields[1];
                 let vDisp = fDisp ? getVal(resMap, item.id, fDisp.id) : '-';
@@ -338,28 +335,18 @@
 
                 actHtml = `
                 <table class="heater-tbl">
-                    <tr>
-                        <td>${vDisp}</td>
-                        <td>${vThermo}</td>
-                    </tr>
+                    <tr><td>${vDisp}</td><td>${vThermo}</td></tr>
                 </table>`;
             }
-            // 3. KASUS GRID SIMPLE (Tie Bar, Breaker, Accumulator)
             else if(myFields.length > 1) {
-                let tdsHead = '';
-                let tdsVal = '';
+                let tdsHead = ''; let tdsVal = '';
                 myFields.forEach(f => {
                     tdsHead += `<td class="grid-head">${f.label}</td>`;
                     let val = getVal(resMap, item.id, f.id);
                     tdsVal += `<td class="grid-val">${val}</td>`;
                 });
-                actHtml = `
-                <table class="grid-simple">
-                    <tr>${tdsHead}</tr>
-                    <tr>${tdsVal}</tr>
-                </table>`;
+                actHtml = `<table class="grid-simple"><tr>${tdsHead}</tr><tr>${tdsVal}</tr></table>`;
             }
-            // 4. STANDAR OK/NG
             else {
                 let f = myFields[0];
                 let val = f ? getVal(resMap, item.id, f.id) : '-';
@@ -367,15 +354,11 @@
                 actHtml = `<div style="padding:4px; text-align:center; font-weight:bold; color:${color}">${val}</div>`;
             }
 
-            // Keterangan
-            let ket = noteMap[item.id] || '';
-
             tbody.innerHTML += `
                 <tr>
-                    <td class="col-no">${item.urutan}</td>
-                    <td>${displayName}</td> <td class="col-std">${item.standard || ''}</td>
+                    <td class="col-no">${finalNo}</td> <td>${finalName}</td> <td class="col-std">${item.standard || ''}</td>
                     <td class="col-act">${actHtml}</td>
-                    <td class="col-ket">${ket}</td>
+                    <td class="col-ket">${noteMap[item.id] || ''}</td>
                 </tr>
             `;
         });
