@@ -7,513 +7,329 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        @page { size: A4 portrait; margin: 5mm; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* === SETUP HALAMAN CETAK (A4) === */
+        @page { size: A4 portrait; margin: 5mm 8mm; }
         
         body { 
-            font-family: Arial, sans-serif;
+            font-family: "Arial Narrow", Arial, sans-serif; /* Font Rapat agar muat */
             background: #525659;
-            padding: 10px;
+            margin: 0; padding: 20px;
+            font-size: 9pt;
         }
-        
-        /* FILTER SECTION */
+
+        /* === FILTER SECTION (HILANG SAAT PRINT) === */
         .filter-section {
-            background: #fff;
-            width: 210mm;
-            margin: 0 auto 20px;
-            padding: 15px;
-            border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            display: flex;
-            gap: 10px;
-            align-items: center;
+            background: #fff; width: 210mm; margin: 0 auto 20px; padding: 15px;
+            border-radius: 4px; display: flex; gap: 10px; align-items: center;
+            font-family: Arial, sans-serif; box-sizing: border-box;
         }
-        
-        select, button {
-            padding: 8px;
-            border: 1px solid #333;
-            font-weight: bold;
-            font-size: 11px;
-            cursor: pointer;
-        }
-        
+        select, button { padding: 5px; border: 1px solid #333; font-weight: bold; font-size: 11px; cursor: pointer; }
         select { flex: 1; }
         .btn-search { background: #333; color: #fff; }
         .btn-print { background: #b91c1c; color: #fff; margin-left: auto; border: none; }
-        
-        /* PAPER CONTAINER */
-        .container {
-            width: 210mm;
-            margin: 0 auto;
-            background: white;
-            transform: scale(0.88);
-            transform-origin: top center;
-            display: none;
-        }
-        
-        .page {
-            width: 210mm;
-            min-height: 297mm;
-            background: white;
-            padding: 5mm 7mm;
+
+        /* === KERTAS A4 === */
+        .paper {
+            background: #fff; width: 210mm; min-height: 297mm; 
+            margin: 0 auto; padding: 5mm; 
+            box-sizing: border-box; display: none;
             box-shadow: 0 0 15px rgba(0,0,0,0.5);
         }
+
+        /* === GLOBAL TABLE STYLE === */
+        table { width: 100%; border-collapse: collapse; border-spacing: 0; }
+        td, th { border: 1px solid #000; padding: 2px 3px; vertical-align: middle; }
         
-        /* HEADER TABLE */
-        .header-table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #000;
-            margin-bottom: 3px;
+        /* === 1. HEADER KOP === */
+        .header-tbl { margin-bottom: 5px; }
+        .logo-img { width: 70px; display: block; margin: 0 auto; }
+        .kop-title { font-weight: 900; font-size: 12pt; text-transform: uppercase; }
+        .kop-sub { font-weight: bold; font-size: 10pt; }
+        
+        /* Tabel Kontrol Dokumen */
+        .doc-ctrl { border: none; font-size: 8pt; width: 100%; }
+        .doc-ctrl td { border: none; border-bottom: 1px solid #000; padding: 1px; }
+        .doc-ctrl tr:last-child td { border-bottom: none; }
+
+        /* === 2. INFO MESIN === */
+        .info-tbl { border: 1px solid #000; margin-bottom: 5px; font-weight: bold; font-size: 8pt; }
+        .info-tbl td { border: none; padding: 2px 5px; }
+        .val { font-weight: normal; margin-left: 5px; text-transform: uppercase; }
+
+        /* === 3. TABEL UTAMA (CHECKLIST) === */
+        .main-tbl { border: 1px solid #000; font-size: 8pt; margin-bottom: 5px; }
+        
+        .main-tbl thead th { 
+            background: #d9d9d9 !important; font-weight: bold; 
+            text-align: center; text-transform: uppercase; height: 18px;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
         }
-        
-        .header-table td {
-            border: 1px solid #000;
-            padding: 3px;
-            vertical-align: middle;
+
+        /* Lebar Kolom */
+        .col-no { width: 25px; text-align: center; }
+        .col-item { }
+        .col-std { width: 25%; font-style: italic; }
+        .col-act { width: 22%; padding: 0 !important; /* PENTING: Padding 0 utk Table Nested */ vertical-align: top; }
+        .col-ket { width: 18%; }
+
+        /* Baris Kategori */
+        .cat-row td { 
+            background: #d9d9d9 !important; font-weight: bold; 
+            text-transform: capitalize; padding-left: 10px;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
         }
+
+        /* === LOGIKA TAMPILAN ACTUAL (MINI TABLE) === */
         
-        .logo-cell {
-            width: 15%;
-            text-align: center;
+        /* A. Jika Single Value (OK/NG) */
+        .single-val { padding: 4px; text-align: center; font-weight: bold; display: block; }
+        .st-ok { color: #000; }
+        .st-ng { color: red; }
+
+        /* B. Jika Multi Value (S1-S4, R-S-T) - MINI TABLE */
+        .sub-tbl { width: 100%; height: 100%; border: none; margin: 0; }
+        .sub-tbl td, .sub-tbl th { border: none; border-right: 1px solid #000; text-align: center; padding: 2px; }
+        .sub-tbl tr td:last-child, .sub-tbl tr th:last-child { border-right: none; }
+        
+        /* Header Kecil (S1, S2, Zone 1...) */
+        .sub-head { 
+            background: #f0f0f0; 
+            font-size: 7pt; font-weight: bold; 
+            border-bottom: 1px solid #000 !important;
+            height: 12px;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
         }
-        
-        .logo-cell img {
-            width: 60px;
-            height: auto;
+        /* Nilai Hasil */
+        .sub-val { 
+            font-weight: bold; font-size: 8pt; height: 16px;
         }
+
+        /* === 4. FOOTER TANDA TANGAN === */
+        .sig-tbl { margin-top: 10px; font-size: 8pt; page-break-inside: avoid; }
+        .sig-tbl td { width: 33.33%; height: 80px; vertical-align: top; position: relative; }
         
-        .title-cell {
-            width: 55%;
-            text-align: center;
-            font-weight: bold;
-            font-size: 9.5px;
-            line-height: 1.3;
-        }
-        
-        .title-main {
-            font-size: 11px;
-            font-weight: bold;
-        }
-        
-        .doc-info-cell {
-            width: 30%;
-            padding: 0;
-        }
-        
-        .doc-info-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 7px;
-        }
-        
-        .doc-info-table td {
-            border: none;
-            border-bottom: 1px solid #000;
-            padding: 1.5px 4px;
-        }
-        
-        .doc-info-table tr:last-child td {
-            border-bottom: none;
-        }
-        
-        /* INFO MESIN TABLE */
-        .info-table {
-            width: 100%;
-            border: 1px solid #000;
-            border-collapse: collapse;
-            margin-bottom: 3px;
-            font-size: 7px;
-            font-weight: bold;
-        }
-        
-        .info-table td {
-            padding: 1px 4px;
-            border: none;
-        }
-        
-        .info-value {
-            font-weight: normal;
-        }
-        
-        /* MAIN CHECKLIST TABLE */
-        .main-table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #000;
-            font-size: 6px;
-            margin-bottom: 5px;
-        }
-        
-        .main-table th,
-        .main-table td {
-            border: 1px solid #000;
-            padding: 1.5px 3px;
-            vertical-align: middle;
-        }
-        
-        .main-table th {
-            background: #d9d9d9;
-            font-weight: bold;
-            text-align: center;
-            font-size: 7px;
-            height: 14px;
-        }
-        
-        .col-no { width: 16px; text-align: center; font-weight: bold; }
-        .col-item { width: 35%; }
-        .col-standard { width: 23%; font-style: italic; }
-        .col-actual { width: 18%; text-align: center; min-height: 14px; }
-        .col-keterangan { width: 19%; }
-        
-        .category-row td {
-            background: #d9d9d9;
-            font-weight: bold;
-            padding: 2px 4px;
-            border-top: 1.5px solid #000;
-            border-bottom: 1.5px solid #000;
-            font-size: 7px;
-        }
-        
-        /* STATUS STYLES */
-        .st-ok { font-weight: 800; color: #000; }
-        .st-ng { font-weight: 800; color: red; }
-        
-        /* GRID CELLS */
-        .grid-container {
-            display: flex;
-            gap: 2px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        
-        .grid-item {
-            border: 1px solid #666;
-            padding: 1px 2px;
-            min-width: 20px;
-            text-align: center;
-            font-size: 6px;
-            min-height: 12px;
-        }
-        
-        .grid-label {
-            font-weight: bold;
-            display: block;
-            background: #e8e8e8;
-            padding: 0.5px;
-            border-bottom: 1px solid #999;
-            margin-bottom: 1px;
-        }
-        
-        /* SUBTABLE DALAM CELL */
-        .sub-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 6px;
-        }
-        
-        .sub-table td {
-            border: none;
-            padding: 0.5px 2px;
-            line-height: 1.1;
-        }
-        
-        /* SIGNATURE TABLE */
-        .signature-table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #000;
-            text-align: center;
-            font-size: 7px;
-            margin-top: 3px;
-        }
-        
-        .signature-table td {
-            border: 1px solid #000;
-            padding: 2px;
-            height: 50px;
-            vertical-align: bottom;
-            position: relative;
-        }
-        
-        .sig-header {
-            background: #d9d9d9;
-            font-weight: bold;
-            height: auto !important;
-            vertical-align: middle !important;
-        }
-        
-        .sig-name {
-            border-top: 1px solid #000;
-            margin: 0 6px;
-            padding-top: 1px;
-            font-weight: bold;
-        }
-        
-        .sig-img {
-            max-height: 40px;
-            max-width: 65%;
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-        
+        .sig-head { font-size: 7pt; margin: 5px; display: block; }
+        .sig-img { position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); max-height: 45px; }
+        .sig-name { position: absolute; bottom: 20px; left: 0; right: 0; text-align: center; font-weight: bold; text-decoration: underline; text-transform: uppercase; }
+        .sig-role { position: absolute; bottom: 5px; left: 0; right: 0; text-align: center; font-weight: bold; font-size: 7pt; }
+
+        /* === PRINT SETUP === */
         @media print {
-            body { background: white; padding: 0; }
             .filter-section { display: none !important; }
-            .container { transform: scale(1); box-shadow: none; }
-            .page { padding: 4mm 6mm; box-shadow: none; }
-            .main-table th, .category-row td, .sig-header {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-                background-color: #d9d9d9 !important;
-            }
-            .grid-label {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-                background-color: #e8e8e8 !important;
-            }
+            body { padding: 0; margin: 0; background: #fff; }
+            .paper { display: block !important; margin: 0; border: none; box-shadow: none; padding: 0; width: 100%; }
         }
     </style>
 </head>
 <body>
 
-    <!-- FILTER SECTION -->
     <div class="filter-section">
         <b>FILTER:</b>
-        <select id="sel-mesin"><option value="">Loading Mesin...</option></select>
+        <select id="sel-mesin"><option>Loading...</option></select>
         <select id="sel-bulan" style="width:100px;">
             <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
             <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
             <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
             <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
         </select>
-        <select id="sel-tahun" style="width:80px;">
-            <option value="2025" selected>2025</option><option value="2026">2026</option>
-        </select>
-        <button class="btn-search" onclick="cariLaporan()"><i class="fa-solid fa-search"></i> CARI LAPORAN</button>
-        <button class="btn-print" onclick="window.print()"><i class="fa-solid fa-print"></i> CETAK PDF</button>
+        <select id="sel-tahun" style="width:80px;"><option value="2025">2025</option><option value="2026">2026</option></select>
+        <button class="btn-search" onclick="cariLaporan()">CARI</button>
+        <button class="btn-print" onclick="window.print()">PRINT PDF</button>
     </div>
 
-    <!-- PAPER CONTAINER -->
-    <div class="container" id="report-view">
-        <div class="page">
-            
-            <!-- HEADER -->
-            <table class="header-table">
-                <tr>
-                    <td class="logo-cell">
-                        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="Logo">
-                    </td>
-                    <td class="title-cell">
-                        PT. AMARILYS KARISMA GEMILANG<br>
-                        <span class="title-main">FORM PREVENTIF MESIN INJECTION<br>(CLAMPING UNIT)</span>
-                    </td>
-                    <td class="doc-info-cell">
-                        <table class="doc-info-table">
-                            <tr><td width="75">No. Dokumen</td><td>: AF.SP 05.07.Rev-00</td></tr>
-                            <tr><td>Tanggal Terbit</td><td>: 02 Agustus 2024</td></tr>
-                            <tr><td>Halaman</td><td>: 1/1</td></tr>
-                            <tr><td>Tanggal Revisi</td><td>: -</td></tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
-            
-            <!-- INFO MESIN -->
-            <table class="info-table">
-                <tr>
-                    <td width="12%">MERK MESIN</td><td width="38%">: <span class="info-value" id="v_mesin">-</span></td>
-                    <td width="15%">TARGET SELESAI</td><td width="35%">: <span class="info-value" id="v_target">-</span></td>
-                </tr>
-                <tr>
-                    <td>TONAGE</td><td>: <span class="info-value" id="v_ton">-</span></td>
-                    <td>START JAM</td><td>: <span class="info-value" id="v_start">-</span></td>
-                </tr>
-                <tr>
-                    <td>TANGGAL</td><td>: <span class="info-value" id="v_tgl">-</span></td>
-                    <td>FINISH JAM</td><td>: <span class="info-value" id="v_finish">-</span></td>
-                </tr>
-                <tr>
-                    <td>TAHUN</td><td>: <span class="info-value" id="v_thn">-</span></td>
-                    <td>RUNNING HOURS</td><td>: <span class="info-value" id="v_hm">-</span></td>
-                </tr>
-            </table>
-            
-            <!-- MAIN TABLE -->
-            <table class="main-table">
-                <thead>
-                    <tr>
-                        <th class="col-no">NO</th>
-                        <th class="col-item">ITEM</th>
-                        <th class="col-standard">STANDARD</th>
-                        <th class="col-actual">ACTUAL</th>
-                        <th class="col-keterangan">KETERANGAN</th>
-                    </tr>
-                </thead>
-                <tbody id="tbl-body">
-                    <!-- Data akan diisi oleh JavaScript -->
-                </tbody>
-            </table>
-            
-            <!-- SIGNATURE TABLE -->
-            <table class="signature-table">
-                <tr>
-                    <td class="sig-header">DIKERJAKAN (TEKNISI)</td>
-                    <td class="sig-header">DIPERIKSA (KOORDINATOR)</td>
-                    <td class="sig-header">DISETUJUI (SUPERINTENDENT)</td>
-                </tr>
-                <tr>
-                    <td>
-                        <div id="sig_1"></div>
-                        <span class="sig-name" id="nm_1">.................</span>
-                    </td>
-                    <td>
-                        <div id="sig_2"></div>
-                        <span class="sig-name" id="nm_2">.................</span>
-                    </td>
-                    <td>
-                        <div id="sig_3"></div>
-                        <span class="sig-name" id="nm_3">.................</span>
-                    </td>
-                </tr>
-            </table>
+    <div class="paper" id="report-view">
+        
+        <table class="header-tbl">
+            <tr>
+                <td width="15%"><img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img"></td>
+                <td width="55%" style="text-align: center;">
+                    <div style="font-weight: bold;">PT. AMARILYS KARISMA GEMILANG</div>
+                    <div class="kop-title">FORM PREVENTIF MESIN INJECTION</div>
+                    <div class="kop-sub">(CLAMPING UNIT)</div>
+                </td>
+                <td width="30%" style="padding:0;">
+                    <table class="doc-ctrl">
+                        <tr><td width="70">No. Dokumen</td><td>: AF.SP 05.07.Rev-00</td></tr>
+                        <tr><td>Tanggal Terbit</td><td>: 02 Agustus 2024</td></tr>
+                        <tr><td>Halaman</td><td>: 1/1</td></tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
 
-        </div>
+        <table class="info-tbl" style="border:none; border-bottom:1px solid #000;">
+            <tr>
+                <td width="15%">MERK MESIN</td><td>: <span class="val" id="v_mesin">-</span></td>
+                <td width="15%">TARGET SELESAI</td><td>: <span class="val" id="v_target">-</span></td>
+            </tr>
+            <tr>
+                <td>TONAGE</td><td>: <span class="val" id="v_ton">-</span></td>
+                <td>START JAM</td><td>: <span class="val" id="v_start">-</span></td>
+            </tr>
+            <tr>
+                <td>TANGGAL</td><td>: <span class="val" id="v_tgl">-</span></td>
+                <td>FINISH JAM</td><td>: <span class="val" id="v_finish">-</span></td>
+            </tr>
+            <tr>
+                <td>TAHUN</td><td>: <span class="val" id="v_thn">-</span></td>
+                <td>RUNNING HOURS</td><td>: <span class="val" id="v_hm">-</span></td>
+            </tr>
+        </table>
+
+        <table class="main-tbl">
+            <thead>
+                <tr>
+                    <th class="col-no">NO</th>
+                    <th class="col-item">ITEM PENGECEKAN</th>
+                    <th class="col-std">STANDARD</th>
+                    <th class="col-act">ACTUAL</th>
+                    <th class="col-ket">KETERANGAN</th>
+                </tr>
+            </thead>
+            <tbody id="tbl-body">
+                </tbody>
+        </table>
+
+        <table class="sig-tbl">
+            <tr>
+                <td>
+                    <span class="sig-head">DIKERJAKAN :</span>
+                    <div id="sig_1"></div>
+                    <div class="sig-name" id="nm_1">...</div>
+                    <div class="sig-role">OPRT. MEKANIK</div>
+                </td>
+                <td>
+                    <span class="sig-head">DIPERIKSA :</span>
+                    <div id="sig_2"></div>
+                    <div class="sig-name" id="nm_2">...</div>
+                    <div class="sig-role">SPV. MEKANIK</div>
+                </td>
+                <td>
+                    <span class="sig-head">MENGETAHUI :</span>
+                    <div id="sig_3"></div>
+                    <div class="sig-name" id="nm_3">...</div>
+                    <div class="sig-role">SPTD. MEKANIK</div>
+                </td>
+            </tr>
+        </table>
     </div>
 
     <script>
-        // CONFIG DB
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-        // 1. LOAD DATA MESIN (DROPDOWN)
         window.onload = async () => {
             const { data } = await _sb.from('pmi_machines').select('id, nama_mesin').order('nama_mesin');
             const sel = document.getElementById('sel-mesin');
             sel.innerHTML = '<option value="">-- PILIH MESIN --</option>';
-            if(data) data.forEach(m => {
-                let opt = document.createElement('option');
-                opt.value = m.id;
-                opt.innerText = m.nama_mesin;
-                sel.appendChild(opt);
-            });
+            if(data) data.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.nama_mesin}</option>`);
         };
 
-        // 2. CARI LAPORAN
         async function cariLaporan() {
             const mid = document.getElementById('sel-mesin').value;
             const bln = document.getElementById('sel-bulan').value;
             const thn = document.getElementById('sel-tahun').value;
-
-            if(!mid) return alert("Pilih Mesin dulu!");
-
-            // Cari Header Terakhir
-            const { data: headers, error } = await _sb.from('pmi_header')
+            
+            if(!mid) return alert("Pilih Mesin!");
+            
+            const { data: headers } = await _sb.from('pmi_header')
                 .select('*, pmi_machines(nama_mesin, tonage)')
-                .eq('machine_id', mid)
-                .eq('bulan', bln)
-                .eq('tahun', thn)
-                .order('created_at', {ascending:false})
-                .limit(1);
+                .eq('machine_id', mid).eq('bulan', bln).eq('tahun', thn)
+                .order('created_at', {ascending:false}).limit(1);
 
-            if(error || !headers || headers.length === 0) {
-                alert("Data Laporan TIDAK DITEMUKAN pada periode ini.");
+            if(!headers || headers.length === 0) {
+                alert("Laporan tidak ditemukan.");
                 document.getElementById('report-view').style.display = 'none';
                 return;
             }
-
             renderReport(headers[0]);
         }
 
-        // 3. RENDER DATA KE HTML
         async function renderReport(head) {
             document.getElementById('report-view').style.display = 'block';
-
-            // A. HEADER INFO
+            
+            // Header Info
             const m = head.pmi_machines || {};
             document.getElementById('v_mesin').innerText = m.nama_mesin || '-';
             document.getElementById('v_ton').innerText = m.tonage || '-';
             document.getElementById('v_tgl').innerText = head.tanggal;
             document.getElementById('v_thn').innerText = head.tahun;
-            document.getElementById('v_target').innerText = (head.target_selesai || '').substring(0,5);
-            document.getElementById('v_start').innerText = (head.start_jam || '').substring(0,5);
-            document.getElementById('v_finish').innerText = (head.finish_jam || '').substring(0,5);
+            document.getElementById('v_target').innerText = (head.target_selesai||'').substring(0,5);
+            document.getElementById('v_start').innerText = (head.start_jam||'').substring(0,5);
+            document.getElementById('v_finish').innerText = (head.finish_jam||'').substring(0,5);
             document.getElementById('v_hm').innerText = head.running_hours;
 
-            // B. TANDA TANGAN
-            document.getElementById('nm_1').innerText = head.nama_pelaksana || '........';
-            document.getElementById('nm_2').innerText = head.nama_koordinator || '........';
-            document.getElementById('nm_3').innerText = head.nama_superintendent || '........';
-
+            // Signature
+            document.getElementById('nm_1').innerText = head.nama_pelaksana || '.................';
+            document.getElementById('nm_2').innerText = head.nama_koordinator || '.................';
+            document.getElementById('nm_3').innerText = head.nama_superintendent || '.................';
             if(head.signature_pelaksana) document.getElementById('sig_1').innerHTML = `<img src="${head.signature_pelaksana}" class="sig-img">`;
             if(head.signature_koordinator) document.getElementById('sig_2').innerHTML = `<img src="${head.signature_koordinator}" class="sig-img">`;
             if(head.signature_superintendent) document.getElementById('sig_3').innerHTML = `<img src="${head.signature_superintendent}" class="sig-img">`;
 
-            // C. FETCH DETAILS
+            // Data Items
             const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
             const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
             const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', head.id);
 
-            // Mapping Result
-            let resMap = {};
-            let noteMap = {};
-            if(results) {
-                results.forEach(r => {
-                    resMap[`${r.pmi_item_id}_${r.pmi_item_field_id}`] = r;
-                    if(r.keterangan) noteMap[r.pmi_item_id] = r.keterangan;
-                });
-            }
+            let resMap = {}, noteMap = {};
+            if(results) results.forEach(r => {
+                resMap[`${r.pmi_item_id}_${r.pmi_item_field_id}`] = r;
+                if(r.keterangan) noteMap[r.pmi_item_id] = r.keterangan;
+            });
 
-            // D. RENDER TABLE
             const tbody = document.getElementById('tbl-body');
             tbody.innerHTML = '';
-            let lastCat = '';
-            let no = 1;
+            let lastCat = '', no = 1;
 
             if(items) {
                 items.forEach(item => {
                     if(item.kategori !== lastCat) {
                         lastCat = item.kategori;
-                        tbody.innerHTML += `<tr class="category-row"><td colspan="5">${lastCat}</td></tr>`;
+                        tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${lastCat}</td></tr>`;
                     }
 
                     const myFields = fields.filter(f => f.pmi_item_id === item.id);
-                    
-                    // Logic Tampilan Actual (Single vs Multi)
                     let actHtml = '';
-                    
+
+                    // === LOGIKA RENDER ACTUAL ===
                     if(myFields.length === 1 && myFields[0].tipe_input === 'radio_ok_ng') {
-                        // Single OK/NG
+                        // 1. Tampilan Single OK/NG
                         let fid = myFields[0].id;
                         let r = resMap[`${item.id}_${fid}`];
                         let st = r ? r.status : '-';
                         let cls = st === 'OK' ? 'st-ok' : (st === 'NG' ? 'st-ng' : '');
-                        actHtml = `<div class="${cls}">${st}</div>`;
+                        actHtml = `<span class="single-val ${cls}">${st}</span>`;
                     } else {
-                        // Multi Value (Grid S1-S4, Pump, dll)
-                        actHtml = `<div class="grid-container">`;
+                        // 2. Tampilan MINI TABLE (Header diatas, Value dibawah)
+                        // Cocok utk: S1-S4, R-S-T, Zone 1-5, Pump 1-2
+                        
+                        let headerRow = '';
+                        let valRow = '';
+                        
                         myFields.forEach(f => {
                             let r = resMap[`${item.id}_${f.id}`];
                             let val = r ? (r.nilai_aktual || r.status || '-') : '-';
-                            let lbl = f.label ? `<span class="grid-label">${f.label}</span>` : '';
-                            actHtml += `<div class="grid-item">${lbl}${val}</div>`;
+                            // Gunakan label field (misal "S1", "R", "Zone 1") sebagai header
+                            headerRow += `<th class="sub-head">${f.label || ''}</th>`;
+                            valRow += `<td class="sub-val">${val}</td>`;
                         });
-                        actHtml += `</div>`;
-                    }
 
-                    // Keterangan
-                    let ket = noteMap[item.id] || '';
+                        actHtml = `
+                        <table class="sub-tbl">
+                            <thead><tr>${headerRow}</tr></thead>
+                            <tbody><tr>${valRow}</tr></tbody>
+                        </table>`;
+                    }
 
                     tbody.innerHTML += `
                         <tr>
                             <td class="col-no">${no++}</td>
                             <td class="col-item">${item.nama_item}</td>
-                            <td class="col-standard">${item.standard || ''}</td>
-                            <td class="col-actual">${actHtml}</td>
-                            <td class="col-keterangan">${ket}</td>
+                            <td class="col-std">${item.standard || ''}</td>
+                            <td class="col-act">${actHtml}</td>
+                            <td class="col-ket">${noteMap[item.id] || ''}</td>
                         </tr>`;
                 });
             }
