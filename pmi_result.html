@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cetak Form Preventif - Presisi PDF</title>
+    <title>Cetak Form Preventif - Final Fix</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
@@ -235,7 +235,7 @@
     async function renderReport(head) {
         document.getElementById('report-view').style.display = 'block';
         
-        // Info Mesin & TTD (Tidak berubah)
+        // Info Mesin & TTD
         const m = head.pmi_machines || {};
         document.getElementById('v_mesin').innerText = m.nama_mesin || '-';
         document.getElementById('v_ton').innerText = m.tonage || '-';
@@ -278,27 +278,35 @@
             const myFields = fields.filter(f => f.pmi_item_id === item.id);
             let actHtml = '';
 
-            // === LOGIKA PEMISAH NO DAN NAMA ===
-            // 1. Ambil nama asli dari database
-            let rawName = item.nama_item;
+            // === LOGIKA BARU PEMISAH NO DAN NAMA (Regex Diperbarui) ===
             
-            // 2. Default value (jika tidak ada angka di string)
-            let finalNo = item.urutan; // Fallback ke urutan DB jika regex gagal
+            let rawName = item.nama_item;
+            let finalNo = item.urutan; // Fallback awal
             let finalName = rawName;
 
-            // 3. Cek apakah string dimulai dengan angka (contoh "1. Pompa" atau "10 Ejector")
-            // Regex: ^(\d+)  -> Tangkap angka di awal
-            // [\.\)\s]+      -> Tangkap pemisah (titik, kurung tutup, spasi)
-            // \s* -> Spasi opsional
-            // (.*)           -> Tangkap sisa teks (Nama Item)
-            let match = rawName.match(/^(\d+)[\.\)\s]+\s*(.*)$/);
-            
-            if (match) {
-                finalNo = match[1];  // Angka (misal: "1")
-                finalName = match[2]; // Nama (misal: "Pompa")
+            // Regex 1: Cek Format Sub-Item (Contoh: "5a. Heater")
+            // Deteksi: Angka + Huruf + Titik/Spasi
+            let matchSub = rawName.match(/^(\d+)([a-z])[\.\)\s]+\s*(.*)$/i);
+
+            // Regex 2: Cek Format Biasa (Contoh: "1. Pompa")
+            // Deteksi: Angka + Titik/Spasi
+            let matchGeneral = rawName.match(/^(\d+)[\.\)\s]+\s*(.*)$/);
+
+            if (matchSub) {
+                // KASUS KHUSUS "5a. Heater"
+                // matchSub[1] = "5" (Kita buang)
+                // matchSub[2] = "a" (Kita ambil jadi NO)
+                // matchSub[3] = "Heater..." (Kita ambil jadi NAMA)
+                finalNo = matchSub[2] + "."; 
+                finalName = matchSub[3];
+            } 
+            else if (matchGeneral) {
+                // KASUS BIASA "1. Pompa"
+                finalNo = matchGeneral[1];
+                finalName = matchGeneral[2];
             }
 
-            // === RENDER TABLE ACTUAL (Pump, Heater, etc) ===
+            // === RENDER TABLE ACTUAL ===
             const lowerName = item.nama_item.toLowerCase();
 
             if(lowerName.includes('pump 1') || lowerName.includes('pump 2')) {
@@ -354,11 +362,15 @@
                 actHtml = `<div style="padding:4px; text-align:center; font-weight:bold; color:${color}">${val}</div>`;
             }
 
+            let ket = noteMap[item.id] || '';
+
             tbody.innerHTML += `
                 <tr>
-                    <td class="col-no">${finalNo}</td> <td>${finalName}</td> <td class="col-std">${item.standard || ''}</td>
+                    <td class="col-no">${finalNo}</td>
+                    <td>${finalName}</td>
+                    <td class="col-std">${item.standard || ''}</td>
                     <td class="col-act">${actHtml}</td>
-                    <td class="col-ket">${noteMap[item.id] || ''}</td>
+                    <td class="col-ket">${ket}</td>
                 </tr>
             `;
         });
