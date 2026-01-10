@@ -22,10 +22,10 @@
         .app-header { padding: 15px; border-bottom: var(--border); text-align: center; background: var(--white); z-index: 10; font-weight: 900; letter-spacing: 1px; font-size: 14px; }
         
         /* CONTENT AREA */
-        .content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 80px; }
+        .content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 90px; }
 
         /* CARDS */
-        .card { border: var(--border); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 4px 4px 0 #111; display: flex; justify-content: space-between; align-items: center; transition: 0.1s; }
+        .card { border: var(--border); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 4px 4px 0 #111; display: flex; justify-content: space-between; align-items: center; transition: 0.1s; cursor: pointer; }
         .card:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #111; }
         .card h3 { margin: 0 0 5px 0; font-size: 15px; font-weight: 800; }
         .card p { margin: 0; font-size: 12px; color: #444; }
@@ -51,7 +51,7 @@
         .item-title { font-weight: 700; font-size: 13px; display: block; }
         .item-std { font-size: 10px; color: #666; font-style: italic; margin-bottom: 6px; display: block; }
 
-        /* GRID INPUTS (S1-S4, Pump, dll) */
+        /* GRID INPUTS */
         .grid-res { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 6px; align-items: end; }
         .res-box { text-align: center; }
         .res-label { font-size: 9px; font-weight: 700; background: #eee; padding: 2px; border-radius: 3px; display: block; margin-bottom: 2px; }
@@ -66,11 +66,21 @@
         .form-label { font-size: 10px; font-weight: 700; color: #aaa; display: block; margin-bottom: 5px; margin-top: 10px; }
         .form-input { width: 100%; padding: 10px; background: #222; border: 1px solid #444; color: #fff; border-radius: 6px; }
         .btn-main { width: 100%; padding: 15px; background: #fff; color: #000; font-weight: 900; border: none; border-radius: 8px; margin-top: 20px; cursor: pointer; text-transform: uppercase; }
-        .btn-sec { width: 100%; padding: 12px; background: #fff; border: 2px solid #111; font-weight: 700; border-radius: 8px; margin-top: 10px; }
+        .btn-sec { width: 100%; padding: 12px; background: #fff; border: 2px solid #111; font-weight: 700; border-radius: 8px; margin-top: 10px; cursor: pointer; }
 
-        /* NAV */
-        .navbar { position: fixed; bottom: 0; width: 100%; height: 70px; background: #fff; border-top: var(--border); display: flex; justify-content: space-around; align-items: center; z-index: 20; }
-        .nav-btn { font-size: 20px; background: none; border: none; cursor: pointer; padding: 10px; }
+        /* NAVIGATION BAR */
+        .navbar { 
+            position: fixed; bottom: 0; width: 100%; height: 70px; 
+            background: #fff; border-top: var(--border); 
+            display: flex; justify-content: space-around; align-items: center; 
+            z-index: 999; 
+        }
+        .nav-link { 
+            text-decoration: none; color: var(--black); font-size: 24px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            width: 100%; height: 100%;
+        }
+        .nav-link.active { background-color: #eee; }
     </style>
 </head>
 <body>
@@ -125,20 +135,21 @@
     </div>
 
     <div class="navbar">
-        <button class="nav-btn" onclick="goHome()"><i class="fa-solid fa-house"></i></button>
-        <button class="nav-btn"><i class="fa-solid fa-list-check"></i></button>
-        <button class="nav-btn"><i class="fa-solid fa-user"></i></button>
+        <a href="index.html" class="nav-link"><i class="fa-solid fa-house"></i></a>
+        <a href="menu_utama.html" class="nav-link"><i class="fa-solid fa-bars"></i></a>
+        <a href="download_data.html" class="nav-link"><i class="fa-solid fa-download"></i></a>
+        <a href="informasi_akun.html" class="nav-link"><i class="fa-solid fa-circle-user"></i></a>
     </div>
 
     <script>
-        // === KONFIGURASI SUPABASE ===
+        // === CONFIG SUPABASE ===
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
         let html5QrCode = null;
         let signaturePad = null;
-        let currentReport = null; // Menyimpan data laporan yg sedang dibuka
+        let currentReport = null;
 
         window.onload = () => {
             loadList();
@@ -159,25 +170,21 @@
             document.getElementById(id).classList.remove('hidden');
         }
 
+        // Fungsi Reset View (Kembali ke List Tugas Internal Koordinator)
         function goHome() {
             if(html5QrCode) html5QrCode.stop().catch(()=>{});
             showView('view-list');
             loadList();
         }
 
-        // === 1. LOAD LIST (Read pmi_header join pmi_machines) ===
+        // === 1. LOAD LIST TUGAS ===
         async function loadList() {
             const div = document.getElementById('list-data');
             div.innerHTML = '<div style="text-align:center; margin-top:20px;">Memuat data...</div>';
 
-            // Mengambil Header, relasi Mesin, dan relasi Results (untuk hitung NG)
             const { data, error } = await _sb.from('pmi_header')
-                .select(`
-                    id, tanggal, start_jam, nama_pelaksana,
-                    pmi_machines(nama_mesin, barcode),
-                    pmi_results(status)
-                `)
-                .eq('status_verifikasi', 'Pending') // Hanya yg belum diapprove
+                .select(`id, tanggal, start_jam, nama_pelaksana, pmi_machines(nama_mesin, barcode), pmi_results(status)`)
+                .eq('status_verifikasi', 'Pending')
                 .order('created_at', { ascending: false });
 
             if (error || !data || data.length === 0) {
@@ -187,14 +194,12 @@
 
             div.innerHTML = '';
             data.forEach(row => {
-                // Hitung jumlah NG
                 let ngCount = row.pmi_results ? row.pmi_results.filter(r => r.status === 'NG').length : 0;
                 let badge = ngCount > 0 
                     ? `<span class="status-badge bg-ng">⚠️ ADA ${ngCount} NG</span>` 
                     : `<span class="status-badge bg-ok">✅ KONDISI OK</span>`;
 
-                // Handle jika mesin dihapus tapi header masih ada (Safe Check)
-                let mName = row.pmi_machines ? row.pmi_machines.nama_mesin : 'Mesin Tidak Dikenal';
+                let mName = row.pmi_machines ? row.pmi_machines.nama_mesin : 'Mesin Unknown';
                 let mCode = row.pmi_machines ? row.pmi_machines.barcode : '';
 
                 let el = document.createElement('div');
@@ -227,14 +232,13 @@
                     if (code === targetBarcode) {
                         html5QrCode.stop().then(() => openApproval(id));
                     } else {
-                        alert("QR Code Salah! Anda men-scan mesin yang berbeda.");
+                        alert("QR Code Salah! Mesin tidak sesuai.");
                     }
-                }, 
-                (err) => {}
+                }, (err) => {}
             );
         }
 
-        // === 3. APPROVAL VIEW (ADAPTIVE RENDER) ===
+        // === 3. APPROVAL VIEW (SMART ADAPTER) ===
         async function openApproval(headerId) {
             try {
                 showView('view-approve');
@@ -242,34 +246,27 @@
                 tbody.innerHTML = '<tr><td>Memuat detail...</td></tr>';
                 document.getElementById('header-info').innerHTML = 'Loading...';
                 
-                // Reset Form
                 document.getElementById('nama_koordinator').value = '';
                 document.getElementById('catatan_koordinator').value = '';
                 signaturePad.clear();
 
-                // A. AMBIL DATA LENGKAP
-                // 1. Header
+                // A. GET HEADER
                 const { data: header } = await _sb.from('pmi_header')
                     .select(`*, pmi_machines(nama_mesin)`)
                     .eq('id', headerId).single();
 
-                // 2. Master Items & Fields (Untuk struktur tabel)
-                const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
-                const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
-                
-                // 3. Results (Jawaban Pelaksana)
-                const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', headerId);
-
-                // B. RENDER INFO HEADER
                 document.getElementById('header-info').innerHTML = `
                     <div class="info-row"><span class="info-label">MESIN</span><span class="info-val">${header.pmi_machines?.nama_mesin || '-'}</span></div>
                     <div class="info-row"><span class="info-label">TANGGAL</span><span class="info-val">${header.tanggal}</span></div>
                     <div class="info-row"><span class="info-label">PELAKSANA</span><span class="info-val">${header.nama_pelaksana}</span></div>
-                    <div class="info-row"><span class="info-label">RUN HOURS</span><span class="info-val">${header.running_hours}</span></div>
+                    <div class="info-row"><span class="info-label">HM</span><span class="info-val">${header.running_hours}</span></div>
                 `;
 
-                // C. MAPPING RESULTS
-                // Kita buat Map agar pencarian data cepat: map[itemID_fieldID] = resultData
+                // B. GET ITEMS & RESULTS (Safe Join)
+                const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
+                const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
+                const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', headerId);
+
                 let resMap = {};
                 let noteMap = {};
                 if(results) {
@@ -280,37 +277,31 @@
                     });
                 }
 
-                // D. RENDER TABEL (ADAPTIF)
+                // C. RENDER TABLE
                 tbody.innerHTML = '';
                 let lastCat = '';
 
                 if(items) {
                     items.forEach(item => {
-                        // Header Kategori
                         if(item.kategori !== lastCat) {
                             lastCat = item.kategori;
                             tbody.innerHTML += `<tr class="cat-header"><td colspan="2">${lastCat}</td></tr>`;
                         }
 
-                        // Filter Field milik Item ini
                         const myFields = fields.filter(f => f.pmi_item_id === item.id);
-                        
                         let html = `<tr class="item-row"><td>
                             <span class="item-title">${item.nama_item}</span>
                             <span class="item-std">${item.standard || ''}</span>
                             <div class="grid-res">`;
 
-                        // Loop Fields (S1, S2, OK/NG, dll)
                         if(myFields.length > 0) {
                             myFields.forEach(f => {
                                 let key = `${item.id}_${f.id}`;
-                                let res = resMap[key]; // Ambil jawaban dari Map
-                                
+                                let res = resMap[key]; 
                                 let valDisplay = "-";
                                 let cssClass = "";
 
                                 if(res) {
-                                    // Logic penentuan nilai (Status atau Nilai Aktual)
                                     if(f.tipe_input === 'radio_ok_ng') {
                                         valDisplay = res.status || "-";
                                         if(valDisplay === 'OK') cssClass = 'val-ok';
@@ -327,13 +318,10 @@
                             html += `<div style="color:#999; font-size:10px;">(Tidak ada field)</div>`;
                         }
 
-                        html += `</div>`; // Close Grid
-
-                        // Tampilkan Keterangan jika ada
+                        html += `</div>`; 
                         if(noteMap[item.id]) {
                             html += `<div class="note-box">Catatan: ${noteMap[item.id]}</div>`;
                         }
-
                         html += `</td></tr>`;
                         tbody.innerHTML += html;
                     });
@@ -345,7 +333,7 @@
             }
         }
 
-        // === 4. SUBMIT DATA ===
+        // === 4. SUBMIT APPROVAL ===
         async function submitData() {
             const nama = document.getElementById('nama_koordinator').value.trim();
             const note = document.getElementById('catatan_koordinator').value.trim();
@@ -354,12 +342,11 @@
                 return alert("Mohon lengkapi Nama & Tanda Tangan.");
             }
 
-            if(!confirm("Apakah Anda yakin menyetujui laporan ini?")) return;
+            if(!confirm("Verifikasi laporan ini?")) return;
 
             document.getElementById('btn-submit').innerText = "MENYIMPAN...";
             document.getElementById('btn-submit').disabled = true;
 
-            // Update Header sesuai struktur DB user
             const { error } = await _sb.from('pmi_header').update({
                 nama_koordinator: nama,
                 catatan_koordinator: note,
@@ -369,7 +356,7 @@
             }).eq('id', currentReport.id);
 
             if(error) {
-                alert("Gagal menyimpan: " + error.message);
+                alert("Gagal: " + error.message);
                 document.getElementById('btn-submit').innerText = "SETUJUI & SIMPAN";
                 document.getElementById('btn-submit').disabled = false;
             } else {
