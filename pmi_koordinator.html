@@ -13,7 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     
     <style>
-        /* === GLOBAL THEME (Sama dengan Pelaksana biar seragam) === */
+        /* === GLOBAL THEME === */
         :root { --black: #000000; --white: #ffffff; --border-thick: 3px solid var(--black); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
@@ -41,14 +41,13 @@
         #reader { width: 100%; height: 100%; object-fit: cover; }
         .btn-cancel { width: 100%; padding: 15px; background: var(--white); border: 1px solid var(--black); border-radius: 12px; font-weight: 700; cursor: pointer; margin-top: 10px; }
 
-        /* === REVIEW TABLE STYLE (Gaya Tabel Laporan) === */
+        /* === REVIEW TABLE STYLE === */
         .detail-box { background: #f4f4f5; padding: 15px; border-radius: 8px; border: 1px solid #000; margin-bottom: 20px; font-size: 12px; }
         .detail-row { display: flex; justify-content: space-between; margin-bottom: 6px; border-bottom: 1px dashed #ccc; padding-bottom: 4px; }
         .detail-row:last-child { border: none; margin: 0; padding: 0; }
         .detail-label { font-weight: bold; color: #555; }
         .detail-val { font-weight: 800; }
 
-        /* Tabel Checklist Read-Only */
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
         .cat-row td { background: #eee; padding: 10px; border-left: 5px solid #000; font-weight: 900; font-size: 13px; text-transform: uppercase; }
         td { padding: 15px 5px; border-bottom: 1px solid #e5e5e5; vertical-align: top; }
@@ -65,13 +64,12 @@
             font-weight: 800; font-size: 13px; background: #fff;
         }
         
-        /* Warna Status */
         .status-ok { background-color: #dcfce7 !important; color: #166534; border-color: #166534; }
         .status-ng { background-color: #fee2e2 !important; color: #991b1b; border-color: #991b1b; }
 
         .keterangan-box { 
             font-size: 12px; background: #fffbeb; border: 1px solid #fcd34d; padding: 8px; 
-            border-radius: 6px; font-style: italic; display: none; margin-top: 5px;
+            border-radius: 6px; font-style: italic; margin-top: 5px;
         }
 
         /* APPROVAL FORM */
@@ -112,18 +110,15 @@
     <div id="page-approve" class="page-content hidden">
         <button onclick="goHome()" style="margin-bottom:15px; background:none; border:none; font-weight:bold; cursor:pointer;">&larr; KEMBALI</button>
         
-        <div id="header-details" class="detail-box">
-            </div>
+        <div id="header-details" class="detail-box"></div>
 
         <div class="section-title">HASIL PENGECEKAN PELAKSANA</div>
         <table id="review-table">
-            <tbody id="review-body">
-                </tbody>
+            <tbody id="review-body"></tbody>
         </table>
 
         <div class="approval-section">
             <div class="approval-title">FORM VERIFIKASI</div>
-            
             <label style="font-size:11px; font-weight:bold; color:#aaa;">NAMA KOORDINATOR</label>
             <input type="text" id="inp-nama" class="input-dark" placeholder="Nama Anda...">
             
@@ -149,7 +144,6 @@
     </div>
 
     <script>
-        // === CONFIG ===
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
@@ -190,7 +184,7 @@
             loadPendingList();
         }
 
-        // === 1. LIST TUGAS ===
+        // 1. LIST TUGAS
         async function loadPendingList() {
             const container = document.getElementById('list-container');
             container.innerHTML = '<div style="text-align:center; margin-top:20px;">Memuat data...</div>';
@@ -207,14 +201,13 @@
 
             container.innerHTML = '';
             data.forEach(item => {
-                // Cek ada NG gak
-                let ngCount = item.pmi_results.filter(r => r.status === 'NG').length;
+                let ngCount = item.pmi_results ? item.pmi_results.filter(r => r.status === 'NG').length : 0;
                 let statusBadge = ngCount > 0 ? `<div class="note-ng">⚠️ ADA ${ngCount} TEMUAN NG</div>` : '<div style="color:green; font-size:11px; margin-top:5px;">✅ KONDISI OK</div>';
 
                 const html = `
-                    <div class="report-card" onclick="startScan('${item.id}', '${item.pmi_machines.barcode}', '${item.pmi_machines.nama_mesin}')">
+                    <div class="report-card" onclick="startScan('${item.id}', '${item.pmi_machines?.barcode}', '${item.pmi_machines?.nama_mesin}')">
                         <div class="card-info">
-                            <h3>${item.pmi_machines.nama_mesin}</h3>
+                            <h3>${item.pmi_machines?.nama_mesin || 'Mesin Unknown'}</h3>
                             <div class="card-meta">Pelaksana: <b>${item.nama_pelaksana}</b></div>
                             <div class="card-meta">Tanggal: ${item.tanggal} | Jam: ${item.start_jam || '-'}</div>
                             ${statusBadge}
@@ -225,7 +218,7 @@
             });
         }
 
-        // === 2. SCANNER ===
+        // 2. SCANNER
         function startScan(id, barcode, name) {
             currentHeaderId = id;
             currentBarcode = barcode;
@@ -241,117 +234,131 @@
                     
                     if(code === currentBarcode) {
                         html5QrCode.stop();
-                        openFullReview(); // MASUK KE HALAMAN FULL REVIEW
+                        openFullReview(); 
                     } else {
-                        alert("QR Code Salah! Mesin tidak sesuai.");
+                        alert("QR Code Salah!");
                     }
                 }, 
                 (err) => {}
             );
         }
 
-        // === 3. FULL REVIEW (RENDER FORM PELAKSANA) ===
+        // 3. FULL REVIEW (DENGAN TRY-CATCH AGAR TIDAK BLANK)
         async function openFullReview() {
-            hideAll();
-            document.getElementById('page-approve').classList.remove('hidden');
-            document.getElementById('review-body').innerHTML = '<tr><td>Memuat laporan lengkap...</td></tr>';
-            
-            // Reset Form Approval
-            document.getElementById('inp-nama').value = "";
-            document.getElementById('inp-catatan').value = "";
-            signaturePad.clear();
+            try {
+                hideAll();
+                document.getElementById('page-approve').classList.remove('hidden');
+                document.getElementById('review-body').innerHTML = '<tr><td style="text-align:center">Memuat laporan lengkap...</td></tr>';
+                
+                // Reset Form
+                document.getElementById('inp-nama').value = "";
+                document.getElementById('inp-catatan').value = "";
+                signaturePad.clear();
 
-            // 1. Fetch Header Info
-            const { data: header } = await _sb.from('pmi_header')
-                .select(`*, pmi_machines(nama_mesin)`)
-                .eq('id', currentHeaderId).single();
+                // 1. Fetch Header Info
+                const { data: header, error: hErr } = await _sb.from('pmi_header')
+                    .select(`*, pmi_machines(nama_mesin)`)
+                    .eq('id', currentHeaderId).single();
+                
+                if (hErr || !header) throw new Error("Gagal mengambil data header laporan.");
 
-            // Render Header Box
-            document.getElementById('header-details').innerHTML = `
-                <div class="detail-row"><span class="detail-label">MESIN</span><span class="detail-val">${header.pmi_machines.nama_mesin}</span></div>
-                <div class="detail-row"><span class="detail-label">TANGGAL</span><span class="detail-val">${header.tanggal}</span></div>
-                <div class="detail-row"><span class="detail-label">PELAKSANA</span><span class="detail-val">${header.nama_pelaksana}</span></div>
-                <div class="detail-row"><span class="detail-label">HM / SHIFT</span><span class="detail-val">${header.running_hours} / ${header.start_jam}-${header.finish_jam}</span></div>
-            `;
+                document.getElementById('header-details').innerHTML = `
+                    <div class="detail-row"><span class="detail-label">MESIN</span><span class="detail-val">${header.pmi_machines?.nama_mesin}</span></div>
+                    <div class="detail-row"><span class="detail-label">TANGGAL</span><span class="detail-val">${header.tanggal}</span></div>
+                    <div class="detail-row"><span class="detail-label">PELAKSANA</span><span class="detail-val">${header.nama_pelaksana}</span></div>
+                    <div class="detail-row"><span class="detail-label">HM / SHIFT</span><span class="detail-val">${header.running_hours} / ${header.start_jam}-${header.finish_jam}</span></div>
+                `;
 
-            // 2. Fetch Master Items & Results
-            const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
-            const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
-            const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', currentHeaderId);
+                // 2. Fetch Items & Results
+                const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
+                const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
+                const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', currentHeaderId);
 
-            // Mapping Result supaya gampang diambil
-            // Key: itemID_fieldID -> Value Object
-            let resultMap = {};
-            let ketMap = {}; // Key: itemID -> String
-            
-            results.forEach(r => {
-                let key = `${r.pmi_item_id}_${r.pmi_item_field_id}`;
-                resultMap[key] = r;
-                if(r.keterangan) ketMap[r.pmi_item_id] = r.keterangan;
-            });
-
-            // 3. RENDER TABLE (Logic mirip Pelaksana tapi Read Only)
-            const tbody = document.getElementById('review-body');
-            tbody.innerHTML = "";
-            let lastCat = "";
-
-            items.forEach(item => {
-                if(item.kategori !== lastCat) {
-                    lastCat = item.kategori;
-                    tbody.innerHTML += `<tr class="cat-row"><td colspan="2">${lastCat}</td></tr>`;
+                // Mapping Result
+                let resultMap = {};
+                let ketMap = {};
+                if (results) {
+                    results.forEach(r => {
+                        let key = `${r.pmi_item_id}_${r.pmi_item_field_id}`;
+                        resultMap[key] = r;
+                        if(r.keterangan) ketMap[r.pmi_item_id] = r.keterangan;
+                    });
                 }
 
-                const myFields = fields.filter(f => f.pmi_item_id === item.id);
-                
-                let rowHtml = `<tr><td>
-                    <span class="item-name">${item.nama_item}</span>
-                    <span class="item-std">${item.standard || '-'}</span>
-                    <div class="result-grid">`;
+                // 3. RENDER TABLE
+                const tbody = document.getElementById('review-body');
+                tbody.innerHTML = "";
+                let lastCat = "";
 
-                myFields.forEach(f => {
-                    let key = `${item.id}_${f.id}`;
-                    let res = resultMap[key]; 
-                    
-                    let displayVal = "-";
-                    let classStatus = ""; // class warna
+                if (!items || items.length === 0) {
+                    tbody.innerHTML = '<tr><td>Belum ada item checklist.</td></tr>';
+                    return;
+                }
 
-                    if (res) {
-                        // Jika tipe input radio (OK/NG), nilai ada di status
-                        if (f.tipe_input === 'radio_ok_ng') {
-                            displayVal = res.status || "-";
-                            if(displayVal === 'OK') classStatus = "status-ok";
-                            if(displayVal === 'NG') classStatus = "status-ng";
-                        } else {
-                            // Jika tipe text/number, nilai ada di nilai_aktual
-                            displayVal = res.nilai_aktual || "-";
-                        }
+                items.forEach(item => {
+                    if(item.kategori !== lastCat) {
+                        lastCat = item.kategori;
+                        tbody.innerHTML += `<tr class="cat-row"><td colspan="2">${lastCat}</td></tr>`;
                     }
 
-                    let label = f.label ? `<span class="result-label">${f.label}</span>` : '';
+                    const myFields = fields.filter(f => f.pmi_item_id === item.id);
                     
-                    rowHtml += `
-                        <div class="result-box">
-                            ${label}
-                            <div class="result-value ${classStatus}">${displayVal}</div>
-                        </div>`;
+                    let rowHtml = `<tr><td>
+                        <span class="item-name">${item.nama_item}</span>
+                        <span class="item-std">${item.standard || '-'}</span>
+                        <div class="result-grid">`;
+
+                    if (myFields.length > 0) {
+                        myFields.forEach(f => {
+                            let key = `${item.id}_${f.id}`;
+                            let res = resultMap[key]; 
+                            
+                            let displayVal = "-";
+                            let classStatus = ""; 
+
+                            if (res) {
+                                if (f.tipe_input === 'radio_ok_ng') {
+                                    displayVal = res.status || "-";
+                                    if(displayVal === 'OK') classStatus = "status-ok";
+                                    if(displayVal === 'NG') classStatus = "status-ng";
+                                } else {
+                                    displayVal = res.nilai_aktual || "-";
+                                }
+                            }
+
+                            let label = f.label ? `<span class="result-label">${f.label}</span>` : '';
+                            
+                            rowHtml += `
+                                <div class="result-box">
+                                    ${label}
+                                    <div class="result-value ${classStatus}">${displayVal}</div>
+                                </div>`;
+                        });
+                    } else {
+                         rowHtml += `<div style="font-size:11px; color:#999;">(Tidak ada input)</div>`;
+                    }
+
+                    rowHtml += `</div>`; // End Grid
+
+                    if(ketMap[item.id]) {
+                        rowHtml += `<div class="keterangan-box" style="display:block;">Catatan: ${ketMap[item.id]}</div>`;
+                    }
+
+                    rowHtml += `</td></tr>`;
+                    tbody.innerHTML += rowHtml;
                 });
+                
+                // Resize Signature
+                setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 500);
 
-                rowHtml += `</div>`; // End Grid
-
-                // Tampilkan Keterangan jika ada
-                if(ketMap[item.id]) {
-                    rowHtml += `<div class="keterangan-box" style="display:block;">Catatan: ${ketMap[item.id]}</div>`;
-                }
-
-                rowHtml += `</td></tr>`;
-                tbody.innerHTML += rowHtml;
-            });
-            
-            // Resize Signature canvas after render
-            window.dispatchEvent(new Event('resize'));
+            } catch (err) {
+                alert("Terjadi kesalahan saat memuat laporan: " + err.message);
+                console.error(err);
+                goHome();
+            }
         }
 
-        // === 4. SUBMIT APPROVAL ===
+        // 4. SUBMIT
         async function submitApproval() {
             const nama = document.getElementById('inp-nama').value.trim();
             const catatan = document.getElementById('inp-catatan').value.trim();
