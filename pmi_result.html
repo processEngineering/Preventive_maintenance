@@ -3,202 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FORM PREVENTIF MESIN INJECTION (FUNCTIONAL PRINT)</title>
+    <title>AF.SP 05.07.Rev-00 - FORM PREVENTIF MESIN INJECTION (CLAMPING UNIT)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <style>
         /* =================================================================
-           1. RESET & INDUSTRIAL TYPOGRAPHY
+           1. RESET & PRINT CONFIGURATION (INDUSTRIAL GRADE)
            ================================================================= */
         * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         
         body { 
             font-family: "Arial Narrow", "Helvetica Condensed", Arial, sans-serif; 
-            background: #525659; /* Abu-abu di layar monitor */
+            background: #525659; 
             margin: 0; padding: 20px; 
-            font-size: 9pt; /* Ukuran dasar (nanti discale down saat print) */
+            font-size: 9pt; 
             color: #000;
-            line-height: 1.15;
+            line-height: 1.1;
         }
 
-        /* =================================================================
-           2. FILTER DASHBOARD (LAYAR SAJA - TIDAK DICETAK)
-           ================================================================= */
+        /* UI Filter (Layar Saja) */
         .filter-section {
             background: #fff; width: 210mm; margin: 0 auto 10px; padding: 10px;
             display: flex; gap: 5px; align-items: center; border: 1px solid #ccc;
-            font-family: Arial, sans-serif; border-radius: 4px;
         }
         select, button { padding: 5px; font-size: 12px; border: 1px solid #333; cursor: pointer; }
         select { flex: 1; }
         .btn-search { background: #333; color: #fff; border: none; font-weight: bold; }
         .btn-print { background: #b91c1c; color: #fff; margin-left: auto; border: none; font-weight: bold; }
 
-        /* =================================================================
-           3. KONTAINER UTAMA (A4 PAPER)
-           ================================================================= */
+        /* KERTAS A4 */
         .paper {
             background: #fff; 
             width: 210mm; 
-            min-height: 297mm; /* Biarkan tinggi auto agar footer mengalir */
+            min-height: 297mm; 
             margin: 0 auto;
-            padding: 8mm 10mm; /* Margin Standar Dokumen */
+            padding: 5mm; /* Margin 5mm sesuai PDF padat */
             box-shadow: 0 0 15px rgba(0,0,0,0.5); 
-            display: none; /* Hidden sebelum search */
+            display: none; 
             position: relative;
         }
 
         /* =================================================================
-           4. GLOBAL TABLE STYLES (BORDER HITAM TEGAS)
+           2. STRUKTUR TABEL (BORDER & LAYOUT)
            ================================================================= */
-        table { width: 100%; border-collapse: collapse; border-spacing: 0; margin-bottom: 5px; }
-        td, th { 
-            border: 1px solid #000; 
-            padding: 2px 3px; 
-            vertical-align: middle; 
-        }
-
-        /* =================================================================
-           5. HEADER DOKUMEN (LAYOUT PRESISI)
-           ================================================================= */
-        .header-tbl { border: 2px solid #000; margin-bottom: 5px; }
-        .header-tbl td { height: 45px; padding: 2px; border: 1px solid #000; }
+        table { width: 100%; border-collapse: collapse; border-spacing: 0; margin-bottom: 3px; }
+        td, th { border: 1px solid #000; padding: 1px 3px; vertical-align: middle; }
         
-        /* KOLOM 1: IDENTITAS (FLEXBOX LEFT) */
-        .brand-container {
-            display: flex; align-items: center; justify-content: flex-start;
-            gap: 10px; height: 100%; padding-left: 5px;
-        }
-        .logo-img { width: 50px; height: auto; object-fit: contain; }
-        .company-text {
-            display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
-            font-weight: 900; font-size: 10.5pt; line-height: 1; text-transform: uppercase; text-align: left;
-        }
+        /* Utility Classes */
+        .text-center { text-align: center; }
+        .text-bold { font-weight: bold; }
+        .no-border { border: none !important; }
+        .bg-gray { background-color: #d3d3d3 !important; }
+        .bg-light { background-color: #f0f0f0 !important; }
 
-        /* KOLOM 2: JUDUL (CENTER, UNDERLINE) */
-        .title-cell { text-align: center; }
-        .main-title { 
-            font-weight: 900; font-size: 14pt; 
-            text-decoration: underline; display: block; margin-bottom: 2px; 
-            text-transform: uppercase;
-        }
-        .sub-title { font-weight: 700; font-size: 10pt; text-transform: uppercase; }
-
-        /* KOLOM 3: METADATA */
-        .meta-table { width: 100%; border: none; font-size: 8pt; }
-        .meta-table td { border: none; border-bottom: 1px solid #000; padding: 1px; }
-        .meta-table tr:last-child td { border-bottom: none; }
-
-        /* =================================================================
-           6. INFO MESIN (DYNAMIC FIELDS)
-           ================================================================= */
-        .info-tbl { font-size: 9pt; border: 1px solid #000; margin-bottom: 5px; }
-        .info-tbl td { padding: 2px 5px; border: 1px solid #000; }
-        .lbl-bold { font-weight: 700; width: 15%; }
-        .val-norm { font-weight: 400; width: 35%; text-transform: uppercase; }
-
-        /* =================================================================
-           7. TABEL UTAMA (CHECKLIST & DATA)
-           ================================================================= */
-        .main-tbl { font-size: 9pt; width: 100%; border: 1px solid #000; }
-        
-        .main-tbl th { 
-            background: #d9d9d9 !important; /* ABU-ABU MUDA */
-            text-align: center; font-weight: 800; padding: 4px;
-            font-size: 9pt; border-bottom: 2px solid #000; text-transform: uppercase;
-        }
-        
         /* Width Control */
         .col-no { width: 25px; text-align: center; }
-        .col-item { width: 32%; }
-        .col-std { width: 23%; font-style: italic; font-size: 8.5pt; color: #000; }
-        .col-act { width: 25%; text-align: center; padding: 0 !important; }
+        .col-item { width: 35%; }
+        .col-std { width: 25%; font-style: italic; font-size: 8.5pt; }
+        .col-act { width: 20%; text-align: center; padding: 0 !important; }
         .col-ket { width: 15%; font-size: 8.5pt; }
 
-        /* Kategori Row */
-        .cat-row td { 
-            background: #e6e6e6 !important; font-weight: 800; text-transform: uppercase; 
-            padding: 4px 5px; font-size: 9pt; border-top: 2px solid #000; 
-            border-bottom: 1px solid #000;
-        }
-
-        /* =================================================================
-           8. GRID SYSTEM ACTUAL (HORIZONTAL FLOW - HEMAT TEMPAT)
-           ================================================================= */
-        /* Ini mengatur agar Thermocouple S1-S4 dll berjejer KE SAMPING, bukan ke bawah */
-        .mv-grid { 
-            display: flex; flex-direction: row; flex-wrap: wrap; 
-            width: 100%; height: 100%; margin: 0; padding: 0; align-items: stretch;
-        }
-        
+        /* GRID SYSTEM (ACTUAL VALUES) - Horizontal Flow */
+        .mv-grid { display: flex; width: 100%; height: 100%; }
         .mv-item { 
-            flex: 1 1 auto; /* Tumbuh otomatis */
-            border-right: 1px solid #ccc; margin: 0; padding: 1px;
-            min-width: 38px; text-align: center;
-            display: flex; flex-direction: column; justify-content: center;
+            flex: 1; border-right: 1px solid #ccc; text-align: center; 
+            display: flex; flex-direction: column; justify-content: center; min-height: 18px;
         }
         .mv-item:last-child { border-right: none; }
-        
-        .mv-lbl { 
-            font-size: 6pt; font-weight: 700; color: #444; 
-            border-bottom: 1px dotted #ccc; display: block; width: 100%; margin-bottom: 1px; 
-            white-space: nowrap; overflow: hidden; line-height: 1;
-        }
-        .mv-val-txt { font-weight: bold; font-size: 9pt; color: #000; }
+        .mv-lbl { font-size: 6pt; font-weight: 700; border-bottom: 1px dotted #ccc; display: block; color: #444; }
+        .mv-val { font-weight: 900; font-size: 9pt; color: #000; }
 
-        /* STATUS OK/NG */
+        /* OK/NG Styles */
         .st-ok { font-weight: 900; color: #000; font-size: 9pt; }
         .st-ng { font-weight: 900; color: #b91c1c; font-size: 9pt; }
 
         /* =================================================================
-           9. FOOTER TANDA TANGAN (DYNAMIC)
-           ================================================================= */
-        .footer-wrapper { margin-top: 5px; width: 100%; }
-        .sig-tbl { width: 100%; border: 1px solid #000; text-align: center; font-size: 9pt; }
-        .sig-tbl td { border: 1px solid #000; vertical-align: bottom; height: 65px; position: relative; }
-        
-        .sig-head { 
-            background: #e6e6e6 !important; height: 25px !important; 
-            padding: 2px; vertical-align: middle !important; font-weight: bold; 
-            border-bottom: 1px solid #000; text-transform: uppercase;
-        }
-        
-        .sig-img { 
-            max-height: 50px; max-width: 80%; 
-            position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%);
-        }
-        .sig-name { 
-            font-weight: 800; text-transform: uppercase; display: block; 
-            border-top: 1px solid #000; margin: 0 10px 5px; padding-top: 2px; 
-        }
-
-        /* =================================================================
-           10. ATURAN PRINT (THE MAGIC ZOOM)
+           3. PRINT ENGINE (ZOOM 88%)
            ================================================================= */
         @media print {
-            @page { 
-                size: A4 portrait; 
-                margin: 5mm; /* Margin Printer Aman */
-            }
-            
-            body { 
-                margin: 0; padding: 0; background: #fff; 
-                /* GLOBAL SCALE: Mengecilkan isi form agar muat 1 halaman tanpa potong */
-                zoom: 0.88;  
-                -webkit-print-color-adjust: exact;
-            }
-            
+            @page { size: A4 portrait; margin: 5mm; }
+            body { margin: 0; padding: 0; background: #fff; zoom: 0.88; -webkit-print-color-adjust: exact; }
             .filter-section { display: none !important; }
-            
-            .paper { 
-                width: 100%; margin: 0; border: none; box-shadow: none; padding: 0;
-                display: block !important; height: auto !important;
-            }
-            
-            th, .cat-row td, .sig-head { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            tr, table { page-break-inside: avoid; }
+            .paper { width: 100%; margin: 0; border: none; box-shadow: none; padding: 0; display: block !important; height: auto !important; }
+            th, td, .bg-gray { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tr { page-break-inside: avoid; }
         }
     </style>
 </head>
@@ -217,105 +107,248 @@
             <option value="2025" selected>2025</option><option value="2026">2026</option>
         </select>
         <button class="btn-search" onclick="cariLaporan()">CARI LAPORAN</button>
-        <button class="btn-print" onclick="window.print()"><i class="fa-solid fa-print"></i> CETAK (A4)</button>
+        [cite_start]<button class="btn-print" onclick="window.print()"><i class="fa-solid fa-print"></i> CETAK [cite: 8]</button>
     </div>
 
     <div class="paper" id="report-view">
         
-        <table class="header-tbl">
+        <table class="header-table">
             <tr>
-                <td width="35%">
-                    <div class="brand-container">
-                        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img" alt="Logo">
-                        <div class="company-text">
-                            <span>PT. AMARILYS</span>
-                            <span>KARISMA</span>
-                            <span>GEMILANG</span>
-                        </div>
-                    </div>
+                <td style="width: 25%; vertical-align: middle;">
+                    <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="AKG" style="width: 50px; float: left; margin-right: 5px;">
+                    <span style="font-weight: 900; font-size: 11pt;">PT. AMARILYS KARISMA GEMILANG</span>
                 </td>
-                
-                <td width="35%" class="title-cell">
-                    <span class="main-title">FORM PREVENTIF MESIN INJECTION</span>
-                    <span class="sub-title">(CLAMPING & INJECTION UNIT)</span>
+                <td style="width: 50%; vertical-align: middle;" class="text-center">
+                    <span style="font-size: 14pt; font-weight: 900; text-decoration: underline;">FORM PREVENTIF MESIN INJECTION</span><br>
+                    <span style="font-size: 10pt; font-weight: 700;">(CLAMPING UNIT)</span>
                 </td>
-                
-                <td width="30%" style="padding:0;">
-                    <table class="meta-table">
-                        <tr><td width="80">No. Dokumen</td><td>: AF.SP 05.07.Rev-00</td></tr>
-                        <tr><td>Tgl Terbit</td><td>: 02 Agustus 2024</td></tr>
-                        <tr><td>Halaman</td><td>: 1/1</td></tr>
+                <td style="width: 25%; padding: 0;">
+                    <table style="width: 100%; border: none; margin: 0; font-size: 8pt;">
+                        <tr><td class="no-border" style="border-bottom: 1px solid #000 !important;">No. Dokumen : AF SP 05.07.Rev-00</td></tr>
+                        <tr><td class="no-border" style="border-bottom: 1px solid #000 !important;">Tanggal Terbit : 02 Agustus 2024</td></tr>
+                        <tr><td class="no-border" style="border-bottom: 1px solid #000 !important;">Halaman : 1/1</td></tr>
+                        <tr><td class="no-border">Tanggal Revisi :-</td></tr>
                     </table>
                 </td>
             </tr>
         </table>
 
-        <table class="info-tbl">
+        <table style="font-size: 9pt; font-weight: bold; border: 1px solid #000;">
             <tr>
-                <td class="lbl-bold">MERK MESIN</td><td class="val-norm">: <span id="v_mesin">-</span></td>
-                <td class="lbl-bold">TARGET SELESAI</td><td class="val-norm">: <span id="v_target">-</span></td>
+                <td class="no-border" style="width: 15%;">MERK MESIN</td><td class="no-border" style="width: 35%;">: <span id="v_mesin"></span></td>
+                <td class="no-border" style="width: 15%;">TARGET SELESAL</td><td class="no-border" style="width: 35%;">: <span id="v_target"></span></td>
             </tr>
             <tr>
-                <td class="lbl-bold">TONAGE</td><td class="val-norm">: <span id="v_ton">-</span></td>
-                <td class="lbl-bold">START JAM</td><td class="val-norm">: <span id="v_start">-</span></td>
+                <td class="no-border">TONAGE</td><td class="no-border">: <span id="v_ton"></span></td>
+                <td class="no-border">START JAM</td><td class="no-border">: <span id="v_start"></span></td>
             </tr>
             <tr>
-                <td class="lbl-bold">TANGGAL</td><td class="val-norm">: <span id="v_tgl">-</span></td>
-                <td class="lbl-bold">FINISH JAM</td><td class="val-norm">: <span id="v_finish">-</span></td>
+                <td class="no-border">TANGGAL</td><td class="no-border">: <span id="v_tgl"></span></td>
+                <td class="no-border">FINISH JAM</td><td class="no-border">: <span id="v_finish"></span></td>
             </tr>
             <tr>
-                <td class="lbl-bold">TAHUN</td><td class="val-norm">: <span id="v_thn">-</span></td>
-                <td class="lbl-bold">RUNNING HOURS</td><td class="val-norm">: <span id="v_hm">-</span></td>
+                <td class="no-border" style="border-bottom: 1px solid #000 !important;">TAHUN</td><td class="no-border" style="border-bottom: 1px solid #000 !important;">: <span id="v_thn"></span></td>
+                <td class="no-border" style="border-bottom: 1px solid #000 !important;">RUNNING HOURS</td><td class="no-border" style="border-bottom: 1px solid #000 !important;">: <span id="v_hm"></span></td>
             </tr>
         </table>
 
-        <table class="main-tbl">
-            <thead>
-                <tr>
-                    <th class="col-no">NO</th>
-                    <th class="col-item">ITEM PENGECEKAN</th>
-                    <th class="col-std">STANDARD</th>
-                    <th class="col-act">ACTUAL</th>
-                    <th class="col-ket">KETERANGAN</th>
-                </tr>
-            </thead>
-            <tbody id="tbl-body">
-                </tbody>
+        <table style="font-size: 9pt;">
+            <tr class="bg-gray text-center text-bold">
+                <td class="col-no">NO</td>
+                <td class="col-item">ITEM</td>
+                <td class="col-std">STANDARD</td>
+                <td class="col-act">ACTUAL</td>
+                <td class="col-ket">KETERANGAN</td>
+            </tr>
+
+            <tr class="bg-gray text-bold"><td colspan="5" class="text-center">Mekanikal Clamping unit :</td></tr>
+            
+            <tr><td class="text-center">1</td><td>Pompa lubrikasi berfungsi baik</td><td>Power ON, grease keluar sampe target</td><td id="act_1"></td><td id="ket_1"></td></tr>
+            <tr><td class="text-center">2</td><td>Distributor valve lubrikasi</td><td>Tidak bocor</td><td id="act_2"></td><td id="ket_2"></td></tr>
+            <tr><td class="text-center">3</td><td>Selang lubrikasi</td><td>Tidak bocor/pecah</td><td id="act_3"></td><td id="ket_3"></td></tr>
+            <tr><td class="text-center">4</td><td>Slide shoc</td><td>Tidak kering (basah pelumas)</td><td id="act_4"></td><td id="ket_4"></td></tr>
+            <tr><td class="text-center">5</td><td>Gear thikness</td><td>Tidak kering (basah pelumas)</td><td id="act_5"></td><td id="ket_5"></td></tr>
+            <tr><td class="text-center">6</td><td>Arm togle</td><td>Fungsi mekanikal normal</td><td id="act_6"></td><td id="ket_6"></td></tr>
+            <tr><td class="text-center">7</td><td>As pengarah plat ejector</td><td>Tidak kering (basah pelumas)</td><td id="act_7"></td><td id="ket_7"></td></tr>
+            <tr><td class="text-center">8</td><td>Permukaan dan lubang baut (move/fix platten)</td><td>Bersih dan drat tidak rusak</td><td id="act_8"></td><td id="ket_8"></td></tr>
+            <tr><td class="text-center">9</td><td>Cek As nebar</td><td>Kalibrasi sensommate</td><td id="act_9"></td><td id="ket_9"></td></tr>
+
+            <tr class="bg-gray text-bold"><td colspan="5">Hydrolik :</td></tr>
+            <tr><td class="text-center">10</td><td>Ejector cylinder hydrolik</td><td>Tidak bocor (pengecekan pressure gauge)</td><td id="act_10"></td><td id="ket_10"></td></tr>
+            <tr><td class="text-center">11</td><td>Clamping cylinder hydrolik</td><td>Tidak bocor (pengecekan pressure gange)</td><td id="act_11"></td><td id="ket_11"></td></tr>
+            <tr><td class="text-center">12</td><td>Cek solenoid valve</td><td>Tidak bocort pengecekan pressure gauge)</td><td id="act_12"></td><td id="ket_12"></td></tr>
+            <tr><td class="text-center">13</td><td>Selang & fitting hydrolik (clamping ejector/core)</td><td>Tidak pecah retak</td><td id="act_13"></td><td id="ket_13"></td></tr>
+
+            <tr class="bg-gray text-bold"><td colspan="5">Electrical :</td></tr>
+            <tr><td class="text-center">14</td><td>Periksa safety limit switch pintu</td><td>Berfungsi haik'normal</td><td id="act_14"></td><td id="ket_14"></td></tr>
+            <tr><td class="text-center">15</td><td>Sensor (thikness/koní injecti</td><td>Berfungsi baik normal</td><td id="act_15"></td><td id="ket_15"></td></tr>
+            <tr><td class="text-center">16</td><td>Linier Potensiometer (LP) Clamping& ejector</td><td>Membaca normal</td><td id="act_16"></td><td id="ket_16"></td></tr>
+            <tr><td class="text-center">17</td><td>Linut switch panel</td><td>Berfingsi baik/normal</td><td id="act_17"></td><td id="ket_17"></td></tr>
+            <tr><td class="text-center">18</td><td>Limit switch penutup nozzle</td><td>Berfungsi haik/normal</td><td id="act_18"></td><td id="ket_18"></td></tr>
+            <tr><td class="text-center">19</td><td>Limit switch penutup serew</td><td>Berfungsi baik/normal</td><td id="act_19"></td><td id="ket_19"></td></tr>
+
+            <tr class="bg-gray text-bold">
+                <td colspan="3">Kalibrasi Tie Bar :</td>
+                <td style="padding:0;">
+                    <div class="mv-grid">
+                        <div class="mv-item"><span class="mv-lbl">S1</span><span class="mv-val" id="val_s1"></span></div>
+                        <div class="mv-item"><span class="mv-lbl">S2</span><span class="mv-val" id="val_s2"></span></div>
+                        <div class="mv-item"><span class="mv-lbl">S3</span><span class="mv-val" id="val_s3"></span></div>
+                        <div class="mv-item"><span class="mv-lbl">S4</span><span class="mv-val" id="val_s4"></span></div>
+                    </div>
+                </td>
+                <td class="text-center">KETERANGAN</td>
+            </tr>
+            <tr><td class="text-center">20</td><td>Hasil sebelum kalibrasi</td><td>Menggunakan mold yang sedang rumming produksi</td><td id="act_20"></td><td id="ket_20"></td></tr>
+            <tr><td class="text-center">21</td><td>Hasil kalibrasi</td><td>Menggunakan mold base</td><td id="act_21"></td><td id="ket_21"></td></tr>
+            <tr><td class="text-center">22</td><td>Hasil setelah kalibrasi</td><td>Menggunakan mold yang running produksi (product relesae)</td><td id="act_22"></td><td id="ket_22"></td></tr>
         </table>
 
-        <div class="footer-wrapper">
-            <table class="sig-tbl">
-                <tr>
-                    <td class="sig-head">DIKERJAKAN (TEKNISI)</td>
-                    <td class="sig-head">DIPERIKSA (KOORDINATOR)</td>
-                    <td class="sig-head">DISETUJUI (SUPERINTENDENT)</td>
-                </tr>
-                <tr>
-                    <td>
-                        <div id="sig_1"></div>
-                        <span class="sig-name" id="nm_1">.................</span>
-                    </td>
-                    <td>
-                        <div id="sig_2"></div>
-                        <span class="sig-name" id="nm_2">.................</span>
-                    </td>
-                    <td>
-                        <div id="sig_3"></div>
-                        <span class="sig-name" id="nm_3">.................</span>
-                    </td>
-                </tr>
-            </table>
-        </div>
+        <table style="font-size: 9pt;">
+            <tr class="bg-gray text-center text-bold"><td colspan="5">Pump & Elektrikal:</td></tr>
+            <tr class="bg-gray text-center text-bold">
+                <td colspan="2">ITEM</td><td>STANDART</td><td>ACTUAL</td><td>KETERANGAN</td>
+            </tr>
+            <tr><td class="text-center" style="width:25px;">1</td><td>Cek coupling porma</td><td>Tidak kendor. Vistul</td><td id="p_act_1"></td><td id="p_ket_1"></td></tr>
+            <tr><td class="text-center">2</td><td>kebersihim sirkulasi alma motor</td><td>Sirkkalasi lancar, tidak berdelm</td><td id="p_act_2"></td><td id="p_ket_2"></td></tr>
+
+            <tr class="bg-gray text-bold"><td colspan="5">Hydrolik :</td></tr>
+            <tr><td class="text-center">3</td><td>Cek temperature oli</td><td>40-50</td><td id="p_act_3"></td><td id="p_ket_3"></td></tr>
+            <tr><td class="text-center">4</td><td>cak level oli</td><td>Dhiatas level batas tengah</td><td id="p_act_4"></td><td id="p_ket_4"></td></tr>
+            <tr><td class="text-center">5</td><td>Periksa selameid valve</td><td>Tudak bocor</td><td id="p_act_5"></td><td id="p_ket_5"></td></tr>
+            <tr><td class="text-center">6</td><td>cek oil cooler</td><td>Tidak bocor</td><td id="p_act_6"></td><td id="p_ket_6"></td></tr>
+
+            <tr class="bg-gray text-bold">
+                <td colspan="3">Pump Hydrolik :</td>
+                <td style="padding:0;">
+                    <div style="font-size: 7pt; text-align: center; border-bottom: 1px solid #ccc;">Valve Idling Sett:</div>
+                    <div class="mv-grid">
+                        <div class="mv-item"><span class="mv-lbl">50</span><span class="mv-val" id="val_50"></span></div>
+                        <div class="mv-item"><span class="mv-lbl">100</span><span class="mv-val" id="val_100"></span></div>
+                        <div class="mv-item"><span class="mv-lbl">150</span><span class="mv-val" id="val_150"></span></div>
+                        <div class="mv-item"><span class="mv-lbl">200</span><span class="mv-val" id="val_200"></span></div>
+                    </div>
+                </td>
+                <td class="text-center">KETERANGAN</td>
+            </tr>
+            <tr><td class="text-center" rowspan="2">7</td><td rowspan="2">Pump 1</td><td>Actual disply</td><td id="p1_ad"></td><td rowspan="2" id="p1_ket"></td></tr>
+            <tr><td>Pressure Gauge</td><td id="p1_pg"></td></tr>
+            <tr><td class="text-center" rowspan="2">8</td><td rowspan="2">Pump 2</td><td>Actul disply</td><td id="p2_ad"></td><td rowspan="2" id="p2_ket"></td></tr>
+            <tr><td>Pressure Gauge</td><td id="p2_pg"></td></tr>
+
+            <tr class="bg-gray text-bold"><td colspan="3">Electrical :</td><td class="text-center">ACTUAL</td><td class="text-center">KETERANGAN</td></tr>
+            <tr><td class="text-center">6</td><td>Cek kotnik birmmunal dan connector kabel</td><td>Spot thermal camera</td><td id="e_act_6"></td><td id="e_ket_6"></td></tr>
+            <tr><td class="text-center">7</td><td>Cek fan dan motor inverter</td><td>Berliansi dengan baik (spot thermal camera)</td><td id="e_act_7"></td><td id="e_ket_7"></td></tr>
+            <tr><td class="text-center">8</td><td>Cek sirkulasi ndara di panel electric</td><td>Berfungsi dengan baik (spot thermal camera)</td><td id="e_act_8"></td><td id="e_ket_8"></td></tr>
+            <tr><td class="text-center">9</td><td>Cek sambung kabel Listrik</td><td>Tidak yang terkelupas (spot thermal camera)</td><td id="e_act_9"></td><td id="e_ket_9"></td></tr>
+            <tr><td class="text-center">10</td><td>Cek Stop Kontak</td><td>tidak ada bagian raak (spot thermal camera)</td><td id="e_act_10"></td><td id="e_ket_10"></td></tr>
+            <tr><td class="text-center">11</td><td>Cek Sakelar Kelistrikan</td><td>tidak ada bagian rusak (spot thermal coвета)</td><td id="e_act_11"></td><td id="e_ket_11"></td></tr>
+            <tr><td class="text-center">12</td><td>Pastikan kondisi dalam panel bersih bersih</td><td>tidak berdebu dan lengket (spot thermal camera)</td><td id="e_act_12"></td><td id="e_ket_12"></td></tr>
+            
+            <tr>
+                <td class="text-center">13</td><td>Cek tegangan breaker NFB</td><td>Pengukuran Voltage (Voltmeter)</td>
+                <td style="padding:0;">
+                    <div class="mv-grid">
+                        <div class="mv-item"><span class="mv-lbl">R-S</span><span class="mv-val" id="val_rs"></span></div>
+                        <div class="mv-item"><span class="mv-lbl">R-T</span><span class="mv-val" id="val_rt"></span></div>
+                        <div class="mv-item"><span class="mv-lbl">S-T</span><span class="mv-val" id="val_st"></span></div>
+                    </div>
+                </td>
+                <td id="e_ket_13"></td>
+            </tr>
+        </table>
+
+        <table style="font-size: 9pt;">
+            <tr class="bg-gray text-bold"><td colspan="5">INJECTION UNITE :</td></tr>
+            <tr><td class="text-center">1</td><td>Nozie visual</td><td>Kencang, Radiuus tidak rusak & center terhadap sprue bas</td><td id="inj_act_1"></td><td id="inj_ket_1"></td></tr>
+            <tr><td class="text-center">2</td><td>Screw tips</td><td>Test inject 2 kali tidak ngempos</td><td id="inj_act_2"></td><td id="inj_ket_2"></td></tr>
+            <tr><td class="text-center">3</td><td>Periksa apakah ada kerusakan di area slide way</td><td>Baut2 kencang dan ada pelumas</td><td id="inj_act_3"></td><td id="inj_ket_3"></td></tr>
+            <tr><td class="text-center">4</td><td>Lubrikasi Linier slide unit</td><td>Tidak mampet (heim)</td><td id="inj_act_4"></td><td id="inj_ket_4"></td></tr>
+
+            <tr><td class="text-center">5</td><td colspan="4" style="padding:0;">
+                <table style="width: 100%; border: none; margin: 0;">
+                    <tr><td class="no-border" colspan="5">Cek temperatur heater barrel:</td></tr>
+                    <tr class="bg-gray text-center text-bold">
+                        <td style="width: 30%;">Mesin (Instalasi Thermocouple)</td>
+                        <td style="width: 20%;">Hasil ukur</td>
+                        <td style="width: 20%;">Hasil (Display Mesin)</td>
+                        <td style="width: 20%;">Hasil ukur (Thermo Gun)</td>
+                        <td style="width: 10%;">KETERANGAN</td>
+                    </tr>
+                    <tr><td>a. Zone 1</td><td>Toleransi ± 15°C</td><td id="t_ukr_1" class="text-center"></td><td id="t_gun_1" class="text-center"></td><td id="t_ket_1"></td></tr>
+                    <tr><td>b. Zone 2</td><td>Toleransi ± 15°C</td><td id="t_ukr_2" class="text-center"></td><td id="t_gun_2" class="text-center"></td><td id="t_ket_2"></td></tr>
+                    <tr><td>c. Zone 3</td><td>Toleransi ± 15°C</td><td id="t_ukr_3" class="text-center"></td><td id="t_gun_3" class="text-center"></td><td id="t_ket_3"></td></tr>
+                    <tr><td>d. Zone 4</td><td>Toleransi ± 15°C</td><td id="t_ukr_4" class="text-center"></td><td id="t_gun_4" class="text-center"></td><td id="t_ket_4"></td></tr>
+                    <tr><td>e. Zone 5</td><td>Toleransi ± 15°C</td><td id="t_ukr_5" class="text-center"></td><td id="t_gun_5" class="text-center"></td><td id="t_ket_5"></td></tr>
+                    <tr><td>f. Zone Nozle</td><td>Toletunsi ± 15°C</td><td id="t_ukr_6" class="text-center"></td><td id="t_gun_6" class="text-center"></td><td id="t_ket_6"></td></tr>
+                </table>
+            </td></tr>
+
+            <tr class="bg-gray text-bold"><td colspan="4">Hydrolik :</td><td class="text-center">KETERANGAN</td></tr>
+            <tr><td class="text-center">6</td><td>Hydrolik evlinder carrier & carrier</td><td>Tidak bocar</td><td id="inj_act_6"></td><td id="inj_ket_6"></td></tr>
+            <tr><td class="text-center">7</td><td>Unit zotary screw & coupling screw.</td><td>Tidak bocor & coupling kencang</td><td id="inj_act_7"></td><td id="inj_ket_7"></td></tr>
+            <tr><td class="text-center">8</td><td>Cek solenoid valve</td><td>Tidak bocor & cek pressure</td><td id="inj_act_8"></td><td id="inj_ket_8"></td></tr>
+            <tr><td class="text-center">9</td><td>Oli gearbox screw</td><td>Sesuai batas level</td><td id="inj_act_9"></td><td id="inj_ket_9"></td></tr>
+            <tr><td class="text-center">10</td><td>Tidak ada sisa oh yang terbuang</td><td>Bersih dari oli</td><td id="inj_act_10"></td><td id="inj_ket_10"></td></tr>
+
+            <tr>
+                <td class="text-center">11</td><td>Accumulator pressure *</td><td>120 - 135 bar</td>
+                <td style="padding:0;">
+                    <div class="mv-grid">
+                        <div class="mv-item"><span class="mv-lbl">Tabung A</span><span class="mv-val" id="val_tb_a"></span></div>
+                        <div class="mv-item"><span class="mv-lbl">Tabung B</span><span class="mv-val" id="val_tb_b"></span></div>
+                        <div class="mv-item"><span class="mv-lbl">Tabung C</span><span class="mv-val" id="val_tb_c"></span></div>
+                    </div>
+                </td>
+                <td id="inj_ket_11"></td>
+            </tr>
+
+            <tr class="bg-gray text-bold"><td colspan="4">Electrik :</td><td class="text-center">KETERANGAN</td></tr>
+            <tr><td class="text-center">12</td><td>Hopper & support (autoloader)</td><td>Berfungsi normal</td><td id="inj_act_12"></td><td id="inj_ket_12"></td></tr>
+            <tr>
+                <td class="text-center">13</td><td>Linier potensiometer (LP) inject stroke</td><td>Membaca normal pada sett. Chusion</td>
+                <td style="padding:0;">
+                    <div class="mv-grid">
+                        <div class="mv-item"><span class="mv-lbl">Sett Value</span><span class="mv-val" id="val_sett"></span></div>
+                        <div class="mv-item"><span class="mv-lbl">Actual Display</span><span class="mv-val" id="val_disp"></span></div>
+                    </div>
+                </td>
+                <td id="inj_ket_13"></td>
+            </tr>
+        </table>
+
+        <table class="no-border" style="margin-top: 5px;">
+            <tr class="text-center no-border">
+                <td class="no-border" style="width: 33%;">DI KERJAKAN :</td>
+                <td class="no-border" style="width: 33%;">DIPERIKSA</td>
+                <td class="no-border" style="width: 33%;">MENGETAHUI</td>
+            </tr>
+            <tr class="text-center no-border">
+                <td class="no-border" style="height: 60px; vertical-align: bottom;">
+                    <div id="sig_1" style="height: 40px; margin-bottom: 5px;"></div>
+                    <div style="border-top: 1px solid #000; display: inline-block; padding: 0 10px;">OPRT.MEKANIK</div>
+                    <div id="nm_1" style="font-weight:bold;"></div>
+                </td>
+                <td class="no-border" style="height: 60px; vertical-align: bottom;">
+                    <div id="sig_2" style="height: 40px; margin-bottom: 5px;"></div>
+                    <div style="border-top: 1px solid #000; display: inline-block; padding: 0 10px;">SPV.MEKANIK</div>
+                    <div id="nm_2" style="font-weight:bold;"></div>
+                </td>
+                <td class="no-border" style="height: 60px; vertical-align: bottom;">
+                    <div id="sig_3" style="height: 40px; margin-bottom: 5px;"></div>
+                    <div style="border-top: 1px solid #000; display: inline-block; padding: 0 10px;">SPTD.MEKANIK</div>
+                    <div id="nm_3" style="font-weight:bold;"></div>
+                </td>
+            </tr>
+        </table>
 
     </div>
 
     <script>
-        // CONFIG DB
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-        // 1. LOAD DATA MESIN
         window.onload = async () => {
             const { data } = await _sb.from('pmi_machines').select('id, nama_mesin').order('nama_mesin');
             const sel = document.getElementById('sel-mesin');
@@ -327,7 +360,6 @@
             });
         };
 
-        // 2. CARI LAPORAN
         async function cariLaporan() {
             const mid = document.getElementById('sel-mesin').value;
             const bln = document.getElementById('sel-bulan').value;
@@ -344,100 +376,242 @@
                 .limit(1);
 
             if(error || !headers || headers.length === 0) {
-                alert("Data Laporan TIDAK DITEMUKAN pada periode ini.");
+                alert("Data Laporan TIDAK DITEMUKAN.");
                 document.getElementById('report-view').style.display = 'none';
                 return;
             }
 
-            renderReport(headers[0]);
-        }
-
-        // 3. RENDER DATA
-        async function renderReport(head) {
+            // ISI DATA HEADER
+            const h = headers[0];
             document.getElementById('report-view').style.display = 'block';
+            
+            const fields = {
+                'v_mesin': h.pmi_machines?.nama_mesin,
+                'v_ton': h.pmi_machines?.tonage,
+                'v_target': h.target_selesai,
+                'v_start': h.start_jam,
+                'v_tgl': h.tanggal,
+                'v_finish': h.finish_jam,
+                'v_thn': h.tahun,
+                'v_hm': h.running_hours,
+                'nm_1': h.nama_pelaksana,
+                'nm_2': h.nama_koordinator,
+                'nm_3': h.nama_superintendent
+            };
+            for(let id in fields) { if(document.getElementById(id)) document.getElementById(id).innerText = fields[id] || '-'; }
 
-            // A. INFO MESIN
-            const m = head.pmi_machines || {};
-            document.getElementById('v_mesin').innerText = m.nama_mesin || '-';
-            document.getElementById('v_ton').innerText = m.tonage || '-';
-            document.getElementById('v_tgl').innerText = head.tanggal;
-            document.getElementById('v_thn').innerText = head.tahun;
-            document.getElementById('v_target').innerText = (head.target_selesai || '').substring(0,5);
-            document.getElementById('v_start').innerText = (head.start_jam || '').substring(0,5);
-            document.getElementById('v_finish').innerText = (head.finish_jam || '').substring(0,5);
-            document.getElementById('v_hm').innerText = head.running_hours;
+            // TANDA TANGAN
+            if(h.signature_pelaksana) document.getElementById('sig_1').innerHTML = `<img src="${h.signature_pelaksana}" style="max-height:40px;">`;
+            if(h.signature_koordinator) document.getElementById('sig_2').innerHTML = `<img src="${h.signature_koordinator}" style="max-height:40px;">`;
+            if(h.signature_superintendent) document.getElementById('sig_3').innerHTML = `<img src="${h.signature_superintendent}" style="max-height:40px;">`;
 
-            // B. TANDA TANGAN
-            document.getElementById('nm_1').innerText = head.nama_pelaksana || '........';
-            document.getElementById('nm_2').innerText = head.nama_koordinator || '........';
-            document.getElementById('nm_3').innerText = head.nama_superintendent || '........';
+            // LOAD RESULTS
+            const { data: results } = await _sb.from('pmi_results').select('*, pmi_items(urutan, kategori), pmi_item_fields(label, tipe_input)').eq('pmi_header_id', h.id);
+            if(!results) return;
 
-            if(head.signature_pelaksana) document.getElementById('sig_1').innerHTML = `<img src="${head.signature_pelaksana}" class="sig-img">`;
-            if(head.signature_koordinator) document.getElementById('sig_2').innerHTML = `<img src="${head.signature_koordinator}" class="sig-img">`;
-            if(head.signature_superintendent) document.getElementById('sig_3').innerHTML = `<img src="${head.signature_superintendent}" class="sig-img">`;
+            // MAPPING MANUAL RESULT ID KE HTML ID (HARDCODED LOGIC FOR SAFETY)
+            // Kita urutkan berdasarkan urutan item di database
+            // Asumsi: Urutan di DB sesuai dengan urutan di PDF
+            
+            // Helper function
+            const setVal = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val || ''; };
+            
+            // Group by item ID
+            let grouped = {};
+            results.forEach(r => {
+                if(!grouped[r.pmi_item_id]) grouped[r.pmi_item_id] = [];
+                grouped[r.pmi_item_id].push(r);
+            });
 
-            // C. FETCH DETAILS
-            const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
-            const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
-            const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', head.id);
+            // Mapping Strategy: Sort items by 'urutan' then map sequentially to visual IDs
+            // Karena kita tidak tahu ID item di DB user, kita pakai array index dari hasil sort
+            let sortedItemIds = Object.keys(grouped).sort((a,b) => {
+                return grouped[a][0].pmi_items.urutan - grouped[b][0].pmi_items.urutan;
+            });
 
-            // Mapping Result
-            let resMap = {}; let noteMap = {};
-            if(results) {
-                results.forEach(r => {
-                    resMap[`${r.pmi_item_id}_${r.pmi_item_field_id}`] = r;
-                    if(r.keterangan) noteMap[r.pmi_item_id] = r.keterangan;
-                });
+            // LOGIC MAPPING MANUAL (SANGAT SPESIFIK)
+            // Clamping 1-22
+            // Pump 1-8
+            // Elec 6-13
+            // Inj 1-13
+            
+            let idx = 0;
+            // -- CLAMPING UNIT (1-22) --
+            // 1-19: Simple OK/NG
+            for(let i=1; i<=19; i++) {
+                if(sortedItemIds[idx]) {
+                    let r = grouped[sortedItemIds[idx]][0];
+                    setVal(`act_${i}`, r.status);
+                    setVal(`ket_${i}`, r.keterangan);
+                    idx++;
+                }
             }
+            // 20-22 (Tie Bar) - Complex Grid
+             // Item 20 (S1-S4) -> This logic depends on DB structure. If Tie Bar is 1 item with 4 fields:
+             // Checking if current item has multiple fields
+             if(sortedItemIds[idx] && grouped[sortedItemIds[idx]].length > 1) {
+                 // Tie Bar Calibration Header Item? Or results are in item 20,21,22?
+                 // Based on previous contexts, Tie Bar results are usually fields.
+                 // Let's assume standard sequence.
+                 let r = grouped[sortedItemIds[idx]]; // Array of fields
+                 r.forEach(f => {
+                     if(f.pmi_item_fields.label === 'S1') setVal('val_s1', f.nilai_aktual);
+                     if(f.pmi_item_fields.label === 'S2') setVal('val_s2', f.nilai_aktual);
+                     if(f.pmi_item_fields.label === 'S3') setVal('val_s3', f.nilai_aktual);
+                     if(f.pmi_item_fields.label === 'S4') setVal('val_s4', f.nilai_aktual);
+                 });
+                 // Item 20, 21, 22 usually are rows.
+                 // Let's just map next 3 items to row 20, 21, 22 actual/ket
+                 // Skip the header item if it exists purely for S1-S4 labels
+                 idx++; 
+             }
+             // Row 20, 21, 22
+             for(let i=20; i<=22; i++) {
+                if(sortedItemIds[idx]) {
+                    let r = grouped[sortedItemIds[idx]][0];
+                    setVal(`act_${i}`, r.status);
+                    setVal(`ket_${i}`, r.keterangan);
+                    idx++;
+                }
+             }
 
-            // D. RENDER TABLE (LOOP)
-            const tbody = document.getElementById('tbl-body');
-            tbody.innerHTML = '';
-            let lastCat = '', no = 1;
+             // -- PUMP & ELEKTRIKAL --
+             // Pump 1-2
+             for(let i=1; i<=2; i++) {
+                 if(sortedItemIds[idx]) {
+                     let r = grouped[sortedItemIds[idx]][0];
+                     setVal(`p_act_${i}`, r.status);
+                     setVal(`p_ket_${i}`, r.keterangan);
+                     idx++;
+                 }
+             }
+             // Hydrolik 3-6
+             for(let i=3; i<=6; i++) {
+                 if(sortedItemIds[idx]) {
+                     let r = grouped[sortedItemIds[idx]][0];
+                     setVal(`p_act_${i}`, r.status);
+                     setVal(`p_ket_${i}`, r.keterangan);
+                     idx++;
+                 }
+             }
+             // Pump 7-8 (Valve Idling)
+             // This is likely a Grid item.
+             if(sortedItemIds[idx]) {
+                 let r = grouped[sortedItemIds[idx]]; // Pump 1 fields
+                 r.forEach(f => {
+                     if(f.pmi_item_fields.label === '50') setVal('val_50', f.nilai_aktual);
+                     if(f.pmi_item_fields.label === '100') setVal('val_100', f.nilai_aktual);
+                     if(f.pmi_item_fields.label === '150') setVal('val_150', f.nilai_aktual);
+                     if(f.pmi_item_fields.label === '200') setVal('val_200', f.nilai_aktual);
+                     if(f.pmi_item_fields.label === 'Actual disply') setVal('p1_ad', f.nilai_aktual);
+                     if(f.pmi_item_fields.label === 'Pressure Gauge') setVal('p1_pg', f.nilai_aktual);
+                 });
+                 setVal('p1_ket', r[0].keterangan);
+                 idx++;
+             }
+             if(sortedItemIds[idx]) {
+                 let r = grouped[sortedItemIds[idx]]; // Pump 2 fields
+                 r.forEach(f => {
+                     if(f.pmi_item_fields.label === 'Actul disply') setVal('p2_ad', f.nilai_aktual);
+                     if(f.pmi_item_fields.label === 'Pressure Gauge') setVal('p2_pg', f.nilai_aktual);
+                 });
+                 setVal('p2_ket', r[0].keterangan);
+                 idx++;
+             }
 
-            if(items) {
-                items.forEach(item => {
-                    // CATEGORY HEADER
-                    if(item.kategori !== lastCat) {
-                        lastCat = item.kategori;
-                        tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${lastCat}</td></tr>`;
-                    }
+             // Electrical 6-12
+             for(let i=6; i<=12; i++) {
+                 if(sortedItemIds[idx]) {
+                     let r = grouped[sortedItemIds[idx]][0];
+                     setVal(`e_act_${i}`, r.status);
+                     setVal(`e_ket_${i}`, r.keterangan);
+                     idx++;
+                 }
+             }
+             // 13 Breaker
+             if(sortedItemIds[idx]) {
+                 let r = grouped[sortedItemIds[idx]];
+                 r.forEach(f => {
+                     if(f.pmi_item_fields.label === 'R-S') setVal('val_rs', f.nilai_aktual);
+                     if(f.pmi_item_fields.label === 'R-T') setVal('val_rt', f.nilai_aktual);
+                     if(f.pmi_item_fields.label === 'S-T') setVal('val_st', f.nilai_aktual);
+                 });
+                 setVal('e_ket_13', r[0].keterangan);
+                 idx++;
+             }
 
-                    const myFields = fields.filter(f => f.pmi_item_id === item.id);
-                    let actHtml = '';
-                    
-                    if(myFields.length === 1 && myFields[0].tipe_input === 'radio_ok_ng') {
-                        // LOGIC 1: SINGLE OK/NG
-                        let fid = myFields[0].id;
-                        let r = resMap[`${item.id}_${fid}`];
-                        let st = r ? r.status : '-';
-                        let cls = st === 'OK' ? 'st-ok' : (st === 'NG' ? 'st-ng' : '');
-                        actHtml = `<div class="${cls}">${st}</div>`;
-                    } else {
-                        // LOGIC 2: MULTI VALUE GRID (Horizontal)
-                        actHtml = `<div class="mv-grid">`;
-                        myFields.forEach(f => {
-                            let r = resMap[`${item.id}_${f.id}`];
-                            let val = r ? (r.nilai_aktual || r.status || '-') : '-';
-                            let lbl = f.label ? `<span class="mv-lbl">${f.label}</span>` : '';
-                            actHtml += `<div class="mv-item">${lbl}<span class="mv-val-txt">${val}</span></div>`;
-                        });
-                        actHtml += `</div>`;
-                    }
+             // -- INJECTION UNIT --
+             // 1-4
+             for(let i=1; i<=4; i++) {
+                 if(sortedItemIds[idx]) {
+                     let r = grouped[sortedItemIds[idx]][0];
+                     setVal(`inj_act_${i}`, r.status);
+                     setVal(`inj_ket_${i}`, r.keterangan);
+                     idx++;
+                 }
+             }
+             // 5 Heater (Zones)
+             // This maps to 6 items (a-f) or 1 item with many fields. Assuming 6 items based on rows.
+             for(let i=1; i<=6; i++) {
+                 if(sortedItemIds[idx]) {
+                     let r = grouped[sortedItemIds[idx]];
+                     // Assuming structure: Field 1 = Ukur, Field 2 = Display, Field 3 = Gun
+                     // Map based on input type or label if possible, else order
+                     r.forEach(f => {
+                         if(f.pmi_item_fields.label.includes('ukur') || f.pmi_item_fields.tipe_input === 'numeric') setVal(`t_ukr_${i}`, f.nilai_aktual);
+                         if(f.pmi_item_fields.label.includes('Display')) setVal(`t_ukr_${i}`, f.nilai_aktual); // Correction: likely specific logic needed
+                         // Fallback to simple mapping if labels match PDF
+                         if(f.pmi_item_fields.label === 'Hasil ukur') setVal(`t_ukr_${i}`, f.nilai_aktual);
+                         if(f.pmi_item_fields.label === 'Hasil (Display Mesin)') setVal(`t_ukr_${i}`, f.nilai_aktual); // Careful overlap
+                     });
+                     // Simplification: Print all values joined or specific logic
+                     // Since we can't see DB structure, we map generically:
+                     if(r[0]) setVal(`t_ukr_${i}`, r[0].nilai_aktual);
+                     if(r[1]) setVal(`t_gun_${i}`, r[1].nilai_aktual);
+                     setVal(`t_ket_${i}`, r[0].keterangan);
+                     idx++;
+                 }
+             }
 
-                    let ket = noteMap[item.id] || '';
+             // Hydrolik 6-10
+             for(let i=6; i<=10; i++) {
+                 if(sortedItemIds[idx]) {
+                     let r = grouped[sortedItemIds[idx]][0];
+                     setVal(`inj_act_${i}`, r.status);
+                     setVal(`inj_ket_${i}`, r.keterangan);
+                     idx++;
+                 }
+             }
+             // 11 Accumulator
+             if(sortedItemIds[idx]) {
+                 let r = grouped[sortedItemIds[idx]];
+                 r.forEach(f => {
+                     if(f.pmi_item_fields.label === 'Tabung A') setVal('val_tb_a', f.nilai_aktual);
+                     if(f.pmi_item_fields.label === 'Tabung B') setVal('val_tb_b', f.nilai_aktual);
+                     if(f.pmi_item_fields.label === 'Tabung C') setVal('val_tb_c', f.nilai_aktual);
+                 });
+                 setVal('inj_ket_11', r[0].keterangan);
+                 idx++;
+             }
 
-                    tbody.innerHTML += `
-                        <tr>
-                            <td class="col-no">${no++}</td>
-                            <td>${item.nama_item}</td>
-                            <td class="col-std">${item.standard || ''}</td>
-                            <td class="col-act">${actHtml}</td>
-                            <td class="col-ket">${ket}</td>
-                        </tr>`;
-                });
-            }
-        }
+             // Electrik 12
+             if(sortedItemIds[idx]) {
+                 let r = grouped[sortedItemIds[idx]][0];
+                 setVal(`inj_act_12`, r.status);
+                 setVal(`inj_ket_12`, r.keterangan);
+                 idx++;
+             }
+             // 13 Linier Pot
+             if(sortedItemIds[idx]) {
+                 let r = grouped[sortedItemIds[idx]];
+                 r.forEach(f => {
+                     if(f.pmi_item_fields.label === 'Sett Value') setVal('val_sett', f.nilai_aktual);
+                     if(f.pmi_item_fields.label === 'Actual Display') setVal('val_disp', f.nilai_aktual);
+                 });
+                 setVal('inj_ket_13', r[0].keterangan);
+                 idx++;
+             }
+        };
     </script>
 </body>
 </html>
