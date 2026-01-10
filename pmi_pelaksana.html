@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PMI Pelaksana</title>
+    <title>PMI Pelaksana - Complete</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -21,6 +21,7 @@
         .header-pill { border: 2px solid #000; border-radius: 50px; padding: 10px 30px; background: #fff; font-weight: 800; font-size: 16px; letter-spacing: 1px; text-transform: uppercase; }
         .qr-box { width: 260px; height: 260px; background: #000; border: 4px solid #000; position: relative; overflow: hidden; }
         #reader { width: 100%; height: 100%; }
+        #reader video { object-fit: cover; width: 100% !important; height: 100% !important; }
         
         #form-view { display: none; max-width: 800px; margin: 0 auto; background: #fff; min-height: 100vh; }
         .header-main { background: #000; color: white; padding: 20px; text-align: center; }
@@ -40,17 +41,21 @@
         .item-name { font-weight: 800; font-size: 14px; display: block; line-height: 1.3; color: #000; }
         .item-std { display: block; margin-top: 4px; margin-bottom: 10px; font-size: 11px; color: #555; font-style: italic; background: #f9f9f9; padding: 4px; border-left: 3px solid #ccc; }
 
-        /* GRID SYSTEM UNTUK SUB-FIELDS (S1, S2, dll) */
+        /* GRID UNTUK MULTI-FIELD (S1, S2, dst) */
         .sub-fields-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 10px;
-            margin-bottom: 10px;
+            grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+            gap: 12px;
+            margin-bottom: 15px;
         }
 
         .field-box { display: flex; flex-direction: column; }
-        .field-label { font-size: 10px; font-weight: 700; margin-bottom: 4px; color: #333; text-transform: uppercase; }
+        .field-label { 
+            font-size: 10px; font-weight: 800; margin-bottom: 4px; 
+            color: #333; text-transform: uppercase; letter-spacing: 0.5px;
+        }
         
+        /* Radio Button Style */
         .radio-group { display: flex; gap: 0; border: 2px solid #000; border-radius: 6px; overflow: hidden; }
         .radio-btn { flex: 1; text-align: center; padding: 10px; font-weight: 800; font-size: 12px; cursor: pointer; background: #fff; transition: 0.1s; }
         .radio-btn input { display: none; }
@@ -59,11 +64,17 @@
         .radio-btn:has(input[value="NG"]:checked) { background: #dc2626; color: white; }
         .radio-btn:first-child { border-right: 1px solid #000; }
 
-        .std-input { width: 100%; padding: 10px; border: 2px solid #000; font-size: 13px; font-weight: 600; border-radius: 6px; text-align: center; }
+        /* Number/Text Input Style */
+        .std-input { 
+            width: 100%; padding: 10px; border: 2px solid #000; 
+            font-size: 14px; font-weight: 700; border-radius: 6px; 
+            text-align: center; background: #f9fafb;
+        }
+        .std-input:focus { background: #fff; border-color: #000; outline: none; }
         
-        /* SHARED NOTE STYLE */
+        /* Shared Keterangan Style */
         .shared-note { 
-            width: 100%; padding: 10px; border: 1px solid #999; border-radius: 4px;
+            width: 100%; padding: 12px; border: 1px solid #999; border-radius: 6px;
             font-size: 12px; margin-top: 5px; background: #fff; font-family: inherit;
             display: block; 
         }
@@ -145,20 +156,31 @@
             const now = new Date();
             document.getElementById('h_tanggal').valueAsDate = now;
             document.getElementById('h_tahun').value = now.getFullYear();
+            
             const timeString = now.toTimeString().substring(0,5);
             document.getElementById('h_start').value = timeString;
             document.getElementById('h_target').value = timeString;
+            
             html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, onScanSuccess, ()=>{});
         };
 
         async function onScanSuccess(decodedText) {
             let code = decodedText.trim();
             if(code.includes('/')) code = code.split('/').pop().trim();
+            document.getElementById('scan-msg').innerText = "MENCARI: " + code;
+            
             try {
-                const { data } = await _sb.from('pmi_machines').select('*').or(`barcode.eq.${code},nama_mesin.eq.${code}`).maybeSingle();
+                const { data } = await _sb.from('pmi_machines')
+                    .select('*')
+                    .or(`barcode.eq.${code},nama_mesin.eq.${code}`)
+                    .maybeSingle();
+
                 if(!data) throw new Error("MESIN TIDAK DITEMUKAN");
-                await html5QrCode.stop(); loadForm(data);
-            } catch (err) { document.getElementById('scan-msg').innerText = err.message; }
+                await html5QrCode.stop(); 
+                loadForm(data);
+            } catch (err) { 
+                document.getElementById('scan-msg').innerText = err.message + " (" + code + ")";
+            }
         }
 
         async function loadForm(machine) {
@@ -174,7 +196,7 @@
             c.getContext("2d").scale(r, r);
             signaturePad = new SignaturePad(c, { penColor: 'black' });
 
-            // LOAD SEMUA ITEM & FIELD (DENGAN SORTING AGAR S1, S2 URUT)
+            // Fetch Items & Fields (Sorted by Urutan)
             const { data: items } = await _sb.from('pmi_items').select('*').eq('aktif', true).order('urutan');
             const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
             
@@ -194,20 +216,21 @@
                     tbody.innerHTML += `<tr class="cat-row"><td colspan="2">${lastCat}</td></tr>`;
                 }
 
+                // AMBIL SEMUA FIELD UNTUK ITEM INI (MULTI-INPUT READY)
                 const myFields = fields.filter(f => f.pmi_item_id === item.id);
                 
                 let html = `<tr><td>
                     <span class="item-name">${item.nama_item}</span>
-                    <span class="item-std">${item.standard || ''}</span>
-                    <div class="sub-fields-grid">`; // GRID WRAPPER
+                    <span class="item-std">${item.standard || 'Cek visual & fungsi'}</span>
+                    
+                    <div class="sub-fields-grid">`; 
                 
-                // RENDER SEMUA FIELD (RADIO MAUPUN NUMBER) SECARA BERDAMPINGAN
                 myFields.forEach(f => {
                     let label = f.label || ""; 
                     
                     html += `<div class="field-box">`;
                     
-                    // Tampilkan label kecil jika ada (misal S1, S2, R-S)
+                    // LABEL KHUSUS (S1, Tabung A, R-S, dll)
                     if(label) html += `<span class="field-label">${label}</span>`;
 
                     if (f.tipe_input === 'radio_ok_ng') {
@@ -216,18 +239,19 @@
                                 <label class="radio-btn"><input type="radio" name="f_${f.id}" value="OK">OK</label>
                                 <label class="radio-btn"><input type="radio" name="f_${f.id}" value="NG">NG</label>
                             </div>`;
+                    } else if (f.tipe_input === 'number') {
+                        // Input Angka (Tie Bar, Tegangan, Pressure)
+                        html += `<input type="number" id="f_${f.id}" class="std-input" placeholder="0" step="any">`;
                     } else {
-                        // Input Manual (Number / Text)
-                        let type = f.tipe_input === 'number' ? 'number' : 'text';
-                        html += `<input type="${type}" id="f_${f.id}" class="std-input" placeholder="...">`;
+                        html += `<input type="text" id="f_${f.id}" class="std-input" placeholder="...">`;
                     }
                     html += `</div>`;
                 });
 
                 html += `</div>`; // Close Grid
 
-                // === SINGLE CATATAN PER ITEM (TIDAK PERNAH DUPLIKAT) ===
-                html += `<input type="text" id="shared_ket_${item.id}" class="shared-note" placeholder="Keterangan / Temuan NG..." />`;
+                // SINGLE CATATAN (SHARED) PER ITEM
+                html += `<input type="text" id="shared_ket_${item.id}" class="shared-note" placeholder="Catatan / Keterangan..." />`;
 
                 html += `</td></tr>`;
                 tbody.innerHTML += html;
@@ -245,6 +269,7 @@
             btn.disabled = true; btn.innerText = "MENGIRIM...";
 
             try {
+                // A. Insert Header
                 const { data: header, error: e1 } = await _sb.from('pmi_header').insert([{
                     machine_id: currentMachineId,
                     tanggal: document.getElementById('h_tanggal').value,
@@ -261,11 +286,14 @@
 
                 if(e1) throw e1;
 
+                // B. Insert Results
                 let results = [];
                 
                 loadedItems.forEach(item => {
                     const myFields = loadedFields.filter(f => f.pmi_item_id === item.id);
-                    const sharedNoteVal = document.getElementById(`shared_ket_${item.id}`).value.trim();
+                    // Ambil Catatan Shared
+                    const sharedNoteEl = document.getElementById(`shared_ket_${item.id}`);
+                    const sharedNoteVal = sharedNoteEl ? sharedNoteEl.value.trim() : "";
 
                     myFields.forEach(f => {
                         let status = null;
@@ -281,7 +309,12 @@
                         } else {
                             const el = document.getElementById(`f_${f.id}`);
                             if(el && el.value.trim() !== '') {
-                                nilai_aktual = el.value;
+                                if(f.tipe_input === 'number') {
+                                    nilai_aktual = el.value; 
+                                } else {
+                                    // Fallback: Jika ada input text selain shared note
+                                    nilai_aktual = el.value; 
+                                }
                                 hasValue = true;
                             }
                         }
@@ -294,7 +327,7 @@
                                 pmi_item_field_id: f.id, 
                                 status: status, 
                                 nilai_aktual: nilai_aktual,
-                                keterangan: sharedNoteVal // Semua field di item ini dapat catatan yang sama
+                                keterangan: sharedNoteVal // Semua sub-field dapat catatan yang sama
                             });
                         }
                     });
