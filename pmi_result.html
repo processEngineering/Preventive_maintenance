@@ -3,383 +3,388 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan Maintenance - Cetak</title>
-    
+    <title>Form Preventif Mesin Injection - Clamping Unit</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
     <style>
-        /* === RESET & LAYOUT DASAR (Ditingkatkan untuk PDF-like) === */
+        @page { size: A4 portrait; margin: 5mm; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body { 
-            font-family: 'Times New Roman', Times, serif; 
-            background: #525659; 
-            margin: 0; padding: 20px; 
-            font-size: 11px; /* Sedikit lebih besar untuk readability */
-            color: #000;
-            line-height: 1.2;
+            font-family: Arial, sans-serif;
+            background: #525659;
+            padding: 10px;
         }
         
-        /* === FILTER SECTION (HANYA TAMPIL DI LAYAR) === */
+        /* FILTER SECTION */
         .filter-section {
-            background: #fff; width: 210mm; margin: 0 auto 20px; padding: 20px;
-            border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            display: flex; gap: 15px; align-items: center; box-sizing: border-box;
+            background: #fff;
+            width: 210mm;
+            margin: 0 auto 20px;
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
-        select, button { 
-            padding: 10px 12px; 
-            border: 2px solid #333; 
-            font-weight: bold; 
-            font-size: 12px; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            background: #f9f9f9;
+        
+        select, button {
+            padding: 8px;
+            border: 1px solid #333;
+            font-weight: bold;
+            font-size: 11px;
+            cursor: pointer;
         }
+        
         select { flex: 1; }
         .btn-search { background: #333; color: #fff; }
         .btn-print { background: #b91c1c; color: #fff; margin-left: auto; border: none; }
-
-        /* === KERTAS A4 PORTRAIT (Lebih Presisi) === */
-        .paper {
-            background: #fff; 
-            width: 210mm; 
-            min-height: 297mm; 
+        
+        /* PAPER CONTAINER */
+        .container {
+            width: 210mm;
             margin: 0 auto;
-            padding: 15mm 18mm; /* Lebih banyak spasi margin seperti PDF */
-            box-sizing: border-box; 
-            position: relative;
-            box-shadow: 0 0 20px rgba(0,0,0,0.6); 
+            background: white;
+            transform: scale(0.88);
+            transform-origin: top center;
             display: none;
         }
-
-        /* === KOP SURAT / HEADER (Ditingkatkan: Bold, Centered, Spasi Bagus) === */
-        .header-tbl { 
-            width: 100%; 
-            border-collapse: collapse; 
-            border: 2px solid #000; /* Border lebih tebal */
-            margin-bottom: 15px; 
-        }
-        .header-tbl td { 
-            border: 2px solid #000; 
-            padding: 8px 10px; 
-            vertical-align: middle; 
-            text-align: center; 
+        
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            padding: 5mm 7mm;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
         }
         
-        .logo-img { 
-            width: 90px; /* Lebih besar */
-            height: auto; 
-            display: block; 
-            margin: 0 auto; 
-        }
-        .title-cell { 
-            font-weight: bold; 
-            font-size: 16px; /* Lebih besar */
-            text-transform: uppercase; 
-            line-height: 1.1; 
-            letter-spacing: 1px;
-        }
-        .subtitle { 
-            font-size: 12px; 
-            font-weight: bold; 
-            display: block; 
-            margin-top: 8px; 
-            color: #333;
+        /* HEADER TABLE */
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000;
+            margin-bottom: 3px;
         }
         
-        .meta-table { 
-            width: 100%; 
-            border: none; 
-            font-size: 10px; 
-        }
-        .meta-table td { 
-            border: none; 
-            border-bottom: 1.5px solid #000; 
-            padding: 4px 8px; 
-            text-align: left; 
-            font-weight: bold;
-        }
-        .meta-table tr:last-child td { border-bottom: none; }
-
-        /* === INFO MESIN (Tabel Grid Lebih Rapi, Bold Labels) === */
-        .info-tbl { 
-            width: 100%; 
-            border: 2px solid #000; 
-            margin-bottom: 20px; /* Lebih spasi */
-            border-collapse: collapse; 
-            font-size: 11px; 
-        }
-        .info-tbl td { 
-            border-right: 1.5px solid #000; 
-            padding: 8px 12px; 
-            vertical-align: middle; 
-            background: #f5f5f5; /* Latar abu muda */
-        }
-        .info-tbl td:nth-child(2n+1) { background: #fff; font-weight: bold; text-transform: uppercase; }
-        .info-tbl tr:last-child td { border-bottom: 2px solid #000; }
-        .info-tbl td:last-child { border-right: none; }
-        .val { 
-            font-weight: normal; 
-            margin-left: 8px; 
-            text-transform: none; 
-            color: #000;
-        }
-
-        /* === TABEL CHECKLIST UTAMA (Lebih Kompak, Header Solid) === */
-        .main-tbl { 
-            width: 100%; 
-            border-collapse: collapse; 
-            font-size: 10px; 
-            border: 2px solid #000; 
-            margin-bottom: 25px;
-        }
-        .main-tbl th, .main-tbl td { 
-            border: 1.5px solid #000; 
-            padding: 6px 8px; /* Padding lebih besar */
-            vertical-align: middle; 
-            text-align: left;
+        .header-table td {
+            border: 1px solid #000;
+            padding: 3px;
+            vertical-align: middle;
         }
         
-        .main-tbl th { 
-            background: #ccc !important; /* Abu lebih gelap */
-            text-align: center; 
-            font-weight: bold; 
-            text-transform: uppercase; 
-            font-size: 10px;
-            letter-spacing: 0.5px;
-            height: 28px;
-        }
-        
-        .col-no { width: 4%; text-align: center; font-weight: bold; }
-        .col-item { width: 32%; }
-        .col-std { width: 20%; font-style: italic; color: #555; }
-        .col-act { width: 18%; text-align: center; }
-        .col-ket { width: 26%; }
-
-        .cat-row td { 
-            background: #bbb !important; /* Abu lebih gelap untuk kategori */
-            font-weight: bold; 
-            text-transform: uppercase; 
-            padding: 10px 12px; 
-            font-size: 11px; 
-            border-top: 3px solid #000;
-            text-align: left !important;
-        }
-
-        /* STYLE ISI CELL (Lebih Kontras) */
-        .st-ok { font-weight: bold; color: #006400; font-size: 12px; } /* Hijau gelap */
-        .st-ng { font-weight: bold; color: #8B0000; font-size: 12px; } /* Merah gelap */
-
-        /* Multi Value (Grid Lebih Rapi) */
-        .mv-grid { 
-            display: flex; 
-            flex-wrap: wrap; 
-            gap: 3px; 
-            justify-content: center; 
-            min-height: 20px;
-        }
-        .mv-item { 
-            border: 1.5px solid #666; 
-            border-radius: 4px; 
-            padding: 3px 5px; 
-            font-size: 9px; 
-            min-width: 28px; 
+        .logo-cell {
+            width: 15%;
             text-align: center;
-            background: #f0f0f0;
-            font-weight: bold;
-        }
-        .mv-lbl { 
-            font-weight: bold; 
-            display: block; 
-            background: #ddd; 
-            border-bottom: 1px solid #666; 
-            margin-bottom: 1px; 
-            font-size: 8px;
-            text-transform: uppercase;
-        }
-
-        /* === FOOTER TANDA TANGAN (Lebih Tinggi, Centered Perfect) === */
-        .sig-tbl { 
-            width: 100%; 
-            border: 2px solid #000; 
-            border-collapse: collapse; 
-            text-align: center; 
-            font-size: 11px; 
-            page-break-inside: avoid; 
-            margin-top: 20px;
-        }
-        .sig-tbl td { 
-            border: 2px solid #000; 
-            width: 33.33%; 
-            vertical-align: bottom; 
-            height: 100px; /* Lebih tinggi */
-            position: relative; 
-            padding: 10px;
-        }
-        .sig-head { 
-            background: #ccc !important; 
-            font-weight: bold; 
-            font-size: 11px;
-            padding: 10px; 
-            vertical-align: middle !important; 
-            border-bottom: 2px solid #000;
         }
         
-        .sig-img { 
-            max-height: 70px; 
-            max-width: 85%; 
-            position: absolute; 
-            bottom: 35px; 
-            left: 50%; 
-            transform: translateX(-50%);
-            border: 1px solid #999;
+        .logo-cell img {
+            width: 60px;
+            height: auto;
         }
-        .sig-name { 
-            font-weight: bold; 
-            text-transform: uppercase; 
-            display: block; 
-            border-top: 2px solid #000; 
-            margin: 10px 15px 5px; 
-            padding-top: 5px; 
+        
+        .title-cell {
+            width: 55%;
+            text-align: center;
+            font-weight: bold;
+            font-size: 9.5px;
+            line-height: 1.3;
+        }
+        
+        .title-main {
             font-size: 11px;
-            min-height: 20px;
+            font-weight: bold;
         }
-
-        /* === PRINT CSS (Optimized untuk PDF Export) === */
+        
+        .doc-info-cell {
+            width: 30%;
+            padding: 0;
+        }
+        
+        .doc-info-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 7px;
+        }
+        
+        .doc-info-table td {
+            border: none;
+            border-bottom: 1px solid #000;
+            padding: 1.5px 4px;
+        }
+        
+        .doc-info-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* INFO MESIN TABLE */
+        .info-table {
+            width: 100%;
+            border: 1px solid #000;
+            border-collapse: collapse;
+            margin-bottom: 3px;
+            font-size: 7px;
+            font-weight: bold;
+        }
+        
+        .info-table td {
+            padding: 1px 4px;
+            border: none;
+        }
+        
+        .info-value {
+            font-weight: normal;
+        }
+        
+        /* MAIN CHECKLIST TABLE */
+        .main-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000;
+            font-size: 6px;
+            margin-bottom: 5px;
+        }
+        
+        .main-table th,
+        .main-table td {
+            border: 1px solid #000;
+            padding: 1.5px 3px;
+            vertical-align: middle;
+        }
+        
+        .main-table th {
+            background: #d9d9d9;
+            font-weight: bold;
+            text-align: center;
+            font-size: 7px;
+            height: 14px;
+        }
+        
+        .col-no { width: 16px; text-align: center; font-weight: bold; }
+        .col-item { width: 35%; }
+        .col-standard { width: 23%; font-style: italic; }
+        .col-actual { width: 18%; text-align: center; min-height: 14px; }
+        .col-keterangan { width: 19%; }
+        
+        .category-row td {
+            background: #d9d9d9;
+            font-weight: bold;
+            padding: 2px 4px;
+            border-top: 1.5px solid #000;
+            border-bottom: 1.5px solid #000;
+            font-size: 7px;
+        }
+        
+        /* STATUS STYLES */
+        .st-ok { font-weight: 800; color: #000; }
+        .st-ng { font-weight: 800; color: red; }
+        
+        /* GRID CELLS */
+        .grid-container {
+            display: flex;
+            gap: 2px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .grid-item {
+            border: 1px solid #666;
+            padding: 1px 2px;
+            min-width: 20px;
+            text-align: center;
+            font-size: 6px;
+            min-height: 12px;
+        }
+        
+        .grid-label {
+            font-weight: bold;
+            display: block;
+            background: #e8e8e8;
+            padding: 0.5px;
+            border-bottom: 1px solid #999;
+            margin-bottom: 1px;
+        }
+        
+        /* SUBTABLE DALAM CELL */
+        .sub-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 6px;
+        }
+        
+        .sub-table td {
+            border: none;
+            padding: 0.5px 2px;
+            line-height: 1.1;
+        }
+        
+        /* SIGNATURE TABLE */
+        .signature-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000;
+            text-align: center;
+            font-size: 7px;
+            margin-top: 3px;
+        }
+        
+        .signature-table td {
+            border: 1px solid #000;
+            padding: 2px;
+            height: 50px;
+            vertical-align: bottom;
+            position: relative;
+        }
+        
+        .sig-header {
+            background: #d9d9d9;
+            font-weight: bold;
+            height: auto !important;
+            vertical-align: middle !important;
+        }
+        
+        .sig-name {
+            border-top: 1px solid #000;
+            margin: 0 6px;
+            padding-top: 1px;
+            font-weight: bold;
+        }
+        
+        .sig-img {
+            max-height: 40px;
+            max-width: 65%;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
         @media print {
-            @page { 
-                size: A4 portrait; 
-                margin: 8mm 12mm; 
-            }
-            body { 
-                background: #fff; 
-                padding: 0; 
-                margin: 0; 
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact;
-            }
+            body { background: white; padding: 0; }
             .filter-section { display: none !important; }
-            .paper { 
-                width: 100%; 
-                box-shadow: none; 
-                margin: 0; 
-                border: none; 
-                padding: 0; 
-                display: block !important; 
-                box-shadow: none;
-            }
-            .main-tbl th, 
-            .cat-row td, 
-            .sig-head,
-            .info-tbl td:nth-child(2n+1) { 
-                background-color: #ccc !important; 
+            .container { transform: scale(1); box-shadow: none; }
+            .page { padding: 4mm 6mm; box-shadow: none; }
+            .main-table th, .category-row td, .sig-header {
                 -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                background-color: #d9d9d9 !important;
             }
-            .info-tbl td { background-color: #f5f5f5 !important; }
-        }
-
-        /* Responsif untuk layar kecil */
-        @media (max-width: 210mm) {
-            .paper { width: 100%; padding: 10mm 10mm; }
+            .grid-label {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                background-color: #e8e8e8 !important;
+            }
         }
     </style>
 </head>
 <body>
 
+    <!-- FILTER SECTION -->
     <div class="filter-section">
-        <b><i class="fa-solid fa-filter"></i> FILTER LAPORAN:</b>
+        <b>FILTER:</b>
         <select id="sel-mesin"><option value="">Loading Mesin...</option></select>
-        <select id="sel-bulan" style="width:110px;">
+        <select id="sel-bulan" style="width:100px;">
             <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
             <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
             <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
             <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
         </select>
-        <select id="sel-tahun" style="width:90px;">
-            <option value="2025" selected>2025</option><option value="2026">2026</option><option value="2027">2027</option>
+        <select id="sel-tahun" style="width:80px;">
+            <option value="2025" selected>2025</option><option value="2026">2026</option>
         </select>
-        <button class="btn-search" onclick="cariLaporan()"><i class="fa-solid fa-search"></i> CARI</button>
+        <button class="btn-search" onclick="cariLaporan()"><i class="fa-solid fa-search"></i> CARI LAPORAN</button>
         <button class="btn-print" onclick="window.print()"><i class="fa-solid fa-print"></i> CETAK PDF</button>
     </div>
 
-    <div class="paper" id="report-view">
-        
-        <table class="header-tbl">
-            <tr>
-                <td width="15%"><img src="https://via.placeholder.com/90x60/003366/FFFFFF?text=LOGO" class="logo-img" alt="Logo PT. AMARILYS KARISMA GEMILANG"></td> 
-                <td width="55%" class="title-cell">
-                    PT. AMARILYS KARISMA GEMILANG<br>
-                    <span style="font-size:18px; color:#003366;">FORM PREVENTIF MESIN INJECTION</span><br>
-                    <span class="subtitle">(CLAMPING & INJECTION UNIT)</span>
-                </td>
-                <td width="30%" style="padding:0; font-size:10px;">
-                    <table class="meta-table">
-                        <tr><td width="75">No. Dokumen</td><td>: AF.SP 05.07.Rev-00</td></tr>
-                        <tr><td>Tgl Terbit</td><td>: 02 Agustus 2024</td></tr>
-                        <tr><td>Halaman</td><td>: 1/1</td></tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
-
-        <table class="info-tbl">
-            <tr>
-                <td width="15%">MERK MESIN</td><td width="35%">: <span class="val" id="v_mesin">-</span></td>
-                <td width="15%">TARGET SELESAI</td><td width="35%">: <span class="val" id="v_target">-</span></td>
-            </tr>
-            <tr>
-                <td>TONAGE</td><td>: <span class="val" id="v_ton">-</span></td>
-                <td>START JAM</td><td>: <span class="val" id="v_start">-</span></td>
-            </tr>
-            <tr>
-                <td>TANGGAL</td><td>: <span class="val" id="v_tgl">-</span></td>
-                <td>FINISH JAM</td><td>: <span class="val" id="v_finish">-</span></td>
-            </tr>
-            <tr>
-                <td>TAHUN</td><td>: <span class="val" id="v_thn">-</span></td>
-                <td>RUN HOURS</td><td>: <span class="val" id="v_hm">-</span></td>
-            </tr>
-        </table>
-
-        <table class="main-tbl">
-            <thead>
+    <!-- PAPER CONTAINER -->
+    <div class="container" id="report-view">
+        <div class="page">
+            
+            <!-- HEADER -->
+            <table class="header-table">
                 <tr>
-                    <th class="col-no">NO</th>
-                    <th class="col-item">ITEM PENGECEKAN</th>
-                    <th class="col-std">STANDARD</th>
-                    <th class="col-act">ACTUAL</th>
-                    <th class="col-ket">KETERANGAN</th>
+                    <td class="logo-cell">
+                        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="Logo">
+                    </td>
+                    <td class="title-cell">
+                        PT. AMARILYS KARISMA GEMILANG<br>
+                        <span class="title-main">FORM PREVENTIF MESIN INJECTION<br>(CLAMPING UNIT)</span>
+                    </td>
+                    <td class="doc-info-cell">
+                        <table class="doc-info-table">
+                            <tr><td width="75">No. Dokumen</td><td>: AF.SP 05.07.Rev-00</td></tr>
+                            <tr><td>Tanggal Terbit</td><td>: 02 Agustus 2024</td></tr>
+                            <tr><td>Halaman</td><td>: 1/1</td></tr>
+                            <tr><td>Tanggal Revisi</td><td>: -</td></tr>
+                        </table>
+                    </td>
                 </tr>
-            </thead>
-            <tbody id="tbl-body">
-            </tbody>
-        </table>
+            </table>
+            
+            <!-- INFO MESIN -->
+            <table class="info-table">
+                <tr>
+                    <td width="12%">MERK MESIN</td><td width="38%">: <span class="info-value" id="v_mesin">-</span></td>
+                    <td width="15%">TARGET SELESAI</td><td width="35%">: <span class="info-value" id="v_target">-</span></td>
+                </tr>
+                <tr>
+                    <td>TONAGE</td><td>: <span class="info-value" id="v_ton">-</span></td>
+                    <td>START JAM</td><td>: <span class="info-value" id="v_start">-</span></td>
+                </tr>
+                <tr>
+                    <td>TANGGAL</td><td>: <span class="info-value" id="v_tgl">-</span></td>
+                    <td>FINISH JAM</td><td>: <span class="info-value" id="v_finish">-</span></td>
+                </tr>
+                <tr>
+                    <td>TAHUN</td><td>: <span class="info-value" id="v_thn">-</span></td>
+                    <td>RUNNING HOURS</td><td>: <span class="info-value" id="v_hm">-</span></td>
+                </tr>
+            </table>
+            
+            <!-- MAIN TABLE -->
+            <table class="main-table">
+                <thead>
+                    <tr>
+                        <th class="col-no">NO</th>
+                        <th class="col-item">ITEM</th>
+                        <th class="col-standard">STANDARD</th>
+                        <th class="col-actual">ACTUAL</th>
+                        <th class="col-keterangan">KETERANGAN</th>
+                    </tr>
+                </thead>
+                <tbody id="tbl-body">
+                    <!-- Data akan diisi oleh JavaScript -->
+                </tbody>
+            </table>
+            
+            <!-- SIGNATURE TABLE -->
+            <table class="signature-table">
+                <tr>
+                    <td class="sig-header">DIKERJAKAN (TEKNISI)</td>
+                    <td class="sig-header">DIPERIKSA (KOORDINATOR)</td>
+                    <td class="sig-header">DISETUJUI (SUPERINTENDENT)</td>
+                </tr>
+                <tr>
+                    <td>
+                        <div id="sig_1"></div>
+                        <span class="sig-name" id="nm_1">.................</span>
+                    </td>
+                    <td>
+                        <div id="sig_2"></div>
+                        <span class="sig-name" id="nm_2">.................</span>
+                    </td>
+                    <td>
+                        <div id="sig_3"></div>
+                        <span class="sig-name" id="nm_3">.................</span>
+                    </td>
+                </tr>
+            </table>
 
-        <table class="sig-tbl">
-            <tr>
-                <td class="sig-head">DIKERJAKAN<br>(TEKNISI)</td>
-                <td class="sig-head">DIPERIKSA<br>(KOORDINATOR)</td>
-                <td class="sig-head">DISETUJUI<br>(SUPERINTENDENT)</td>
-            </tr>
-            <tr>
-                <td>
-                    <div id="sig_1"></div>
-                    <span class="sig-name" id="nm_1">.................</span>
-                </td>
-                <td>
-                    <div id="sig_2"></div>
-                    <span class="sig-name" id="nm_2">.................</span>
-                </td>
-                <td>
-                    <div id="sig_3"></div>
-                    <span class="sig-name" id="nm_3">.................</span>
-                </td>
-            </tr>
-        </table>
-
+        </div>
     </div>
 
     <script>
-        // CONFIG DB (Tetap sama, fungsional OK)
+        // CONFIG DB
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
@@ -391,12 +396,13 @@
             sel.innerHTML = '<option value="">-- PILIH MESIN --</option>';
             if(data) data.forEach(m => {
                 let opt = document.createElement('option');
-                opt.value = m.id; opt.innerText = m.nama_mesin;
+                opt.value = m.id;
+                opt.innerText = m.nama_mesin;
                 sel.appendChild(opt);
             });
         };
 
-        // Fungsi lain tetap sama (cariLaporan & renderReport tidak berubah karena fungsional OK)
+        // 2. CARI LAPORAN
         async function cariLaporan() {
             const mid = document.getElementById('sel-mesin').value;
             const bln = document.getElementById('sel-bulan').value;
@@ -404,6 +410,7 @@
 
             if(!mid) return alert("Pilih Mesin dulu!");
 
+            // Cari Header Terakhir
             const { data: headers, error } = await _sb.from('pmi_header')
                 .select('*, pmi_machines(nama_mesin, tonage)')
                 .eq('machine_id', mid)
@@ -421,12 +428,14 @@
             renderReport(headers[0]);
         }
 
+        // 3. RENDER DATA KE HTML
         async function renderReport(head) {
             document.getElementById('report-view').style.display = 'block';
 
+            // A. HEADER INFO
             const m = head.pmi_machines || {};
             document.getElementById('v_mesin').innerText = m.nama_mesin || '-';
-            document.getElementById('v_ton').innerText = m.tonase || '-';
+            document.getElementById('v_ton').innerText = m.tonage || '-';
             document.getElementById('v_tgl').innerText = head.tanggal;
             document.getElementById('v_thn').innerText = head.tahun;
             document.getElementById('v_target').innerText = (head.target_selesai || '').substring(0,5);
@@ -434,6 +443,7 @@
             document.getElementById('v_finish').innerText = (head.finish_jam || '').substring(0,5);
             document.getElementById('v_hm').innerText = head.running_hours;
 
+            // B. TANDA TANGAN
             document.getElementById('nm_1').innerText = head.nama_pelaksana || '........';
             document.getElementById('nm_2').innerText = head.nama_koordinator || '........';
             document.getElementById('nm_3').innerText = head.nama_superintendent || '........';
@@ -442,11 +452,72 @@
             if(head.signature_koordinator) document.getElementById('sig_2').innerHTML = `<img src="${head.signature_koordinator}" class="sig-img">`;
             if(head.signature_superintendent) document.getElementById('sig_3').innerHTML = `<img src="${head.signature_superintendent}" class="sig-img">`;
 
+            // C. FETCH DETAILS
             const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
             const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
             const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', head.id);
 
-            let resMap = {}; let noteMap = {};
+            // Mapping Result
+            let resMap = {};
+            let noteMap = {};
             if(results) {
                 results.forEach(r => {
-                    resMap[`${r.pmi_
+                    resMap[`${r.pmi_item_id}_${r.pmi_item_field_id}`] = r;
+                    if(r.keterangan) noteMap[r.pmi_item_id] = r.keterangan;
+                });
+            }
+
+            // D. RENDER TABLE
+            const tbody = document.getElementById('tbl-body');
+            tbody.innerHTML = '';
+            let lastCat = '';
+            let no = 1;
+
+            if(items) {
+                items.forEach(item => {
+                    if(item.kategori !== lastCat) {
+                        lastCat = item.kategori;
+                        tbody.innerHTML += `<tr class="category-row"><td colspan="5">${lastCat}</td></tr>`;
+                    }
+
+                    const myFields = fields.filter(f => f.pmi_item_id === item.id);
+                    
+                    // Logic Tampilan Actual (Single vs Multi)
+                    let actHtml = '';
+                    
+                    if(myFields.length === 1 && myFields[0].tipe_input === 'radio_ok_ng') {
+                        // Single OK/NG
+                        let fid = myFields[0].id;
+                        let r = resMap[`${item.id}_${fid}`];
+                        let st = r ? r.status : '-';
+                        let cls = st === 'OK' ? 'st-ok' : (st === 'NG' ? 'st-ng' : '');
+                        actHtml = `<div class="${cls}">${st}</div>`;
+                    } else {
+                        // Multi Value (Grid S1-S4, Pump, dll)
+                        actHtml = `<div class="grid-container">`;
+                        myFields.forEach(f => {
+                            let r = resMap[`${item.id}_${f.id}`];
+                            let val = r ? (r.nilai_aktual || r.status || '-') : '-';
+                            let lbl = f.label ? `<span class="grid-label">${f.label}</span>` : '';
+                            actHtml += `<div class="grid-item">${lbl}${val}</div>`;
+                        });
+                        actHtml += `</div>`;
+                    }
+
+                    // Keterangan
+                    let ket = noteMap[item.id] || '';
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="col-no">${no++}</td>
+                            <td class="col-item">${item.nama_item}</td>
+                            <td class="col-standard">${item.standard || ''}</td>
+                            <td class="col-actual">${actHtml}</td>
+                            <td class="col-keterangan">${ket}</td>
+                        </tr>`;
+                });
+            }
+        }
+    </script>
+</body>
+</html>
