@@ -2,399 +2,346 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PMI Pelaksana - Final</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMI Pelaksana - Maintenance Form</title>
     
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    
+
     <style>
-        /* === RESET & BASE === */
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Inter', sans-serif; background: #f4f4f5; color: #111; padding-bottom: 120px; }
-
-        /* === SCANNER UI === */
-        #scanner-view { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: #fff; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .scan-header { position: absolute; top: 50px; text-align: center; width: 100%; z-index: 20; }
-        .header-pill { border: 2px solid #000; border-radius: 50px; padding: 10px 30px; background: #fff; font-weight: 900; font-size: 16px; letter-spacing: 1px; text-transform: uppercase; }
-        .qr-box { width: 260px; height: 260px; background: #000; border: 4px solid #000; position: relative; overflow: hidden; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-        #reader { width: 100%; height: 100%; object-fit: cover; }
-        
-        /* === FORM UI === */
-        #form-view { display: none; max-width: 800px; margin: 0 auto; background: #fff; min-height: 100vh; }
-        
-        /* HEADER INFORMASI */
-        .header-main { background: #000; color: white; padding: 25px 20px; text-align: center; }
-        .header-main h1 { margin: 0; font-size: 18px; font-weight: 900; letter-spacing: 0.5px; }
-        .header-main div { font-size: 12px; margin-top: 5px; opacity: 0.8; font-weight: 600; }
-        
-        .header-info-box { background: #fff; border-bottom: 4px solid #000; padding: 20px; background-color: #fafafa; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .info-item { display: flex; flex-direction: column; }
-        .info-label { font-size: 10px; font-weight: 800; color: #555; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .header-input { border: none; border-bottom: 2px solid #000; width: 100%; font-size: 14px; font-weight: 700; padding: 8px 0; border-radius: 0; background: transparent; outline: none; }
-        
-        /* TABEL CHECKLIST */
-        .table-container { padding: 0 0 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        td { padding: 20px; border-bottom: 1px solid #e5e5e5; vertical-align: top; }
-        
-        /* HEADER KATEGORI (Mekanikal, Hydrolik, dll) */
-        .cat-row td { 
-            background: #eee; padding: 12px 20px; border-left: 8px solid #000; 
-            font-weight: 900; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; 
-        }
-        
-        /* ITEM TEXT */
-        .item-name { font-weight: 800; font-size: 15px; display: block; line-height: 1.4; color: #000; margin-bottom: 4px; }
-        .item-std { display: block; margin-bottom: 15px; font-size: 11px; color: #666; font-style: italic; background: #f4f4f5; padding: 6px 10px; border-radius: 6px; border-left: 3px solid #ccc; }
-
-        /* === SMART GRID UNTUK INPUT FIELD === */
-        /* Ini kunci agar S1, S2, Disp 50, Gauge 50 bisa berjejer rapi */
-        .sub-fields-grid {
-            display: grid;
-            /* Auto-fit: Membuat kolom sebanyak mungkin, minimal lebar 100px per kotak */
-            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-            gap: 12px;
+        /* Styling tambahan agar tampilan Mobile-Friendly */
+        body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; }
+        .section-header { 
+            background-color: #e5e7eb; 
+            padding: 10px 15px; 
+            font-weight: bold; 
+            border-left: 5px solid #2563EB; 
+            margin-top: 25px; 
             margin-bottom: 15px;
+            color: #1f2937;
+            border-radius: 0 8px 8px 0;
         }
-
-        .field-box { display: flex; flex-direction: column; }
-        
-        /* LABEL FIELD (S1, Tabung A, R-S, Disp 50) */
-        .field-label { 
-            font-size: 10px; font-weight: 800; margin-bottom: 6px; 
-            color: #000; text-transform: uppercase; letter-spacing: 0.5px;
-            background: #e0e0e0; display: inline-block; padding: 2px 6px; border-radius: 4px; width: fit-content;
+        .input-box {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            margin-top: 5px;
+            background-color: #fff;
         }
-
-        /* RADIO BUTTON (OK/NG) */
-        .radio-group { display: flex; width: 100%; }
-        .radio-btn { 
-            flex: 1; text-align: center; padding: 12px; border: 2px solid #000; 
-            font-weight: 800; font-size: 13px; cursor: pointer; background: #fff; transition: 0.1s; 
+        .input-box:focus {
+            outline: none;
+            border-color: #2563EB;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
-        .radio-btn:first-child { border-right: none; border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
-        .radio-btn:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
-        .radio-btn input { display: none; }
-        
-        /* Warna Status Aktif */
-        .radio-btn:has(input[value="OK"]:checked) { background: #16a34a; color: white; border-color: #16a34a; }
-        .radio-btn:has(input[value="NG"]:checked) { background: #dc2626; color: white; border-color: #dc2626; }
-
-        /* INPUT ANGKA (SET VALUE) */
-        .std-input { 
-            width: 100%; padding: 12px; border: 2px solid #000; 
-            font-size: 14px; font-weight: 700; border-radius: 8px; 
-            text-align: center; background: #fff; outline: none;
+        .label-text {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 2px;
         }
-        .std-input:focus { border-color: #2563eb; background: #eff6ff; }
-
-        /* SHARED KETERANGAN (Satu per Item) */
-        .shared-note { 
-            width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px;
-            font-size: 13px; margin-top: 5px; background: #fff; font-family: inherit;
-            display: block; transition: 0.2s;
-        }
-        .shared-note:focus { border-color: #000; background: #fafafa; outline: none; }
-        
-        /* SIGNATURE & FOOTER */
-        .section { padding: 25px 20px; border-top: 2px solid #eee; background: #fafafa; }
-        #sig-canvas { border: 2px dashed #000; width: 100%; height: 180px; background: #fff; margin-top: 10px; border-radius: 8px; cursor: crosshair; }
-        .btn-submit { 
-            width: 90%; margin: 30px auto; display: block; padding: 20px; 
-            background: #000; color: white; border: none; font-weight: 900; 
-            font-size: 16px; letter-spacing: 1px; cursor: pointer; border-radius: 12px; 
-            box-shadow: 0 4px 0 #333; transition: transform 0.1s;
-        }
-        .btn-submit:active { transform: translateY(4px); box-shadow: none; }
-        
-        /* BOTTOM NAV */
-        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; border-top: 2px solid #000; display: flex; padding: 15px 0; z-index: 999; }
-        .nav-item { flex: 1; text-align: center; color: #ccc; font-size: 24px; text-decoration: none; }
-        .nav-item.active { color: #000; }
     </style>
 </head>
-<body>
+<body class="pb-20">
 
-    <div id="scanner-view">
-        <div class="scan-header">
-            <div class="header-pill">PELAKSANA</div>
-            <div style="margin-top:10px; font-size:12px; font-weight:700; color:#555;">SCAN QR MESIN</div>
-        </div>
-        <div class="qr-box"><div id="reader"></div></div>
-        <div style="margin-top:25px; font-weight:800; font-size: 14px;" id="scan-msg">ARAHKAN KAMERA KE QR CODE...</div>
-    </div>
-
-    <div id="form-view">
-        <div class="header-main">
-            <h1>PREVENTIF MAINTENANCE</h1>
-            <div>CLAMPING & INJECTION UNIT</div>
-        </div>
+    <div class="max-w-3xl mx-auto bg-white shadow-xl min-h-screen">
         
-        <div class="header-info-box">
-            <div class="info-grid">
-                <div class="info-item"><span class="info-label">MESIN</span><input type="text" id="h_merk" class="header-input" readonly></div>
-                <div class="info-item"><span class="info-label">TARGET JAM</span><input type="time" id="h_target" class="header-input"></div>
-                <div class="info-item"><span class="info-label">TONAGE</span><input type="text" id="h_ton" class="header-input" readonly></div>
-                <div class="info-item"><span class="info-label">START JAM</span><input type="time" id="h_start" class="header-input"></div>
-                <div class="info-item"><span class="info-label">TANGGAL</span><input type="date" id="h_tanggal" class="header-input" readonly></div>
-                <div class="info-item"><span class="info-label">FINISH JAM</span><input type="time" id="h_finish" class="header-input"></div>
-                <div class="info-item"><span class="info-label">TAHUN</span><input type="number" id="h_tahun" class="header-input" readonly></div>
-                <div class="info-item"><span class="info-label">RUNNING HOURS (HM)</span><input type="number" id="h_run_hours" class="header-input" placeholder="Input HM..." step="0.1"></div>
-            </div>
-            <div style="margin-top:20px;">
-                <span class="info-label">NAMA TEKNISI PELAKSANA</span>
-                <input type="text" id="nama_pelaksana" class="header-input" placeholder="Isi nama lengkap Anda...">
-            </div>
+        <div class="bg-blue-700 p-6 text-white text-center rounded-b-xl shadow-md sticky top-0 z-10">
+            <h1 class="text-2xl font-bold tracking-wide">FORM CHECKLIST MESIN</h1>
+            <p class="text-sm opacity-90 mt-1">PMI System - Industrial Maintenance</p>
         </div>
 
-        <div class="table-container">
-            <table><tbody id="checklist-body">
-                </tbody></table>
-        </div>
+        <form id="formPelaksana" class="p-6">
 
-        <div class="section">
-            <span style="font-size:12px; font-weight:900; background:#000; color:#fff; padding:4px 10px; border-radius: 4px;">PARAF PELAKSANA</span>
-            <canvas id="sig-canvas"></canvas>
-            <div style="text-align: right; margin-top: 8px;">
-                <button onclick="signaturePad.clear()" style="border:none; background:none; font-weight:bold; font-size:12px; text-decoration: underline; color:#dc2626; cursor:pointer;">HAPUS PARAF</button>
+            <div class="mb-4">
+                <label class="label-text">Nama Pelaksana / Inspektor</label>
+                <input type="text" id="inspector_name" class="input-box" placeholder="Nama Lengkap Anda" required>
             </div>
-        </div>
 
-        <button class="btn-submit" id="btnSave" onclick="submitData()">SIMPAN & KIRIM LAPORAN</button>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="label-text">Shift Group</label>
+                    <select id="shift_group" class="input-box">
+                        <option value="1">Shift 1 (Pagi)</option>
+                        <option value="2">Shift 2 (Sore)</option>
+                        <option value="3">Shift 3 (Malam)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label-text">Tanggal</label>
+                    <input type="date" id="date_inspection" class="input-box" required>
+                </div>
+            </div>
+
+            <div class="section-header">MESIN & STATUS</div>
+            <div class="mb-4">
+                <label class="label-text text-blue-700">Pilih Mesin (Database)</label>
+                <select id="machine_select" class="input-box border-blue-500 border-2" required>
+                    <option value="">-- Loading Data Mesin... --</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label class="label-text">Status Awal Mesin</label>
+                <select id="machine_status" class="input-box">
+                    <option value="Running">Running (Produksi)</option>
+                    <option value="Stop">Stop (Mati)</option>
+                    <option value="Repair">Sedang Perbaikan</option>
+                </select>
+            </div>
+
+            <div class="section-header">1. SAFETY & FISIK (Safety)</div>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <label class="label-text">Safety Door</label>
+                    <select id="check_safety_door" class="input-box"><option>OK</option><option class="text-red-600">NG</option></select>
+                </div>
+                <div>
+                    <label class="label-text">Tombol Emergency</label>
+                    <select id="check_emergency_btn" class="input-box"><option>OK</option><option class="text-red-600">NG</option></select>
+                </div>
+                <div class="col-span-2">
+                    <label class="label-text">Kebersihan Area (5S)</label>
+                    <select id="check_cleanliness" class="input-box"><option>Bersih</option><option class="text-red-600">Kotor</option></select>
+                </div>
+            </div>
+
+            <div class="section-header">2. UNIT INJEKSI (Nozzle/Barrel)</div>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <label class="label-text">Kebocoran Nozzle</label>
+                    <select id="check_nozzle_leak" class="input-box"><option>Aman</option><option class="text-red-600">Bocor</option></select>
+                </div>
+                <div>
+                    <label class="label-text">Suhu Barrel</label>
+                    <select id="check_barrel_temp" class="input-box"><option>Normal</option><option class="text-red-600">Abnormal</option></select>
+                </div>
+                <div class="col-span-2">
+                    <label class="label-text">Kondisi Heater Bands</label>
+                    <select id="check_heater_bands" class="input-box"><option>OK</option><option class="text-red-600">Putus/Rusak</option></select>
+                </div>
+            </div>
+
+            <div class="section-header">3. MOLD & CLAMPING</div>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <label class="label-text">Kondisi Mold</label>
+                    <select id="check_mold_condition" class="input-box"><option>OK</option><option class="text-red-600">NG</option></select>
+                </div>
+                <div>
+                    <label class="label-text">Pelumasan (Grease)</label>
+                    <select id="check_lubrication" class="input-box"><option>Cukup</option><option class="text-red-600">Kering</option></select>
+                </div>
+            </div>
+
+            <div class="section-header">4. HIDROLIK & ELEKTRIK</div>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <label class="label-text">Level Oli</label>
+                    <select id="check_oil_level" class="input-box"><option>Normal</option><option class="text-red-600">Low</option></select>
+                </div>
+                <div>
+                    <label class="label-text">Suara Pompa</label>
+                    <select id="check_pump_noise" class="input-box"><option>Halus</option><option class="text-red-600">Berisik</option></select>
+                </div>
+                <div class="col-span-2">
+                    <label class="label-text">Tampilan Panel Layar</label>
+                    <select id="check_panel_display" class="input-box"><option>Jelas</option><option class="text-red-600">Blank/Error</option></select>
+                </div>
+            </div>
+
+            <div class="section-header">HASIL & TINDAKAN</div>
+            
+            <div class="mb-4">
+                <label class="label-text mb-2">Kesimpulan Status:</label>
+                <div class="flex gap-4">
+                    <label class="flex items-center justify-center p-3 bg-green-50 rounded-lg border border-green-200 w-full cursor-pointer hover:bg-green-100">
+                        <input type="radio" name="overall_status" value="PASS" checked class="w-5 h-5 text-green-600">
+                        <span class="ml-2 font-bold text-green-700">PASS (OK)</span>
+                    </label>
+                    <label class="flex items-center justify-center p-3 bg-red-50 rounded-lg border border-red-200 w-full cursor-pointer hover:bg-red-100">
+                        <input type="radio" name="overall_status" value="FAIL" class="w-5 h-5 text-red-600">
+                        <span class="ml-2 font-bold text-red-700">FAIL (NG)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="label-text">Tindakan Perbaikan (Jika ada NG)</label>
+                <input type="text" id="action_taken" class="input-box" placeholder="Contoh: Menambah oli, kencangkan baut...">
+            </div>
+
+            <div class="mb-4">
+                <label class="label-text">Catatan Tambahan (Remarks)</label>
+                <textarea id="remarks" rows="3" class="input-box" placeholder="Catatan khusus operator..."></textarea>
+            </div>
+
+            <div class="section-header">VALIDASI FOTO</div>
+            <div class="mb-6">
+                <label class="label-text">Upload Foto Bukti</label>
+                <input type="file" id="photo_evidence" accept="image/*" class="input-box bg-white">
+                <p class="text-xs text-gray-500 mt-1">*Disarankan ambil foto jika ada temuan NG</p>
+            </div>
+
+            <button type="submit" id="btnSubmit" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-4 rounded-lg shadow-lg text-lg transition duration-200">
+                KIRIM LAPORAN
+            </button>
+
+        </form>
     </div>
-
-    <nav class="bottom-nav">
-        <a href="index.html" class="nav-item active"><i class="fa-solid fa-house"></i></a>
-        <a href="menu_utama.html" class="nav-item"><i class="fa-solid fa-bars"></i></a>
-        <a href="download_data.html" class="nav-item"><i class="fa-solid fa-download"></i></a>
-        <a href="informasi_akun.html" class="nav-item"><i class="fa-solid fa-circle-user"></i></a>
-    </nav>
 
     <script>
-        // === KONFIGURASI SUPABASE ===
-        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
-        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
-        const _sb = supabase.createClient(SB_URL, SB_KEY);
-        
-        const html5QrCode = new Html5Qrcode("reader");
-        let signaturePad, currentMachineId, loadedItems = [], loadedFields = [];
+        // --- 1. CONFIG SUPABASE (SUDAH DIPERBAIKI SESUAI REQUEST) ---
+        const supabaseUrl = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-        // 1. INISIALISASI SAAT LOAD
-        window.onload = function() {
-            const now = new Date();
-            document.getElementById('h_tanggal').valueAsDate = now;
-            document.getElementById('h_tahun').value = now.getFullYear();
-            
-            const timeString = now.toTimeString().substring(0,5);
-            document.getElementById('h_start').value = timeString;
-            document.getElementById('h_target').value = timeString; // Estimasi default
-            
-            // Mulai Scanner
-            html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, onScanSuccess, (err)=>{});
-        };
+        // Set tanggal hari ini secara otomatis
+        document.getElementById('date_inspection').valueAsDate = new Date();
 
-        // 2. LOGIKA SCANNER
-        async function onScanSuccess(decodedText) {
-            let code = decodedText.trim();
-            // Handle URL QR Code (ambil bagian akhir)
-            if(code.includes('/')) code = code.split('/').pop().trim();
-            
-            document.getElementById('scan-msg').innerText = "MENGAMBIL DATA: " + code;
-            
-            try {
-                const { data } = await _sb.from('pmi_machines')
-                    .select('*')
-                    .or(`barcode.eq.${code},nama_mesin.eq.${code}`)
-                    .maybeSingle();
+        // --- 2. FUNGSI LOAD DATA MESIN (DARI TABEL pmi_machines) ---
+        async function loadMachines() {
+            const machineSelect = document.getElementById('machine_select');
 
-                if(!data) throw new Error("MESIN TIDAK TERDAFTAR DI DATABASE");
-                
-                await html5QrCode.stop(); 
-                loadForm(data);
-            } catch (err) { 
-                document.getElementById('scan-msg').innerText = "ERROR: " + err.message;
-                document.getElementById('scan-msg').style.color = "red";
+            // Kita ambil data dari tabel 'pmi_machines'
+            const { data, error } = await supabase
+                .from('pmi_machines') 
+                .select('*') 
+                .order('machine_name', { ascending: true });
+
+            if (error) {
+                console.error("Gagal Load Mesin:", error);
+                machineSelect.innerHTML = `<option>Error Load DB</option>`;
+                return;
             }
-        }
 
-        // 3. LOAD FORM UTAMA
-        async function loadForm(machine) {
-            document.getElementById('scanner-view').style.display = 'none';
-            document.getElementById('form-view').style.display = 'block';
-            
-            currentMachineId = machine.id;
-            document.getElementById('h_merk').value = machine.nama_mesin;
-            document.getElementById('h_ton').value = machine.tonage || '-';
-            
-            // Setup Signature Pad
-            const c = document.getElementById('sig-canvas');
-            const r = Math.max(window.devicePixelRatio || 1, 1);
-            c.width = c.offsetWidth * r; c.height = c.offsetHeight * r;
-            c.getContext("2d").scale(r, r);
-            signaturePad = new SignaturePad(c, { penColor: 'black' });
+            // Bersihkan Dropdown
+            machineSelect.innerHTML = '<option value="">-- Pilih Mesin --</option>';
 
-            // Fetch Items & Fields (Sorted by Urutan)
-            const { data: items } = await _sb.from('pmi_items').select('*').eq('aktif', true).order('urutan');
-            const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
-            
-            loadedItems = items;
-            loadedFields = fields;
-            renderChecklist(items, fields);
-        }
-
-        // 4. RENDER TAMPILAN (LOGIKA INTI)
-        function renderChecklist(items, fields) {
-            const tbody = document.getElementById('checklist-body');
-            tbody.innerHTML = "";
-            let lastCat = "";
-
-            items.forEach(item => {
-                // Header Kategori (Mekanikal, Hydrolik, dll)
-                if(item.kategori !== lastCat) {
-                    lastCat = item.kategori;
-                    tbody.innerHTML += `<tr class="cat-row"><td colspan="2">${lastCat}</td></tr>`;
-                }
-
-                // Ambil semua field milik item ini
-                const myFields = fields.filter(f => f.pmi_item_id === item.id);
-                
-                let html = `<tr><td>
-                    <span class="item-name">${item.nama_item}</span>
-                    <span class="item-std">${item.standard || '-'}</span>
+            // Masukkan data ke Dropdown
+            if (data && data.length > 0) {
+                data.forEach(mesin => {
+                    const option = document.createElement('option');
+                    // Asumsi kolom database kamu: machine_code & machine_name
+                    option.value = mesin.machine_code; 
+                    option.textContent = `${mesin.machine_name} (${mesin.machine_code})`;
                     
-                    <div class="sub-fields-grid">`; 
-                
-                myFields.forEach(f => {
-                    let label = f.label || ""; // Contoh: S1, Disp 50, R-S, Tabung A
-                    
-                    html += `<div class="field-box">`;
-                    
-                    // Tampilkan Label Kecil jika ada (Untuk item matrix)
-                    if(label) html += `<span class="field-label">${label}</span>`;
-
-                    if (f.tipe_input === 'radio_ok_ng') {
-                        // Render Radio Button OK/NG
-                        html += `
-                            <div class="radio-group">
-                                <label class="radio-btn"><input type="radio" name="f_${f.id}" value="OK">OK</label>
-                                <label class="radio-btn"><input type="radio" name="f_${f.id}" value="NG">NG</label>
-                            </div>`;
-                    } else if (f.tipe_input === 'number') {
-                        // Render Input Angka
-                        html += `<input type="number" id="f_${f.id}" class="std-input" placeholder="..." step="any">`;
-                    } else {
-                        // Fallback Text Input
-                        html += `<input type="text" id="f_${f.id}" class="std-input" placeholder="...">`;
-                    }
-                    html += `</div>`; // End field-box
+                    // Simpan nama mesin di atribut 'data-name' agar bisa diambil saat submit
+                    option.setAttribute('data-name', mesin.machine_name); 
+                    machineSelect.appendChild(option);
                 });
-
-                html += `</div>`; // End Grid
-
-                // === SHARED KETERANGAN (SATU PER ITEM) ===
-                html += `<input type="text" id="shared_ket_${item.id}" class="shared-note" placeholder="Tulis Keterangan / Catatan NG..." />`;
-
-                html += `</td></tr>`;
-                tbody.innerHTML += html;
-            });
+            } else {
+                machineSelect.innerHTML = '<option>Tidak ada data mesin</option>';
+            }
         }
 
-        // 5. SUBMIT DATA
-        async function submitData() {
-            // Validasi Dasar
-            const nama = document.getElementById('nama_pelaksana').value.trim();
-            const runHours = document.getElementById('h_run_hours').value;
-            let finishInput = document.getElementById('h_finish').value || new Date().toTimeString().substring(0,5);
+        // Jalankan fungsi load saat halaman dibuka
+        loadMachines();
 
-            if(!nama || !runHours || signaturePad.isEmpty()) {
-                return alert("DATA BELUM LENGKAP!\n\nHarap isi:\n- Running Hours (HM)\n- Nama Pelaksana\n- Tanda Tangan");
-            }
-
-            const btn = document.getElementById('btnSave');
-            btn.disabled = true; btn.innerText = "SEDANG MENGIRIM...";
+        // --- 3. FUNGSI SUBMIT FORM KE 'maintenance_logs' ---
+        document.getElementById('formPelaksana').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const btn = document.getElementById('btnSubmit');
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = 'Sedang Mengirim...';
+            btn.disabled = true;
 
             try {
-                // A. Insert Header Laporan
-                const { data: header, error: e1 } = await _sb.from('pmi_header').insert([{
-                    machine_id: currentMachineId,
-                    tanggal: document.getElementById('h_tanggal').value,
-                    tahun: document.getElementById('h_tahun').value,
-                    bulan: new Date().getMonth() + 1,
-                    start_jam: document.getElementById('h_start').value,
-                    finish_jam: finishInput,
-                    target_selesai: document.getElementById('h_target').value,
-                    running_hours: runHours,
-                    nama_pelaksana: nama,
-                    signature_pelaksana: signaturePad.toDataURL(),
-                    status_verifikasi: 'Pending'
-                }]).select().single();
-
-                if(e1) throw e1;
-
-                // B. Insert Results (Looping Data)
-                let results = [];
+                // A. PROSES UPLOAD FOTO (Jika user memilih file)
+                let photoUrl = null;
+                const fileInput = document.getElementById('photo_evidence');
                 
-                loadedItems.forEach(item => {
-                    const myFields = loadedFields.filter(f => f.pmi_item_id === item.id);
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    // Buat nama file unik: timestamp_namafile
+                    const fileName = `log_${Date.now()}_${file.name.replace(/\s/g, '_')}`; 
                     
-                    // Ambil Catatan Shared
-                    const sharedNoteEl = document.getElementById(`shared_ket_${item.id}`);
-                    const sharedNoteVal = sharedNoteEl ? sharedNoteEl.value.trim() : "";
+                    // Upload ke bucket 'maintenance-photos'
+                    const { error: uploadError } = await supabase.storage
+                        .from('maintenance-photos')
+                        .upload(fileName, file);
+                    
+                    if (uploadError) throw uploadError;
 
-                    myFields.forEach(f => {
-                        let status = null;
-                        let nilai_aktual = null;
-                        let hasValue = false;
-
-                        if (f.tipe_input === 'radio_ok_ng') {
-                            const checked = document.querySelector(`input[name="f_${f.id}"]:checked`);
-                            if(checked) {
-                                status = checked.value;
-                                hasValue = true;
-                            }
-                        } else {
-                            const el = document.getElementById(`f_${f.id}`);
-                            if(el && el.value.trim() !== '') {
-                                nilai_aktual = el.value;
-                                hasValue = true; 
-                            }
-                        }
-
-                        // Simpan jika user mengisi sesuatu (Status, Nilai, ATAU Keterangan)
-                        // Keterangan saja pun boleh disimpan (misal item skip tapi ada catatan)
-                        if (hasValue || sharedNoteVal !== "") {
-                            results.push({ 
-                                pmi_header_id: header.id, 
-                                pmi_item_id: item.id, 
-                                pmi_item_field_id: f.id, 
-                                status: status, 
-                                nilai_aktual: nilai_aktual,
-                                keterangan: sharedNoteVal 
-                            });
-                        }
-                    });
-                });
-
-                if(results.length > 0) {
-                    const { error: e2 } = await _sb.from('pmi_results').insert(results);
-                    if(e2) throw e2;
+                    // Dapatkan URL publik file yang baru diupload
+                    const { data: urlData } = supabase.storage
+                        .from('maintenance-photos')
+                        .getPublicUrl(fileName);
+                    
+                    photoUrl = urlData.publicUrl;
                 }
 
-                alert("✅ LAPORAN BERHASIL DISIMPAN!"); 
-                window.location.href = "index.html";
+                // B. SIAPKAN DATA UNTUK DIKIRIM KE DATABASE
+                const machineSelect = document.getElementById('machine_select');
+                // Ambil nama mesin dari atribut data-name yang kita set tadi
+                const machineName = machineSelect.options[machineSelect.selectedIndex].getAttribute('data-name');
 
-            } catch (e) { 
-                console.error(e);
-                alert("❌ GAGAL MENYIMPAN: " + e.message); 
-                btn.disabled = false; btn.innerText = "SIMPAN & KIRIM LAPORAN";
+                const payload = {
+                    // Identitas
+                    inspector_name: document.getElementById('inspector_name').value,
+                    shift_group: document.getElementById('shift_group').value,
+                    date_inspection: document.getElementById('date_inspection').value,
+                    
+                    // Mesin
+                    machine_code: machineSelect.value,
+                    machine_name: machineName || "Unknown", 
+                    machine_status: document.getElementById('machine_status').value,
+
+                    // Checklist Teknis
+                    check_safety_door: document.getElementById('check_safety_door').value,
+                    check_emergency_btn: document.getElementById('check_emergency_btn').value,
+                    check_cleanliness: document.getElementById('check_cleanliness').value,
+                    
+                    check_nozzle_leak: document.getElementById('check_nozzle_leak').value,
+                    check_barrel_temp: document.getElementById('check_barrel_temp').value,
+                    check_heater_bands: document.getElementById('check_heater_bands').value,
+                    
+                    check_mold_condition: document.getElementById('check_mold_condition').value,
+                    check_lubrication: document.getElementById('check_lubrication').value,
+                    
+                    check_oil_level: document.getElementById('check_oil_level').value,
+                    check_pump_noise: document.getElementById('check_pump_noise').value,
+                    check_panel_display: document.getElementById('check_panel_display').value,
+
+                    // Hasil & Validasi
+                    overall_status: document.querySelector('input[name="overall_status"]:checked').value,
+                    action_taken: document.getElementById('action_taken').value,
+                    remarks: document.getElementById('remarks').value,
+                    photo_evidence_url: photoUrl
+                };
+
+                // C. KIRIM (INSERT) KE DATABASE
+                const { error: dbError } = await supabase
+                    .from('maintenance_logs')
+                    .insert([payload]);
+
+                if (dbError) throw dbError;
+
+                // D. SUKSES
+                Swal.fire({
+                    title: 'Berhasil!',
+                    text: 'Laporan Maintenance telah tersimpan.',
+                    icon: 'success',
+                    confirmButtonColor: '#1d4ed8'
+                }).then(() => {
+                    window.location.reload(); // Refresh halaman untuk input baru
+                });
+
+            } catch (err) {
+                console.error(err);
+                Swal.fire({
+                    title: 'Gagal!',
+                    text: 'Terjadi kesalahan: ' + err.message,
+                    icon: 'error'
+                });
+                // Kembalikan tombol jika error
+                btn.innerHTML = originalBtnText;
+                btn.disabled = false;
             }
-        }
+        });
     </script>
 </body>
 </html>
