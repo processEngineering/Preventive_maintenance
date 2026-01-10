@@ -52,16 +52,23 @@
         /* INFO MESIN */
         .info-tbl { border: none; margin-bottom: 5px; font-weight: bold; font-size: 9pt; }
         .info-tbl td { border: none; padding: 1px 5px; }
-        .row-grey { background: #d9d9d9 !important; font-weight: bold; text-align: center; text-transform: uppercase; -webkit-print-color-adjust: exact; }
-
+        
         /* MAIN TABLE */
         .main-tbl thead th { background: #d9d9d9 !important; height: 20px; font-size: 9pt; border-bottom: 2px solid #000; -webkit-print-color-adjust: exact; }
-        .col-no { width: 25px; text-align: center; }
+        .col-no { width: 25px; text-align: center; font-weight: bold; }
         .col-std { width: 25%; font-style: italic; }
         .col-act { width: 30%; padding: 0 !important; } /* Padding 0 untuk Nested Table */
         .col-ket { width: 15%; }
 
-        .cat-row td { background: #d9d9d9 !important; font-weight: bold; padding-left: 10px; border-top: 2px solid #000; -webkit-print-color-adjust: exact; }
+        /* Style Baris Kategori */
+        .cat-row td { 
+            background: #d9d9d9 !important; 
+            font-weight: bold; 
+            padding-left: 10px; 
+            border-top: 2px solid #000; 
+            text-transform: capitalize;
+            -webkit-print-color-adjust: exact; 
+        }
 
         /* === CUSTOM ACTUAL CELLS (GRID SYSTEM) === */
         
@@ -72,17 +79,18 @@
         .grid-head { background: #eee; font-size: 7pt; font-weight: bold; border-bottom: 1px solid #000 !important; -webkit-print-color-adjust: exact; }
         .grid-val { font-weight: bold; height: 18px; }
 
-        /* 2. Grid Pump (Complex) */
+        /* 2. Grid Pump (Complex - Valve Idling) */
         .pump-tbl { width: 100%; border: none; font-size: 8pt; }
         .pump-tbl td { border: 1px solid #000; text-align: center; }
-        .pump-tbl .no-border-top { border-top: none; }
-        .pump-tbl .no-border-left { border-left: none; }
-        .pump-tbl .no-border-right { border-right: none; }
-        .pump-tbl .no-border-bottom { border-bottom: none; }
+        /* Hilangkan border luar agar menyatu */
+        .pump-tbl tr:first-child td { border-top: none; }
+        .pump-tbl tr:last-child td { border-bottom: none; }
+        .pump-tbl tr td:first-child { border-left: none; }
+        .pump-tbl tr td:last-child { border-right: none; }
 
         /* 3. Grid Heater */
         .heater-tbl { width: 100%; height: 100%; border: none; }
-        .heater-tbl td { border-right: 1px solid #000; text-align: center; width: 50%; }
+        .heater-tbl td { border-right: 1px solid #000; text-align: center; width: 50%; border-top:none; border-bottom:none; border-left:none; }
         .heater-tbl td:last-child { border-right: none; }
 
         /* TANDA TANGAN */
@@ -97,6 +105,11 @@
             body { background: white; padding: 0; }
             .no-print { display: none; }
             .paper { display: block; margin: 0; border: none; }
+            /* Paksa background color tercetak */
+            th, .cat-row td, .grid-head, .pump-tbl td[style*="background"] {
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact;
+            }
         }
     </style>
 </head>
@@ -273,12 +286,16 @@
             const myFields = fields.filter(f => f.pmi_item_id === item.id);
             let actHtml = '';
 
-            // LOGIKA RENDER ACTUAL BERDASARKAN NAMA ITEM / KATEGORI
+            // === FIX: BERSIHKAN ANGKA DI NAMA ITEM (Agar tidak Double) ===
+            // Contoh: "1. Pompa" -> "Pompa"
+            let displayName = item.nama_item.replace(/^[0-9]+[\.\)\s]*\s*/, '');
+
             const lowerName = item.nama_item.toLowerCase();
 
-            // 1. KASUS PUMP (Pump 1, Pump 2) - Grid Paling Rumit
+            // === RENDER LOGIC ===
+
+            // 1. KASUS PUMP (Nested Table Rumit)
             if(lowerName.includes('pump 1') || lowerName.includes('pump 2')) {
-                // Cari value fields
                 let f50 = myFields.find(f => f.label.includes('50'))?.id;
                 let f100 = myFields.find(f => f.label.includes('100'))?.id;
                 let f150 = myFields.find(f => f.label.includes('150'))?.id;
@@ -290,7 +307,7 @@
                 let v200 = getVal(resMap, item.id, f200);
 
                 actHtml = `
-                <table class="pump-tbl" style="border:none; margin:-1px;">
+                <table class="pump-tbl">
                     <tr>
                         <td colspan="4" style="background:#eee; font-weight:bold; font-size:7pt;">Valve Idling Sett:</td>
                     </tr>
@@ -301,7 +318,7 @@
                         <td style="background:#eee; font-weight:bold;">200</td>
                     </tr>
                     <tr>
-                        <td colspan="4" style="text-align:left; font-size:7pt;">Actual Display / Pressure Gauge:</td>
+                        <td colspan="4" style="text-align:left; font-size:7pt; border-bottom:1px solid #000;">Actual Display / Pressure Gauge:</td>
                     </tr>
                     <tr>
                         <td style="height:20px;">${v50}</td>
@@ -311,9 +328,9 @@
                     </tr>
                 </table>`;
             }
-            // 2. KASUS HEATER (Zone 1 - Nozzle) - Split 2 Kolom
-            else if(lowerName.includes('heater zone') || lowerName.includes('zone nozzle')) {
-                // Asumsi field 1 = Display, field 2 = Thermo
+            // 2. KASUS HEATER (Zone 1 - Nozzle)
+            else if(lowerName.includes('heater zone') || lowerName.includes('zone nozzle') || lowerName.includes('zone 1')) {
+                // Asumsi: Field 1 = Display Mesin, Field 2 = Thermo Gun
                 let fDisp = myFields[0];
                 let fThermo = myFields[1];
                 let vDisp = fDisp ? getVal(resMap, item.id, fDisp.id) : '-';
@@ -327,7 +344,7 @@
                     </tr>
                 </table>`;
             }
-            // 3. KASUS TIE BAR / BREAKER / ACCUMULATOR (Grid Horizontal Biasa)
+            // 3. KASUS GRID SIMPLE (Tie Bar, Breaker, Accumulator)
             else if(myFields.length > 1) {
                 let tdsHead = '';
                 let tdsVal = '';
@@ -342,7 +359,7 @@
                     <tr>${tdsVal}</tr>
                 </table>`;
             }
-            // 4. KASUS STANDAR (OK/NG)
+            // 4. STANDAR OK/NG
             else {
                 let f = myFields[0];
                 let val = f ? getVal(resMap, item.id, f.id) : '-';
@@ -356,8 +373,7 @@
             tbody.innerHTML += `
                 <tr>
                     <td class="col-no">${item.urutan}</td>
-                    <td>${item.nama_item}</td>
-                    <td class="col-std">${item.standard || ''}</td>
+                    <td>${displayName}</td> <td class="col-std">${item.standard || ''}</td>
                     <td class="col-act">${actHtml}</td>
                     <td class="col-ket">${ket}</td>
                 </tr>
