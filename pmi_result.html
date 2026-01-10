@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Form Preventif - Final Layout Presisi</title>
+    <title>Cetak Form Preventif - Final Fix Layout</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
@@ -69,28 +69,29 @@
             -webkit-print-color-adjust: exact; 
         }
 
-        /* === GRID SYSTEM (ACTUAL COLUMN) === */
-        
-        /* 1. Grid Tie Bar & Simple Grid */
+        /* KHUSUS HEADER HEATER BARREL */
+        .heater-header-row td {
+            background: #d9d9d9 !important;
+            font-weight: bold;
+            text-align: center;
+            font-size: 8pt;
+            -webkit-print-color-adjust: exact; 
+        }
+
+        /* === GRID SYSTEM === */
         .grid-simple { width: 100%; border: none; }
-        .grid-simple td { border: none; border-right: 1px solid #000; text-align: center; padding: 2px; width: 25%; } /* Lebar Fix 25% */
+        .grid-simple td { border: none; border-right: 1px solid #000; text-align: center; padding: 2px; width: 25%; }
         .grid-simple td:last-child { border-right: none; }
-        
-        /* Header Grid (Hanya muncul di item pertama) */
         .grid-head { background: #eee; font-size: 7pt; font-weight: bold; border-bottom: 1px solid #000 !important; -webkit-print-color-adjust: exact; }
         .grid-val { font-weight: bold; height: 18px; }
 
-        /* 2. Grid Pump (Complex) */
         .pump-tbl { width: 100%; border: none; font-size: 8pt; }
-        .pump-tbl td { border: 1px solid #000; text-align: center; width: 25%; } /* Fix width 25% biar lurus sama Pump 2 */
-        
-        /* Hilangkan border luar agar menyatu dengan sel utama */
+        .pump-tbl td { border: 1px solid #000; text-align: center; width: 25%; }
         .pump-tbl tr:first-child td { border-top: none; }
         .pump-tbl tr:last-child td { border-bottom: none; }
         .pump-tbl tr td:first-child { border-left: none; }
         .pump-tbl tr td:last-child { border-right: none; }
 
-        /* 3. Grid Heater */
         .heater-tbl { width: 100%; height: 100%; border: none; }
         .heater-tbl td { border-right: 1px solid #000; text-align: center; width: 50%; border-top:none; border-bottom:none; border-left:none; }
         .heater-tbl td:last-child { border-right: none; }
@@ -107,7 +108,7 @@
             body { background: white; padding: 0; }
             .no-print { display: none; }
             .paper { display: block; margin: 0; border: none; }
-            th, .cat-row td, .grid-head, .pump-tbl td[style*="background"] {
+            th, .cat-row td, .heater-header-row td, .grid-head, .pump-tbl td[style*="background"] {
                 -webkit-print-color-adjust: exact; 
                 print-color-adjust: exact;
             }
@@ -278,87 +279,96 @@
         let lastCat = '';
 
         items.forEach(item => {
+            const lowerName = item.nama_item.toLowerCase();
+
+            // === 1. HEADER KATEGORI ===
             if(item.kategori !== lastCat) {
                 lastCat = item.kategori;
                 tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${lastCat}</td></tr>`;
             }
 
-            const myFields = fields.filter(f => f.pmi_item_id === item.id);
-            let actHtml = '';
+            // === 2. FIX: ITEM PARENT "CEK TEMPERATUR HEATER BARREL" ===
+            // Jika ini adalah item parent (judul sub-seksi), buat jadi baris abu-abu penuh
+            if(lowerName.includes('cek temperatur heater barrel')) {
+                tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${item.nama_item}</td></tr>`;
+                return; // Skip render baris biasa, lanjut ke item berikutnya
+            }
 
-            // LOGIKA NO & NAMA
+            // === 3. HEADER KHUSUS THERMOCOUPLE (Sebelum Zone 1) ===
+            // Menyuntikkan Header Column "Hasil ukur", "Display Mesin", dll
+            if(lowerName.includes('zone 1') || lowerName.includes('heater zone 1')) {
+                tbody.innerHTML += `
+                <tr class="heater-header-row">
+                    <td></td>
+                    <td style="text-align:left;">Mesin (Instalasi Thermocouple)</td>
+                    <td>Hasil ukur</td>
+                    <td>
+                        <div style="float:left; width:50%; border-right:1px solid #000; box-sizing:border-box;">Hasil (Display Mesin)</div>
+                        <div style="float:left; width:50%;">Hasil ukur (Thermo Gun)</div>
+                    </td>
+                    <td>KETERANGAN</td>
+                </tr>`;
+            }
+
+            // LOGIKA NO & NAMA (Split)
             let rawName = item.nama_item;
             let finalNo = item.urutan;
             let finalName = rawName;
-
             let matchSub = rawName.match(/^(\d+)([a-z])[\.\)\s]+\s*(.*)$/i);
             let matchGeneral = rawName.match(/^(\d+)[\.\)\s]+\s*(.*)$/);
 
             if (matchSub) {
-                finalNo = matchSub[2] + "."; 
-                finalName = matchSub[3];
+                finalNo = matchSub[2] + "."; finalName = matchSub[3];
             } else if (matchGeneral) {
-                finalNo = matchGeneral[1];
-                finalName = matchGeneral[2];
+                finalNo = matchGeneral[1]; finalName = matchGeneral[2];
             }
 
-            const lowerName = item.nama_item.toLowerCase();
+            const myFields = fields.filter(f => f.pmi_item_id === item.id);
+            let actHtml = '';
 
-            // === LOGIKA HEADER SEKALI SAJA ===
+            // === RENDER LOGIC ===
 
-            // 1. PUMP 1 (Pakai Header) vs PUMP 2 (Tanpa Header)
+            // A. PUMP 1 & 2
             if(lowerName.includes('pump 1')) {
-                // ... Ambil Value Pump 1 ...
                 let v50 = getValByLabel(resMap, item.id, myFields, '50');
                 let v100 = getValByLabel(resMap, item.id, myFields, '100');
                 let v150 = getValByLabel(resMap, item.id, myFields, '150');
                 let v200 = getValByLabel(resMap, item.id, myFields, '200');
 
-                // TAMPILKAN HEADER LENGKAP
                 actHtml = `
                 <table class="pump-tbl">
                     <tr><td colspan="4" style="background:#eee; font-weight:bold; font-size:7pt;">Valve Idling Sett:</td></tr>
-                    <tr>
-                        <td style="background:#eee; font-weight:bold;">50</td>
-                        <td style="background:#eee; font-weight:bold;">100</td>
-                        <td style="background:#eee; font-weight:bold;">150</td>
-                        <td style="background:#eee; font-weight:bold;">200</td>
-                    </tr>
+                    <tr><td style="background:#eee; font-weight:bold;">50</td><td style="background:#eee; font-weight:bold;">100</td><td style="background:#eee; font-weight:bold;">150</td><td style="background:#eee; font-weight:bold;">200</td></tr>
                     <tr><td colspan="4" style="text-align:left; font-size:7pt; border-bottom:1px solid #000;">Actual Display / Pressure Gauge:</td></tr>
-                    <tr>
-                        <td style="height:20px;">${v50}</td><td>${v100}</td><td>${v150}</td><td>${v200}</td>
-                    </tr>
+                    <tr><td style="height:20px;">${v50}</td><td>${v100}</td><td>${v150}</td><td>${v200}</td></tr>
                 </table>`;
             }
             else if(lowerName.includes('pump 2')) {
-                // ... Ambil Value Pump 2 ...
                 let v50 = getValByLabel(resMap, item.id, myFields, '50');
                 let v100 = getValByLabel(resMap, item.id, myFields, '100');
                 let v150 = getValByLabel(resMap, item.id, myFields, '150');
                 let v200 = getValByLabel(resMap, item.id, myFields, '200');
-
-                // TANPA HEADER (Cuma Baris Hasil), Tapi lebar kolom tetap sama
-                actHtml = `
-                <table class="pump-tbl">
-                    <tr>
-                        <td style="height:20px;">${v50}</td><td>${v100}</td><td>${v150}</td><td>${v200}</td>
-                    </tr>
-                </table>`;
+                actHtml = `<table class="pump-tbl"><tr><td style="height:20px;">${v50}</td><td>${v100}</td><td>${v150}</td><td>${v200}</td></tr></table>`;
             }
 
-            // 2. TIE BAR (Hasil Sebelum Kalibrasi = Pakai Header)
+            // B. HEATER (Zone 1 - Nozzle)
+            else if(lowerName.includes('heater') || lowerName.includes('nozzle')) {
+                let fDisp = myFields[0]; let fThermo = myFields[1];
+                let vDisp = fDisp ? getVal(resMap, item.id, fDisp.id) : '-';
+                let vThermo = fThermo ? getVal(resMap, item.id, fThermo.id) : '-';
+                actHtml = `<table class="heater-tbl"><tr><td>${vDisp}</td><td>${vThermo}</td></tr></table>`;
+            }
+
+            // C. TIE BAR (Header Sekali Saja)
             else if(lowerName.includes('sebelum kalibrasi')) {
-                // Ambil Value
                 let tdsHead = ''; let tdsVal = '';
                 myFields.forEach(f => {
                     tdsHead += `<td class="grid-head">${f.label}</td>`;
                     tdsVal += `<td class="grid-val">${getVal(resMap, item.id, f.id)}</td>`;
                 });
-                // TAMPILKAN HEADER S1 S2 S3 S4
                 actHtml = `<table class="grid-simple"><tr>${tdsHead}</tr><tr>${tdsVal}</tr></table>`;
             }
             else if(lowerName.includes('hasil kalibrasi') || lowerName.includes('setelah kalibrasi')) {
-                // HANYA DATA, HEADER DIHILANGKAN
                 let tdsVal = '';
                 myFields.forEach(f => {
                     tdsVal += `<td class="grid-val">${getVal(resMap, item.id, f.id)}</td>`;
@@ -366,8 +376,16 @@
                 actHtml = `<table class="grid-simple"><tr>${tdsVal}</tr></table>`;
             }
 
-            // 3. GRID BIASA (Breaker, dll yang tetap butuh header setiap baris)
-            else if(myFields.length > 1 && !lowerName.includes('heater')) {
+            // D. FIX: LIMIT SWITCH / SENSOR (Paksa Single Value walaupun ada 2 field)
+            else if(myFields.length > 1 && (lowerName.includes('switch') || lowerName.includes('sensor'))) {
+                let f = myFields[0];
+                let val = f ? getVal(resMap, item.id, f.id) : '-';
+                let color = val === 'OK' ? 'black' : (val === 'NG' ? 'red' : 'black');
+                actHtml = `<div style="padding:4px; text-align:center; font-weight:bold; color:${color}">${val}</div>`;
+            }
+
+            // E. GRID BIASA (Breaker, Accumulator)
+            else if(myFields.length > 1) {
                 let tdsHead = ''; let tdsVal = '';
                 myFields.forEach(f => {
                     tdsHead += `<td class="grid-head">${f.label}</td>`;
@@ -376,15 +394,7 @@
                 actHtml = `<table class="grid-simple"><tr>${tdsHead}</tr><tr>${tdsVal}</tr></table>`;
             }
 
-            // 4. HEATER (Tetap seperti sebelumnya)
-            else if(lowerName.includes('heater') || lowerName.includes('nozzle')) {
-                let fDisp = myFields[0]; let fThermo = myFields[1];
-                let vDisp = fDisp ? getVal(resMap, item.id, fDisp.id) : '-';
-                let vThermo = fThermo ? getVal(resMap, item.id, fThermo.id) : '-';
-                actHtml = `<table class="heater-tbl"><tr><td>${vDisp}</td><td>${vThermo}</td></tr></table>`;
-            }
-            
-            // 5. DEFAULT
+            // F. DEFAULT (OK/NG)
             else {
                 let f = myFields[0];
                 let val = f ? getVal(resMap, item.id, f.id) : '-';
