@@ -3,246 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan Maintenance - Cetak Rapi</title>
+    <title>Laporan Maintenance - Tampilan Rapi</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <style>
-        /* =========================================
-           1. RESET & BASE STYLE (NORMAL VIEW)
-           ========================================= */
-        * { 
-            box-sizing: border-box; 
-            -webkit-print-color-adjust: exact !important; 
-            print-color-adjust: exact !important; 
-        }
+        /* === 1. RESET & BASE STYLE (NORMAL) === */
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         
         body { 
-            font-family: "Arial Narrow", "Helvetica Condensed", Arial, sans-serif; 
-            background: #525659; /* Abu-abu untuk layar */
+            font-family: "Arial Narrow", Arial, sans-serif; 
+            background: #525659; /* Background abu untuk layar */
             margin: 0; padding: 20px; 
-            font-size: 10pt; /* Ukuran font normal agar jelas */
-            line-height: 1.3; 
+            font-size: 10pt; 
             color: #000;
         }
 
-        /* FILTER BOX (Hanya di Layar) */
-        .filter-box {
-            background: #fff; width: 210mm; margin: 0 auto 15px; padding: 15px;
-            border-radius: 6px; display: flex; gap: 10px; align-items: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        }
-        select, button { padding: 8px; border: 1px solid #666; font-size: 12px; font-weight: bold; cursor: pointer; }
-        .btn-print { background: #b91c1c; color: #fff; border: none; margin-left: auto; }
-
-        /* KERTAS A4 DI LAYAR */
+        /* === 2. KERTAS (CONTAINER UTAMA) === */
         .paper {
             background: #fff; 
-            width: 210mm; 
-            min-height: 297mm; 
+            width: 210mm; /* Lebar A4 */
+            min-height: 297mm; /* Tinggi Minimal A4 */
             margin: 0 auto;
-            padding: 10mm 15mm; /* Margin standar dokumen resmi */
-            position: relative; 
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            padding: 15mm; /* Margin dalam yang lega */
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            position: relative;
         }
 
-        /* =========================================
-           2. KONFIGURASI CETAK (PRINT)
-           ========================================= */
-        @page {
-            size: A4 portrait;
-            margin: 10mm 15mm; /* Margin printer aman */
+        /* === 3. FILTER BOX (UI LAYAR SAJA) === */
+        .filter-box {
+            background: #fff; width: 210mm; margin: 0 auto 15px; padding: 15px;
+            border-radius: 5px; display: flex; gap: 10px; align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
+        select, button { padding: 8px; border: 1px solid #999; font-weight: bold; cursor: pointer; }
+        .btn-print { background: #b91c1c; color: white; border: none; margin-left: auto; }
 
-        @media print {
-            body, html { 
-                margin: 0; padding: 0; background: #fff; width: 100%; 
-            }
-            .filter-box { display: none !important; }
-            .paper {
-                margin: 0; padding: 0; border: none; box-shadow: none; width: 100%;
-            }
-            /* Mencegah tabel terpotong jelek */
-            table { page-break-inside: auto; }
-            tr { page-break-inside: avoid; page-break-after: auto; }
-            td, th { page-break-inside: avoid; }
-        }
+        /* === 4. GLOBAL TABLE STYLE === */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        td, th { border: 1px solid #000; padding: 4px 6px; vertical-align: middle; }
 
-        /* =========================================
-           3. GLOBAL TABLE STYLING
-           ========================================= */
-        table { 
-            width: 100%; border-collapse: collapse; 
-            border: 1px solid #000; margin-bottom: 10px; 
-        }
-        td, th { 
-            border: 1px solid #000; 
-            padding: 4px 6px; /* Padding enak dilihat */
-            vertical-align: middle; 
-        }
-
-        /* =========================================
-           4. HEADER DOKUMEN (IDENTIK PDF)
-           ========================================= */
-        .header-tbl { margin-bottom: 0; border-bottom: none; }
-        .header-tbl td { padding: 5px; }
+        /* === 5. HEADER DOKUMEN === */
+        .header-tbl { border: 1px solid #000; margin-bottom: 5px; }
+        .header-tbl td { border: 1px solid #000; padding: 5px; text-align: center; }
 
         /* Logo & Nama PT */
         .logo-container { display: flex; align-items: center; justify-content: center; gap: 15px; }
-        .logo-img { height: 45px; width: auto; }
-        .company-name { 
-            font-size: 11pt; font-weight: bold; text-transform: uppercase; 
-            text-align: left; line-height: 1.2; 
-        }
+        .logo-img { height: 40px; width: auto; }
+        .company-name { font-size: 12pt; font-weight: bold; text-transform: uppercase; text-align: left; }
 
         /* Judul */
-        .doc-title { 
-            font-size: 14pt; font-weight: bold; text-decoration: underline; 
-            text-align: center; text-transform: uppercase; 
-        }
+        .doc-title { font-size: 14pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; }
 
         /* Doc Control (Kanan Atas) */
         .doc-ctrl-tbl { width: 100%; border: none; font-size: 9pt; }
-        .doc-ctrl-tbl td { border: none; padding: 1px 0; text-align: left; font-weight: bold; }
-        .dc-lbl { width: 90px; } .dc-sep { width: 10px; }
+        .doc-ctrl-tbl td { border: none; padding: 2px 0; text-align: left; }
+        .dc-lbl { width: 90px; font-weight: bold; } 
+        .dc-sep { width: 10px; }
 
-        /* =========================================
-           5. INFO MESIN (HEADER BOLD, ISI NORMAL)
-           ========================================= */
-        .info-tbl { font-size: 10pt; border-top: 1px solid #000; margin-bottom: 15px; }
-        .info-tbl td { padding: 5px 8px; border: 1px solid #000; vertical-align: top; }
+        /* === 6. INFO MESIN === */
+        .info-tbl { border: 1px solid #000; font-size: 10pt; margin-bottom: 15px; }
+        .info-tbl td { padding: 6px 8px; border: 1px solid #000; vertical-align: top; }
         
-        .lbl-col { width: 20%; font-weight: bold; color: #000; }
+        .lbl-col { width: 20%; font-weight: bold; }
         .val-col { width: 30%; font-weight: normal; text-transform: uppercase; }
         .colon { float: right; margin-right: 5px; }
 
-        /* =========================================
-           6. TABEL UTAMA (STRUKTUR RAPI)
-           ========================================= */
-        .main-tbl { font-size: 9.5pt; }
+        /* === 7. TABEL CHECKLIST UTAMA === */
+        .main-tbl { font-size: 10pt; border: 1px solid #000; }
         
         .main-tbl th { 
-            background: #e5e7eb; text-align: center; 
-            font-weight: bold; text-transform: uppercase; 
-            height: 30px; border-bottom: 1px solid #000;
-            padding: 5px;
+            background: #e5e7eb; font-weight: bold; text-transform: uppercase; 
+            text-align: center; padding: 8px; border-bottom: 2px solid #000;
         }
 
-        /* Lebar Kolom */
-        .col-no { width: 35px; text-align: center; font-weight: normal; }
-        .col-item { text-align: left; font-weight: normal; }
-        .col-std { width: 25%; font-weight: bold; font-style: normal; } /* Standard Bold */
-        .col-act { width: 25%; padding: 0 !important; font-weight: normal; } 
-        .col-ket { width: 15%; text-align: center; font-weight: normal; font-size: 9pt; }
+        .col-no { width: 40px; text-align: center; }
+        .col-item { text-align: left; }
+        .col-std { width: 25%; font-weight: bold; font-style: normal; }
+        .col-act { width: 25%; padding: 0 !important; } 
+        .col-ket { width: 15%; text-align: center; }
 
         .indent-row { padding-left: 25px !important; }
 
-        /* Section Header (Kategori) */
+        /* Kategori (Section Header) */
         .cat-row td { 
-            background: #d1d5db; font-weight: bold; 
-            text-transform: uppercase; padding: 6px 10px; 
-            font-size: 10pt; border-top: 2px solid #000;
+            background: #d1d5db; font-weight: bold; text-transform: uppercase; 
+            padding: 8px 10px; font-size: 10pt; border-top: 2px solid #000;
         }
 
-        /* =========================================
-           7. SUB-HEADER & GRID (VALVE IDLING FIXED)
-           ========================================= */
-        /* Baris khusus Header Sub-Kolom */
+        /* === 8. GRID & SUB-HEADER (VALVE SETTING) === */
+        /* Baris Header Sub-Kolom */
         .sub-header-row td {
             background: #f3f4f6; font-weight: bold; text-align: center;
             padding: 0 !important; border-bottom: 1px solid #000;
-            height: auto; /* Biarkan tinggi otomatis menyesuaikan konten */
         }
 
-        /* Label "Valve Idling Sett:" - Dibuat Block agar tidak ketutup */
+        /* Label Khusus Valve */
         .valve-label {
-            display: block;
-            width: 100%;
-            border-bottom: 1px solid #000; 
-            background: #e5e7eb;
-            font-size: 8pt; 
-            padding: 3px 0; 
-            font-weight: bold; 
-            text-align: center; 
+            display: block; width: 100%; border-bottom: 1px solid #000; 
+            background: #e5e7eb; font-size: 9pt; padding: 4px 0; font-weight: bold; text-align: center;
         }
 
-        /* Container Grid */
-        .act-grid { 
-            display: flex; width: 100%; height: 100%; 
-            min-height: 24px; /* Tinggi baris data yang nyaman */
-        }
+        /* Grid Container */
+        .act-grid { display: flex; width: 100%; height: 100%; min-height: 25px; }
         
         /* Item Header (S1, S2, 50, 100...) */
         .sub-head-item { 
-            font-size: 9pt; background: #f3f4f6; 
-            flex: 1; display: flex; align-items: center; justify-content: center; 
-            font-weight: bold; border-right: 1px solid #000; padding: 4px 0;
+            font-size: 9pt; background: #f3f4f6; flex: 1; 
+            display: flex; align-items: center; justify-content: center; 
+            font-weight: bold; border-right: 1px solid #000; padding: 5px 0;
         }
         .sub-head-item:last-child { border-right: none; }
 
-        /* Item Data (Isi Angka/OK) */
+        /* Item Data */
         .act-item { 
             flex: 1; display: flex; align-items: center; justify-content: center; 
-            border-right: 1px solid #000; padding: 2px; text-align: center; 
-            font-weight: normal; 
+            border-right: 1px solid #000; padding: 4px; text-align: center; 
         }
         .act-item:last-child { border-right: none; }
         
-        /* Styling Value */
-        .data-row .act-val { font-size: 10pt; font-weight: normal; }
         .st-ok { color: #000; font-weight: bold; }
         .st-ng { color: #b91c1c; font-weight: bold; }
 
-        /* =========================================
-           8. FOOTER TANDA TANGAN (AUTO HEIGHT - AMAN)
-           ========================================= */
-        .sig-tbl { margin-top: 15px; text-align: center; page-break-inside: avoid; border: 1px solid #000; }
+        /* === 9. FOOTER TANDA TANGAN === */
+        .sig-tbl { margin-top: 20px; border: 1px solid #000; }
+        .sig-tbl td { width: 33.33%; vertical-align: bottom; height: 100px; padding-bottom: 5px; position: relative; }
         
-        /* Container Tanda Tangan */
-        .sig-container {
-            height: 90px; /* Tinggi fix yang cukup luas */
-            position: relative;
-            width: 100%;
-            display: flex;
-            align-items: flex-end; /* Nama selalu di bawah */
-            justify-content: center;
-        }
-
         .sig-head { 
-            vertical-align: middle !important; height: 25px !important; 
-            background: #e5e7eb; font-weight: bold; 
-            border-bottom: 1px solid #000; font-size: 9pt; 
+            vertical-align: middle !important; height: 30px !important; 
+            background: #e5e7eb; font-weight: bold; border-bottom: 1px solid #000; 
+            text-align: center;
         }
         
-        /* Gambar Tanda Tangan */
         .sig-img { 
-            max-height: 60px; 
-            max-width: 80%; 
-            position: absolute; 
-            bottom: 25px; /* Jarak dari nama */
-            left: 50%; 
-            transform: translateX(-50%);
+            max-height: 70px; max-width: 80%; 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -40%);
             z-index: 1;
         }
         
-        /* Nama Terang */
         .sig-name { 
-            font-weight: bold; text-transform: uppercase; 
-            display: block; width: 80%;
-            border-top: 1px solid #000; 
-            padding-top: 4px; 
-            font-size: 9pt; 
-            position: relative; 
-            z-index: 2;
-            margin-bottom: 5px;
+            font-weight: bold; text-transform: uppercase; display: block; 
+            border-top: 1px solid #000; margin: 0 20px; padding-top: 5px; 
+            text-align: center; position: relative; z-index: 2;
+        }
+
+        /* === 10. MEDIA PRINT (SUPAYA SAAT PRINT BACKGROUND MUNCUL) === */
+        @media print {
+            body { background: #fff; margin: 0; padding: 0; }
+            .filter-box { display: none !important; }
+            .paper { width: 100%; margin: 0; border: none; box-shadow: none; padding: 0; }
+            /* Memaksa background warna tercetak */
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
     </style>
 </head>
 <body>
 
     <div class="filter-box">
-        <b>FILTER:</b>
+        <b>FILTER DATA:</b>
         <select id="sel-mesin"><option value="">Loading...</option></select>
         <select id="sel-bulan">
             <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
@@ -252,7 +171,7 @@
         </select>
         <select id="sel-tahun"><option value="2025">2025</option><option value="2026" selected>2026</option></select>
         <button class="btn-search" onclick="cariLaporan()">CARI LAPORAN</button>
-        <button class="btn-print" onclick="window.print()"><i class="fa-solid fa-print"></i> PRINT (CTRL+P)</button>
+        <button class="btn-print" onclick="window.print()">PRINT</button>
     </div>
 
     <div class="paper" id="report-view" style="display:none;">
@@ -265,15 +184,15 @@
                         <span class="company-name">PT. AMARILYS<br>KARISMA GEMILANG</span>
                     </div>
                 </td>
-                <td width="35%" style="text-align: center;">
+                <td width="35%">
                     <div class="doc-title">FORM PREVENTIF MESIN INJECTION (CLAMPING UNIT)</div>
                 </td>
                 <td width="30%">
                     <table class="doc-ctrl-tbl">
-                        <tr><td class="dc-lbl">No. Dokumen</td><td class="dc-sep">:</td><td class="dc-val">AF.SP 05.07.Rev-00</td></tr>
-                        <tr><td class="dc-lbl">Tanggal Terbit</td><td class="dc-sep">:</td><td class="dc-val">02 Agustus 2024</td></tr>
-                        <tr><td class="dc-lbl">Halaman</td><td class="dc-sep">:</td><td class="dc-val">1/1</td></tr>
-                        <tr><td class="dc-lbl">Tanggal Revisi</td><td class="dc-sep">:</td><td class="dc-val">-</td></tr>
+                        <tr><td class="dc-lbl">No. Dokumen</td><td class="dc-sep">:</td><td>AF.SP 05.07.Rev-00</td></tr>
+                        <tr><td class="dc-lbl">Tanggal Terbit</td><td class="dc-sep">:</td><td>02 Agustus 2024</td></tr>
+                        <tr><td class="dc-lbl">Halaman</td><td class="dc-sep">:</td><td>1/1</td></tr>
+                        <tr><td class="dc-lbl">Tanggal Revisi</td><td class="dc-sep">:</td><td>-</td></tr>
                     </table>
                 </td>
             </tr>
@@ -319,25 +238,19 @@
             </tr>
             <tr>
                 <td>
-                    <div class="sig-container">
-                        <div id="sig_1"></div>
-                        <span class="sig-name" id="nm_1">.......</span>
-                    </div>
-                    <div style="font-size:8pt; margin-top:2px;">OPRT. MEKANIK</div>
+                    <div id="sig_1"></div>
+                    <span class="sig-name" id="nm_1">.......</span>
+                    <div style="text-align:center; font-size:9pt; margin-top:2px;">OPRT. MEKANIK</div>
                 </td>
                 <td>
-                    <div class="sig-container">
-                        <div id="sig_2"></div>
-                        <span class="sig-name" id="nm_2">.......</span>
-                    </div>
-                    <div style="font-size:8pt; margin-top:2px;">SPV. MEKANIK</div>
+                    <div id="sig_2"></div>
+                    <span class="sig-name" id="nm_2">.......</span>
+                    <div style="text-align:center; font-size:9pt; margin-top:2px;">SPV. MEKANIK</div>
                 </td>
                 <td>
-                    <div class="sig-container">
-                        <div id="sig_3"></div>
-                        <span class="sig-name" id="nm_3">.......</span>
-                    </div>
-                    <div style="font-size:8pt; margin-top:2px;">SPTD. MEKANIK</div>
+                    <div id="sig_3"></div>
+                    <span class="sig-name" id="nm_3">.......</span>
+                    <div style="text-align:center; font-size:9pt; margin-top:2px;">SPTD. MEKANIK</div>
                 </td>
             </tr>
         </table>
@@ -416,7 +329,6 @@
 
             if(items) {
                 items.forEach(item => {
-                    // Render Kategori
                     if(item.kategori !== lastCat) {
                         lastCat = item.kategori;
                         tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${lastCat}</td></tr>`;
@@ -430,9 +342,7 @@
                     let hasSpecialLabels = myFields.some(f => f.label && f.label !== 'Actual');
                     let headerKey = item.kategori; 
 
-                    // Render Sub-Header (Sekali per section)
                     if(hasSpecialLabels && !printedHeaders[headerKey]) {
-                        // Cek khusus untuk Pump Hydrolik agar ada label "Valve Idling Sett"
                         let isValveSetting = myFields.some(f => f.label === '50' || f.label === '200');
                         let valveHeaderHtml = isValveSetting ? `<div class="valve-label">Valve Idling Sett:</div>` : '';
 
@@ -455,7 +365,6 @@
                         printedHeaders[headerKey] = true;
                     }
 
-                    // Render Isi Actual
                     let actHtml = '';
                     if(myFields.length > 0) {
                         actHtml = `<div class="act-grid">`;
@@ -475,7 +384,6 @@
                         actHtml = '-';
                     }
 
-                    // Logic Indent & Nomor Kosong (Zone)
                     let indentClass = "";
                     let displayNo = no;
                     let shouldIncrement = true;
