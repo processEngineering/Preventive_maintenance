@@ -160,11 +160,8 @@
         window.onload = () => {
             loadList();
             
-            // Init Signature Pad Awal
             const canvas = document.getElementById('sig-canvas');
             signaturePad = new SignaturePad(canvas, { penColor: 'black' });
-            
-            // Listener Resize Window
             window.addEventListener("resize", resizeCanvas);
         };
 
@@ -184,7 +181,6 @@
             const div = document.getElementById('list-data');
             div.innerHTML = '<div style="text-align:center; margin-top:20px;">Memuat data...</div>';
 
-            // Ambil Laporan yang statusnya 'Pending' (Sudah dikerjakan Pelaksana, belum verif Koordinator)
             const { data, error } = await _sb.from('pmi_header')
                 .select(`id, tanggal, start_jam, nama_pelaksana, pmi_machines(nama_mesin, barcode), pmi_results(status)`)
                 .eq('status_verifikasi', 'Pending')
@@ -242,20 +238,18 @@
             );
         }
 
-        // 3. LOAD FORM DATA (DYNAMIC)
+        // 3. LOAD FORM DATA
         async function openApproval(headerId) {
             showView('view-approve');
             setTimeout(resizeCanvas, 300);
             
-            // Reset Form
             document.getElementById('nama_koordinator').value = '';
             document.getElementById('catatan_koordinator').value = '';
-            
             document.getElementById('header-info').innerHTML = 'Loading...';
             document.getElementById('table-body').innerHTML = '<tr><td>Loading...</td></tr>';
 
             try {
-                // A. FETCH HEADER
+                // A. HEADER
                 const { data: header } = await _sb.from('pmi_header')
                     .select(`*, pmi_machines(nama_mesin)`)
                     .eq('id', headerId).single();
@@ -269,12 +263,11 @@
                     <div class="info-row"><span class="info-label">HM</span><span class="info-val">${header.running_hours}</span></div>
                 `;
 
-                // B. FETCH DETAIL
+                // B. DETAILS
                 const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
                 const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
                 const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', headerId);
 
-                // Mapping
                 let resMap = {}; let noteMap = {};
                 if(results) {
                     results.forEach(r => {
@@ -283,21 +276,19 @@
                     });
                 }
 
-                // C. RENDER TABLE
+                // C. RENDER
                 const tbody = document.getElementById('table-body');
                 tbody.innerHTML = '';
                 let lastCat = '';
 
                 if(items) {
                     items.forEach(item => {
-                        // Render Header Kategori (termasuk yang baru kita ubah item 46 tadi)
                         if(item.kategori !== lastCat) {
                             lastCat = item.kategori;
                             tbody.innerHTML += `<tr class="cat-header"><td colspan="2">${lastCat}</td></tr>`;
                         }
 
                         const myFields = fields.filter(f => f.pmi_item_id === item.id);
-                        
                         let html = `<tr class="item-row"><td>
                             <span class="item-title">${item.nama_item}</span>
                             <span class="item-std">${item.standard || ''}</span>
@@ -316,11 +307,9 @@
                                         if(val === 'OK') css = 'val-ok';
                                         if(val === 'NG') css = 'val-ng';
                                     } else {
-                                        // Handle input text (termasuk 'Actual' baru di item 45)
                                         val = res.nilai_aktual || "-";
                                     }
                                 }
-
                                 let label = f.label ? `<span class="res-label">${f.label}</span>` : '';
                                 html += `<div class="res-box">${label}<div class="res-val ${css}">${val}</div></div>`;
                             });
@@ -328,7 +317,7 @@
                             html += `<div style="color:#aaa; font-size:10px;">(Tidak ada input)</div>`;
                         }
 
-                        html += `</div>`; // end grid
+                        html += `</div>`;
                         if(noteMap[item.id]) html += `<div class="note-box">Catatan: ${noteMap[item.id]}</div>`;
                         html += `</td></tr>`;
                         tbody.innerHTML += html;
@@ -341,31 +330,48 @@
             }
         }
 
-        // 4. SUBMIT
+        // 4. SUBMIT (REVISI PERBAIKAN STUCK)
         async function submitData() {
             const nama = document.getElementById('nama_koordinator').value.trim();
             const note = document.getElementById('catatan_koordinator').value.trim();
+            const btn = document.getElementById('btn-submit');
+            
+            // Cek Current Report
+            if (!currentReport || !currentReport.id) {
+                alert("ID Laporan hilang. Silakan scan ulang.");
+                goHome();
+                return;
+            }
 
             if(!nama || signaturePad.isEmpty()) return alert("Wajib isi Nama & Paraf!");
             if(!confirm("Verifikasi laporan ini?")) return;
 
-            document.getElementById('btn-submit').innerText = "MENYIMPAN...";
-            document.getElementById('btn-submit').disabled = true;
+            // UI LOCK
+            const originalText = btn.innerText;
+            btn.innerText = "MENYIMPAN...";
+            btn.disabled = true;
 
-            const { error } = await _sb.from('pmi_header').update({
-                nama_koordinator: nama,
-                catatan_koordinator: note,
-                signature_koordinator: signaturePad.toDataURL(),
-                status_verifikasi: 'Verified', // Ubah status jadi Verified
-                verified_at: new Date()
-            }).eq('id', currentReport.id);
+            try {
+                // KIRIM SUPABASE
+                const { error } = await _sb.from('pmi_header').update({
+                    nama_koordinator: nama,
+                    catatan_koordinator: note,
+                    signature_koordinator: signaturePad.toDataURL(),
+                    status_verifikasi: 'Verified',
+                    verified_at: new Date().toISOString()
+                }).eq('id', currentReport.id);
 
-            if(error) {
-                alert("Gagal: " + error.message);
-                document.getElementById('btn-submit').disabled = false;
-            } else {
-                alert("BERHASIL! Terverifikasi.");
+                if(error) throw error;
+
+                alert("✅ BERHASIL! Terverifikasi.");
                 goHome();
+
+            } catch (err) {
+                console.error(err);
+                alert("GAGAL MENYIMPAN: " + (err.message || "Periksa koneksi internet"));
+                // UI UNLOCK
+                btn.innerText = originalText;
+                btn.disabled = false;
             }
         }
     </script>
