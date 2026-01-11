@@ -3,208 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan Maintenance - Cetak A4</title>
+    <title>Laporan Maintenance - Cetak A4 (Safety Fix)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <style>
         /* =========================================
-           1. RESET & PRINT CONFIGURATION
+           1. SETUP KERTAS & RESET
            ========================================= */
-        * { 
-            box-sizing: border-box; 
-            -webkit-print-color-adjust: exact !important; 
-            print-color-adjust: exact !important; 
-        }
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         
         body { 
-            font-family: "Arial", sans-serif; /* Font standar yang bersih */
-            background: #525659; 
-            margin: 0; padding: 20px; 
-            font-size: 9pt; 
-            line-height: 1.2;
-            color: #000;
+            font-family: "Arial Narrow", "Helvetica Condensed", Arial, sans-serif; 
+            background: #525659; margin: 0; padding: 20px; 
+            font-size: 7.5pt; /* Font aman, tidak terlalu kecil */
+            line-height: 1.2; color: #000;
         }
 
-        /* UI SCREEN ONLY */
+        /* FILTER BOX (HILANG SAAT PRINT) */
         .filter-box {
-            background: #fff; width: 210mm; margin: 0 auto 15px; padding: 10px 15px;
+            background: #fff; width: 210mm; margin: 0 auto 10px; padding: 10px;
             border-radius: 4px; display: flex; gap: 10px; align-items: center;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid #ccc;
         }
-        select, button { padding: 6px; border: 1px solid #666; font-size: 11px; font-weight: bold; cursor: pointer; }
+        select, button { padding: 5px; border: 1px solid #666; font-size: 11px; font-weight: bold; cursor: pointer; }
         .btn-print { background: #b91c1c; color: #fff; border: none; margin-left: auto; }
 
-        /* A4 PAPER SETUP */
+        /* KERTAS A4 DI LAYAR */
         .paper {
             background: #fff; width: 210mm; min-height: 297mm; margin: 0 auto;
-            padding: 8mm 10mm; 
+            padding: 5mm 8mm; /* Margin Kiri-Kanan Aman */
             position: relative; box-shadow: 0 0 15px rgba(0,0,0,0.5);
         }
 
-        /* =========================================
-           2. GLOBAL TABLE STYLING
-           ========================================= */
-        table { 
-            width: 100%; border-collapse: collapse; 
-            border: 1px solid #000; margin-bottom: 5px; 
-            page-break-inside: avoid;
+        /* === KONFIGURASI PRINT UTAMA === */
+        @page { size: A4 portrait; margin: 5mm; }
+
+        @media print {
+            body, html { margin: 0; padding: 0; background: #fff; width: 100%; height: 100%; }
+            .filter-box { display: none !important; }
+            .paper { margin: 0; padding: 0; border: none; box-shadow: none; width: 100%; }
+            table, tr, td, th { page-break-inside: avoid; }
         }
+
+        /* =========================================
+           2. TABEL GLOBAL
+           ========================================= */
+        table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 4px; }
         td, th { 
-            border: 1px solid #000; padding: 3px 4px; 
+            border: 0.75pt solid #000; 
+            padding: 2px 3px; /* Padding cukup agar tidak dempet */
             vertical-align: middle; 
         }
 
-        /* HEADER DOKUMEN (BOLD) */
-        .header-tbl { margin-bottom: 0; border-bottom: none; }
-        .header-tbl td { padding: 4px; text-align: center; }
-        .logo-img { height: 40px; width: auto; display: block; margin: 0 auto; }
-        .company { font-size: 14pt; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; }
-        .doc-title { font-size: 11pt; font-weight: bold; text-decoration: underline; margin-top: 2px; text-transform: uppercase; }
-        
-        /* CONTROL TABLE (BOLD LABELS) */
-        .doc-ctrl { width: 100%; border: none; font-size: 7.5pt; }
-        .doc-ctrl td { border: none; border-bottom: 1px solid #000; text-align: left; padding: 1px; font-weight: bold; }
-        .doc-ctrl tr:last-child td { border-bottom: none; }
-        /* Isi kontrol dokumen (misal isinya) normal, tapi di sini label menyatu, kita buat bold header saja */
+        /* HEADER DOKUMEN */
+        .header-tbl td { padding: 3px; text-align: center; }
+        .logo-container { display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .logo-img { height: 35px; width: auto; }
+        .company-name { font-size: 9pt; font-weight: bold; text-transform: uppercase; text-align: left; }
+        .doc-title { font-size: 11pt; font-weight: bold; text-decoration: underline; text-align: center; text-transform: uppercase; }
 
-        /* INFO MESIN (LABEL BOLD, VALUE NORMAL) */
-        .info-tbl { font-size: 9pt; border-top: 1px solid #000; margin-bottom: 8px; }
-        .info-tbl td { border: 1px solid #000; width: 25%; padding: 3px 5px; vertical-align: top; }
-        
-        .lbl-info { 
-            font-size: 7pt; color: #444; 
-            font-weight: bold; /* HEADER = BOLD */
-            display: block; margin-bottom: 2px; 
-        }
-        .val-info { 
-            font-size: 10pt; 
-            font-weight: normal; /* ISI = NORMAL */
-            text-transform: uppercase; display: block; 
-        }
+        /* DOC CONTROL */
+        .doc-ctrl-tbl { width: 100%; border: none; font-size: 7pt; }
+        .doc-ctrl-tbl td { border: none; padding: 1px 0; text-align: left; font-weight: bold; }
+        .dc-lbl { width: 70px; } .dc-sep { width: 4px; }
 
         /* =========================================
-           3. MAIN CHECKLIST TABLE
+           3. INFO MESIN
            ========================================= */
-        .main-tbl { font-size: 9pt; }
-        
-        /* Header Tabel (NO, ITEM, etc) -> BOLD */
+        .info-tbl td { padding: 2px 4px; border: 0.75pt solid #000; }
+        .lbl-col { width: 18%; font-weight: bold; font-size: 7.5pt; }
+        .val-col { width: 32%; font-weight: normal; text-transform: uppercase; font-size: 8.5pt; }
+        .colon { float: right; margin-right: 2px; }
+
+        /* =========================================
+           4. TABEL UTAMA (STRUKTUR KUAT)
+           ========================================= */
         .main-tbl th { 
-            background: #e5e7eb; text-align: center; 
-            font-weight: bold; /* HEADER = BOLD */
-            text-transform: uppercase; height: 22px; border-bottom: 2px solid #000;
-            font-size: 8.5pt;
+            background: #e5e7eb; text-align: center; font-weight: bold; 
+            text-transform: uppercase; height: 20px; border-bottom: 1px solid #000;
+            font-size: 7.5pt;
         }
 
-        /* Kolom & Isi Data -> NORMAL */
-        .col-no { width: 30px; text-align: center; font-weight: normal; }
+        .col-no { width: 25px; text-align: center; font-weight: normal; }
         .col-item { text-align: left; font-weight: normal; }
-        .col-std { width: 22%; font-style: italic; color: #333; font-size: 8.5pt; font-weight: normal; }
-        .col-act { width: 28%; padding: 0 !important; font-weight: normal; } 
-        .col-ket { width: 18%; font-size: 8.5pt; font-weight: normal; }
+        /* STANDARD: TEBAL & TEGAK */
+        .col-std { width: 24%; font-weight: bold; font-size: 7.5pt; text-align: left; }
+        .col-act { width: 26%; padding: 0 !important; font-weight: normal; } 
+        .col-ket { width: 16%; font-size: 7.5pt; font-weight: normal; text-align: center; }
 
-        /* INDENTASI KHUSUS */
-        .indent-row { padding-left: 25px !important; }
+        .indent-row { padding-left: 20px !important; }
 
-        /* Baris Kategori (SECTION HEADER) -> BOLD */
         .cat-row td { 
-            background: #d1d5db; 
-            font-weight: bold; /* HEADER = BOLD */
-            text-transform: uppercase; 
-            padding: 5px 8px; font-size: 9.5pt; border-top: 2px solid #000; 
-            letter-spacing: 0.5px;
+            background: #d1d5db; font-weight: bold; text-transform: uppercase; 
+            padding: 4px 6px; font-size: 8pt; border-top: 1px solid #000;
         }
 
         /* =========================================
-           4. SUB-HEADER VISUAL LOGIC
+           5. VALVE IDLING & GRID (PERBAIKAN PENTING)
            ========================================= */
-        /* Baris Header Sisipan (S1, S2, 50, 100) -> BOLD */
-        .sub-header-row td {
-            background: #f3f4f6;
-            font-weight: bold; /* HEADER = BOLD */
-            text-align: center;
-            padding: 0 !important; 
-            border-bottom: 1px solid #000;
-        }
-        
-        /* Label "Valve Idling Sett:" */
+        /* Pastikan label Valve tidak menimpa */
         .valve-label {
-            border-bottom: 1px solid #000;
+            width: 100%;
+            border-bottom: 0.75pt solid #000; 
             background: #e5e7eb;
-            font-size: 7.5pt;
-            padding: 2px;
-            font-weight: bold; /* HEADER = BOLD */
-            text-align: center;
-            display: block;
+            font-size: 7pt; 
+            padding: 2px 0; 
+            font-weight: bold; 
+            text-align: center; 
+            display: block; /* Pastikan dia block element */
+            line-height: 1.2;
         }
 
-        /* Grid Actual */
-        .act-grid { display: flex; width: 100%; height: 100%; min-height: 20px; }
+        .act-grid { 
+            display: flex; width: 100%; height: 100%; 
+            min-height: 16px; /* Tinggi minimal aman */
+        }
         
-        /* Grid Item (Header S1/S2/50/100) -> BOLD */
         .sub-head-item { 
-            font-size: 8pt; background: #f3f4f6; height: 100%; 
-            display: flex; align-items: center; justify-content: center; 
-            font-weight: bold; /* HEADER = BOLD */
+            font-size: 7.5pt; background: #f3f4f6; height: 100%; width: 100%;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+            padding: 2px 0; 
         }
-
-        /* Grid Item (Isi Data) -> NORMAL */
+        
         .act-item { 
             flex: 1; display: flex; align-items: center; justify-content: center; 
-            border-right: 1px solid #000; padding: 2px; text-align: center; 
-            font-weight: normal; /* ISI = NORMAL */
+            border-right: 0.75pt solid #000; padding: 0; text-align: center; font-weight: normal; 
         }
         .act-item:last-child { border-right: none; }
-
-        /* Values -> NORMAL */
-        .data-row .act-label { display: none; } 
-        .data-row .act-val { 
-            font-size: 9.5pt; 
-            font-weight: normal; /* ISI = NORMAL */
-        }
         
-        .st-ok { color: #000; }
-        .st-ng { color: #b91c1c; } /* Merah tapi TIDAK TEBAL */
+        /* Baris khusus sub-header */
+        .sub-header-row td { padding: 0 !important; }
+
+        .st-ok { color: #000; font-weight: bold; }
+        .st-ng { color: #b91c1c; font-weight: bold; }
 
         /* =========================================
-           5. FOOTER & SIGNATURE
+           6. FOOTER TANDA TANGAN (AMAN TIDAK HILANG)
            ========================================= */
-        .sig-tbl { margin-top: 10px; text-align: center; page-break-inside: avoid; border: 1px solid #000; }
-        .sig-tbl td { width: 33.33%; vertical-align: bottom; height: 85px; position: relative; padding-bottom: 5px; }
+        .sig-tbl td { 
+            width: 33.33%; 
+            vertical-align: bottom; 
+            height: 60px; /* Tinggi fix yang cukup */
+            position: relative; 
+            padding-bottom: 4px; 
+        }
         
-        /* Header Tanda Tangan -> BOLD */
         .sig-head { 
-            vertical-align: middle !important; height: 20px !important; 
-            background: #e5e7eb; 
-            font-weight: bold; /* HEADER = BOLD */
-            border-bottom: 1px solid #000; font-size: 8.5pt; 
+            vertical-align: middle !important; height: 18px !important; 
+            background: #e5e7eb; font-weight: bold; 
+            border-bottom: 1px solid #000; font-size: 7.5pt; 
         }
         
+        /* Gambar Tanda Tangan: Z-Index Tinggi & Posisi Aman */
         .sig-img { 
-            max-height: 60px; max-width: 80%; 
-            position: absolute; top: 50%; left: 50%; 
-            transform: translate(-50%, -40%);
+            max-height: 45px; 
+            max-width: 70%; 
+            position: absolute; 
+            top: 50%; left: 50%; 
+            transform: translate(-50%, -30%);
+            z-index: 10; /* Agar di atas segalanya */
         }
         
-        /* Nama Tanda Tangan -> BOLD (Karena ini identitas penanda tangan) */
         .sig-name { 
-            font-weight: bold; /* HEADER/NAMA = BOLD */
-            text-transform: uppercase; display: block; border-top: 1px solid #000; margin: 0 15px; padding-top: 2px; font-size: 9pt; position: relative; z-index: 2; 
-        }
-
-        /* =========================================
-           6. PRINT MEDIA QUERY
-           ========================================= */
-        @media print {
-            @page { size: A4 portrait; margin: 5mm 8mm; }
-            body { background: #fff; padding: 0; margin: 0; }
-            .filter-box { display: none !important; }
-            .paper { width: 100%; box-shadow: none; margin: 0; border: none; padding: 0; }
-            table, th, td { border-color: #000 !important; }
-            .cat-row td, .sub-head-item, .valve-label { background-color: #d1d5db !important; }
-            .main-tbl th, .sig-head { background-color: #e5e7eb !important; }
-            tr { page-break-inside: avoid; }
+            font-weight: bold; text-transform: uppercase; display: block; 
+            border-top: 1px solid #000; margin: 0 10px; padding-top: 2px; 
+            font-size: 8pt; position: relative; z-index: 20; /* Nama di atas gambar */
+            background: rgba(255,255,255,0.6); /* Sedikit transparan agar terbaca jika numpuk */
         }
     </style>
 </head>
@@ -225,18 +191,24 @@
     </div>
 
     <div class="paper" id="report-view" style="display:none;">
+        
         <table class="header-tbl">
             <tr>
-                <td width="15%"><img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img"></td>
-                <td width="55%">
-                    <div class="company">PT. AMARILYS KARISMA GEMILANG</div>
+                <td width="35%">
+                    <div class="logo-container">
+                        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img">
+                        <span class="company-name">PT. AMARILYS<br>KARISMA GEMILANG</span>
+                    </div>
+                </td>
+                <td width="35%" style="text-align: center;">
                     <div class="doc-title">FORM PREVENTIF MESIN INJECTION (CLAMPING UNIT)</div>
                 </td>
-                <td width="30%" style="padding:0;">
-                    <table class="doc-ctrl">
-                        <tr><td width="60">No. Dokumen</td><td style="font-weight:normal">: AF.SP 05.07.Rev-00</td></tr>
-                        <tr><td>Tgl Terbit</td><td style="font-weight:normal">: 02 Agustus 2024</td></tr>
-                        <tr><td>Halaman</td><td style="font-weight:normal">: 1/1</td></tr>
+                <td width="30%">
+                    <table class="doc-ctrl-tbl">
+                        <tr><td class="dc-lbl">No. Dokumen</td><td class="dc-sep">:</td><td class="dc-val">AF.SP 05.07.Rev-00</td></tr>
+                        <tr><td class="dc-lbl">Tanggal Terbit</td><td class="dc-sep">:</td><td class="dc-val">02 Agustus 2024</td></tr>
+                        <tr><td class="dc-lbl">Halaman</td><td class="dc-sep">:</td><td class="dc-val">1/1</td></tr>
+                        <tr><td class="dc-lbl">Tanggal Revisi</td><td class="dc-sep">:</td><td class="dc-val">-</td></tr>
                     </table>
                 </td>
             </tr>
@@ -244,16 +216,20 @@
 
         <table class="info-tbl">
             <tr>
-                <td><span class="lbl-info">MERK MESIN</span><span class="val-info" id="v_mesin">-</span></td>
-                <td><span class="lbl-info">TONAGE</span><span class="val-info" id="v_ton">-</span></td>
-                <td><span class="lbl-info">TANGGAL</span><span class="val-info" id="v_tgl">-</span></td>
-                <td><span class="lbl-info">TAHUN</span><span class="val-info" id="v_thn">-</span></td>
+                <td class="lbl-col">MERK MESIN <span class="colon">:</span></td><td class="val-col" id="v_mesin">-</td>
+                <td class="lbl-col">TARGET SELESAI <span class="colon">:</span></td><td class="val-col" id="v_target">-</td>
             </tr>
             <tr>
-                <td><span class="lbl-info">TARGET SELESAI</span><span class="val-info" id="v_target">-</span></td>
-                <td><span class="lbl-info">START JAM</span><span class="val-info" id="v_start">-</span></td>
-                <td><span class="lbl-info">FINISH JAM</span><span class="val-info" id="v_finish">-</span></td>
-                <td><span class="lbl-info">RUNNING HOURS</span><span class="val-info" id="v_hm">-</span></td>
+                <td class="lbl-col">TONAGE <span class="colon">:</span></td><td class="val-col" id="v_ton">-</td>
+                <td class="lbl-col">START JAM <span class="colon">:</span></td><td class="val-col" id="v_start">-</td>
+            </tr>
+            <tr>
+                <td class="lbl-col">TANGGAL <span class="colon">:</span></td><td class="val-col" id="v_tgl">-</td>
+                <td class="lbl-col">FINISH JAM <span class="colon">:</span></td><td class="val-col" id="v_finish">-</td>
+            </tr>
+            <tr>
+                <td class="lbl-col">TAHUN <span class="colon">:</span></td><td class="val-col" id="v_thn">-</td>
+                <td class="lbl-col">RUNNING HOURS <span class="colon">:</span></td><td class="val-col" id="v_hm">-</td>
             </tr>
         </table>
 
@@ -369,11 +345,9 @@
 
             if(items) {
                 items.forEach(item => {
-                    // 1. RENDER KATEGORI
                     if(item.kategori !== lastCat) {
                         lastCat = item.kategori;
                         tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${lastCat}</td></tr>`;
-                        
                         const catUpper = lastCat.toUpperCase();
                         if(catUpper.includes("PUMP & ELEKTRIKAL") || catUpper.includes("INJECTION UNIT")) {
                             no = 1;
@@ -384,16 +358,13 @@
                     let hasSpecialLabels = myFields.some(f => f.label && f.label !== 'Actual');
                     let headerKey = item.kategori; 
 
-                    // 2. RENDER SUB-HEADER (Sekali per section)
                     if(hasSpecialLabels && !printedHeaders[headerKey]) {
-                        
-                        // Cek apakah ini bagian "Pump Hydrolik" (Label 50/100/150/200)
                         let isValveSetting = myFields.some(f => f.label === '50' || f.label === '200');
                         let valveHeaderHtml = isValveSetting ? `<div class="valve-label">Valve Idling Sett:</div>` : '';
 
                         let subHeadHtml = `<div class="act-grid">`;
                         myFields.forEach(f => {
-                             subHeadHtml += `<div class="act-item sub-head-item">${f.label || ''}</div>`;
+                             subHeadHtml += `<div class="sub-head-item">${f.label || ''}</div>`;
                         });
                         subHeadHtml += `</div>`;
                         
@@ -410,7 +381,6 @@
                         printedHeaders[headerKey] = true;
                     }
 
-                    // 3. RENDER DATA ROW
                     let actHtml = '';
                     if(myFields.length > 0) {
                         actHtml = `<div class="act-grid">`;
@@ -422,7 +392,6 @@
                             
                             actHtml += `
                                 <div class="act-item">
-                                    <span class="act-label">${f.label || ''}</span> 
                                     <span class="act-val ${cls}">${val}</span>
                                 </div>`;
                         });
@@ -431,7 +400,6 @@
                         actHtml = '-';
                     }
 
-                    // 4. INDENTASI & NOMOR KOSONG UNTUK ZONE
                     let indentClass = "";
                     let displayNo = no;
                     let shouldIncrement = true;
