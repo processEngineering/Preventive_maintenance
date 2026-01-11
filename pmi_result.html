@@ -4,408 +4,434 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Form Preventif Mesin Injection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        /* SETUP HALAMAN CETAK */
-        @page {
-            size: A4 portrait;
-            margin: 10mm;
+        @page { size: A4 portrait; margin: 5mm 10mm; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Arial Narrow', Arial, sans-serif; 
+            background: #525659; 
+            padding: 20px; 
+            font-size: 9pt; /* Font disesuaikan agar muat A4 */
         }
 
-        /* RESET & DASAR */
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            -webkit-print-color-adjust: exact; /* Agar background warna tercetak */
-            print-color-adjust: exact;
+        /* --- UI FILTER (Tidak diprint) --- */
+        .filter-section {
+            background: #fff; width: 210mm; margin: 0 auto 20px; padding: 15px;
+            display: flex; gap: 10px; align-items: center; border-radius: 4px; border-bottom: 3px solid #b91c1c;
         }
+        .btn-search { background: #333; color: white; border: none; padding: 5px 10px; cursor: pointer; font-weight: bold; }
+        .btn-print { background: #b91c1c; color: white; border: none; padding: 5px 10px; margin-left: auto; cursor: pointer; font-weight: bold; }
 
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 10pt;
-            line-height: 1.3;
-            background-color: #525659; /* Latar belakang abu saat preview browser */
-            padding: 20px;
-        }
-
-        /* CONTAINER KERTAS A4 */
-        .page-container {
-            width: 210mm;
-            min-height: 297mm;
-            background: white;
-            margin: 0 auto;
-            padding: 10mm;
+        /* --- PAPER CONTAINER --- */
+        .container {
+            width: 210mm; margin: 0 auto; background: white; 
+            display: none; padding: 0; min-height: 297mm;
             box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            position: relative;
         }
 
-        /* TABEL GLOBAL */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #000;
-            margin-bottom: 10px;
-            table-layout: fixed; /* Agar lebar kolom konsisten */
-        }
-
-        th, td {
-            border: 1px solid #000;
-            padding: 4px;
-            vertical-align: middle;
-            word-wrap: break-word;
-        }
-
-        /* HEADER DOKUMEN (KOP) */
-        .header-table th, .header-table td {
-            border: 1px solid #000;
-            padding: 5px;
-        }
-        .header-title {
-            font-size: 14pt;
-            font-weight: bold;
-            text-align: center;
-            text-transform: uppercase;
-        }
-        .meta-info {
-            font-size: 9pt;
-        }
+        /* --- TABLE STYLING --- */
+        table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 5px; table-layout: fixed; }
+        td, th { border: 1px solid #000; padding: 2px 4px; vertical-align: middle; word-wrap: break-word; }
+        
+        /* HEADER DOKUMEN */
+        .header-table { border: 2px solid #000; margin-bottom: 2px; }
+        .logo-cell { width: 15%; text-align: center; border-right: none !important; }
+        .logo-cell img { width: 70px; }
+        .title-cell { width: 55%; text-align: center; border-left: none !important; border-right: none !important; }
+        .title-comp { font-weight: bold; font-size: 14pt; display: block; }
+        .title-doc { font-weight: bold; font-size: 16pt; text-decoration: underline; display: block; margin-top: 5px; }
+        .meta-cell { width: 30%; padding: 0 !important; border-left: 1px solid #000 !important; font-size: 8pt; vertical-align: top; }
+        .meta-table td { border: none; border-bottom: 1px solid #000; padding: 1px 4px; }
+        .meta-table tr:last-child td { border-bottom: none; }
 
         /* INFO MESIN */
-        .machine-info td {
-            padding: 2px 5px;
-            border: 1px solid #000;
-        }
-        .input-line {
-            border: none;
-            border-bottom: 1px dotted #000;
-            width: 100%;
-            font-family: inherit;
-            font-size: inherit;
-            background: transparent;
-        }
+        .info-wrapper { display: flex; border: 1px solid #000; margin-bottom: 5px; font-size: 9pt; }
+        .info-left { width: 50%; border-right: 1px solid #000; }
+        .info-right { width: 50%; }
+        .sub-info { border: none; margin: 0; }
+        .sub-info td { border: none; padding: 1px 4px; }
+        .lbl { width: 100px; font-weight: bold; }
+        .sep { width: 10px; text-align: center; }
+        .val { border-bottom: 1px dotted #ccc; width: 100%; }
 
-        /* TABEL CHECKLIST UTAMA */
-        .main-table thead th {
-            background-color: #d9d9d9;
-            text-align: center;
-            font-weight: bold;
-            text-transform: uppercase;
-            padding: 8px 0;
-        }
-
-        /* LEBAR KOLOM */
-        .col-no { width: 5%; text-align: center; }
+        /* MAIN CHECKLIST TABLE */
+        .main-table th { background: #d9d9d9 !important; font-weight: bold; text-align: center; height: 25px; -webkit-print-color-adjust: exact; border: 1px solid #000; }
+        .col-no { width: 35px; text-align: center; }
         .col-item { width: 35%; }
         .col-std { width: 25%; }
-        .col-act { width: 20%; } /* Area Input User */
+        .col-act { width: 25%; padding: 0 !important; } /* Padding 0 untuk grid dalam sel */
         .col-ket { width: 15%; }
 
-        /* SECTION HEADER */
-        .section-header {
-            background-color: #bfbfbf;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        .section-header td {
-            padding: 6px;
-        }
+        .cat-row td { background: #d9d9d9 !important; font-weight: bold; padding: 4px; -webkit-print-color-adjust: exact; }
 
-        /* INPUT FIELDS DALAM TABEL */
-        input[type="text"], input[type="number"], select {
-            width: 100%;
-            border: 1px solid #ccc; /* Border tipis untuk input */
-            padding: 3px;
-            font-family: inherit;
-            font-size: 9pt;
-            background: transparent;
-        }
-        /* Saat diprint, hilangkan border input agar terlihat seperti tulisan */
+        /* --- SPECIAL GRIDS --- */
+        
+        /* 1. HEATER BARREL SPECIAL HEADER & GRID */
+        .heater-subheader td { background: #f0f0f0 !important; font-weight: bold; font-size: 8pt; text-align: center; -webkit-print-color-adjust: exact; }
+        .heater-item-indent { padding-left: 25px !important; } /* Indentasi a. Zone 1 */
+        
+        .split-grid { display: flex; width: 100%; height: 100%; }
+        .split-cell { flex: 1; text-align: center; border-right: 1px solid #000; display: flex; align-items: center; justify-content: center; padding: 2px; }
+        .split-cell:last-child { border-right: none; }
+        
+        /* 2. PUMP HYDROLIK GRID (Display Gauge) */
+        .pump-grid { display: flex; flex-direction: column; width: 100%; }
+        .pump-row { display: flex; border-bottom: 1px solid #000; }
+        .pump-row:last-child { border-bottom: none; }
+        .pump-lbl { width: 60px; font-size: 7pt; font-weight: bold; border-right: 1px solid #000; background: #f9f9f9; padding-left: 2px; display: flex; align-items: center; }
+        .pump-vals { flex: 1; display: flex; }
+        .pump-val { flex: 1; text-align: center; border-right: 1px solid #000; padding: 2px 0; }
+        .pump-val:last-child { border-right: none; }
+
+        /* 3. TIE BAR / GENERAL GRID */
+        .std-grid { display: flex; width: 100%; height: 100%; }
+        .std-cell { flex: 1; text-align: center; border-right: 1px solid #000; padding: 2px; position: relative; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        .std-cell:last-child { border-right: none; }
+        .mini-lbl { font-size: 7pt; font-weight: bold; border-bottom: 1px solid #ccc; width: 100%; margin-bottom: 2px; color: #555; }
+
+        /* STATUS OK/NG */
+        .st-ok { font-weight: bold; }
+        .st-ng { font-weight: bold; color: red; }
+
+        /* TANDA TANGAN */
+        .sig-table { margin-top: 10px; text-align: center; }
+        .sig-header { background: #d9d9d9 !important; font-weight: bold; -webkit-print-color-adjust: exact; }
+        .sig-box { height: 70px; vertical-align: bottom; position: relative; }
+        .sig-img { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); max-height: 45px; }
+        .sig-name { font-weight: bold; text-decoration: underline; display: block; }
+        .sig-role { font-size: 8pt; }
+
         @media print {
-            body { background: white; padding: 0; }
-            .page-container { box-shadow: none; margin: 0; padding: 0; width: 100%; }
-            input[type="text"], input[type="number"], select, textarea {
-                border: none;
-                resize: none;
-            }
-            .no-print { display: none; }
+            body { background: white; padding: 0; margin: 0; }
+            .filter-section { display: none; }
+            .container { display: block; width: 100%; box-shadow: none; margin: 0; }
         }
-
-        textarea {
-            width: 100%;
-            height: 100%;
-            border: 1px solid #ccc;
-            resize: vertical;
-            font-family: inherit;
-            font-size: 9pt;
-            overflow: hidden;
-        }
-
-        /* SPECIAL LAYOUTS (GRID DALAM CELL) */
-        
-        /* Layout untuk S1-S4, Tabung A-C, Valve Setting */
-        .multi-input-grid {
-            display: grid;
-            gap: 2px;
-            text-align: center;
-        }
-        .cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
-        .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
-        
-        .multi-input-grid label {
-            font-size: 7pt;
-            font-weight: bold;
-            background: #eee;
-            border: 1px solid #ccc;
-            display: block;
-        }
-
-        /* Layout Khusus Thermocouple */
-        .thermocouple-table {
-            width: 100%;
-            border: none;
-            margin: 0;
-        }
-        .thermocouple-table td, .thermocouple-table th {
-            border: 1px solid #999;
-            font-size: 9pt;
-            text-align: center;
-        }
-
-        /* FOOTER TANDA TANGAN */
-        .signature-table {
-            margin-top: 20px;
-            text-align: center;
-        }
-        .signature-table td {
-            height: 80px; /* Ruang tanda tangan */
-            vertical-align: bottom;
-            font-weight: bold;
-        }
-        .signature-header {
-            height: auto !important;
-            vertical-align: middle !important;
-            background-color: #d9d9d9;
-            font-weight: bold;
-        }
-        .sig-name {
-            text-decoration: underline;
-            display: block;
-            margin-bottom: 5px;
-        }
-        .sig-jabatan {
-            font-size: 8pt;
-            display: block;
-        }
-
     </style>
 </head>
 <body>
 
-    <div class="page-container">
+    <div class="filter-section">
+        <b>FILTER:</b>
+        <select id="sel-mesin"><option>Loading...</option></select>
+        <select id="sel-bulan">
+            <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+            <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+            <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+            <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+        </select>
+        <select id="sel-tahun"><option value="2025" selected>2025</option><option value="2026">2026</option></select>
+        <button class="btn-search" onclick="cariLaporan()">CARI DATA</button>
+        <button class="btn-print" onclick="window.print()">CETAK PDF</button>
+    </div>
+
+    <div class="container" id="report-view">
         
         <table class="header-table">
             <tr>
-                <td width="20%" align="center">
-                    <strong>LOGO</strong><br>PERUSAHAAN
+                <td class="logo-cell"><img src="https://amarilyskg.co.id/bootstrap/img/logo.png"></td>
+                <td class="title-cell">
+                    <span class="title-comp">PT. AMARILYS KARISMA GEMILANG</span>
+                    <span class="title-doc">FORM PREVENTIF MESIN INJECTION (CLAMPING UNIT)</span>
                 </td>
-                <td width="50%" class="header-title">
-                    FORM PREVENTIF MESIN INJECTION<br>(CLAMPING UNIT)
-                </td>
-                <td width="30%" class="meta-info">
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>No. Dokumen</span> <span>: MT-FRM-01</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>Revisi</span> <span>: 00</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>Tanggal</span> <span>: 01-Jan-2026</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>Halaman</span> <span>: 1 dari 1</span>
-                    </div>
+                <td class="meta-cell">
+                    <table class="meta-table">
+                        <tr><td>No. Dokumen</td><td>: AF.SP 05.07.Rev-00</td></tr>
+                        <tr><td>Tgl Terbit</td><td>: 02 Agustus 2024</td></tr>
+                        <tr><td>Halaman</td><td>: 1/1</td></tr>
+                        <tr><td>Revisi</td><td>: -</td></tr>
+                    </table>
                 </td>
             </tr>
         </table>
 
-        <table class="machine-info" style="border: none;">
-            <tr style="border: none;">
-                <td style="border: none; width: 15%;"><strong>NAMA MESIN</strong></td>
-                <td style="border: none; width: 35%;"><input type="text" class="input-line"></td>
-                <td style="border: none; width: 15%;"><strong>TARGET SELESAI</strong></td>
-                <td style="border: none; width: 35%;"><input type="text" class="input-line"></td>
-            </tr>
-            <tr style="border: none;">
-                <td style="border: none;"><strong>TONAGE</strong></td>
-                <td style="border: none;"><input type="text" class="input-line"></td>
-                <td style="border: none;"><strong>START JAM</strong></td>
-                <td style="border: none;"><input type="time" class="input-line"></td>
-            </tr>
-            <tr style="border: none;">
-                <td style="border: none;"><strong>TANGGAL</strong></td>
-                <td style="border: none;"><input type="date" class="input-line"></td>
-                <td style="border: none;"><strong>FINISH JAM</strong></td>
-                <td style="border: none;"><input type="time" class="input-line"></td>
-            </tr>
-        </table>
+        <div class="info-wrapper">
+            <div class="info-left">
+                <table class="sub-info">
+                    <tr><td class="lbl">MERK MESIN</td><td class="sep">:</td><td class="val" id="v_mesin"></td></tr>
+                    <tr><td class="lbl">TONAGE</td><td class="sep">:</td><td class="val" id="v_ton"></td></tr>
+                    <tr><td class="lbl">TANGGAL</td><td class="sep">:</td><td class="val" id="v_tgl"></td></tr>
+                    <tr><td class="lbl">TAHUN</td><td class="sep">:</td><td class="val" id="v_thn"></td></tr>
+                </table>
+            </div>
+            <div class="info-right">
+                <table class="sub-info">
+                    <tr><td class="lbl">TARGET SELESAI</td><td class="sep">:</td><td class="val" id="v_target"></td></tr>
+                    <tr><td class="lbl">START JAM</td><td class="sep">:</td><td class="val" id="v_start"></td></tr>
+                    <tr><td class="lbl">FINISH JAM</td><td class="sep">:</td><td class="val" id="v_finish"></td></tr>
+                    <tr><td class="lbl">HM</td><td class="sep">:</td><td class="val" id="v_hm"></td></tr>
+                </table>
+            </div>
+        </div>
 
         <table class="main-table">
             <thead>
                 <tr>
                     <th class="col-no">NO</th>
-                    <th class="col-item">ITEM PENGECEKAN</th>
+                    <th class="col-item">ITEM</th>
                     <th class="col-std">STANDARD</th>
                     <th class="col-act">ACTUAL</th>
                     <th class="col-ket">KETERANGAN</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="tbl-body">
+                </tbody>
+        </table>
+
+        <table class="sig-table">
+            <tr>
+                <td class="sig-header" width="33%">DIKERJAKAN</td>
+                <td class="sig-header" width="33%">DIPERIKSA</td>
+                <td class="sig-header" width="33%">MENGETAHUI</td>
+            </tr>
+            <tr>
+                <td class="sig-box">
+                    <div id="sig_1"></div>
+                    <span class="sig-name" id="nm_1"></span>
+                    <span class="sig-role">OPRT. MEKANIK</span>
+                </td>
+                <td class="sig-box">
+                    <div id="sig_2"></div>
+                    <span class="sig-name" id="nm_2"></span>
+                    <span class="sig-role">SPV. MEKANIK</span>
+                </td>
+                <td class="sig-box">
+                    <div id="sig_3"></div>
+                    <span class="sig-name" id="nm_3"></span>
+                    <span class="sig-role">SPTD. MEKANIK</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <script>
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
+
+        window.onload = async () => {
+            const { data } = await _sb.from('pmi_machines').select('id, nama_mesin').order('nama_mesin');
+            const sel = document.getElementById('sel-mesin');
+            sel.innerHTML = '<option value="">-- PILIH --</option>';
+            if(data) data.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.nama_mesin}</option>`);
+        };
+
+        async function cariLaporan() {
+            const mid = document.getElementById('sel-mesin').value;
+            const bln = document.getElementById('sel-bulan').value;
+            const thn = document.getElementById('sel-tahun').value;
+            if(!mid) return alert("Pilih Mesin!");
+
+            const { data: headers } = await _sb.from('pmi_header')
+                .select('*, pmi_machines(nama_mesin, tonage)')
+                .eq('machine_id', mid).eq('bulan', bln).eq('tahun', thn)
+                .order('created_at', {ascending:false}).limit(1);
+
+            if(!headers || headers.length === 0) {
+                document.getElementById('report-view').style.display = 'none';
+                alert("Data tidak ditemukan."); return;
+            }
+            renderForm(headers[0]);
+        }
+
+        async function renderForm(head) {
+            document.getElementById('report-view').style.display = 'block';
+            
+            // 1. FILL HEADER INFO
+            const m = head.pmi_machines || {};
+            const txt = (id, v) => document.getElementById(id).innerText = v || '-';
+            txt('v_mesin', m.nama_mesin); txt('v_ton', m.tonage);
+            txt('v_tgl', head.tanggal); txt('v_thn', head.tahun);
+            txt('v_target', (head.target_selesai||'').substring(0,5));
+            txt('v_start', (head.start_jam||'').substring(0,5));
+            txt('v_finish', (head.finish_jam||'').substring(0,5));
+            txt('v_hm', head.running_hours);
+
+            // 2. SIGNATURES
+            txt('nm_1', head.nama_pelaksana); txt('nm_2', head.nama_koordinator); txt('nm_3', head.nama_superintendent);
+            const sig = (id, url) => document.getElementById(id).innerHTML = url ? `<img src="${url}" class="sig-img">` : '';
+            sig('sig_1', head.signature_pelaksana); sig('sig_2', head.signature_koordinator); sig('sig_3', head.signature_superintendent);
+
+            // 3. FETCH DATA ITEMS
+            const { data: itemsRaw } = await _sb.from('pmi_items').select('*').order('urutan');
+            const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
+            const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', head.id);
+            
+            let resMap = {};
+            if(results) results.forEach(r => resMap[`${r.pmi_item_id}_${r.pmi_item_field_id}`] = r);
+
+            // 4. PRE-PROCESSING (Join Categories)
+            let items = itemsRaw.map(item => {
+                if(item.kategori.includes("Mesin (Instalasi") || item.nama_item.toLowerCase().includes("heater barrel")) {
+                    item.kategori = "INJECTION UNIT";
+                }
+                return item;
+            });
+
+            const tbody = document.getElementById('tbl-body');
+            tbody.innerHTML = '';
+            let lastCat = '';
+
+            items.forEach(item => {
+                const myFields = fields.filter(f => f.pmi_item_id === item.id);
                 
-                <tr class="section-header"><td colspan="5">1. MEKANIKAL CLAMPING UNIT</td></tr>
-                <tr><td>1</td><td>Pompa lubrikasi berfungsi baik</td><td>Power ON, grease keluar sampai target</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>2</td><td>Distributor valve lubrikasi</td><td>Tidak bocor</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>3</td><td>Selang lubrikasi</td><td>Tidak bocor / pecah</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>4</td><td>Slide shoe</td><td>Tidak kering (basah pelumas)</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>5</td><td>Gear thickness</td><td>Tidak kering (basah pelumas)</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>6</td><td>Arm toggle</td><td>Fungsi mekanikal normal</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>7</td><td>As penggerak plat ejector</td><td>Tidak kering (basah pelumas)</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>8</td><td>Permukaan & lubang baut</td><td>Bersih, drat tidak rusak</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>9</td><td>Cek As ketarik (Tie Bar)</td><td>Kalibrasi Sensormate</td><td><input type="text" placeholder="General Check"></td><td><input type="text"></td></tr>
+                // --- LOGIC EXTRACTION NOMOR & NAMA ---
+                let finalNo = item.urutan; 
+                let finalName = item.nama_item;
+                const match = item.nama_item.match(/^([0-9]+[a-z]?)(?:[\.\)\s]+\s*)(.*)$/);
+                if(match) { finalNo = match[1]; finalName = match[2]; }
 
-                <tr class="section-header"><td colspan="5">2. HYDRAULIC (CLAMPING)</td></tr>
-                <tr><td>1</td><td>Ejector cylinder hydraulic</td><td>Tidak bocor (Cek pressure gauge)</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>2</td><td>Clamping cylinder hydraulic</td><td>Tidak bocor (Cek pressure gauge)</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>3</td><td>Cek solenoid valve</td><td>Tidak bocor, fungsi normal</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>4</td><td>Selang & fitting hydraulic</td><td>Tidak bocor / retak</td><td><input type="text"></td><td><input type="text"></td></tr>
+                // --- DETEKSI HEATER BARREL SECTION ---
+                const isHeaterHeader = item.nama_item.toLowerCase().includes("cek temperatur heater barrel");
+                const isHeaterItem = item.nama_item.toLowerCase().includes("zone") || item.nama_item.toLowerCase().includes("nozle");
 
-                <tr class="section-header"><td colspan="5">3. ELECTRICAL (CLAMPING)</td></tr>
-                <tr><td>1</td><td>Safety limit switch pintu</td><td>Berfungsi normal (Emergency stop)</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>2</td><td>Sensor thickness</td><td>Kabel & konektor baik</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>3</td><td>Linear Potentiometer (LP)</td><td>Clamping & Ejector stroke sesuai</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>4</td><td>Limit switch panel/nozzle</td><td>Fungsi cut-off normal</td><td><input type="text"></td><td><input type="text"></td></tr>
+                if(isHeaterHeader) {
+                    finalNo = ""; // Hapus nomor 5
+                    finalName = "Cek temperatur heater barrel";
+                }
+                if(isHeaterItem && match) {
+                    finalNo = match[1]; // misal "a"
+                    finalName = match[2]; // misal "Zone 1"
+                }
 
-                <tr class="section-header"><td colspan="5">4. KALIBRASI TIE BAR</td></tr>
-                <tr>
-                    <td>1</td>
-                    <td>Pengukuran Regangan (Strain)</td>
-                    <td>Seimbang antar sisi (Max deviasi 5%)</td>
-                    <td style="padding: 0;">
-                        <div class="multi-input-grid cols-4">
-                            <div><label>S1</label><input type="text"></div>
-                            <div><label>S2</label><input type="text"></div>
-                            <div><label>S3</label><input type="text"></div>
-                            <div><label>S4</label><input type="text"></div>
-                        </div>
-                    </td>
-                    <td><input type="text"></td>
-                </tr>
+                // --- RENDER KATEGORI HEADER ---
+                if(item.kategori !== lastCat) {
+                    lastCat = item.kategori;
+                    
+                    if(lastCat.includes("Pump") && lastCat.includes("Hydrolik")) {
+                        // HEADER KHUSUS PUMP (50-200)
+                        tbody.innerHTML += `
+                            <tr class="cat-row">
+                                <td class="col-no"></td>
+                                <td class="col-item">${lastCat}</td>
+                                <td class="col-std"></td>
+                                <td class="col-act" style="padding:0 !important; background:white">
+                                    <div class="split-grid" style="background:#ddd; font-weight:bold; font-size:8pt">
+                                        <div class="split-cell">Valve Idling Sett:</div>
+                                        <div class="split-cell">50</div><div class="split-cell">100</div>
+                                        <div class="split-cell">150</div><div class="split-cell">200</div>
+                                    </div>
+                                </td>
+                                <td class="col-ket"></td>
+                            </tr>`;
+                    } else {
+                        tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${lastCat}</td></tr>`;
+                    }
+                    
+                    // HEADER KHUSUS TIE BAR (S1-S4)
+                    if(lastCat.toLowerCase().includes("tie bar")) {
+                        tbody.innerHTML += `
+                            <tr style="background:#f0f0f0; font-weight:bold; font-size:8pt; text-align:center;">
+                                <td></td><td>ITEM</td><td>STANDARD</td>
+                                <td style="padding:0 !important;">
+                                    <div class="split-grid">
+                                        <div class="split-cell">S1</div><div class="split-cell">S2</div>
+                                        <div class="split-cell">S3</div><div class="split-cell">S4</div>
+                                    </div>
+                                </td>
+                                <td>KET</td>
+                            </tr>`;
+                    }
+                }
 
-                <tr class="section-header"><td colspan="5">5. PUMP & ELECTRICAL</td></tr>
-                <tr><td>1</td><td>Cek coupling pompa</td><td>Karet coupling tidak pecah/aus</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>2</td><td>Kebersihan sirkulasi udara motor</td><td>Filter bersih, fan berputar</td><td><input type="text"></td><td><input type="text"></td></tr>
+                // --- RENDER ROW ITEM ---
+                
+                // KONDISI 1: HEADER "Cek temperatur heater barrel"
+                if(isHeaterHeader) {
+                    // Baris 1: Judul
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="col-no"></td>
+                            <td class="col-item" style="font-weight:bold">${finalName}</td>
+                            <td></td><td></td><td></td>
+                        </tr>`;
+                    // Baris 2: SUB-HEADER KHUSUS SESUAI REQUEST
+                    tbody.innerHTML += `
+                        <tr class="heater-subheader">
+                            <td></td>
+                            <td style="text-align:left; padding-left:25px;">Mesin (Instalasi Thermocouple)</td>
+                            <td>Hasil ukur</td>
+                            <td style="padding:0 !important;">
+                                <div class="split-grid">
+                                    <div class="split-cell">"Hasil (Display Mesin)"</div>
+                                    <div class="split-cell">"Hasil ukur (Thermo Gun)"</div>
+                                </div>
+                            </td>
+                            <td>KETERANGAN</td>
+                        </tr>`;
+                    return; // Selesai untuk row ini, lanjut ke item berikutnya
+                }
 
-                <tr class="section-header"><td colspan="5">6. HYDRAULIC (PUMP UNIT)</td></tr>
-                <tr><td>1</td><td>Temperatur oli</td><td>Standard 40°C - 50°C</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>2</td><td>Level oli</td><td>Pada batas aman (High/Mid)</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>3</td><td>Oil cooler</td><td>Sirkulasi air lancar, tidak buntu</td><td><input type="text"></td><td><input type="text"></td></tr>
+                // KONDISI 2: ISI ITEM (NORMAL / ZONE / PUMP)
+                let actHtml = '';
+                let note = '';
+                if(myFields.length > 0) {
+                    let r = resMap[`${item.id}_${myFields[0].id}`];
+                    if(r && r.keterangan) note = r.keterangan;
+                }
 
-                <tr class="section-header"><td colspan="5">7. PUMP HYDRAULIC (VALVE IDLING SETTING)</td></tr>
-                <tr>
-                    <td>1</td>
-                    <td>Pengecekan Pressure Idling</td>
-                    <td>Sesuai setting pressure</td>
-                    <td style="padding: 0;">
-                        <div class="multi-input-grid cols-4">
-                            <div><label>50</label><input type="text"></div>
-                            <div><label>100</label><input type="text"></div>
-                            <div><label>150</label><input type="text"></div>
-                            <div><label>200</label><input type="text"></div>
-                        </div>
-                    </td>
-                    <td><input type="text"></td>
-                </tr>
+                if(item.kategori.includes("Pump") && item.kategori.includes("Hydrolik") && myFields.length >= 4) {
+                    // PUMP GRID (Display & Gauge)
+                    const getV = (i) => { let r = resMap[`${item.id}_${myFields[i]?.id}`]; return r ? (r.nilai_aktual||'-') : '-'; };
+                    actHtml = `
+                        <div class="pump-grid">
+                            <div class="pump-row">
+                                <div class="pump-lbl">Display</div>
+                                <div class="pump-vals"><div class="pump-val">${getV(0)}</div><div class="pump-val">${getV(1)}</div><div class="pump-val">${getV(2)}</div><div class="pump-val">${getV(3)}</div></div>
+                            </div>
+                            <div class="pump-row">
+                                <div class="pump-lbl">Gauge</div>
+                                <div class="pump-vals"><div class="pump-val">${getV(4)}</div><div class="pump-val">${getV(5)}</div><div class="pump-val">${getV(6)}</div><div class="pump-val">${getV(7)}</div></div>
+                            </div>
+                        </div>`;
+                }
+                else if(isHeaterItem) {
+                    // HEATER ITEM (Split 2 Kolom: Display & Thermo)
+                    const getV = (i) => { let r = resMap[`${item.id}_${myFields[i]?.id}`]; return r ? (r.nilai_aktual||'-') : '-'; };
+                    actHtml = `
+                        <div class="split-grid">
+                            <div class="split-cell">${getV(0)}</div>
+                            <div class="split-cell">${getV(1)}</div>
+                        </div>`;
+                }
+                else if(myFields.length > 1) {
+                    // MULTI FIELD (Tie Bar S1-S4 / Tabung A-C)
+                    const isTieBar = item.kategori.toLowerCase().includes("tie bar");
+                    actHtml = `<div class="${isTieBar ? 'split-grid' : 'std-grid'}">`;
+                    myFields.forEach(f => {
+                        let r = resMap[`${item.id}_${f.id}`];
+                        let val = r ? (r.nilai_aktual || r.status || '-') : '-';
+                        if(isTieBar) {
+                            actHtml += `<div class="split-cell">${val}</div>`;
+                        } else {
+                            actHtml += `<div class="std-cell">${f.label ? `<span class="mini-lbl">${f.label}</span>` : ''}<span>${val}</span></div>`;
+                        }
+                    });
+                    actHtml += `</div>`;
+                } else {
+                    // SINGLE VALUE
+                    let f = myFields[0];
+                    let r = resMap[`${item.id}_${f.id}`];
+                    let val = r ? (r.nilai_aktual || r.status || '-') : '-';
+                    if(val === 'OK') actHtml = `<span class="st-ok">OK</span>`;
+                    else if(val === 'NG') actHtml = `<span class="st-ng">NG</span>`;
+                    else actHtml = `<span style="padding-left:5px">${val}</span>`;
+                }
 
-                <tr class="section-header"><td colspan="5">8. ELECTRICAL PANEL</td></tr>
-                <tr><td>1</td><td>Cek konektor & terminal</td><td>Kencang, tidak gosong</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>2</td><td>Fan & motor inverter</td><td>Berputar, tidak berisik</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>3</td><td>Sirkulasi udara panel</td><td>Filter bersih</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>4</td><td>Check spot thermal</td><td>Suhu komponen normal</td><td><input type="text"></td><td><input type="text"></td></tr>
-
-                <tr class="section-header"><td colspan="5">9. INJECTION UNIT</td></tr>
-                <tr><td>1</td><td>Nozzle visual</td><td>Tidak bocor, heater terpasang kuat</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>2</td><td>Screw tips & Slide way</td><td>Tidak aus berlebih, terlumasi</td><td><input type="text"></td><td><input type="text"></td></tr>
-
-                <tr class="section-header"><td colspan="5">10. MESIN (THERMOCOUPLE) - TOLERANSI ±15°C</td></tr>
-                <tr>
-                    <td colspan="5" style="padding: 0;">
-                        <table class="thermocouple-table">
-                            <tr style="background: #eee;">
-                                <th width="20%">ZONE</th>
-                                <th width="30%">HASIL (DISPLAY MESIN)</th>
-                                <th width="30%">HASIL UKUR (THERMO GUN)</th>
-                                <th width="20%">KETERANGAN</th>
-                            </tr>
-                            <tr><td>Zone 1</td><td><input type="text"></td><td><input type="text"></td><td><input type="text"></td></tr>
-                            <tr><td>Zone 2</td><td><input type="text"></td><td><input type="text"></td><td><input type="text"></td></tr>
-                            <tr><td>Zone 3</td><td><input type="text"></td><td><input type="text"></td><td><input type="text"></td></tr>
-                            <tr><td>Zone 4</td><td><input type="text"></td><td><input type="text"></td><td><input type="text"></td></tr>
-                            <tr><td>Zone 5</td><td><input type="text"></td><td><input type="text"></td><td><input type="text"></td></tr>
-                            <tr><td>Zone Nozzle</td><td><input type="text"></td><td><input type="text"></td><td><input type="text"></td></tr>
-                        </table>
-                    </td>
-                </tr>
-
-                <tr class="section-header"><td colspan="5">11. HYDRAULIC (INJECTION UNIT)</td></tr>
-                <tr><td>1</td><td>Cylinder carrier & Rotary screw</td><td>Tidak bocor</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>2</td><td>Oil gearbox & Sisa oli</td><td>Level normal, warna jernih</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr>
-                    <td>3</td>
-                    <td>Accumulator Pressure</td>
-                    <td>120 - 135 Bar</td>
-                    <td style="padding: 0;">
-                        <div class="multi-input-grid cols-3">
-                            <div><label>Tabung A</label><input type="text"></div>
-                            <div><label>Tabung B</label><input type="text"></div>
-                            <div><label>Tabung C</label><input type="text"></div>
-                        </div>
-                    </td>
-                    <td><input type="text"></td>
-                </tr>
-
-                <tr class="section-header"><td colspan="5">12. ELECTRICAL (INJECTION UNIT)</td></tr>
-                <tr><td>1</td><td>Hopper & support autoloader</td><td>Koneksi kabel baik</td><td><input type="text"></td><td><input type="text"></td></tr>
-                <tr><td>2</td><td>LP Inject Stroke</td><td>Pembacaan posisi akurat</td><td><input type="text"></td><td><input type="text"></td></tr>
-
-            </tbody>
-        </table>
-
-        <table class="signature-table">
-            <tr>
-                <td class="signature-header" width="33%">DIKERJAKAN</td>
-                <td class="signature-header" width="33%">DIPERIKSA</td>
-                <td class="signature-header" width="33%">MENGETAHUI</td>
-            </tr>
-            <tr>
-                <td>
-                    <span class="sig-name">( ................................... )</span>
-                    <span class="sig-jabatan">OPRT. MEKANIK</span>
-                </td>
-                <td>
-                    <span class="sig-name">( ................................... )</span>
-                    <span class="sig-jabatan">SPV. MEKANIK</span>
-                </td>
-                <td>
-                    <span class="sig-name">( ................................... )</span>
-                    <span class="sig-jabatan">SPTD. MEKANIK</span>
-                </td>
-            </tr>
-        </table>
-
-    </div>
-
-    <div class="no-print" style="position: fixed; bottom: 20px; right: 20px;">
-        <button onclick="window.print()" style="padding: 10px 20px; font-weight: bold; font-size: 16px; cursor: pointer;">🖨️ CETAK FORM</button>
-    </div>
-
+                // Render Baris
+                const indentClass = isHeaterItem ? 'heater-item-indent' : '';
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="col-no">${finalNo}</td>
+                        <td class="col-item ${indentClass}">${finalName}</td>
+                        <td class="col-std">${item.standard || ''}</td>
+                        <td class="col-act">${actHtml}</td>
+                        <td class="col-ket">${note}</td>
+                    </tr>`;
+            });
+        }
+    </script>
 </body>
 </html>
