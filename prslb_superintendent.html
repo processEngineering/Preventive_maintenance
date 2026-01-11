@@ -13,7 +13,323 @@
         .success { color: #00cc00; font-weight: bold; }
         .warn { color: #ffbb00; }
     </style>
+</head><!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Superintendent - Approval Final</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* === STYLE GLOBAL (Modern Clean) === */
+        :root { --black: #111; --white: #fff; --gray: #f4f4f5; --border: 2px solid #111; --red: #ef4444; --red-bg: #fef2f2; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; background: var(--white); color: var(--black); margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        .hidden { display: none !important; }
+
+        /* HEADER */
+        .app-header { padding: 15px; border-bottom: var(--border); text-align: center; background: var(--white); z-index: 10; font-weight: 900; letter-spacing: 1px; font-size: 14px; position: sticky; top: 0; }
+        
+        /* CONTENT */
+        .content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 90px; }
+
+        /* CARD LIST */
+        .card { border: var(--border); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 4px 4px 0 #111; display: flex; justify-content: space-between; align-items: center; transition: 0.1s; cursor: pointer; background: white; }
+        .card:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #111; }
+        .card h3 { margin: 0 0 5px 0; font-size: 16px; font-weight: 900; }
+        .card p { margin: 0; font-size: 12px; color: #555; margin-bottom: 2px; }
+        .status-badge { font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 8px; background: #dcfce7; color: #166534; border: 1px solid #166534; }
+        .status-ng { background: var(--red-bg); color: var(--red); border: 1px solid var(--red); }
+
+        /* REVIEW INFO */
+        .info-box { background: var(--gray); border: 1px solid #111; padding: 15px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px dashed #ccc; padding-bottom: 8px; }
+        .info-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .info-label { font-weight: 700; color: #666; font-size: 11px; text-transform: uppercase; }
+        .info-val { font-weight: 800; text-align: right; }
+
+        /* NG BOX (Penting buat Superintendent) */
+        .ng-box { background: var(--red-bg); border: 2px solid var(--red); padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .ng-title { color: var(--red); font-weight: 900; font-size: 12px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .ng-list { list-style: none; padding: 0; margin: 0; font-size: 12px; }
+        .ng-list li { margin-bottom: 5px; font-weight: 600; color: #991b1b; }
+
+        /* KOORDINATOR NOTE */
+        .coord-note { background: #fff7ed; border: 1px solid #f97316; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; font-style: italic; color: #c2410c; }
+
+        /* FORM APPROVAL */
+        .approval-box { background: #111; color: #fff; padding: 25px 20px; border-radius: 16px; margin-top: 20px; }
+        .form-label { font-size: 11px; font-weight: 700; color: #aaa; display: block; margin-bottom: 8px; margin-top: 15px; letter-spacing: 0.5px; }
+        .form-input { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 14px; outline: none; }
+        .form-input:focus { border-color: #fff; }
+        
+        .btn-main { width: 100%; padding: 16px; background: #fff; color: #000; font-weight: 900; border: none; border-radius: 10px; margin-top: 25px; cursor: pointer; text-transform: uppercase; font-size: 14px; letter-spacing: 1px; transition: 0.2s; }
+        .btn-main:active { transform: scale(0.98); opacity: 0.9; }
+        .btn-sec { width: 100%; padding: 12px; background: #fff; border: 2px solid #111; font-weight: 800; border-radius: 8px; margin-top: 10px; cursor: pointer; font-size: 12px; }
+
+        /* NAV */
+        .navbar { position: fixed; bottom: 0; width: 100%; height: 70px; background: #fff; border-top: var(--border); display: flex; justify-content: space-around; align-items: center; z-index: 20; padding-bottom: 10px; }
+        .nav-link { text-decoration: none; color: #999; font-size: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; transition: 0.2s; }
+        .nav-link.active { color: var(--black); transform: translateY(-2px); }
+    </style>
 </head>
+<body>
+
+    <div class="app-header">SUPERINTENDENT APPROVAL</div>
+
+    <div id="view-list" class="content">
+        <div style="font-weight:900; font-size:12px; margin-bottom:15px; text-transform:uppercase; color:#666; letter-spacing:1px;">
+            Menunggu Tanda Tangan
+        </div>
+        <div id="list-data">
+            <div style="text-align:center; margin-top:60px; color:#999;">
+                <i class="fas fa-circle-notch fa-spin"></i><br><br>Memuat database...
+            </div>
+        </div>
+    </div>
+
+    <div id="view-approve" class="content hidden">
+        <button class="btn-sec" onclick="goHome()" style="width:auto; margin-bottom:20px; padding:8px 20px;">
+            <i class="fa-solid fa-arrow-left"></i> &nbsp;KEMBALI
+        </button>
+        
+        <div id="header-info" class="info-box">Loading...</div>
+
+        <div id="ng-container"></div>
+
+        <div style="font-weight:900; font-size:11px; margin-bottom:5px; color:#666;">CATATAN KOORDINATOR:</div>
+        <div id="coord-note-box" class="coord-note">-</div>
+
+        <div class="approval-box">
+            <div style="border-bottom:1px solid #444; padding-bottom:15px; margin-bottom:15px; font-weight:900; font-size:16px; display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-file-signature"></i> FINAL APPROVAL
+            </div>
+            
+            <label class="form-label">NAMA SUPERINTENDENT</label>
+            <input type="text" id="nama_sp" class="form-input" placeholder="Masukkan nama Anda..." autocomplete="off">
+            
+            <label class="form-label">CATATAN TAMBAHAN (OPSIONAL)</label>
+            <textarea id="catatan_sp" class="form-input" rows="2" placeholder="Tulis catatan..."></textarea>
+
+            <label class="form-label">TANDA TANGAN DIGITAL</label>
+            <div style="background:#fff; height:160px; border-radius:8px; position:relative; overflow:hidden;">
+                <canvas id="sig-canvas" style="width:100%; height:100%; display:block; touch-action:none;"></canvas>
+            </div>
+            <div style="text-align:right;">
+                <button onclick="clearPad()" style="background:none; border:none; color:#aaa; font-size:11px; text-decoration:underline; cursor:pointer; margin-top:8px;">
+                    <i class="fas fa-eraser"></i> Hapus Tanda Tangan
+                </button>
+            </div>
+
+            <button class="btn-main" id="btn-submit" onclick="submitData()">
+                <i class="fas fa-check-circle"></i> &nbsp;APPROVE SEKARANG
+            </button>
+        </div>
+    </div>
+
+    <div class="navbar">
+        <a href="#" class="nav-link"><i class="fa-solid fa-house"></i></a>
+        <a href="#" class="nav-link active"><i class="fa-solid fa-file-signature"></i></a>
+        <a href="#" class="nav-link"><i class="fa-solid fa-gear"></i></a>
+    </div>
+
+    <script>
+        // CONFIG SUPABASE
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
+
+        let signaturePad = null;
+        let currentId = null;
+
+        // HELPER: Resize Canvas (Biar tajam di HP)
+        function resizeCanvas() {
+            const canvas = document.getElementById('sig-canvas');
+            if (canvas && signaturePad) {
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
+                signaturePad.clear(); // Bersihkan saat resize
+            }
+        }
+
+        function clearPad() { if(signaturePad) signaturePad.clear(); }
+
+        window.onload = () => {
+            loadList();
+            const canvas = document.getElementById('sig-canvas');
+            signaturePad = new SignaturePad(canvas, { 
+                penColor: 'black', 
+                backgroundColor: 'rgba(255,255,255,0)'
+            });
+            window.addEventListener("resize", resizeCanvas);
+        };
+
+        function showView(id) {
+            document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            window.scrollTo(0,0);
+        }
+
+        function goHome() {
+            showView('view-list');
+            loadList();
+        }
+
+        // 1. LOAD LIST (Query ke prslb_log)
+        async function loadList() {
+            const div = document.getElementById('list-data');
+            div.innerHTML = '<div style="text-align:center; margin-top:40px; color:#666;"><i class="fas fa-circle-notch fa-spin"></i> Loading...</div>';
+
+            // Mengambil data yg status_verifikasi = TRUE dan status_final = FALSE
+            const { data, error } = await _sb.from('prslb_log')
+                .select(`id, created_at, mesin_id, pelaksana_nama, koordinator_nama`)
+                .eq('status_verifikasi', true)
+                .eq('status_final', false)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                div.innerHTML = `<div style="text-align:center; color:red; margin-top:20px;">Error: ${error.message}</div>`;
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                div.innerHTML = `
+                    <div style="text-align:center; margin-top:60px; color:#166534;">
+                        <i class="fas fa-check-double fa-3x"></i><br><br>
+                        <b>Semua Bersih!</b><br>Tidak ada tugas pending.
+                    </div>`;
+                return;
+            }
+
+            div.innerHTML = '';
+            data.forEach(row => {
+                // Format Tanggal
+                const tgl = new Date(row.created_at).toLocaleDateString('id-ID', {
+                    day: 'numeric', month: 'short', year: 'numeric'
+                });
+
+                let el = document.createElement('div');
+                el.className = 'card';
+                el.innerHTML = `
+                    <div>
+                        <h3>${row.mesin_id}</h3>
+                        <p><i class="far fa-calendar"></i> &nbsp;${tgl}</p>
+                        <p><i class="far fa-user"></i> &nbsp;Koor: ${row.koordinator_nama || '-'}</p>
+                        <span class="status-badge"><i class="fas fa-check"></i> Siap Approve</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right" style="font-size:12px;"></i>
+                `;
+                el.onclick = () => openForm(row.id);
+                div.appendChild(el);
+            });
+        }
+
+        // 2. OPEN FORM & DETAIL
+        async function openForm(id) {
+            currentId = id;
+            showView('view-approve');
+            setTimeout(resizeCanvas, 300); // Fix ukuran canvas
+
+            // Reset Form
+            document.getElementById('nama_sp').value = '';
+            document.getElementById('catatan_sp').value = '';
+            signaturePad.clear();
+            document.getElementById('header-info').innerHTML = 'Mengambil data detail...';
+            document.getElementById('ng-container').innerHTML = '';
+
+            // Ambil Detail lengkap + Result Items (Join)
+            const { data, error } = await _sb.from('prslb_log')
+                .select(`*, prslb_result(status, keterangan, prslb_items(item_name))`)
+                .eq('id', id)
+                .single();
+
+            if(data) {
+                // Format Tanggal
+                const tglFull = new Date(data.created_at).toLocaleString('id-ID');
+
+                // Render Info Utama
+                document.getElementById('header-info').innerHTML = `
+                    <div class="info-row"><span class="info-label">MESIN</span><span class="info-val" style="font-size:16px;">${data.mesin_id}</span></div>
+                    <div class="info-row"><span class="info-label">TANGGAL</span><span class="info-val">${tglFull}</span></div>
+                    <div class="info-row"><span class="info-label">TEKNISI</span><span class="info-val">${data.pelaksana_nama}</span></div>
+                    <div class="info-row"><span class="info-label">KOORDINATOR</span><span class="info-val">${data.koordinator_nama}</span></div>
+                `;
+                
+                // Render Catatan Koordinator
+                document.getElementById('coord-note-box').innerText = data.koordinator_note || "Tidak ada catatan.";
+
+                // Render NG Items (PENTING BUAT SUPERINTENDENT)
+                const ngItems = data.prslb_result.filter(r => r.status === 'NG');
+                if(ngItems.length > 0) {
+                    const ngList = ngItems.map(ng => `<li>• ${ng.prslb_items.item_name}: ${ng.keterangan}</li>`).join('');
+                    document.getElementById('ng-container').innerHTML = `
+                        <div class="ng-box">
+                            <div class="ng-title"><i class="fas fa-triangle-exclamation"></i> PERHATIAN: ${ngItems.length} ITEM RUSAK (NG)</div>
+                            <ul class="ng-list">${ngList}</ul>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('ng-container').innerHTML = `
+                        <div style="background:#dcfce7; color:#166534; padding:10px; border-radius:8px; font-size:12px; font-weight:700; border:1px solid #166534; margin-bottom:20px; text-align:center;">
+                            <i class="fas fa-check-circle"></i> SEMUA KONDISI MESIN OK
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // 3. SUBMIT DATA
+        async function submitData() {
+            const nama = document.getElementById('nama_sp').value.trim();
+            const note = document.getElementById('catatan_sp').value.trim();
+            const btn = document.getElementById('btn-submit');
+
+            if(!nama || signaturePad.isEmpty()) {
+                alert("⚠️ Harap isi NAMA dan TANDA TANGAN sebelum approve.");
+                return;
+            }
+
+            if(!confirm("Anda yakin ingin menyetujui laporan ini?")) return;
+
+            // UI Loading
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> &nbsp;MENYIMPAN...';
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+
+            try {
+                // Update ke prslb_log
+                const { error } = await _sb.from('prslb_log').update({
+                    superintendent_nama: nama,
+                    superintendent_note: note,
+                    signature_superintendent: signaturePad.toDataURL(), // TEXT Base64
+                    status_final: true, // LOGIKA FINAL
+                    updated_at: new Date()
+                }).eq('id', currentId);
+
+                if(error) throw error;
+
+                alert("✅ SUKSES! Laporan telah disetujui.");
+                goHome();
+
+            } catch (err) {
+                console.error(err);
+                alert("GAGAL: " + err.message);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
+        }
+    </script>
+</body>
+</html>
 <body>
 
 <h2>🕵️‍♂️ DIAGNOSA SUPABASE</h2>
