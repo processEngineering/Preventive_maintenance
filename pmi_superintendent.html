@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Superintendent - Approval</title>
+    <title>Superintendent - Approval Final</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
@@ -200,30 +200,40 @@
             }
         }
 
-        // 3. SUBMIT
+        // 3. SUBMIT (DENGAN TRY-CATCH AGAR TIDAK STUCK)
         async function submitData() {
             const nama = document.getElementById('nama_sp').value.trim();
             const note = document.getElementById('catatan_sp').value.trim();
+            const btn = document.getElementById('btn-submit');
 
             if(!nama || signaturePad.isEmpty()) return alert("Wajib isi Nama & Paraf!");
             if(!confirm("Approve laporan ini?")) return;
 
-            document.getElementById('btn-submit').innerText = "MENYIMPAN...";
-            document.getElementById('btn-submit').disabled = true;
+            // UI LOCK
+            const originalText = btn.innerText;
+            btn.innerText = "MENYIMPAN...";
+            btn.disabled = true;
 
-            const { error } = await _sb.from('pmi_header').update({
-                nama_superintendent: nama,
-                catatan_superintendent: note,
-                signature_superintendent: signaturePad.toDataURL(),
-                status_verifikasi: 'Completed' // FINAL STATUS
-            }).eq('id', currentHeaderId);
+            try {
+                // UPDATE DATABASE
+                const { error } = await _sb.from('pmi_header').update({
+                    nama_superintendent: nama,
+                    catatan_superintendent: note,
+                    signature_superintendent: signaturePad.toDataURL(),
+                    status_verifikasi: 'Completed' // FINAL STATUS
+                }).eq('id', currentHeaderId);
 
-            if(error) {
-                alert("Gagal: " + error.message);
-                document.getElementById('btn-submit').disabled = false;
-            } else {
-                alert("BERHASIL! Laporan Selesai (Completed).");
+                if(error) throw error;
+
+                alert("✅ BERHASIL! Laporan Selesai (Completed).");
                 goHome();
+
+            } catch (err) {
+                console.error(err);
+                alert("GAGAL MENYIMPAN: " + (err.message || "Periksa koneksi internet"));
+                // UI UNLOCK JIKA GAGAL
+                btn.innerText = originalText;
+                btn.disabled = false;
             }
         }
     </script>
