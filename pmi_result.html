@@ -17,7 +17,7 @@
             font-size: 10pt;
         }
 
-        /* FILTER SECTION (Tidak di-print) */
+        /* FILTER (UI Only) */
         .filter-section {
             background: #fff; width: 210mm; margin: 0 auto 20px; padding: 15px;
             display: flex; gap: 10px; align-items: center; border-radius: 4px; border-bottom: 3px solid #b91c1c;
@@ -25,18 +25,18 @@
         .btn-search, .btn-print { padding: 6px 12px; cursor: pointer; font-weight: bold; color: white; border: none; }
         .btn-search { background: #333; } .btn-print { background: #b91c1c; margin-left: auto; }
 
-        /* PAPER CONTAINER */
+        /* PAPER LAYOUT */
         .container {
             width: 210mm; margin: 0 auto; background: white; 
             display: none; padding: 0; min-height: 297mm;
             box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
 
-        /* --- TABLE STYLES --- */
+        /* TABLES */
         table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 5px; }
         td, th { border: 1px solid #000; padding: 2px 4px; vertical-align: middle; }
 
-        /* HEADER DOKUMEN (KOP) */
+        /* HEADER DOKUMEN */
         .header-table { margin-bottom: 2px; border: 2px solid #000; }
         .header-table td { padding: 5px; border: 1px solid #000; }
         .logo-cell { width: 15%; text-align: center; border-right: none !important; }
@@ -59,7 +59,7 @@
         .sep { width: 10px; text-align: center; }
         .val { border-bottom: 1px dotted #999; width: 100%; }
 
-        /* MAIN CHECKLIST TABLE */
+        /* MAIN TABLE */
         .main-table { font-size: 9pt; margin-top: 5px; border-top: 2px solid #000; }
         .main-table th { background: #d9d9d9 !important; font-weight: bold; text-align: center; height: 25px; border: 1px solid #000; -webkit-print-color-adjust: exact; }
         
@@ -71,15 +71,13 @@
 
         .cat-row td { background: #d9d9d9 !important; font-weight: bold; padding: 4px; -webkit-print-color-adjust: exact; }
 
-        /* LAYOUT KHUSUS: PUMP HYDROLIK */
-        /* Grid Header 50-200 */
+        /* LAYOUT PUMP HYDROLIK */
         .pump-header { display: flex; width: 100%; height: 100%; flex-direction: column; }
         .ph-title { background: #eee; font-size: 8pt; border-bottom: 1px solid #000; text-align: center; font-weight: bold; }
         .ph-vals { display: flex; flex: 1; }
         .ph-val { flex: 1; text-align: center; border-right: 1px solid #000; font-weight: bold; font-size: 8pt; }
         .ph-val:last-child { border-right: none; }
 
-        /* Grid Data Pump (Actual) */
         .pump-grid { display: flex; flex-direction: column; width: 100%; }
         .pump-row { display: flex; border-bottom: 1px solid #000; align-items: center; }
         .pump-row:last-child { border-bottom: none; }
@@ -88,22 +86,19 @@
         .pump-cell { flex: 1; text-align: center; border-right: 1px solid #000; padding: 2px 0; }
         .pump-cell:last-child { border-right: none; }
 
-        /* LAYOUT KHUSUS: TIE BAR S1-S4 */
-        /* Sub-Header Row untuk S1-S4 */
+        /* LAYOUT TIE BAR */
         .sub-header-row td { background: #f0f0f0; font-weight: bold; text-align: center; font-size: 8pt; border-bottom: 1px solid #000; padding: 2px; }
-        
-        /* Grid Data S1-S4 (Hanya Angka) */
         .tie-grid { display: flex; width: 100%; }
         .tie-cell { flex: 1; text-align: center; border-right: 1px solid #000; padding: 2px 0; }
         .tie-cell:last-child { border-right: none; }
 
-        /* General Grid (Tabung A B C, dll) */
+        /* GRID STANDARD */
         .std-grid { display: flex; width: 100%; }
         .std-cell { flex: 1; text-align: center; border-right: 1px solid #000; padding: 2px; position: relative; }
         .std-cell:last-child { border-right: none; }
         .mini-lbl { display: block; font-size: 7pt; font-weight: bold; border-bottom: 1px solid #ccc; margin-bottom: 2px; color: #555; }
 
-        /* STATUS OK/NG */
+        /* STATUS */
         .st-ok { font-weight: bold; text-align: center; display: block; }
         .st-ng { font-weight: bold; color: red; text-align: center; display: block; }
 
@@ -135,7 +130,6 @@
     </div>
 
     <div class="container" id="report-view">
-        
         <table class="header-table">
             <tr>
                 <td class="logo-cell"><img src="https://amarilyskg.co.id/bootstrap/img/logo.png"></td>
@@ -246,7 +240,7 @@
         async function renderForm(head) {
             document.getElementById('report-view').style.display = 'block';
             
-            // 1. INFO
+            // 1. INFO HEADER
             const m = head.pmi_machines || {};
             const val = (id, v) => document.getElementById(id).innerText = v || '-';
             val('v_mesin', m.nama_mesin); val('v_ton', m.tonage);
@@ -261,7 +255,8 @@
             const sig = (id, url) => document.getElementById(id).innerHTML = url ? `<img src="${url}" class="sig-img">` : '';
             sig('sig_1', head.signature_pelaksana); sig('sig_2', head.signature_koordinator); sig('sig_3', head.signature_superintendent);
 
-            // 3. ITEMS
+            // 3. FETCH ITEMS & RESULTS
+            // Urutkan berdasarkan kolom 'urutan' di DB agar sorting tetap benar walau nama kita potong
             const { data: itemsRaw } = await _sb.from('pmi_items').select('*').order('urutan');
             const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
             const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', head.id);
@@ -269,8 +264,8 @@
             let resMap = {};
             if(results) results.forEach(r => resMap[`${r.pmi_item_id}_${r.pmi_item_field_id}`] = r);
 
-            // 4. DATA PROCESSING (MANIPULASI DATA DI SINI)
-            // Kita ubah kategori "Mesin (Instalasi...)" menjadi "INJECTION UNIT" agar menyatu
+            // 4. PRE-PROCESSING
+            // Penyatuan Kategori Injection Unit & Heater
             let items = itemsRaw.map(item => {
                 if(item.kategori.includes("Mesin (Instalasi") || item.nama_item.toLowerCase().includes("heater barrel")) {
                     item.kategori = "INJECTION UNIT";
@@ -286,20 +281,24 @@
             items.forEach(item => {
                 const myFields = fields.filter(f => f.pmi_item_id === item.id);
                 
-                // === LOGIKA PENOMORAN BARU (EXTRACTION DARI NAMA ITEM) ===
-                // Mencegah Double Numbering: Pisahkan "1. Nama" menjadi NO="1" dan ITEM="Nama"
-                let finalNo = item.urutan; // Fallback jika tidak ada angka di nama
+                // === LOGIKA BARU PEMECAHAN STRING "5a. Heater" ===
+                let finalNo = item.urutan;  // Default: Integer dari DB
                 let finalName = item.nama_item;
-                
-                // Regex untuk menangkap angka di awal (misal: "1. " atau "10 ")
-                const numMatch = item.nama_item.match(/^(\d+)[\.\)\s]+\s*(.*)$/);
-                if(numMatch) {
-                    finalNo = numMatch[1];   // Ambil Angka (misal 1)
-                    finalName = numMatch[2]; // Ambil Sisa Nama (misal Pompa...)
+
+                // Regex: Tangkap angka+huruf di depan (misal: "1", "5a", "10") dan buang separator (., ), spasi)
+                // ^             : Mulai string
+                // ([0-9]+[a-z]?) : Group 1 -> Angka (wajib) + Huruf (opsional, misal 'a' di 5a)
+                // (?:[\.\)\s]+\s*) : Group Non-Capturing -> Separator (titik, kurung, spasi) - ini dibuang
+                // (.*)          : Group 2 -> Sisa nama item
+                const regexMatch = item.nama_item.match(/^([0-9]+[a-z]?)(?:[\.\)\s]+\s*)(.*)$/);
+
+                if(regexMatch) {
+                    finalNo = regexMatch[1];  // Hasil: "5a" atau "1" (tanpa titik)
+                    finalName = regexMatch[2]; // Hasil: "Heater Zone 1" atau "Pompa Lubrikasi"
                 } else {
-                    // Jika tidak ada angka (misal huruf a,b,c atau header), bersihkan prefix lain jika perlu
-                    // Tapi biarkan bersih agar tidak double.
-                    finalName = item.nama_item.replace(/^[0-9]+[\.\)\s]+\s*/, '');
+                    // Jika format nama tidak ada angka (misal header sub-item), gunakan nama asli
+                    // dan kosongkan nomor atau pakai urutan
+                    finalName = item.nama_item;
                 }
 
                 // RENDER HEADER KATEGORI
@@ -307,7 +306,6 @@
                     lastCat = item.kategori;
                     
                     if(lastCat.includes("Pump") && lastCat.includes("Hydrolik")) {
-                        // HEADER KHUSUS PUMP (50 100 150 200)
                         tbody.innerHTML += `
                             <tr class="cat-row">
                                 <td class="col-no"></td>
@@ -322,11 +320,10 @@
                                 <td class="col-ket"></td>
                             </tr>`;
                     } else {
-                        // STANDARD HEADER
                         tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${lastCat}</td></tr>`;
                     }
 
-                    // CHECK FOR TIE BAR HEADER (S1 S2 S3 S4)
+                    // SUB-HEADER TIE BAR (S1-S4)
                     if(lastCat.toLowerCase().includes("tie bar")) {
                         tbody.innerHTML += `
                             <tr class="sub-header-row">
@@ -340,14 +337,14 @@
                                     </div>
                                 </td>
                                 <td>KET</td>
-                            </tr>
-                        `;
+                            </tr>`;
                     }
                 }
 
-                // RENDER ACTUAL CELL
+                // RENDER ACTUAL VALUES
                 let actHtml = '';
                 let note = '';
+                // Ambil note dari field pertama
                 if(myFields.length > 0) {
                     let r = resMap[`${item.id}_${myFields[0].id}`];
                     if(r && r.keterangan) note = r.keterangan;
@@ -368,9 +365,8 @@
                             </div>
                         </div>`;
                 } else if(myFields.length > 1) {
-                    // MULTI FIELD
+                    // MULTI FIELD (Tie Bar / Tabung)
                     const isTieBar = item.kategori.toLowerCase().includes("tie bar");
-                    
                     actHtml = `<div class="${isTieBar ? 'tie-grid' : 'std-grid'}">`;
                     myFields.forEach(f => {
                         let r = resMap[`${item.id}_${f.id}`];
@@ -387,7 +383,7 @@
                     });
                     actHtml += `</div>`;
                 } else {
-                    // SINGLE VALUE
+                    // SINGLE VALUE (OK/NG)
                     let f = myFields[0];
                     let r = resMap[`${item.id}_${f.id}`];
                     let val = r ? (r.nilai_aktual || r.status || '-') : '-';
@@ -396,6 +392,7 @@
                     else actHtml = `<span style="padding-left:5px">${val}</span>`;
                 }
 
+                // RENDER BARIS ITEM
                 tbody.innerHTML += `
                     <tr>
                         <td class="col-no">${finalNo}</td>
