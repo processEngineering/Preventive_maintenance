@@ -45,11 +45,11 @@
         .item-std { display: block; margin-bottom: 15px; font-size: 11px; color: #666; font-style: italic; background: #f4f4f5; padding: 6px 10px; border-radius: 6px; border-left: 3px solid #ccc; }
 
         /* === SMART GRID (OTOMATIS SESUAIKAN KOLOM) === */
+        /* CSS ini otomatis membuat field S1-S4 sejajar, Tabung A-C sejajar, dll */
         .sub-fields-grid {
             display: grid;
-            /* Auto Fit: S1-S4 (4 kolom), R-S (3 kolom), Heater (2 kolom) - OTOMATIS */
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+            gap: 10px;
             margin-bottom: 15px;
             align-items: end;
         }
@@ -201,7 +201,7 @@
             c.getContext("2d").scale(r, r);
             signaturePad = new SignaturePad(c, { penColor: 'black' });
 
-            // AMBIL ITEM SESUAI URUTAN SQL (1-56)
+            // AMBIL ITEM & FIELD DARI DB BARU
             const { data: items } = await _sb.from('pmi_items').select('*').order('urutan', { ascending: true });
             const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan', { ascending: true });
             
@@ -215,24 +215,27 @@
             let lastCat = "";
 
             items.forEach(item => {
-                // Header Kategori
+                // Render Header Kategori jika berubah
                 if(item.kategori !== lastCat) {
                     lastCat = item.kategori;
                     tbody.innerHTML += `<tr class="cat-row"><td colspan="2">${lastCat}</td></tr>`;
                 }
 
+                // Ambil field khusus untuk item ini
                 const myFields = fields.filter(f => f.pmi_item_id === item.id);
                 
                 let html = `<tr><td>
                     <span class="item-name">${item.nama_item}</span>
-                    <span class="item-std">${item.standard || '-'}</span>
+                    <span class="item-std">${item.standard || ''}</span>
                     
                     <div class="sub-fields-grid">`; 
                 
+                // Loop Field (OK/NG atau Text Input)
                 myFields.forEach(f => {
                     let label = f.label || ""; 
-                    // LOGIKA TAMPILAN
+                    
                     if (f.tipe_input === 'radio_ok_ng') {
+                        // Tampilan OK/NG Full Width
                         html += `
                         <div class="field-box" style="grid-column: 1 / -1;">
                             <div class="radio-group">
@@ -241,6 +244,7 @@
                             </div>
                         </div>`;
                     } else {
+                        // Tampilan Text Input (S1-S4, Tabung, dll) -> Masuk Grid
                         html += `
                         <div class="field-box">
                             ${label ? `<span class="field-label">${label}</span>` : ''}
@@ -261,11 +265,13 @@
             const runHours = document.getElementById('h_run_hours').value;
             let finishInput = document.getElementById('h_finish').value || new Date().toTimeString().substring(0,5);
 
-            if(!nama || !runHours || signaturePad.isEmpty()) return alert("DATA BELUM LENGKAP!");
+            if(!nama || !runHours || signaturePad.isEmpty()) return alert("MOHON LENGKAPI NAMA, RUNNING HOURS, & PARAF!");
+            
             const btn = document.getElementById('btnSave');
             btn.disabled = true; btn.innerText = "MENGIRIM...";
 
             try {
+                // 1. Simpan Header (Role Pelaksana)
                 const { data: header, error: e1 } = await _sb.from('pmi_header').insert([{
                     machine_id: currentMachineId,
                     tanggal: document.getElementById('h_tanggal').value,
@@ -277,11 +283,12 @@
                     running_hours: runHours,
                     nama_pelaksana: nama,
                     signature_pelaksana: signaturePad.toDataURL(),
-                    status_verifikasi: 'Pending'
+                    status_verifikasi: 'Pending' // Menunggu Koordinator
                 }]).select().single();
 
                 if(e1) throw e1;
 
+                // 2. Simpan Detail Hasil
                 let results = [];
                 loadedItems.forEach(item => {
                     const myFields = loadedFields.filter(f => f.pmi_item_id === item.id);
@@ -289,6 +296,7 @@
 
                     myFields.forEach(f => {
                         let status = null, val = null, hasData = false;
+                        
                         if (f.tipe_input === 'radio_ok_ng') {
                             const chk = document.querySelector(`input[name="f_${f.id}"]:checked`);
                             if(chk) { status = chk.value; hasData = true; }
@@ -296,19 +304,29 @@
                             const el = document.getElementById(`f_${f.id}`);
                             if(el && el.value.trim() !== '') { val = el.value; hasData = true; }
                         }
+                        
+                        // Simpan jika ada isian ATAU ada keterangan
                         if(hasData || sharedNote !== "") {
                             results.push({
-                                pmi_header_id: header.id, pmi_item_id: item.id, pmi_item_field_id: f.id,
-                                status: status, nilai_aktual: val, keterangan: sharedNote
+                                pmi_header_id: header.id, 
+                                pmi_item_id: item.id, 
+                                pmi_item_field_id: f.id,
+                                status: status, 
+                                nilai_aktual: val, 
+                                keterangan: sharedNote
                             });
                         }
                     });
                 });
 
                 if(results.length > 0) await _sb.from('pmi_results').insert(results);
-                alert("✅ LAPORAN TERKIRIM!"); window.location.href = "index.html";
+                
+                alert("✅ LAPORAN TERKIRIM!"); 
+                window.location.href = "index.html";
+                
             } catch (e) { 
-                alert("GAGAL: " + e.message); btn.disabled = false; btn.innerText = "SIMPAN & KIRIM";
+                alert("GAGAL: " + e.message); 
+                btn.disabled = false; btn.innerText = "SIMPAN & KIRIM";
             }
         }
     </script>
