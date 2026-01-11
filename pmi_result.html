@@ -2,386 +2,414 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>AF.SP 05.13 Rev-00 – CHECKLIST HARIAN MESIN INJECTION</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Maintenance - Tampilan Rapi</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
     <style>
-        /* --- SETTING KERTAS UTAMA --- */
-        @page { 
-            size: A4 landscape; 
-            margin: 0; /* Hapus margin browser agar kita kontrol sendiri */
-        }
+        /* === 1. RESET & BASE STYLE (NORMAL) === */
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         
         body { 
-            font-family: 'Arial Narrow', 'Helvetica Narrow', Arial, sans-serif; 
-            font-size: 8pt; 
-            margin: 0; 
-            padding: 10px; 
-            background: #e5e5e5; 
-            -webkit-print-color-adjust: exact; 
+            font-family: "Arial Narrow", Arial, sans-serif; 
+            background: #525659; /* Background abu untuk layar */
+            margin: 0; padding: 20px; 
+            font-size: 10pt; 
+            color: #000;
         }
 
-        /* CONTAINER KERTAS DI LAYAR */
-        .sheet { 
-            background: white; 
-            padding: 5mm 8mm; /* Padding kiri-kanan agak lega, atas-bawah pas */
-            margin: auto; 
-            width: 297mm; /* Full width A4 Landscape */
-            min-height: 210mm;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2); 
-            box-sizing: border-box;
+        /* === 2. KERTAS (CONTAINER UTAMA) === */
+        .paper {
+            background: #fff; 
+            width: 210mm; /* Lebar A4 */
+            min-height: 297mm; /* Tinggi Minimal A4 */
+            margin: 0 auto;
+            padding: 15mm; /* Margin dalam yang lega */
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
             position: relative;
         }
 
-        /* TABEL GLOBAL - LEBIH RAPAT */
-        table { 
-            border-collapse: collapse; 
-            width: 100%; 
-            table-layout: fixed; 
-            margin-bottom: 3px; /* Jarak antar tabel diperkecil */
+        /* === 3. FILTER BOX (UI LAYAR SAJA) === */
+        .filter-box {
+            background: #fff; width: 210mm; margin: 0 auto 15px; padding: 15px;
+            border-radius: 5px; display: flex; gap: 10px; align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        select, button { padding: 8px; border: 1px solid #999; font-weight: bold; cursor: pointer; }
+        .btn-print { background: #b91c1c; color: white; border: none; margin-left: auto; }
+
+        /* === 4. GLOBAL TABLE STYLE === */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        td, th { border: 1px solid #000; padding: 4px 6px; vertical-align: middle; }
+
+        /* === 5. HEADER DOKUMEN === */
+        .header-tbl { border: 1px solid #000; margin-bottom: 5px; }
+        .header-tbl td { border: 1px solid #000; padding: 5px; text-align: center; }
+
+        /* Logo & Nama PT */
+        .logo-container { display: flex; align-items: center; justify-content: center; gap: 15px; }
+        .logo-img { height: 40px; width: auto; }
+        .company-name { font-size: 12pt; font-weight: bold; text-transform: uppercase; text-align: left; }
+
+        /* Judul */
+        .doc-title { font-size: 14pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; }
+
+        /* Doc Control (Kanan Atas) */
+        .doc-ctrl-tbl { width: 100%; border: none; font-size: 9pt; }
+        .doc-ctrl-tbl td { border: none; padding: 2px 0; text-align: left; }
+        .dc-lbl { width: 90px; font-weight: bold; } 
+        .dc-sep { width: 10px; }
+
+        /* === 6. INFO MESIN === */
+        .info-tbl { border: 1px solid #000; font-size: 10pt; margin-bottom: 15px; }
+        .info-tbl td { padding: 6px 8px; border: 1px solid #000; vertical-align: top; }
+        
+        .lbl-col { width: 20%; font-weight: bold; }
+        .val-col { width: 30%; font-weight: normal; text-transform: uppercase; }
+        .colon { float: right; margin-right: 5px; }
+
+        /* === 7. TABEL CHECKLIST UTAMA === */
+        .main-tbl { font-size: 10pt; border: 1px solid #000; }
+        
+        .main-tbl th { 
+            background: #e5e7eb; font-weight: bold; text-transform: uppercase; 
+            text-align: center; padding: 8px; border-bottom: 2px solid #000;
+        }
+
+        .col-no { width: 40px; text-align: center; }
+        .col-item { text-align: left; }
+        .col-std { width: 25%; font-weight: bold; font-style: normal; }
+        .col-act { width: 25%; padding: 0 !important; } 
+        .col-ket { width: 15%; text-align: center; }
+
+        .indent-row { padding-left: 25px !important; }
+
+        /* Kategori (Section Header) */
+        .cat-row td { 
+            background: #d1d5db; font-weight: bold; text-transform: uppercase; 
+            padding: 8px 10px; font-size: 10pt; border-top: 2px solid #000;
+        }
+
+        /* === 8. GRID & SUB-HEADER (VALVE SETTING) === */
+        /* Baris Header Sub-Kolom */
+        .sub-header-row td {
+            background: #f3f4f6; font-weight: bold; text-align: center;
+            padding: 0 !important; border-bottom: 1px solid #000;
+        }
+
+        /* Label Khusus Valve */
+        .valve-label {
+            display: block; width: 100%; border-bottom: 1px solid #000; 
+            background: #e5e7eb; font-size: 9pt; padding: 4px 0; font-weight: bold; text-align: center;
+        }
+
+        /* Grid Container */
+        .act-grid { display: flex; width: 100%; height: 100%; min-height: 25px; }
+        
+        /* Item Header (S1, S2, 50, 100...) */
+        .sub-head-item { 
+            font-size: 9pt; background: #f3f4f6; flex: 1; 
+            display: flex; align-items: center; justify-content: center; 
+            font-weight: bold; border-right: 1px solid #000; padding: 5px 0;
+        }
+        .sub-head-item:last-child { border-right: none; }
+
+        /* Item Data */
+        .act-item { 
+            flex: 1; display: flex; align-items: center; justify-content: center; 
+            border-right: 1px solid #000; padding: 4px; text-align: center; 
+        }
+        .act-item:last-child { border-right: none; }
+        
+        .st-ok { color: #000; font-weight: bold; }
+        .st-ng { color: #b91c1c; font-weight: bold; }
+
+        /* === 9. FOOTER TANDA TANGAN === */
+        .sig-tbl { margin-top: 20px; border: 1px solid #000; }
+        .sig-tbl td { width: 33.33%; vertical-align: bottom; height: 100px; padding-bottom: 5px; position: relative; }
+        
+        .sig-head { 
+            vertical-align: middle !important; height: 30px !important; 
+            background: #e5e7eb; font-weight: bold; border-bottom: 1px solid #000; 
+            text-align: center;
         }
         
-        td, th { 
-            border: 1px solid black; 
-            padding: 1px 3px; /* PADDING DIPERKETAT (Rahasia muat 1 halaman) */
-            vertical-align: middle; 
-            line-height: 1.1;
+        .sig-img { 
+            max-height: 70px; max-width: 80%; 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -40%);
+            z-index: 1;
         }
-
-        /* --- HEADER SECTION --- */
-        .header-table { border: 2px solid black !important; }
-        .header-table td { height: 40px; } /* Tinggi header dikurangi dikit */
-        .logo-img { height: 40px; display: block; margin: 0 auto; }
-        .main-title { font-size: 14pt; font-weight: bold; text-align: center; text-transform: uppercase; }
-        .doc-info { font-size: 7pt; line-height: 1.2; padding: 2px 5px; }
-
-        /* --- INFO MESIN SECTION --- */
-        .info-table { border: 2px solid black; }
-        .info-table td { font-weight: bold; font-size: 8.5pt; padding: 2px 4px; border: none; }
-        .dot-line { border-bottom: 1px dotted #000; display: inline-block; width: 95%; font-weight: normal; padding-left: 5px; }
-
-        /* --- MAIN GRID TABLE --- */
-        .grid-table { border: 2px solid black; }
-        .grid-table th { 
-            background-color: #ffffff; 
-            text-align: center; 
-            font-weight: bold; 
-            border: 1px solid black;
-            font-size: 7.5pt;
-            height: 20px;
-        }
-
-        /* LEBAR KOLOM (Sesuai Excel) */
-        .col-no { width: 20px; text-align: center; }
-        .col-item { width: 200px; text-align: left; }
-        .col-spacer { width: 8px; border-left: none; border-right: none; background: #f4f4f4; } 
-        .col-std { width: 120px; text-align: center; font-size: 6.5pt; white-space: normal; }
-        .col-met { width: 55px; text-align: center; font-size: 7pt; }
-        .col-note { width: 45px; text-align: center; }
-        .col-date { width: 19px; text-align: center; font-size: 8pt; padding: 0; }
-
-        /* BARIS KATEGORI */
-        .cat-row { 
-            background-color: #d9d9d9 !important; 
-            font-weight: bold; 
-            text-align: left; 
-            padding-left: 5px; 
-            border: 1px solid black;
-            text-transform: uppercase;
-            font-size: 7.5pt;
-            height: 18px;
-        }
-
-        /* STATUS VISUAL */
-        .st-ok { color: #000; font-weight: 900; font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; } 
-        .st-ng { color: red; font-weight: 900; font-size: 9pt; }
-        .st-na { color: blue; font-weight: 900; font-size: 9pt; }
-
-        /* SIGNATURE AREA */
-        .sig-row td { background-color: #f2f2f2; font-weight: bold; text-align: right; padding-right: 5px; font-size: 7pt; }
-        .sig-cell { height: 35px; background: white; padding: 0 !important; text-align: center; vertical-align: middle; }
-        .sig-img { width: 100%; height: 100%; max-height: 30px; object-fit: contain; mix-blend-mode: multiply; }
-
-        /* --- FOOTER SECTION --- */
-        .footer-wrapper { display: flex; border: 2px solid black; margin-top: 5px; height: 90px; }
-        .footer-left { flex: 2.2; border-right: 1px solid black; padding: 4px; font-size: 7pt; line-height: 1.35; }
-        .footer-right { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 4px; }
         
-        .super-title { font-weight: bold; text-align: center; text-decoration: underline; margin-bottom: 2px; font-size: 7.5pt; }
-        .super-sig { flex-grow: 1; display: flex; align-items: center; justify-content: center; width: 100%; }
-        .super-name { font-weight: bold; text-decoration: underline; text-transform: uppercase; font-size: 8pt; }
-        .super-img { max-height: 50px; max-width: 90px; mix-blend-mode: multiply; }
-
-        /* UI PANEL (NON PRINT) */
-        .no-print { 
-            background: #1e293b; color: white; padding: 15px; margin-bottom: 20px; 
-            display: flex; gap: 10px; justify-content: center; align-items: center; 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border-radius: 8px;
+        .sig-name { 
+            font-weight: bold; text-transform: uppercase; display: block; 
+            border-top: 1px solid #000; margin: 0 20px; padding-top: 5px; 
+            text-align: center; position: relative; z-index: 2;
         }
-        select, button { padding: 8px 12px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; }
-        button.print-btn { background: #22c55e; color: white; }
-        button.load-btn { background: #3b82f6; color: white; }
 
-        /* --- RAJA TERAKHIR: CSS KHUSUS PRINT AGAR MUAT 1 HALAMAN --- */
-        @media print { 
-            .no-print { display: none; } 
-            
-            body { 
-                background: white; 
-                margin: 0; 
-                padding: 0;
-                /* ZOOM OUT SEDIKIT AGAR MASUK 1 HALAMAN (WORKAROUND PALING AMPUH) */
-                zoom: 92%; 
-            } 
-            
-            .sheet { 
-                box-shadow: none; 
-                border: none; 
-                margin: 0; 
-                width: 100%; 
-                padding: 5mm; /* Padding kertas saat print */
-                page-break-inside: avoid;
-            }
-
-            /* Paksa hitam putih murni untuk teks (kecuali status NG/NA yg berwarna) */
-            .grid-table th { background-color: #fff !important; -webkit-print-color-adjust: exact; }
-            .cat-row { background-color: #ddd !important; -webkit-print-color-adjust: exact; }
-            .sig-row td { background-color: #eee !important; -webkit-print-color-adjust: exact; }
+        /* === 10. MEDIA PRINT (SUPAYA SAAT PRINT BACKGROUND MUNCUL) === */
+        @media print {
+            body { background: #fff; margin: 0; padding: 0; }
+            .filter-box { display: none !important; }
+            .paper { width: 100%; margin: 0; border: none; box-shadow: none; padding: 0; }
+            /* Memaksa background warna tercetak */
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
     </style>
 </head>
 <body>
 
-<div class="no-print">
-    <span>🖨️ PANEL KONTROL:</span>
-    <select id="machine-select"><option value="">-- Pilih Mesin --</option></select>
-    <select id="month-select"></select>
-    <select id="year-select"></select>
-    <button class="load-btn" onclick="loadData()">TAMPILKAN DATA</button>
-    <button class="print-btn" onclick="window.print()">CETAK PDF</button>
-</div>
-
-<div class="sheet">
-    
-    <table class="header-table">
-        <tr>
-            <td width="15%" style="text-align:center;">
-                <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img" alt="Logo">
-            </td>
-            <td width="60%" class="main-title">CHECK LIST HARIAN MESIN INJECTION</td>
-            <td width="25%" class="doc-info">
-                No Dokumen &nbsp;&nbsp;&nbsp;: AF.SP 05.13.Rev-00<br>
-                Tanggal Terbit : 02 Agustus 2024<br>
-                Halaman &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 1/1<br>
-                Tanggal Revisi : -
-            </td>
-        </tr>
-    </table>
-
-    <table class="info-table">
-        <tr>
-            <td width="12%">MERK MESIN</td><td width="1%">:</td><td width="30%"><span id="out-merk" class="dot-line"></span></td>
-            <td width="10%">SERIAL NO</td><td width="1%">:</td><td width="25%"><span id="out-sn" class="dot-line"></span></td>
-            <td width="8%">BULAN</td><td width="1%">:</td><td><span id="out-bln" class="dot-line"></span></td>
-        </tr>
-        <tr>
-            <td>TONAGE</td><td>:</td><td><span id="out-ton" class="dot-line"></span></td>
-            <td></td><td></td><td></td>
-            <td>TAHUN</td><td>:</td><td><span id="out-thn" class="dot-line"></span></td>
-        </tr>
-    </table>
-
-    <table class="grid-table">
-        <thead>
-            <tr>
-                <th rowspan="2" class="col-no">No</th>
-                <th rowspan="2" class="col-item">Jenis pengecekan</th>
-                <th rowspan="2" class="col-spacer"></th>
-                <th rowspan="2" class="col-std">Standard</th>
-                <th rowspan="2" class="col-met">METODE</th>
-                <th rowspan="2" class="col-note">CATATAN</th>
-                <th colspan="31" style="height:15px;">Tanggal</th>
-            </tr>
-            <tr id="date-row">
-                </tr>
-        </thead>
-        <tbody id="main-body">
-            <tr><td colspan="38" style="text-align:center; padding:20px;">Silahkan Pilih Filter Data...</td></tr>
-        </tbody>
-        
-        <tbody id="sig-body" style="display:none;">
-            <tr class="sig-row">
-                <td colspan="6">Paraf Pelaksana</td>
-                <script>for(let i=1;i<=31;i++) document.write(`<td class="sig-cell" id="p-sig-${i}"></td>`);</script>
-            </tr>
-            <tr class="sig-row">
-                <td colspan="6">Paraf Koordinator</td>
-                <script>for(let i=1;i<=31;i++) document.write(`<td class="sig-cell" id="k-sig-${i}"></td>`);</script>
-            </tr>
-        </tbody>
-    </table>
-
-    <div class="footer-wrapper">
-        <div class="footer-left">
-            <b>Catatan :</b><br>
-            (*) : Isi kolom laporan ceklist jika unit ini ada dimesin ini<br>
-            (**) : Diisi angka jam kerja mesin / running hour yang ada dimesin<br><br>
-            <b>Beri tanda :</b><br>
-            <span style="font-weight:bold;">✓</span> Bila item yang diperiksa baik, sesuai standar &nbsp;&nbsp;&nbsp;
-            <span style="font-weight:bold; color:red;">X</span> Bila terjadi penyimpangan / kerusakan<br>
-            <span style="font-weight:bold; color:blue;">O</span> Bila mesin dalam proses perbaikan
-        </div>
-        <div class="footer-right">
-            <div class="super-title">DIKETAHUI<br>MECHANIC SUPERINTENDENT</div>
-            <div class="super-sig" id="out-sig-super">
-                <span style="color:#ccc; font-size:7pt;">(Menunggu Pengesahan)</span>
-            </div>
-            <div class="super-name" id="out-name-super"></div>
-        </div>
+    <div class="filter-box">
+        <b>FILTER DATA:</b>
+        <select id="sel-mesin"><option value="">Loading...</option></select>
+        <select id="sel-bulan">
+            <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+            <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+            <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+            <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+        </select>
+        <select id="sel-tahun"><option value="2025">2025</option><option value="2026" selected>2026</option></select>
+        <button class="btn-search" onclick="cariLaporan()">CARI LAPORAN</button>
+        <button class="btn-print" onclick="window.print()">PRINT</button>
     </div>
 
-</div>
-
-<script>
-    const _URL = "https://dsyvlavphvrdidmodokd.supabase.co";
-    const _KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
-    const sb = supabase.createClient(_URL, _KEY);
-
-    // MASTER ITEMS (Data Baku sesuai DB)
-    const MASTER_ITEMS = [
-        {kode:"", kategori:"Mekanikal:", nama:""},
-        {kode:"a", nama:"Nozzle visual", std:"Radius tidak rusak, tidak ada leleah material meler", met:"Visual"},
-        {kode:"b", nama:"Kebersihan Head Nozzle barrel", std:"tidak ada material yang menempel", met:"Visual"},
-        {kode:"c", nama:"Check level oli mesin", std:"> Level garis tengah", met:"Visual"},
-        {kode:"d", nama:"Check pump central lubrikasi", std:"berfungsi baik", met:"Visual"},
-        {kode:"e", nama:"Check keseluruhan kondisi mesin", std:"Lengkap dan bersih", met:"Visual"},
-        {kode:"f", nama:"Check kondisi lampu indicator", std:"Nyala sesuai fungsi", met:"Visual"},
-        {kode:"g", nama:"Pastikan pintu panel kontrol tertutup", std:"Tertutup", met:"Tangan"},
-        {kode:"h", nama:"Check temperatur oli", std:"40 - 50°C", met:"Display control"},
-        {kode:"i", nama:"Running hour (jam)(**)", std:"Sesuai aktual mesin", met:"Visual"},
-
-        {kode:"", kategori:"Kebersihan debu :", nama:""},
-        {kode:"a", nama:"Pintu Mesin (kaca/acrilric)", std:"Bersih tidak berdebu", met:"Lap majun"},
-        {kode:"b", nama:"Kap mesin", std:"Bersih tidak berdebu", met:"Lap majun"},
-        {kode:"c", nama:"Kap inject unit", std:"Bersih tidak berdebu", met:"Lap majun"},
-        {kode:"d", nama:"Panel mesin", std:"Bersih tidak berdebu", met:"Lap majun"},
-
-        {kode:"", kategori:"Kebersihan Oli:", nama:""},
-        {kode:"a", nama:"Lantai area mesin", std:"Tidak kotor oli", met:"Lap & busa spon"},
-        {kode:"b", nama:"Bawah mesin", std:"Tidak kotor oli", met:"Lap & busa spon"},
-        {kode:"c", nama:"Bawah inject unit", std:"Tidak kotor oli", met:"Lap & busa spon"},
-
-        {kode:"", kategori:"Kebersihan Air :", nama:""},
-        {kode:"a", nama:"Pemeriksaan instalasi air", std:"Fitting / balvalve tidak bocor", met:"Lap majun"},
-        {kode:"b", nama:"Embun pipa chiller", std:"Dilindungi armaflek", met:"Lap majun"},
-
-        {kode:"", kategori:"Kebersihan Area Mesin", nama:""},
-        {kode:"a", nama:"Pemeriksaan alat kerja/ sparepart setelah perbaikan", std:"Area mesin bersih, tidak terdapat ceceran tools & sparepart", met:"Visual"},
-        {kode:"b", nama:"Kelengkapan selang angin sprial & air gun", std:"Terpasang rapih,lengkap dan berfungsi", met:"Visual"}
-    ];
-
-    async function initFilter() {
-        const { data: m } = await sb.from('clhmi_machine').select('*').order('merk_mesin');
-        m?.forEach(x => document.getElementById('machine-select').add(new Option(`${x.merk_mesin}`, x.id)));
-        const mo = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-        mo.forEach((v, i) => document.getElementById('month-select').add(new Option(v, i+1)));
-        const y = new Date().getFullYear();
-        for(let i=y; i>=y-2; i--) document.getElementById('year-select').add(new Option(i, i));
+    <div class="paper" id="report-view" style="display:none;">
         
-        let h = "";
-        for(let i=1; i<=31; i++) h += `<th class="col-date">${i}</th>`;
-        document.getElementById('date-row').innerHTML = h;
-    }
+        <table class="header-tbl">
+            <tr>
+                <td width="35%">
+                    <div class="logo-container">
+                        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img">
+                        <span class="company-name">PT. AMARILYS<br>KARISMA GEMILANG</span>
+                    </div>
+                </td>
+                <td width="35%">
+                    <div class="doc-title">FORM PREVENTIF MESIN INJECTION (CLAMPING UNIT)</div>
+                </td>
+                <td width="30%">
+                    <table class="doc-ctrl-tbl">
+                        <tr><td class="dc-lbl">No. Dokumen</td><td class="dc-sep">:</td><td>AF.SP 05.07.Rev-00</td></tr>
+                        <tr><td class="dc-lbl">Tanggal Terbit</td><td class="dc-sep">:</td><td>02 Agustus 2024</td></tr>
+                        <tr><td class="dc-lbl">Halaman</td><td class="dc-sep">:</td><td>1/1</td></tr>
+                        <tr><td class="dc-lbl">Tanggal Revisi</td><td class="dc-sep">:</td><td>-</td></tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
 
-    async function loadData() {
-        const mId = document.getElementById('machine-select').value;
-        const bln = document.getElementById('month-select').value;
-        const thn = document.getElementById('year-select').value;
-        if(!mId || !bln || !thn) return alert("Pilih Filter dulu!");
+        <table class="info-tbl">
+            <tr>
+                <td class="lbl-col">MERK MESIN <span class="colon">:</span></td><td class="val-col" id="v_mesin">-</td>
+                <td class="lbl-col">TARGET SELESAI <span class="colon">:</span></td><td class="val-col" id="v_target">-</td>
+            </tr>
+            <tr>
+                <td class="lbl-col">TONAGE <span class="colon">:</span></td><td class="val-col" id="v_ton">-</td>
+                <td class="lbl-col">START JAM <span class="colon">:</span></td><td class="val-col" id="v_start">-</td>
+            </tr>
+            <tr>
+                <td class="lbl-col">TANGGAL <span class="colon">:</span></td><td class="val-col" id="v_tgl">-</td>
+                <td class="lbl-col">FINISH JAM <span class="colon">:</span></td><td class="val-col" id="v_finish">-</td>
+            </tr>
+            <tr>
+                <td class="lbl-col">TAHUN <span class="colon">:</span></td><td class="val-col" id="v_thn">-</td>
+                <td class="lbl-col">RUNNING HOURS <span class="colon">:</span></td><td class="val-col" id="v_hm">-</td>
+            </tr>
+        </table>
 
-        for(let i=1; i<=31; i++) {
-            document.getElementById(`p-sig-${i}`).innerHTML = "";
-            document.getElementById(`k-sig-${i}`).innerHTML = "";
-        }
-        document.getElementById('sig-body').style.display = 'table-row-group';
+        <table class="main-tbl">
+            <thead>
+                <tr>
+                    <th class="col-no">NO</th>
+                    <th class="col-item">ITEM PENGECEKAN</th>
+                    <th class="col-std">STANDARD</th>
+                    <th class="col-act">ACTUAL</th>
+                    <th class="col-ket">KETERANGAN</th>
+                </tr>
+            </thead>
+            <tbody id="tbl-body"></tbody>
+        </table>
 
-        const { data: headers, error: hErr } = await sb.from('clhmi')
-            .select('*, clhmi_machine(tonage, serial_no, merk_mesin)')
-            .eq('machine_id', mId).eq('bulan', parseInt(bln)).eq('tahun', parseInt(thn)).order('tanggal_isi');
+        <table class="sig-tbl">
+            <tr>
+                <td class="sig-head">DIKERJAKAN</td>
+                <td class="sig-head">DIPERIKSA</td>
+                <td class="sig-head">DISETUJUI</td>
+            </tr>
+            <tr>
+                <td>
+                    <div id="sig_1"></div>
+                    <span class="sig-name" id="nm_1">.......</span>
+                    <div style="text-align:center; font-size:9pt; margin-top:2px;">OPRT. MEKANIK</div>
+                </td>
+                <td>
+                    <div id="sig_2"></div>
+                    <span class="sig-name" id="nm_2">.......</span>
+                    <div style="text-align:center; font-size:9pt; margin-top:2px;">SPV. MEKANIK</div>
+                </td>
+                <td>
+                    <div id="sig_3"></div>
+                    <span class="sig-name" id="nm_3">.......</span>
+                    <div style="text-align:center; font-size:9pt; margin-top:2px;">SPTD. MEKANIK</div>
+                </td>
+            </tr>
+        </table>
+    </div>
 
-        if(hErr || !headers || headers.length === 0) { 
-            alert("Data laporan tidak ditemukan."); 
-            document.getElementById('main-body').innerHTML = `<tr><td colspan="38" style="text-align:center; padding:20px; color:red;">DATA TIDAK DITEMUKAN</td></tr>`;
-            return; 
-        }
+    <script>
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-        const headerIds = headers.map(h => h.id);
-        const { data: allRes, error: rErr } = await sb.from('clhmi_results')
-            .select('item_kode, status, value, tanggal_cek, clhmi_items(nama_pengecekan)')
-            .in('clhmi_id', headerIds);
+        window.onload = async () => {
+            const { data } = await _sb.from('pmi_machines').select('id, nama_mesin').order('nama_mesin');
+            const sel = document.getElementById('sel-mesin');
+            sel.innerHTML = '<option value="">-- PILIH MESIN --</option>';
+            if(data) data.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.nama_mesin}</option>`);
+        };
 
-        const head = headers[0];
-        document.getElementById('out-merk').innerText = head.clhmi_machine?.merk_mesin || '-';
-        document.getElementById('out-sn').innerText = head.clhmi_machine?.serial_no || '-';
-        document.getElementById('out-ton').innerText = (head.clhmi_machine?.tonage || '-') + ' T';
-        document.getElementById('out-bln').innerText = document.getElementById('month-select').options[bln-1].text.toUpperCase();
-        document.getElementById('out-thn').innerText = thn;
+        async function cariLaporan() {
+            const mid = document.getElementById('sel-mesin').value;
+            const bln = document.getElementById('sel-bulan').value;
+            const thn = document.getElementById('sel-tahun').value;
+            if(!mid) return alert("Pilih Mesin dahulu!");
 
-        const tbody = document.getElementById('main-body');
-        tbody.innerHTML = "";
-        let curCat = "";
+            const { data: headers, error } = await _sb.from('pmi_header')
+                .select('*, pmi_machines(nama_mesin, tonage)')
+                .eq('machine_id', mid).eq('bulan', bln).eq('tahun', thn)
+                .order('created_at', {ascending:false}).limit(1);
 
-        MASTER_ITEMS.forEach(item => {
-            if(item.kategori && item.kategori !== curCat) {
-                tbody.innerHTML += `<tr><td colspan="38" class="cat-row">${item.kategori}</td></tr>`;
-                curCat = item.kategori;
+            if(error || !headers || headers.length === 0) {
+                alert("Laporan tidak ditemukan.");
+                document.getElementById('report-view').style.display = 'none';
+                return;
             }
-            if(!item.nama) return;
+            renderReport(headers[0]);
+        }
 
-            let row = `<tr>
-                <td class="col-no">${item.kode}</td>
-                <td class="col-item">${item.nama}</td>
-                <td class="col-spacer"></td>
-                <td class="col-std">${item.std}</td>
-                <td class="col-met">${item.met}</td>
-                <td class="col-note"></td>`;
+        async function renderReport(head) {
+            document.getElementById('report-view').style.display = 'block';
 
-            for(let d=1; d<=31; d++) {
-                const f = allRes.find(r => {
-                    const dbDate = parseInt(r.tanggal_cek.split('-')[2]);
-                    const itemNameMatch = r.clhmi_items && r.clhmi_items.nama_pengecekan.trim() === item.nama.trim();
-                    return dbDate === d && itemNameMatch;
+            const m = head.pmi_machines || {};
+            document.getElementById('v_mesin').innerText = m.nama_mesin || '-';
+            document.getElementById('v_ton').innerText = m.tonage || '-';
+            document.getElementById('v_tgl').innerText = head.tanggal;
+            document.getElementById('v_thn').innerText = head.tahun;
+            document.getElementById('v_target').innerText = (head.target_selesai||'').substring(0,5);
+            document.getElementById('v_start').innerText = (head.start_jam||'').substring(0,5);
+            document.getElementById('v_finish').innerText = (head.finish_jam||'').substring(0,5);
+            document.getElementById('v_hm').innerText = head.running_hours;
+
+            document.getElementById('nm_1').innerText = head.nama_pelaksana || '.......';
+            document.getElementById('nm_2').innerText = head.nama_koordinator || '.......';
+            document.getElementById('nm_3').innerText = head.nama_superintendent || '.......';
+            
+            if(head.signature_pelaksana) document.getElementById('sig_1').innerHTML = `<img src="${head.signature_pelaksana}" class="sig-img">`;
+            if(head.signature_koordinator) document.getElementById('sig_2').innerHTML = `<img src="${head.signature_koordinator}" class="sig-img">`;
+            if(head.signature_superintendent) document.getElementById('sig_3').innerHTML = `<img src="${head.signature_superintendent}" class="sig-img">`;
+
+            const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
+            const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
+            const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', head.id);
+
+            let resMap = {}; let noteMap = {};
+            if(results) {
+                results.forEach(r => {
+                    resMap[`${r.pmi_item_id}_${r.pmi_item_field_id}`] = r;
+                    if(r.keterangan) noteMap[r.pmi_item_id] = r.keterangan;
                 });
-
-                let sym = '', cls = '';
-                if(f) {
-                    if(f.status === 'OK') { sym = '✓'; cls = 'st-ok'; }
-                    else if(f.status === 'NG') { sym = 'X'; cls = 'st-ng'; }
-                    else if(f.status === 'NA') { sym = 'O'; cls = 'st-na'; }
-                }
-                row += `<td class="col-date ${cls}">${sym}</td>`;
             }
-            tbody.innerHTML += row + "</tr>";
-        });
 
-        headers.forEach(h => {
-            const d = parseInt(h.tanggal_isi.split('-')[2]);
-            if(h.paraf) document.getElementById(`p-sig-${d}`).innerHTML = `<img src="${h.paraf}" class="sig-img">`;
-            if(h.paraf_coord) document.getElementById(`k-sig-${d}`).innerHTML = `<img src="${h.paraf_coord}" class="sig-img">`;
-        });
+            const tbody = document.getElementById('tbl-body');
+            tbody.innerHTML = '';
+            
+            let lastCat = '';
+            let no = 1;
+            let printedHeaders = {}; 
 
-        const fin = headers.find(h => h.status_form === 'closed');
-        const sigBox = document.getElementById('out-sig-super');
-        const nameBox = document.getElementById("out-name-super");
-        if(fin?.paraf_super) {
-            sigBox.innerHTML = `<img src="${fin.paraf_super}" class="super-img">`;
-            nameBox.innerText = (fin.verified_by || '').toUpperCase();
-        } else {
-            sigBox.innerHTML = `<span style="color:#ccc; font-size:7pt;">(Menunggu Pengesahan)</span>`;
-            nameBox.innerText = "";
+            if(items) {
+                items.forEach(item => {
+                    if(item.kategori !== lastCat) {
+                        lastCat = item.kategori;
+                        tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${lastCat}</td></tr>`;
+                        const catUpper = lastCat.toUpperCase();
+                        if(catUpper.includes("PUMP & ELEKTRIKAL") || catUpper.includes("INJECTION UNIT")) {
+                            no = 1;
+                        }
+                    }
+
+                    const myFields = fields.filter(f => f.pmi_item_id === item.id);
+                    let hasSpecialLabels = myFields.some(f => f.label && f.label !== 'Actual');
+                    let headerKey = item.kategori; 
+
+                    if(hasSpecialLabels && !printedHeaders[headerKey]) {
+                        let isValveSetting = myFields.some(f => f.label === '50' || f.label === '200');
+                        let valveHeaderHtml = isValveSetting ? `<div class="valve-label">Valve Idling Sett:</div>` : '';
+
+                        let subHeadHtml = `<div class="act-grid">`;
+                        myFields.forEach(f => {
+                             subHeadHtml += `<div class="sub-head-item">${f.label || ''}</div>`;
+                        });
+                        subHeadHtml += `</div>`;
+                        
+                        tbody.innerHTML += `
+                            <tr class="sub-header-row">
+                                <td></td><td></td><td></td>
+                                <td class="col-act">
+                                    ${valveHeaderHtml}
+                                    ${subHeadHtml}
+                                </td>
+                                <td></td>
+                            </tr>
+                        `;
+                        printedHeaders[headerKey] = true;
+                    }
+
+                    let actHtml = '';
+                    if(myFields.length > 0) {
+                        actHtml = `<div class="act-grid">`;
+                        myFields.forEach(f => {
+                            let key = `${item.id}_${f.id}`;
+                            let res = resMap[key];
+                            let val = res ? (res.status || res.nilai_aktual || '-') : '-';
+                            let cls = val === 'OK' ? 'st-ok' : (val === 'NG' ? 'st-ng' : '');
+                            
+                            actHtml += `
+                                <div class="act-item">
+                                    <span class="act-val ${cls}">${val}</span>
+                                </div>`;
+                        });
+                        actHtml += `</div>`;
+                    } else {
+                        actHtml = '-';
+                    }
+
+                    let indentClass = "";
+                    let displayNo = no;
+                    let shouldIncrement = true;
+
+                    if(lastCat.includes("Mesin (Instalasi Thermocouple)") || item.nama_item.match(/^[a-z]\.|^Zone/i)) {
+                        indentClass = "indent-row";
+                    }
+
+                    if(lastCat.includes("Mesin (Instalasi Thermocouple)")) {
+                        displayNo = "";
+                        shouldIncrement = false;
+                    }
+
+                    tbody.innerHTML += `
+                        <tr class="data-row">
+                            <td class="col-no">${displayNo}</td>
+                            <td class="col-item ${indentClass}">${item.nama_item}</td>
+                            <td class="col-std">${item.standard || ''}</td>
+                            <td class="col-act">${actHtml}</td>
+                            <td class="col-ket">${noteMap[item.id] || ''}</td>
+                        </tr>`;
+
+                    if(shouldIncrement) no++;
+                });
+            }
         }
-    }
-
-    window.onload = initFilter;
-</script>
+    </script>
 </body>
 </html>
