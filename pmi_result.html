@@ -278,10 +278,6 @@
                 return item;
             });
 
-            // Grouping by Category (Manual Sort Order Categories if needed)
-            // Kita biarkan urutan item sesuai database, tapi karena kategori sudah disamakan,
-            // render loop harus pintar.
-            
             const tbody = document.getElementById('tbl-body');
             tbody.innerHTML = '';
             
@@ -289,8 +285,23 @@
 
             items.forEach(item => {
                 const myFields = fields.filter(f => f.pmi_item_id === item.id);
-                const cleanName = item.nama_item.replace(/^[0-9]+[\.\)\s]+\s*/, '');
                 
+                // === LOGIKA PENOMORAN BARU (EXTRACTION DARI NAMA ITEM) ===
+                // Mencegah Double Numbering: Pisahkan "1. Nama" menjadi NO="1" dan ITEM="Nama"
+                let finalNo = item.urutan; // Fallback jika tidak ada angka di nama
+                let finalName = item.nama_item;
+                
+                // Regex untuk menangkap angka di awal (misal: "1. " atau "10 ")
+                const numMatch = item.nama_item.match(/^(\d+)[\.\)\s]+\s*(.*)$/);
+                if(numMatch) {
+                    finalNo = numMatch[1];   // Ambil Angka (misal 1)
+                    finalName = numMatch[2]; // Ambil Sisa Nama (misal Pompa...)
+                } else {
+                    // Jika tidak ada angka (misal huruf a,b,c atau header), bersihkan prefix lain jika perlu
+                    // Tapi biarkan bersih agar tidak double.
+                    finalName = item.nama_item.replace(/^[0-9]+[\.\)\s]+\s*/, '');
+                }
+
                 // RENDER HEADER KATEGORI
                 if(item.kategori !== lastCat) {
                     lastCat = item.kategori;
@@ -316,7 +327,6 @@
                     }
 
                     // CHECK FOR TIE BAR HEADER (S1 S2 S3 S4)
-                    // Jika kategori adalah Tie Bar, kita butuh sub-header S1-S4 SEKALI saja di sini
                     if(lastCat.toLowerCase().includes("tie bar")) {
                         tbody.innerHTML += `
                             <tr class="sub-header-row">
@@ -358,8 +368,7 @@
                             </div>
                         </div>`;
                 } else if(myFields.length > 1) {
-                    // MULTI FIELD (Tie Bar S1-S4 atau Tabung A-C)
-                    // Jika Tie Bar, kita tidak perlu label S1-S4 lagi (sudah di header), cuma butuh kotak angka
+                    // MULTI FIELD
                     const isTieBar = item.kategori.toLowerCase().includes("tie bar");
                     
                     actHtml = `<div class="${isTieBar ? 'tie-grid' : 'std-grid'}">`;
@@ -370,7 +379,6 @@
                         if(isTieBar) {
                             actHtml += `<div class="tie-cell">${val}</div>`;
                         } else {
-                            // Untuk Tabung A,B,C dsb kita tampilkan label kecil
                             actHtml += `<div class="std-cell">
                                 ${f.label ? `<span class="mini-lbl">${f.label}</span>` : ''}
                                 <span>${val}</span>
@@ -390,8 +398,8 @@
 
                 tbody.innerHTML += `
                     <tr>
-                        <td class="col-no">${item.urutan}</td>
-                        <td class="col-item">${cleanName}</td>
+                        <td class="col-no">${finalNo}</td>
+                        <td class="col-item">${finalName}</td>
                         <td class="col-std">${item.standard || ''}</td>
                         <td class="col-act">${actHtml}</td>
                         <td class="col-ket">${note}</td>
