@@ -71,6 +71,13 @@
 
         .cat-row td { background: #d9d9d9 !important; font-weight: bold; padding: 4px; -webkit-print-color-adjust: exact; }
 
+        /* KHUSUS: HEATER BARREL */
+        .heater-header-row td { background: #f0f0f0; font-weight: bold; text-align: center; font-size: 8pt; border-bottom: 1px solid #000; padding: 2px; }
+        .heater-grid { display: flex; width: 100%; height: 100%; }
+        .heater-cell { flex: 1; text-align: center; border-right: 1px solid #000; padding: 2px 0; display:flex; align-items:center; justify-content:center; }
+        .heater-cell:last-child { border-right: none; }
+        .heater-item-indent { padding-left: 20px !important; } /* INDENTASI AGAK KEDALAM */
+
         /* LAYOUT PUMP HYDROLIK */
         .pump-header { display: flex; width: 100%; height: 100%; flex-direction: column; }
         .ph-title { background: #eee; font-size: 8pt; border-bottom: 1px solid #000; text-align: center; font-weight: bold; }
@@ -256,7 +263,6 @@
             sig('sig_1', head.signature_pelaksana); sig('sig_2', head.signature_koordinator); sig('sig_3', head.signature_superintendent);
 
             // 3. FETCH ITEMS & RESULTS
-            // Urutkan berdasarkan kolom 'urutan' di DB agar sorting tetap benar walau nama kita potong
             const { data: itemsRaw } = await _sb.from('pmi_items').select('*').order('urutan');
             const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
             const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', head.id);
@@ -281,27 +287,35 @@
             items.forEach(item => {
                 const myFields = fields.filter(f => f.pmi_item_id === item.id);
                 
-                // === LOGIKA BARU PEMECAHAN STRING "5a. Heater" ===
-                let finalNo = item.urutan;  // Default: Integer dari DB
+                // === LOGIKA NAMA & NOMOR ===
+                let finalNo = item.urutan;
                 let finalName = item.nama_item;
-
-                // Regex: Tangkap angka+huruf di depan (misal: "1", "5a", "10") dan buang separator (., ), spasi)
-                // ^             : Mulai string
-                // ([0-9]+[a-z]?) : Group 1 -> Angka (wajib) + Huruf (opsional, misal 'a' di 5a)
-                // (?:[\.\)\s]+\s*) : Group Non-Capturing -> Separator (titik, kurung, spasi) - ini dibuang
-                // (.*)          : Group 2 -> Sisa nama item
                 const regexMatch = item.nama_item.match(/^([0-9]+[a-z]?)(?:[\.\)\s]+\s*)(.*)$/);
 
                 if(regexMatch) {
-                    finalNo = regexMatch[1];  // Hasil: "5a" atau "1" (tanpa titik)
-                    finalName = regexMatch[2]; // Hasil: "Heater Zone 1" atau "Pompa Lubrikasi"
-                } else {
-                    // Jika format nama tidak ada angka (misal header sub-item), gunakan nama asli
-                    // dan kosongkan nomor atau pakai urutan
-                    finalName = item.nama_item;
+                    finalNo = regexMatch[1];  
+                    finalName = regexMatch[2]; 
                 }
 
-                // RENDER HEADER KATEGORI
+                // === LOGIKA KHUSUS HEATER BARREL ===
+                // 1. Deteksi apakah ini adalah HEADER UTAMA (Cek temperatur...)
+                // 2. Deteksi apakah ini adalah SUB-ITEM (Zone 1, Zone 2...)
+                const isHeaterHeader = item.nama_item.toLowerCase().includes("cek temperatur heater barrel");
+                const isHeaterItem = item.nama_item.toLowerCase().includes("zone") || item.nama_item.toLowerCase().includes("nozle");
+
+                // Jika Heater Header: Hapus Angka "5", Tampilkan Judul saja
+                if(isHeaterHeader) {
+                    finalNo = ""; // Hapus nomor
+                    finalName = "Cek temperatur heater barrel"; // Hapus angka 5 dari teks jika ada
+                }
+
+                // Jika Heater Item (Zone): Ambil Huruf (a-f), Teks "Zone ..."
+                if(isHeaterItem && regexMatch) {
+                    finalNo = regexMatch[1]; // misal "a"
+                    finalName = regexMatch[2]; // misal "Zone 1"
+                }
+
+                // RENDER HEADER KATEGORI UTAMA (Pump / Injection Unit)
                 if(item.kategori !== lastCat) {
                     lastCat = item.kategori;
                     
@@ -323,7 +337,6 @@
                         tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${lastCat}</td></tr>`;
                     }
 
-                    // SUB-HEADER TIE BAR (S1-S4)
                     if(lastCat.toLowerCase().includes("tie bar")) {
                         tbody.innerHTML += `
                             <tr class="sub-header-row">
@@ -341,15 +354,48 @@
                     }
                 }
 
-                // RENDER ACTUAL VALUES
+                // RENDER BARIS ITEM
+                // --- KONDISI 1: HEADER "CEK TEMPERATUR" ---
+                // Tampilkan Baris Judul, LALU Tampilkan Sub-Header Spesifik di bawahnya
+                if(isHeaterHeader) {
+                    // 1. Baris Judul (Cek temperatur...)
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="col-no"></td>
+                            <td class="col-item" style="font-weight:bold">${finalName}</td>
+                            <td class="col-std"></td>
+                            <td class="col-act"></td>
+                            <td class="col-ket"></td>
+                        </tr>
+                    `;
+                    // 2. Baris SUB-HEADER KHUSUS (Mesin Instalasi Thermocouple)
+                    // Sesuai request: Mesin (Instalasi Thermocouple) | Hasil ukur | "Hasil (Display Mesin)" | "Hasil ukur (Thermo Gun)"
+                    tbody.innerHTML += `
+                        <tr class="heater-header-row">
+                            <td></td>
+                            <td style="text-align:left; padding-left:20px;">Mesin (Instalasi Thermocouple)</td>
+                            <td>Hasil ukur</td>
+                            <td style="padding:0 !important;">
+                                <div class="heater-grid">
+                                    <div class="heater-cell" style="background:#f0f0f0;">"Hasil (Display Mesin)"</div>
+                                    <div class="heater-cell" style="background:#f0f0f0;">"Hasil ukur (Thermo Gun)"</div>
+                                </div>
+                            </td>
+                            <td>KETERANGAN</td>
+                        </tr>
+                    `;
+                    return; // Stop di sini untuk item header, lanjut ke item berikutnya (Zone 1 dst)
+                }
+
+                // --- KONDISI 2: ISI ITEM (NORMAL / ZONE) ---
                 let actHtml = '';
                 let note = '';
-                // Ambil note dari field pertama
                 if(myFields.length > 0) {
                     let r = resMap[`${item.id}_${myFields[0].id}`];
                     if(r && r.keterangan) note = r.keterangan;
                 }
 
+                // RENDER NILAI ACTUAL
                 if(item.kategori.includes("Pump") && item.kategori.includes("Hydrolik") && myFields.length >= 4) {
                     // PUMP GRID
                     const getV = (i) => { let r = resMap[`${item.id}_${myFields[i]?.id}`]; return r ? (r.nilai_aktual||'-') : '-'; };
@@ -364,26 +410,34 @@
                                 <div class="pump-cells"><div class="pump-cell">${getV(4)}</div><div class="pump-cell">${getV(5)}</div><div class="pump-cell">${getV(6)}</div><div class="pump-cell">${getV(7)}</div></div>
                             </div>
                         </div>`;
-                } else if(myFields.length > 1) {
-                    // MULTI FIELD (Tie Bar / Tabung)
+                } 
+                else if (isHeaterItem) {
+                    // HEATER ITEM GRID (Display | Thermo Gun)
+                    // Asumsi: myFields[0] = Display, myFields[1] = Thermo Gun
+                    const getV = (i) => { let r = resMap[`${item.id}_${myFields[i]?.id}`]; return r ? (r.nilai_aktual||'-') : '-'; };
+                    actHtml = `
+                        <div class="heater-grid">
+                            <div class="heater-cell">${getV(0)}</div>
+                            <div class="heater-cell">${getV(1)}</div>
+                        </div>
+                    `;
+                }
+                else if(myFields.length > 1) {
+                    // MULTI FIELD (Tie Bar)
                     const isTieBar = item.kategori.toLowerCase().includes("tie bar");
                     actHtml = `<div class="${isTieBar ? 'tie-grid' : 'std-grid'}">`;
                     myFields.forEach(f => {
                         let r = resMap[`${item.id}_${f.id}`];
                         let val = r ? (r.nilai_aktual || r.status || '-') : '-';
-                        
                         if(isTieBar) {
                             actHtml += `<div class="tie-cell">${val}</div>`;
                         } else {
-                            actHtml += `<div class="std-cell">
-                                ${f.label ? `<span class="mini-lbl">${f.label}</span>` : ''}
-                                <span>${val}</span>
-                            </div>`;
+                            actHtml += `<div class="std-cell">${f.label ? `<span class="mini-lbl">${f.label}</span>` : ''}<span>${val}</span></div>`;
                         }
                     });
                     actHtml += `</div>`;
                 } else {
-                    // SINGLE VALUE (OK/NG)
+                    // SINGLE VALUE
                     let f = myFields[0];
                     let r = resMap[`${item.id}_${f.id}`];
                     let val = r ? (r.nilai_aktual || r.status || '-') : '-';
@@ -392,11 +446,14 @@
                     else actHtml = `<span style="padding-left:5px">${val}</span>`;
                 }
 
-                // RENDER BARIS ITEM
+                // RENDER TR
+                // Tambahkan class 'heater-item-indent' jika ini item Zone
+                const indentClass = isHeaterItem ? 'heater-item-indent' : '';
+                
                 tbody.innerHTML += `
                     <tr>
                         <td class="col-no">${finalNo}</td>
-                        <td class="col-item">${finalName}</td>
+                        <td class="col-item ${indentClass}">${finalName}</td>
                         <td class="col-std">${item.standard || ''}</td>
                         <td class="col-act">${actHtml}</td>
                         <td class="col-ket">${note}</td>
