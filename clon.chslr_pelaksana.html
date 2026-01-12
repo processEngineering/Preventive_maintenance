@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <title>Manual Chiller (BW)</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* RESET & BASE */
+        * { -webkit-tap-highlight-color: transparent; }
+        body, html {
+            height: 100%; width: 100%; overflow-x: hidden;
+            overscroll-behavior: none; user-select: none;
+            font-family: 'Inter', sans-serif; background-color: #ffffff; color: #000;
+        }
+        a { text-decoration: none; color: inherit; }
+
+        /* UTILS */
+        .hidden { display: none !important; }
+        
+        /* --- NAVIGATION BAR (GLOBAL FIXED BOTTOM) --- */
+        .bottom-nav { 
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            height: 80px; background: white; border-top: 3px solid #000; 
+            display: flex; justify-content: space-around; align-items: center; 
+            z-index: 100; /* Paling Depan */
+            padding-bottom: 10px; /* Safe Area for iPhone Home Bar */
+        }
+        .nav-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 60px; height: 60px; color: #000; transition: opacity 0.2s; }
+        .nav-btn i { font-size: 20px; margin-bottom: 4px; }
+        .nav-btn span { font-size: 9px; font-weight: 800; text-transform: uppercase; }
+        .nav-btn:active { transform: scale(0.9); opacity: 0.6; }
+
+        /* --- HALAMAN SETUP (PENGGANTI SCANNER) --- */
+        #page-setup { 
+            display: flex; flex-direction: column; height: 100dvh; position: relative; background: white; z-index: 50; 
+            padding-bottom: 80px; 
+            padding-top: 3rem;
+        }
+        .header-area { flex: 0 0 auto; text-align: center; z-index: 20; margin-bottom: 2rem; }
+        .pill-box { display: inline-block; border: 2px solid #000; border-radius: 9999px; padding: 12px 50px; background: #fffbeb; box-shadow: 4px 4px 0 rgba(0,0,0,1); }
+        
+        .setup-form-container {
+            padding: 0 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .input-manual {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #000;
+            font-weight: 700;
+            font-size: 14px;
+            outline: none;
+            background: #fff;
+            border-radius: 0;
+            box-shadow: 4px 4px 0 #000;
+            transition: all 0.1s;
+        }
+        .input-manual:active, .input-manual:focus {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 #000;
+        }
+
+        .label-manual {
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        /* --- HALAMAN FORM --- */
+        #page-form { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #fff; z-index: 60; display: none; 
+            overflow-y: auto; -webkit-overflow-scrolling: touch; 
+            padding-bottom: 100px; /* PENTING: Space agar tombol kirim tidak ketutup Nav */
+        }
+        
+        .form-ng:checked + div, .form-ok:checked + div { 
+            background-color: #000; color: #fff; border-color: #000; 
+            box-shadow: 4px 4px 0 rgba(0,0,0,0.2);
+            transform: translate(-2px, -2px);
+        }
+        
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="bottom-nav">
+        <a href="index.html" class="nav-btn"><i class="fa-solid fa-house"></i><span>Home</span></a>
+        <a href="menu_utama.html" class="nav-btn"><i class="fa-solid fa-bars"></i><span>Menu</span></a>
+        <a href="download_data.html" class="nav-btn"><i class="fa-solid fa-download"></i><span>Data</span></a>
+        <a href="informasi_akun.html" class="nav-btn"><i class="fa-solid fa-user"></i><span>Akun</span></a>
+    </div>
+
+    <div id="page-setup">
+        <div class="header-area">
+            <div class="pill-box"><h1 class="text-xl font-black uppercase tracking-tighter">Input Manual</h1></div>
+            <p class="mt-6 text-xs font-bold text-gray-500 px-10 leading-relaxed uppercase tracking-wide">
+                Mode Input Tanpa Scan QR<br>Silahkan pilih mesin & tanggal
+            </p>
+        </div>
+
+        <div class="setup-form-container">
+            <div>
+                <label class="label-manual">Pilih Mesin / Unit</label>
+                <select id="manual-machine-select" class="input-manual">
+                    <option value="">-- Memuat Data... --</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="label-manual">Tanggal Laporan</label>
+                <input type="date" id="manual-date-input" class="input-manual">
+            </div>
+
+            <button onclick="startManualMode()" class="bg-black text-white font-black py-4 mt-4 text-sm shadow-[6px_6px_0_0_#888] active:translate-y-1 active:shadow-none transition-all tracking-widest border-2 border-black flex items-center justify-center gap-3">
+                MULAI ISI FORM <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="page-form" class="animate-[slideUp_0.3s_ease-out]">
+        <div class="sticky top-0 bg-white border-b-2 border-black p-4 z-50 flex justify-between items-center">
+            <h2 class="font-black text-xl uppercase tracking-tighter">Formulir</h2>
+            <button onclick="location.reload()" class="text-[10px] bg-black text-white px-4 py-2 font-bold uppercase tracking-widest hover:bg-gray-800">Batal</button>
+        </div>
+
+        <div class="p-5 space-y-8">
+            <div class="border-2 border-black p-5 shadow-[6px_6px_0_0_#000] bg-white">
+                <h1 id="machine-name" class="text-2xl font-black uppercase mb-3 leading-none">...</h1>
+                <div class="flex gap-3 text-[10px] font-bold uppercase mb-2">
+                    <div class="border border-black px-2 py-1 bg-gray-100">Ton: <span id="machine-ton">-</span></div>
+                    <div class="border border-black px-2 py-1 bg-gray-100">SN: <span id="machine-sn">-</span></div>
+                </div>
+                <div class="text-[10px] font-black text-blue-800 uppercase border-t border-dashed border-black pt-2">
+                    Tgl Laporan: <span id="view-date">-</span>
+                </div>
+            </div>
+
+            <div>
+                <label class="text-xs font-black  block mb-1">nama pelaksana</label>
+                <input type="text" id="technician-name" class="w-full border-2 border-black p-3 font-bold  outline-none focus:shadow-[4px_4px_0_0_#000] transition-all rounded-none" placeholder="nama anda">
+            </div>
+
+            <div id="checklist-container" class="space-y-4"></div>
+
+            <div id="bottom-note-container" class="fade-in border-2 border-black p-4 bg-gray-50 border-dashed">
+                <div class="flex items-center gap-2 mb-2">
+                    <i class="fa-solid fa-thumbs-up"></i>
+                    <label class="text-xs font-black">dalam kondisi aman</label>
+                </div>
+                <textarea id="general-note" rows="2" class="w-full bg-white border-2 border-black p-3 font-bold text-xs outline-none focus:shadow-[4px_4px_0_0_#000] transition-all" placeholder="berikan catatan anda untuk di konfirmasi koordinator"></textarea>
+            </div>
+
+            <div class="border-2 border-black p-4 bg-white">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-xs font-black ">paraf anda</label>
+                    <button onclick="sigPad.clear()" class="text-[10px] bg-black text-white px-2 py-1 font-normal ">hapus</button>
+                </div>
+                <canvas id="signature-pad" class="w-full h-32 bg-gray-50 border-2 border-dashed border-gray-400 touch-none"></canvas>
+            </div>
+
+            <div class="pt-4">
+                <button onclick="saveAll()" id="btn-save" class="w-full bg-black text-white font-black py-4 text-sm shadow-[6px_6px_0_0_#888] active:translate-y-1 active:shadow-none transition-all  tracking-widest border-2 border-black flex items-center justify-center gap-3">
+                    <span>submit</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIG SUPABASE
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
+        
+        let sigPad, currentMachineId;
+        let machineDataList = [];
+
+        // 1. INIT MANUAL PAGE
+        document.addEventListener("DOMContentLoaded", async () => {
+            // Set Default Date = Today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById("manual-date-input").value = today;
+
+            // Load Data Mesin untuk Dropdown
+            const selectBox = document.getElementById("manual-machine-select");
+            try {
+                const { data, error } = await _sb.from('chslr_mesin').select('*').order('nama_mesin', { ascending: true });
+                if(error) throw error;
+                
+                machineDataList = data;
+                selectBox.innerHTML = '<option value="">-- Pilih Unit/Mesin --</option>';
+                data.forEach(m => {
+                    selectBox.innerHTML += `<option value="${m.nama_mesin}">${m.nama_mesin}</option>`;
+                });
+            } catch (err) {
+                alert("Gagal load mesin: " + err.message);
+            }
+        });
+
+        // 2. START MANUAL MODE
+        function startManualMode() {
+            const selectedName = document.getElementById("manual-machine-select").value;
+            const selectedDate = document.getElementById("manual-date-input").value;
+
+            if(!selectedName) return alert("Pilih mesin dulu bro!");
+            if(!selectedDate) return alert("Pilih tanggal dulu!");
+
+            // Cari data detail mesin
+            const mData = machineDataList.find(m => m.nama_mesin === selectedName);
+            if(!mData) return alert("Data mesin error");
+
+            currentMachineId = mData.nama_mesin; // Sesuai logic lama, ID pakai nama string
+
+            // Update UI Form
+            document.getElementById('machine-name').innerText = mData.nama_mesin;
+            document.getElementById('machine-ton').innerText = mData.tonage || '-';
+            document.getElementById('machine-sn').innerText = mData.no_seri || '-';
+            document.getElementById('view-date').innerText = selectedDate;
+
+            // Pindah Halaman
+            document.getElementById('page-setup').style.display = 'none';
+            document.getElementById('page-form').style.display = 'block';
+
+            loadItems(); initSigPad();
+        }
+
+        function initSigPad() {
+            const canvas = document.getElementById('signature-pad');
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio; canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+            sigPad = new SignaturePad(canvas, { backgroundColor: 'rgb(249, 250, 251)' });
+        }
+
+        async function loadItems() {
+            const container = document.getElementById('checklist-container');
+            const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
+            container.innerHTML = "";
+            let lastCategory = "";
+
+            items.forEach((item, i) => {
+                // GROUPING KATEGORI
+                if (item.kategori && item.kategori !== lastCategory) {
+                    container.insertAdjacentHTML('beforeend', `
+                        <div class="mt-8 mb-4 flex items-center gap-2 border-b-2 border-black pb-1">
+                            <i class="fa-solid fa-square text-xs"></i>
+                            <h3 class="font-black text-sm  tracking-wider">${item.kategori}</h3>
+                        </div>
+                    `);
+                    lastCategory = item.kategori;
+                }
+
+                const itemHtml = `
+                    <div class="mb-6" id="card-${item.id}">
+                        <div class="mb-2">
+                            <p class="font-bold text-sm leading-tight">${item.item_name}</p>
+                            <p class="text-[10px] font-bold text-gray-500 mt-1 ">std: ${item.standard}</p>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="cursor-pointer group">
+                                <input type="radio" name="st-${item.id}" value="OK" class="hidden form-ok" checked onchange="handleStatusChange('${item.id}', 'OK')">
+                                <div class="py-3 text-center border-2 border-black font-black text-xs transition-all  bg-white text-black hover:bg-gray-100">OK</div>
+                            </label>
+                            <label class="cursor-pointer group">
+                                <input type="radio" name="st-${item.id}" value="NG" class="hidden form-ng" onchange="handleStatusChange('${item.id}', 'NG')">
+                                <div class="py-3 text-center border-2 border-black font-black text-xs transition-all  bg-white text-black hover:bg-gray-100">NG</div>
+                            </label>
+                        </div>
+
+                        <div id="ng-box-${item.id}" class="hidden mt-3 border-2 border-black border-dashed p-3 fade-in bg-gray-50">
+                            <label class="text-[10px] font-black block mb-1"><i class="fa-solid fa-triangle-exclamation"></i> jelaskan masalah yang terjadi :</label>
+                            <textarea id="note-${item.id}" data-item-name="${item.item_name}" rows="2" class="w-full bg-white border-2 border-black p-2 text-xs font-bold outline-none focus:bg-gray-50 text-black rounded-none"></textarea>
+                        </div>
+                    </div>`;
+                container.insertAdjacentHTML('beforeend', itemHtml);
+            });
+            checkGlobalStatus();
+        }
+
+        // --- FUNGSI LOGIKA KONDISIONAL ---
+        window.handleStatusChange = function(itemId, status) {
+            const ngBox = document.getElementById(`ng-box-${itemId}`);
+            const noteInput = document.getElementById(`note-${itemId}`);
+
+            if (status === 'NG') {
+                ngBox.classList.remove('hidden'); // Show Note Box
+                noteInput.focus();
+            } else {
+                ngBox.classList.add('hidden'); // Hide Note Box
+                noteInput.value = ''; // Clear Content
+            }
+            checkGlobalStatus();
+        }
+
+        function checkGlobalStatus() {
+            const anyNG = document.querySelector('input[value="NG"]:checked');
+            const bottomNote = document.getElementById('bottom-note-container');
+            const generalInput = document.getElementById('general-note');
+            
+            if (anyNG) {
+                bottomNote.classList.add('hidden');
+                generalInput.value = '';
+            } else {
+                bottomNote.classList.remove('hidden');
+            }
+        }
+
+        async function saveAll() {
+            const name = document.getElementById('technician-name').value.trim();
+            const dateInput = document.getElementById('manual-date-input').value; // AMBIL TANGGAL MANUAL
+            
+            // Ambil Global Note
+            let generalNoteValue = "";
+            const bottomNote = document.getElementById('bottom-note-container');
+            if (!bottomNote.classList.contains('hidden')) {
+                generalNoteValue = document.getElementById('general-note').value.trim();
+            }
+
+            if(!name) { document.getElementById('technician-name').focus(); return alert("isi nama pelaksana"); }
+            if(sigPad.isEmpty()) { document.querySelector('canvas').scrollIntoView(); return alert("isi tanda tangan"); }
+            
+            // Validasi: Item NG Wajib Ada Keterangan
+            const ngs = document.querySelectorAll('input[value="NG"]:checked');
+            for(let r of ngs) {
+                const id = r.name.replace('st-', '');
+                const noteEl = document.getElementById(`note-${id}`);
+                if(!noteEl.value.trim()) {
+                    noteEl.scrollIntoView(); noteEl.focus();
+                    return alert(`CATATAN KOSONG!\nItem "${noteEl.getAttribute('data-item-name')}" Status NG.`);
+                }
+            }
+
+            const btn = document.getElementById('btn-save');
+            btn.innerHTML = 'loading'; btn.disabled = true;
+
+            // PARSING TANGGAL MANUAL
+            const dateObj = new Date(dateInput);
+            const d = dateObj.getDate(); // Tanggal (Day) dari input
+            const m = dateObj.getMonth() + 1; // Bulan
+            const y = dateObj.getFullYear(); // Tahun
+
+            try {
+                let { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', currentMachineId).eq('bulan', m).eq('tahun', y).maybeSingle();
+                
+                if(!log) {
+                    const { data: nLog } = await _sb.from('chslr_log').insert({ 
+                        mesin_id: currentMachineId, 
+                        bulan: m, 
+                        tahun: y, 
+                        pelaksana_names: [name], 
+                        catatan_pelaksana: generalNoteValue
+                    }).select().single();
+                    log = nLog;
+                } else {
+                    let updatedNames = log.pelaksana_names;
+                    if(!log.pelaksana_names.includes(name)) updatedNames = [...log.pelaksana_names, name];
+                    await _sb.from('chslr_log').update({ 
+                        pelaksana_names: updatedNames, 
+                        catatan_pelaksana: generalNoteValue
+                    }).eq('id', log.id);
+                }
+
+                const { data: items } = await _sb.from('chslr_items').select('id');
+                const results = items.map(i => {
+                    const st = document.querySelector(`input[name="st-${i.id}"]:checked`).value;
+                    return {
+                        log_id: log.id, item_id: i.id, 
+                        tanggal: d, // Simpan ke kolom tanggal (integer) sesuai tanggal yg dipilih
+                        status: st,
+                        keterangan: (st === 'NG') ? document.getElementById(`note-${i.id}`).value : "",
+                        signature: sigPad.toDataURL()
+                    };
+                });
+
+                // Hapus data lama di tanggal yg sama (replace)
+                await _sb.from('chslr_result').delete().eq('log_id', log.id).eq('tanggal', d);
+                await _sb.from('chslr_result').insert(results);
+
+                alert(`Laporan tersimpan untuk tanggal ${dateInput}`); 
+                location.reload();
+            } catch(e) {
+                alert("GAGAL: " + e.message); btn.innerHTML = 'submit'; btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
