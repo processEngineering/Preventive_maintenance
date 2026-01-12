@@ -31,10 +31,13 @@
         .machine-card p { font-size: 11px; font-weight: 600; color: #64748b; }
 
         /* Form */
-        .form-group { margin-bottom: 20px; }
-        label { display: block; font-weight: 700; margin-bottom: 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
-        input[type="text"] { width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 14px; font-weight: 600; outline: none; }
-        input[type="text"]:focus { border-color: var(--primary); }
+        .form-group { margin-bottom: 15px; }
+        .form-row { display: flex; gap: 10px; }
+        .form-col { flex: 1; }
+        
+        label { display: block; font-weight: 700; margin-bottom: 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        input[type="text"], input[type="time"], input[type="number"] { width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 14px; font-weight: 600; outline: none; }
+        input:focus { border-color: var(--primary); }
 
         .cat-header { background: #e2e8f0; color: #1e293b; padding: 10px 15px; border-radius: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; margin: 25px 0 12px; }
 
@@ -83,10 +86,28 @@
                 <button onclick="location.reload()" style="font-size:10px; color:var(--primary); background:none; border:none; text-decoration:underline; margin-top:10px; cursor:pointer;">Scan Ulang Mesin</button>
             </div>
 
+            <!-- DETAIL INPUT HEADER (BARU) -->
             <div class="form-group">
                 <label>Nama Pelaksana</label>
                 <input type="text" id="input-nama" placeholder="Ketik nama lengkap...">
             </div>
+
+            <div class="form-row">
+                <div class="form-col">
+                    <label>Start Jam</label>
+                    <input type="time" id="input-start">
+                </div>
+                <div class="form-col">
+                    <label>Finish Jam</label>
+                    <input type="time" id="input-finish">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Running Hours (HM)</label>
+                <input type="number" id="input-hours" placeholder="Contoh: 12500">
+            </div>
+            <!-- END DETAIL INPUT HEADER -->
 
             <div id="checklist-container"></div>
 
@@ -144,6 +165,11 @@
         document.getElementById('txt-mesin-nama').innerText = currentMesin.nama_mesin;
         document.getElementById('txt-mesin-detail').innerText = `NO SERI: ${currentMesin.no_seri || '-'} | TONNAGE: ${currentMesin.tonage || '-'}`;
 
+        // Auto-fill jam sekarang untuk start
+        const now = new Date();
+        const timeString = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+        document.getElementById('input-start').value = timeString;
+
         const { data: items } = await _sb.from('prslb_items').select('*').order('id');
         const container = document.getElementById('checklist-container');
         let currentCat = "";
@@ -188,9 +214,14 @@
 
     async function simpanData() {
         const nama = document.getElementById('input-nama').value.trim();
+        const start = document.getElementById('input-start').value;
+        const finish = document.getElementById('input-finish').value;
+        const hours = document.getElementById('input-hours').value.trim();
         const saveBtn = document.getElementById('btn-save');
 
         if (!nama) return alert("NAMA PELAKSANA WAJIB DIISI!");
+        if (!start || !finish) return alert("JAM START & FINISH WAJIB DIISI!");
+        if (!hours) return alert("RUNNING HOURS WAJIB DIISI!");
         if (signaturePad.isEmpty()) return alert("TANDA TANGAN WAJIB DIISI!");
 
         const checks = document.querySelectorAll('.check-item');
@@ -211,11 +242,15 @@
         saveBtn.innerText = "MENGIRIM DATA...";
 
         try {
-            // INSERT LOG (mesin_id diisi TEXT nama_mesin)
+            // INSERT LOG dengan field baru
             const { data: log, error: e1 } = await _sb.from('prslb_log').insert({
                 mesin_id: String(currentMesin.nama_mesin),
                 pelaksana_nama: nama,
-                signature_pelaksana: signaturePad.toDataURL()
+                signature_pelaksana: signaturePad.toDataURL(),
+                start_jam: start,
+                finish_jam: finish,
+                running_hours: hours,
+                target_selesai: '70' // Default Value dari PDF
             }).select().single();
 
             if (e1) throw e1;
