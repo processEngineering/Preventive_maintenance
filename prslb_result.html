@@ -19,7 +19,7 @@
 
         /* ====================== REPORT PAGE (A4 PORTRAIT) ====================== */
         .page {
-            width: 210mm; height: 297mm; padding: 8mm 10mm; margin: 20px auto;
+            width: 210mm; min-height: 297mm; padding: 8mm 10mm; margin: 20px auto;
             background: white; box-shadow: 0 0 15px rgba(0,0,0,0.5); box-sizing: border-box;
             display: flex; flex-direction: column;
         }
@@ -41,6 +41,11 @@
         .sig-container { height: 45px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin: 4px 0; }
         .sig-img { max-height: 45px; max-width: 120px; object-fit: contain; mix-blend-mode: multiply; }
         .name-under { font-weight: bold; text-decoration: underline; display: block; margin-top: 4px; }
+
+        /* Note Section */
+        .note-section { font-size: 8px; margin-top: 5px; border: 1px solid #000; padding: 5px; }
+        .note-row { display: flex; justify-content: space-between; }
+        .note-col { width: 48%; }
 
         @media print {
             @page { size: A4 portrait; margin: 0; }
@@ -142,6 +147,22 @@
             </table>
         </div>
 
+        <!-- NOTE SECTION -->
+        <div class="note-section">
+            <div class="note-row">
+                <div class="note-col">
+                    <b>Note :</b><br>
+                    P1 = Pelaksana pekerjaan<br>
+                    P2 = Pelaksana verifikasi pekerjaan (Kasie/kabag)
+                </div>
+                <div class="note-col">
+                    <br>
+                    OK = Item sesuai standar<br>
+                    NG = Item bermasalah / Rusak
+                </div>
+            </div>
+        </div>
+
         <table style="margin-top:8px;">
             <tr>
                 <td style="width:40%; text-align:center; padding:8px;">
@@ -193,7 +214,6 @@
             const start = `${thn}-${bln.padStart(2,'0')}-01T00:00:00`;
             const end = `${thn}-${bln.padStart(2,'0')}-31T23:59:59`;
 
-            // Query JOIN ke prslb_mesin menggunakan nama_mesin
             const { data: logs, error } = await _sb
                 .from('prslb_log')
                 .select('*, prslb_mesin(*), prslb_result(*, prslb_items(*))')
@@ -211,12 +231,15 @@
             const d = new Date(log.created_at);
             document.getElementById('m-nama').innerText = log.mesin_id;
             document.getElementById('m-tonage').innerText = log.prslb_mesin?.tonage || "-";
-            document.getElementById('m-target').innerText = "-";
             document.getElementById('m-tgl').innerText = d.toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
-            document.getElementById('m-start').innerText = "-";
-            document.getElementById('m-tahun').innerText = log.prslb_mesin?.tahun || "-";
-            document.getElementById('m-finish').innerText = "-";
-            document.getElementById('m-hours').innerText = log.prslb_mesin?.running_hours || "-";
+            document.getElementById('m-tahun').innerText = d.getFullYear();
+
+            // MENGISI DATA BARU
+            // Pastikan field ini ada di tabel prslb_log
+            document.getElementById('m-target').innerText = log.target_selesai || "70"; 
+            document.getElementById('m-start').innerText = log.start_jam || "-";
+            document.getElementById('m-finish').innerText = log.finish_jam || "-";
+            document.getElementById('m-hours').innerText = log.running_hours || "-";
 
             const body = document.getElementById('content-body');
             body.innerHTML = "";
@@ -226,13 +249,13 @@
             results.forEach(r => {
                 if (r.prslb_items.kategori !== currentCat) {
                     currentCat = r.prslb_items.kategori;
-                    body.innerHTML += `<tr class="cat-bg"><td colspan="6">ITEM CHECK ${currentCat}</td></tr>`;
+                    body.innerHTML += `<tr class="cat-bg"><td colspan="6">${currentCat}</td></tr>`;
                 }
                 body.innerHTML += `<tr>
                     <td class="center">${no++}</td>
                     <td>${r.prslb_items.item_name}</td>
                     <td>${r.prslb_items.standard || ""}</td>
-                    <td class="center">${r.status === 'OK' ? '✓' : 'NG'}</td>
+                    <td class="center">${r.status === 'OK' ? '✓' : 'X'}</td>
                     <td class="center">${log.status_verifikasi ? '✓' : ''}</td>
                     <td>${r.keterangan || ""}</td>
                 </tr>`;
