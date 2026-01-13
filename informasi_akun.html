@@ -3,113 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Informasi Akun - DEBUG MODE</title>
+    <title>Informasi Akun</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        /* SAYA RINGKAS CSS-NYA AGAR MUDAH DI-COPY */
-        body { background: #f9fafb; font-family: 'Inter', sans-serif; display: flex; justify-content: center; padding: 20px; }
-        .container { width: 100%; max-width: 500px; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .card { background: #f0f0f0; padding: 15px; margin-bottom: 10px; border-radius: 10px; display: flex; align-items: center; gap: 10px; }
-        .card i { color: #DC2626; font-size: 20px; }
-        h1 { text-align: center; color: #DC2626; margin-bottom: 20px; }
-        button { width: 100%; padding: 15px; background: #DC2626; color: white; border: none; border-radius: 10px; font-weight: bold; margin-top: 20px; }
-        .back-link { display: block; text-align: center; margin-top: 15px; color: #666; text-decoration: none; }
+        /* CSS TEMA MERAH (Sama seperti sebelumnya) */
+        :root {
+            --primary: #DC2626; --primary-light: #FEE2E2; --text-dark: #1F2937;
+            --bg-gray: #F9FAFB; --bg-white: #FFFFFF; --shadow-card: 0 4px 6px -1px rgba(0,0,0,0.05);
+            --radius-card: 16px; --nav-height: 70px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-gray); display: flex; justify-content: center; min-height: 100vh; color: var(--text-dark); }
+        .app-shell { width: 100%; max-width: 600px; background: var(--bg-gray); min-height: 100vh; display: flex; flex-direction: column; position: relative; }
+        .app-container { padding: 24px 20px 100px 20px; flex: 1; display: flex; flex-direction: column; }
+        
+        /* HEADER */
+        .header-box { background: linear-gradient(135deg, var(--primary) 0%, #B91C1C 100%); border-radius: 24px; padding: 30px 24px; text-align: center; margin-bottom: 24px; color: white; box-shadow: 0 4px 14px rgba(220,38,38,0.25); }
+        .header-box h1 { font-size: 20px; font-weight: 800; margin: 0; }
+        
+        .instruction-text { text-align: center; margin-bottom: 24px; color: #4B5563; font-size: 14px; }
+
+        /* CARDS */
+        .account-list { display: flex; flex-direction: column; gap: 16px; }
+        .info-card { background: white; border-radius: 16px; padding: 20px; display: flex; align-items: center; gap: 16px; box-shadow: var(--shadow-card); border-left: 5px solid var(--primary); }
+        .info-card i { font-size: 20px; color: var(--primary); background: var(--primary-light); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; flex-shrink: 0; }
+        .info-card p { font-size: 15px; font-weight: 600; word-break: break-word; }
+
+        /* BUTTONS */
+        .action-btn { background: white; border: 1px solid #E5E7EB; border-radius: 16px; padding: 18px; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; margin-top: 10px; color: #1F2937; font-weight: 700; box-shadow: var(--shadow-card); cursor: pointer; }
+        .logout-btn { border-color: var(--primary); color: var(--primary); margin-top: 0; }
+        
+        /* ALERT BOX (Untuk Error) */
+        #status-msg { display: none; padding: 15px; background: #fee2e2; color: #991b1b; border-radius: 12px; font-size: 13px; margin-bottom: 20px; border: 1px solid #f87171; }
+
+        /* NAV */
+        .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 600px; background: rgba(255,255,255,0.95); padding: 12px 0; display: flex; justify-content: space-around; border-top: 1px solid #eee; height: 70px; }
+        .nav-item { color: #9CA3AF; font-size: 22px; width: 60px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+        .nav-item.active { color: var(--primary); }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>🔍 INFO AKUN (DEBUG)</h1>
-        <p style="text-align: center; font-size: 12px; margin-bottom: 20px;">Mode ini akan menampilkan pesan error jika data gagal dimuat.</p>
+    <div class="app-shell">
+        <div class="app-container">
+            <div class="header-box">
+                <h1>Informasi Akun</h1>
+            </div>
 
-        <div class="card">
-            <i class="fa-solid fa-envelope"></i>
-            <b id="debug-email">Sedang mengecek email...</b>
+            <div class="instruction-text">
+                <p>Detail identitas akun yang sedang login</p>
+            </div>
+
+            <div id="status-msg"></div>
+
+            <div class="account-list">
+                <div class="info-card">
+                    <i class="fa-solid fa-circle-user"></i>
+                    <p id="display-name">Memuat nama...</p>
+                </div>
+
+                <div class="info-card">
+                    <i class="fa-solid fa-users-viewfinder"></i>
+                    <p id="display-role">Memuat jabatan...</p>
+                </div>
+
+                <div class="info-card">
+                    <i class="fa-solid fa-envelope"></i>
+                    <p id="display-email">Memuat email...</p>
+                </div>
+
+                <a href="clon_menu_utama.html" class="action-btn">
+                    <span>PUSAT BANTUAN</span> <i class="fa-solid fa-circle-question"></i>
+                </a>
+
+                <div onclick="handleLogout()" class="action-btn logout-btn">
+                    <span>LOGOUT</span> <i class="fa-solid fa-right-from-bracket"></i>
+                </div>
+            </div>
         </div>
 
-        <div class="card">
-            <i class="fa-solid fa-user"></i>
-            <span id="debug-name">Sedang mengambil nama...</span>
-        </div>
-
-        <div class="card">
-            <i class="fa-solid fa-briefcase"></i>
-            <span id="debug-jabatan">Sedang mengambil jabatan...</span>
-        </div>
-
-        <div id="error-log" style="color: red; font-size: 11px; margin-top: 10px; white-space: pre-wrap; display: none; background: #ffebeb; padding: 10px;"></div>
-
-        <button onclick="logout()">LOGOUT</button>
-        <a href="home_akg.html" class="back-link">Kembali ke Home</a>
+        <nav class="bottom-nav">
+            <a href="home_akg.html" class="nav-item"><i class="fa-solid fa-house"></i></a>
+            <a href="menu_utama.html" class="nav-item"><i class="fa-solid fa-bars"></i></a>
+            <a href="download_data.html" class="nav-item"><i class="fa-solid fa-download"></i></a>
+            <a href="informasi_akun.html" class="nav-item active"><i class="fa-solid fa-circle-user"></i></a>
+        </nav>
     </div>
 
     <script>
+        // --- 1. CEK APAKAH SCRIPT SUPABASE BERHASIL DIMUAT ---
+        if (typeof supabase === 'undefined') {
+            document.getElementById('status-msg').style.display = 'block';
+            document.getElementById('status-msg').innerHTML = "⚠️ <b>Gagal memuat sistem!</b><br>Koneksi internet Anda memblokir script database. Coba ganti jaringan (WiFi/Data) atau Refresh.";
+            document.getElementById('display-name').innerText = "Koneksi Error";
+        }
+
+        // --- 2. INISIALISASI ---
         const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        async function init() {
+        async function loadData() {
             try {
-                // 1. CEK SESI LOGIN
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-                
-                if (sessionError) throw new Error("Error Sesi: " + sessionError.message);
+                // A. Cek Sesi Login
+                const { data: { session } } = await client.auth.getSession();
                 if (!session) {
-                    alert("Anda belum login! Kembali ke halaman awal.");
-                    window.location.href = 'index.html';
+                    window.location.href = 'index.html'; // Belum login? Tendang ke depan
                     return;
                 }
 
-                // Tampilkan Email (Ini pasti berhasil kalau login sukses)
-                document.getElementById('debug-email').innerText = session.user.email;
+                // Tampilkan Email (Ini paling mudah diambil)
+                document.getElementById('display-email').innerText = session.user.email;
 
-                // 2. AMBIL DATA PROFIL
-                const { data: profile, error: dbError } = await supabase
+                // B. Ambil Data Profil
+                const { data: profile, error } = await client
                     .from('profiles')
                     .select('*')
                     .eq('id', session.user.id)
                     .single();
 
-                // 3. CEK ERROR DATABASE
-                if (dbError) {
-                    // Tampilkan Error di Layar
-                    const msg = "GAGAL AMBIL DATA!\nPesan: " + dbError.message + "\nKode: " + dbError.code + "\nHint: " + dbError.hint;
-                    document.getElementById('error-log').innerText = msg;
-                    document.getElementById('error-log').style.display = 'block';
+                if (error) {
+                    // Jika error database (misal permission denied)
+                    console.error("DB Error:", error);
+                    document.getElementById('status-msg').style.display = 'block';
+                    document.getElementById('status-msg').innerText = "Gagal mengambil profil: " + error.message + " (Cek SQL RLS!)";
                     
-                    document.getElementById('debug-name').innerText = "ERROR (Lihat bawah)";
-                    document.getElementById('debug-jabatan').innerText = "ERROR";
-                    
-                    alert("⚠️ ADA MASALAH DATABASE:\n" + dbError.message + "\n\n(Coba jalankan SQL Langkah 1 lagi!)");
-                    return;
+                    document.getElementById('display-name').innerText = "Gagal Memuat";
+                    document.getElementById('display-role').innerText = "-";
+                } else if (profile) {
+                    // Jika Sukses
+                    document.getElementById('display-name').innerText = profile.full_name;
+                    document.getElementById('display-role').innerText = profile.jabatan + " | " + profile.divisi;
+                } else {
+                    // Jika data kosong
+                    document.getElementById('display-name').innerText = "Profil Belum Diisi";
                 }
-
-                // 4. JIKA DATA KOSONG (NULL)
-                if (!profile) {
-                    document.getElementById('debug-name').innerText = "DATA TIDAK DITEMUKAN";
-                    alert("Akun login ada, tapi Data Profil KOSONG.\nSolusi: Logout -> Buat Akun Baru.");
-                    return;
-                }
-
-                // 5. SUKSES
-                document.getElementById('debug-name').innerText = profile.full_name;
-                document.getElementById('debug-jabatan').innerText = profile.jabatan + " | " + profile.divisi;
 
             } catch (err) {
-                alert("CRITICAL ERROR: " + err.message);
+                // Tangkap error tak terduga
+                document.getElementById('status-msg').style.display = 'block';
+                document.getElementById('status-msg').innerText = "Error Sistem: " + err.message;
             }
         }
 
-        async function logout() {
-            await supabase.auth.signOut();
-            window.location.href = 'index.html';
+        async function handleLogout() {
+            if(confirm("Yakin ingin keluar?")) {
+                await client.auth.signOut();
+                window.location.href = 'index.html';
+            }
         }
 
-        init();
+        // Jalankan
+        loadData();
     </script>
+
 </body>
 </html>
