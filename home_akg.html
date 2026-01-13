@@ -9,7 +9,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        /* (Style sama persis dengan yang sebelumnya, saya ringkas biar tidak kepanjangan) */
         :root { --primary: #DC2626; --primary-dark: #B91C1C; --text-gray: #6B7280; --bg-gray: #F9FAFB; --shadow-red: 0 4px 14px rgba(220, 38, 38, 0.25); }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background: linear-gradient(180deg, #FFFFFF 0%, var(--bg-gray) 100%); display: flex; justify-content: center; min-height: 100vh; }
@@ -23,12 +22,13 @@
         }
         .header-info h1 { font-size: 18px; font-weight: 800; }
         .header-info p { font-size: 13px; opacity: 0.9; margin-top: 4px; }
-        .logout-icon { font-size: 20px; background: rgba(255,255,255,0.2); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+        .logout-icon { font-size: 20px; background: rgba(255,255,255,0.2); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 12px; transition: 0.3s; }
+        .logout-icon:hover { background: rgba(255,255,255,0.4); }
         
         .description { text-align: center; margin: 24px 28px 10px; }
         .description p { font-size: 14px; color: var(--text-gray); }
         .illustration { flex: 1; display: flex; justify-content: center; align-items: center; padding: 20px; }
-        .illustration img { width: 100%; max-width: 240px; }
+        .illustration img { width: 100%; max-width: 240px; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.1)); }
         
         .action-area { display: flex; gap: 12px; padding: 0 24px 32px; }
         .btn { flex: 1; padding: 16px; border-radius: 14px; font-size: 14px; font-weight: 800; text-align: center; text-decoration: none; text-transform: uppercase; display: flex; align-items: center; justify-content: center; }
@@ -37,12 +37,11 @@
     </style>
 </head>
 <body>
-
     <div class="app-container">
         <div class="header-box" onclick="logout()" title="Klik untuk Keluar">
             <div class="header-info">
-                <h1 id="user-name">Memuat...</h1>
-                <p id="user-role">...</p>
+                <h1 id="user-name">Memuat Data...</h1>
+                <p id="user-role">Mohon tunggu...</p>
             </div>
             <div class="logout-icon"><i class="fa-solid fa-right-from-bracket"></i></div>
         </div>
@@ -62,33 +61,32 @@
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function initApp() {
+            // 1. Cek Login
             const { data: { session } } = await supabase.auth.getSession();
-            
-            // Kalau BELUM Login -> Tendang ke index.html
-            if (!session) {
-                window.location.href = 'index.html';
-                return;
-            }
+            if (!session) { window.location.href = 'index.html'; return; }
 
+            // 2. Ambil Profil (KARENA TADI KITA SUDAH INSERT MANUAL, PASTI ADA DATANYA)
             const { data: profile, error } = await supabase
-                .from('profiles').select('*').eq('id', session.user.id).single();
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
 
-            // Kalau data kosong -> Reset -> Tendang ke index.html
             if (error || !profile) {
-                await supabase.auth.signOut();
-                window.location.href = 'index.html';
-                return;
+                console.log("Error Profil:", error);
+                document.getElementById('user-name').innerText = "Hai, User";
+                document.getElementById('user-role').innerText = "Data Profil Belum Ada";
+            } else {
+                document.getElementById('user-name').innerText = "Hai, " + profile.full_name;
+                document.getElementById('user-role').innerText = profile.jabatan + " | " + profile.divisi;
             }
-
-            document.getElementById('user-name').innerText = "Hai, " + profile.full_name;
-            document.getElementById('user-role').innerText = profile.jabatan + " | " + profile.divisi;
         }
         initApp();
 
         async function logout() {
-            if(confirm("Yakin ingin keluar?")) {
+            if(confirm("Yakin ingin keluar aplikasi?")) {
                 await supabase.auth.signOut();
-                window.location.href = 'index.html'; // Balik ke Login
+                window.location.href = 'index.html';
             }
         }
     </script>
