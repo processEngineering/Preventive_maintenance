@@ -57,9 +57,9 @@
         .inbox-card:active { transform: translate(2px, 2px); box-shadow: 4px 4px 0px #000; }
 
         .inbox-card.archived {
-            background: #f8f8f8; 
-            border-color: #444;
-            box-shadow: 4px 4px 0px #444;
+            background: #f0f0f0; /* Pembeda Warna Arsip */
+            border-color: #555;
+            box-shadow: 4px 4px 0px #555;
         }
 
         .card-header-badge {
@@ -82,10 +82,11 @@
         }
         .delete-btn {
             position: absolute; bottom: 15px; right: 15px;
-            background: #ffe6e6; border: 2px solid red; color: red;
-            width: 35px; height: 35px; border-radius: 10px;
+            background: white; border: 2px solid red; color: red;
+            width: 40px; height: 40px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 5;
+            cursor: pointer; z-index: 20; /* Lebih tinggi biar bisa diklik terpisah */
+            box-shadow: 2px 2px 0px #ddd;
         }
 
         /* --- HALAMAN DETAIL (OVERLAY) --- */
@@ -116,11 +117,15 @@
             outline: none; background: transparent;
         }
         .super-input:focus { border-color: #DC2626; color: #DC2626; }
+        .super-input:disabled { border-bottom: 1px dashed gray; color: #555; background: #eee; }
 
         .btn-arsip {
             background: black; color: white; border: none; border-radius: 15px;
             padding: 15px; width: 100%; font-weight: 700; margin-top: 20px;
             cursor: pointer; font-size: 14px; box-shadow: 4px 4px 0px #555;
+        }
+        .btn-arsip.readonly-mode {
+            background: #ccc; color: #333; box-shadow: none; cursor: default;
         }
 
         /* MENU BAWAH */
@@ -193,10 +198,11 @@
             </div>
 
             <div class="super-section">
-                <div style="font-size: 12px; font-weight: bold;">CATATAN REAL SUPERINTENDENT:</div>
+                <div style="font-size: 12px; font-weight: bold;">KEPUTUSAN ANDA:</div>
+                
                 <input type="text" id="d-super-note" class="super-input" placeholder="Tulis catatan persetujuan...">
                 
-                <button class="btn-arsip" onclick="prosesArsip()">
+                <button class="btn-arsip" id="btn-submit-super" onclick="prosesArsip()">
                     <i class="fa fa-check-circle"></i> SETUJUI & ARSIPKAN
                 </button>
             </div>
@@ -220,7 +226,7 @@
         let archiveData = [];
         let activeItem = null;
 
-        // --- FETCH INBOX (PENDING) ---
+        // --- FETCH INBOX ---
         async function fetchInbox() {
             const container = document.getElementById('inbox-container');
             container.innerHTML = '<div class="loading-text">Memeriksa tugas...</div>';
@@ -241,7 +247,7 @@
             } catch (err) { console.error(err); }
         }
 
-        // --- FETCH ARSIP (SELESAI) ---
+        // --- FETCH ARSIP ---
         async function fetchArsip() {
             const container = document.getElementById('archive-container');
             container.innerHTML = '<div class="loading-text">Memuat arsip...</div>';
@@ -278,7 +284,6 @@
                 title = "Checklist Harian Injection";
                 mesin = (item.merk_mesin || "") + " " + (item.tonage || ""); 
                 pelaksana = item.pelaksana;
-                notePel = "-"; 
                 koord = item.approved_by;
                 noteKoord = item.catatan_umum || "-";
                 noteSuper = item.catatan_super;
@@ -296,7 +301,6 @@
                 title = "Preventif Robot & Standlabel";
                 mesin = item.mesin_id;
                 pelaksana = item.pelaksana_nama;
-                notePel = "-"; 
                 koord = item.koordinator_nama;
                 noteKoord = item.koordinator_note;
                 noteSuper = item.superintendent_note;
@@ -305,14 +309,10 @@
             return {
                 id: item.id,
                 rawDate: item.created_at || item.tanggal_isi || item.tanggal, 
-                type: type,
-                title: title,
-                mesin: mesin,
-                pelaksana: pelaksana || "Operator",
-                notePel: notePel || "Tidak ada catatan",
-                koord: koord || "Koordinator",
-                noteKoord: noteKoord || "Aman",
-                noteSuper: noteSuper || "", // Default value
+                type: type, title: title, mesin: mesin,
+                pelaksana: pelaksana || "Operator", notePel: notePel || "Tidak ada catatan",
+                koord: koord || "Koordinator", noteKoord: noteKoord || "Aman",
+                noteSuper: noteSuper || "",
                 tableName: type === 'chslr' ? 'chslr_log' : type === 'clhmi' ? 'clhmi' : type === 'pmi' ? 'pmi_header' : 'prslb_log'
             };
         }
@@ -323,23 +323,21 @@
                 container.innerHTML = `<div class="loading-text">${isArchive ? 'Arsip kosong.' : 'Semua pekerjaan beres! 👍'}</div>`;
                 return;
             }
-
             data.sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
 
             data.forEach((item, index) => {
                 let tgl = new Date(item.rawDate).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'});
                 
-                let archiveExtras = '';
-                let clickAction = `onclick="bukaDetail(${index})"`;
+                // --- PERUBAHAN UTAMA DISINI ---
+                // Baik INBOX maupun ARSIP, keduanya bisa diklik (bukaDetail)
+                // Kita kirim parameter 'true' jika ini adalah Arsip
+                let clickAction = `onclick="bukaDetail(${index}, ${isArchive})"`
                 
+                let deleteBtn = '';
                 if (isArchive) {
-                    // Kalau di Arsip, tombol detail tidak aktif di list, tapi kita kasih tombol sampah
-                    clickAction = ''; 
-                    archiveExtras = `
-                        <div class="super-note-display">
-                            Catatan Real Anda: "${item.noteSuper}"
-                        </div>
-                        <div class="delete-btn" onclick="hapusArsip('${item.id}', '${item.tableName}')">
+                    // Tombol hapus dipisah agar tidak memicu clickAction kartu
+                    deleteBtn = `
+                        <div class="delete-btn" onclick="event.stopPropagation(); hapusArsip('${item.id}', '${item.tableName}')">
                             <i class="fa fa-trash"></i>
                         </div>
                     `;
@@ -353,18 +351,20 @@
                             <span>📅 ${tgl}</span><br>
                             <span>⚙️ ${item.mesin}</span><br>
                             👤 Koord: ${item.noteKoord}
-                            ${archiveExtras}
+                            ${isArchive ? `<br><span style="color:#DC2626">📝 Catatan Anda: "${item.noteSuper}"</span>` : ''}
                         </div>
-                        ${!isArchive ? '<div class="arrow-icon"><i class="fa fa-arrow-right"></i></div>' : ''}
+                        <div class="arrow-icon"><i class="fa fa-arrow-right"></i></div>
+                        ${deleteBtn}
                     </div>
                 </div>`;
                 container.innerHTML += html;
             });
         }
 
-        // --- BUKA DETAIL (POPULATE DATA LENGKAP) ---
-        function bukaDetail(index) {
-            activeItem = inboxData[index];
+        // --- BUKA DETAIL (MODE INPUT vs MODE BACA) ---
+        function bukaDetail(index, isReadOnly = false) {
+            // Tentukan sumber data (Inbox atau Arsip)
+            activeItem = isReadOnly ? archiveData[index] : inboxData[index];
             
             // Isi Data ke Overlay Detail
             document.getElementById('d-judul').innerText = activeItem.title;
@@ -377,8 +377,25 @@
             document.getElementById('d-koordinator').innerText = activeItem.koord;
             document.getElementById('d-catatan-koordinator').innerText = `"${activeItem.noteKoord}"`;
 
-            // PERUBAHAN DISINI: KOSONGKAN INPUT AGAR BISA ISI REAL
-            document.getElementById('d-super-note').value = ""; 
+            // ATUR INPUT & TOMBOL SESUAI MODE
+            const inputField = document.getElementById('d-super-note');
+            const submitBtn = document.getElementById('btn-submit-super');
+
+            if (isReadOnly) {
+                // MODE ARSIP (HANYA BACA)
+                inputField.value = activeItem.noteSuper; // Tampilkan catatan yang sudah disimpan
+                inputField.disabled = true; // Kunci input
+                submitBtn.innerText = "KEMBALI (SUDAH DIARSIPKAN)";
+                submitBtn.className = "btn-arsip readonly-mode";
+                submitBtn.onclick = tutupDetail; // Tombol jadi fungsi tutup
+            } else {
+                // MODE TUGAS (BISA INPUT)
+                inputField.value = ""; // Kosongkan biar bisa isi baru
+                inputField.disabled = false; // Buka kunci
+                submitBtn.innerText = "SETUJUI & ARSIPKAN";
+                submitBtn.className = "btn-arsip";
+                submitBtn.onclick = prosesArsip; // Tombol jadi fungsi submit
+            }
 
             document.getElementById('detail-view').style.display = 'block';
         }
@@ -389,16 +406,10 @@
 
         async function prosesArsip() {
             if(!activeItem) return;
-            const btn = document.querySelector('.btn-arsip');
-            
-            // AMBIL CATATAN REAL DARI INPUT
+            const btn = document.getElementById('btn-submit-super');
             const note = document.getElementById('d-super-note').value.trim();
             
-            // Validasi: Wajib isi catatan
-            if(!note) {
-                alert("Mohon isi Catatan Superintendent terlebih dahulu!");
-                return;
-            }
+            if(!note) { alert("Mohon isi Catatan Superintendent!"); return; }
 
             btn.innerText = "PROCESSING..."; btn.disabled = true;
 
@@ -422,17 +433,12 @@
         }
 
         async function hapusArsip(id, tableName) {
-            if(!confirm("Yakin ingin menghapus arsip ini selamanya?")) return;
-            
+            if(!confirm("Hapus arsip ini selamanya?")) return;
             try {
                 const { error } = await client.from(tableName).delete().eq('id', id);
                 if(error) throw error;
-                
-                alert("Arsip dihapus.");
                 fetchArsip(); 
-            } catch (err) {
-                alert("Gagal hapus: " + err.message);
-            }
+            } catch (err) { alert("Gagal: " + err.message); }
         }
 
         fetchInbox(); 
