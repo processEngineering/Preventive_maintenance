@@ -3,113 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TEST REGISTER DIAGNOSTIK</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>CEK ERROR SUPABASE</title>
+    
+    <script>
+        window.onerror = function(message, source, lineno, colno, error) {
+            alert("⚠️ ERROR FATAL DETECTED:\n" + message + "\n\n(Cek koneksi internet Anda!)");
+        };
+    </script>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
     <style>
-        body { font-family: monospace; padding: 20px; background: #f0f0f0; }
-        input { display: block; width: 100%; padding: 10px; margin-bottom: 10px; }
-        button { padding: 15px; width: 100%; background: blue; color: white; font-weight: bold; border: none; cursor: pointer; }
-        
-        /* KOTAK LOG */
-        #log-box {
-            background: black; color: #00ff00; padding: 15px; margin-top: 20px;
-            height: 300px; overflow-y: scroll; border-radius: 8px; white-space: pre-wrap;
-        }
-        .error-text { color: red; font-weight: bold; }
-        .success-text { color: cyan; font-weight: bold; }
+        body { font-family: sans-serif; padding: 20px; text-align: center; }
+        button { padding: 20px; font-size: 20px; background: red; color: white; cursor: pointer; width: 100%; }
+        input { padding: 10px; width: 100%; margin-bottom: 10px; font-size: 16px; }
+        #status { margin-top: 20px; font-weight: bold; font-size: 18px; }
     </style>
 </head>
 <body>
 
-    <h2>FORM TEST (DIAGNOSTIK)</h2>
-    <p>Isi form ini. Kita akan lihat errornya dimana.</p>
-    
-    <input type="email" id="email" placeholder="Email Baru (JANGAN PAKAI YG LAMA)" required>
-    <input type="password" id="password" placeholder="Password (min 6 karakter)" required>
-    <input type="text" id="fullname" placeholder="Nama Lengkap" value="Tes User">
-    <input type="text" id="divisi" placeholder="Divisi" value="Maintenance">
-    <input type="text" id="jabatan" placeholder="Jabatan" value="Staff">
-    
-    <button id="btnTest">MULAI TEST DAFTAR</button>
+    <h1>TES KONEKSI DATABASE</h1>
+    <p>Isi sembarang, lalu klik tombol.</p>
 
-    <h3>LOG SISTEM (BACA DISINI):</h3>
-    <div id="log-box">Menunggu input...</div>
+    <input type="text" id="fullname" placeholder="Nama Anda">
+    <button id="btnTest">TES KLIK SAYA</button>
+    <div id="status">Menunggu klik...</div>
 
     <script>
-        // --- KONFIGURASI ---
+        // Cek apakah Supabase berhasil didownload?
+        if (typeof supabase === 'undefined') {
+            document.getElementById('status').innerHTML = "❌ GAGAL LOAD SUPABASE!<br>Cek internet atau script terblokir.";
+            document.getElementById('status').style.color = "red";
+            alert("SUPABASE TIDAK DITEMUKAN!\nPastikan internet nyala dan tidak diblokir firewall kantor.");
+        } 
+
+        // KONFIGURASI KAMU
         const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        const logBox = document.getElementById('log-box');
+        // Inisialisasi
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        function log(msg, type = 'info') {
-            const time = new Date().toLocaleTimeString();
-            let color = type === 'error' ? 'red' : (type === 'success' ? 'cyan' : '#00ff00');
-            logBox.innerHTML += `<span style="color:${color}">[${time}] ${msg}</span>\n`;
-            logBox.scrollTop = logBox.scrollHeight;
-        }
+        const btn = document.getElementById('btnTest');
+        const status = document.getElementById('status');
+        const inputName = document.getElementById('fullname');
 
-        document.getElementById('btnTest').addEventListener('click', async () => {
-            logBox.innerHTML = ""; // Reset Log
-            log("1. Memulai Proses Pendaftaran...", 'info');
-
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const fullname = document.getElementById('fullname').value;
-            const divisi = document.getElementById('divisi').value;
-            const jabatan = document.getElementById('jabatan').value;
-
-            if(!email || !password) { log("ERROR: Email/Password kosong!", 'error'); return; }
-
-            // STEP 1: AUTH
-            log("2. Mengirim data ke Authentication Supabase...", 'info');
+        btn.addEventListener('click', async () => {
+            status.innerHTML = "⏳ Sedang menghubungi server...";
             
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: email, password: password
-            });
-
-            if (authError) {
-                log("GAGAL AUTH: " + authError.message, 'error');
-                return;
-            }
-
-            if (!authData.user) {
-                log("WARNING: User objek kosong. Cek email kamu untuk konfirmasi?", 'error');
-                return;
-            }
-
-            log("3. Auth Sukses! User ID: " + authData.user.id, 'success');
-
-            // STEP 2: INSERT DATABASE
-            log("4. Mencoba menyimpan data ke Tabel Profiles...", 'info');
-
-            // Kita pakai insert manual
-            const { data: profileData, error: profileError } = await supabase
+            // Tes Insert Sederhana ke tabel profiles (pastikan tabel sudah dibuat via SQL nuklir tadi)
+            // Kita pakai ID acak dulu untuk ngetes koneksi tabel (tanpa login/register ribet)
+            const fakeId = crypto.randomUUID(); 
+            
+            const { data, error } = await client
                 .from('profiles')
-                .insert([
-                    {
-                        id: authData.user.id,
-                        full_name: fullname,
-                        divisi: divisi,
-                        jabatan: jabatan
-                    }
-                ])
+                .insert([{ 
+                    id: fakeId, 
+                    full_name: inputName.value || "Tes Koneksi", 
+                    divisi: "Tes", 
+                    jabatan: "Tes" 
+                }])
                 .select();
 
-            if (profileError) {
-                log("GAGAL INSERT DB: " + profileError.message, 'error');
-                log("Detail Error: " + JSON.stringify(profileError), 'error');
-                log("HINT: Cek apakah SQL langkah 1 sudah dijalankan?", 'info');
+            if (error) {
+                status.innerHTML = "❌ ERROR DARI SUPABASE:<br>" + error.message;
+                status.style.color = "red";
+                alert("KONEKSI GAGAL: " + error.message);
             } else {
-                log("5. INSERT SUKSES! DATA TERSIMPAN.", 'success');
-                log("Data: " + JSON.stringify(profileData), 'success');
-                alert("BERHASIL! Sekarang coba login di index.html");
-                
-                // Redirect otomatis setelah 2 detik
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 2000);
+                status.innerHTML = "✅ SUKSES! DATA MASUK.<br>Database kamu sudah aman.";
+                status.style.color = "green";
+                alert("BERHASIL! Database sudah bisa menerima data.");
             }
         });
     </script>
