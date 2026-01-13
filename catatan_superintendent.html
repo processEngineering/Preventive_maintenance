@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catatan Superintendent</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        /* --- GAYA TAMPILAN SESUAI SKETSA --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        
+        body { 
+            background-color: #fff; 
+            padding-bottom: 80px; /* Space untuk menu bawah */
+        }
+
+        /* Header Judul */
+        .header-title {
+            margin: 30px auto;
+            text-align: center;
+            border: 2px solid black;
+            border-radius: 30px;
+            padding: 15px 30px;
+            width: fit-content;
+            font-weight: 800;
+            font-size: 18px;
+            box-shadow: 4px 4px 0px #000; /* Efek Bayangan Kartun */
+        }
+
+        .container { padding: 20px; max-width: 500px; margin: 0 auto; }
+
+        /* KARTU PESAN (Inbox Style) */
+        .message-card {
+            background: white;
+            border: 3px solid black;
+            border-radius: 20px;
+            margin-bottom: 25px;
+            position: relative;
+            box-shadow: 6px 6px 0px #000; /* Bayangan Tebal sesuai sketsa */
+            transition: 0.2s;
+            overflow: hidden;
+        }
+
+        .message-card:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #000;
+        }
+
+        /* Label Judul Kecil di Atas Kartu (Seperti amplop) */
+        .card-label {
+            background: black;
+            color: white;
+            padding: 8px 20px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+            border-bottom-right-radius: 15px;
+            border-top: 1px solid black;
+            border-left: 1px solid black;
+        }
+
+        .card-content {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .info-text {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #333;
+            flex: 1;
+        }
+
+        .info-text span { font-weight: bold; }
+
+        /* Tombol Panah Kanan */
+        .arrow-btn {
+            font-size: 24px;
+            color: black;
+            margin-left: 15px;
+            cursor: pointer;
+        }
+
+        /* --- MODAL POPUP (UNTUK BACA & APPROVE) --- */
+        .modal-overlay {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-box {
+            background: white;
+            width: 90%;
+            max-width: 400px;
+            border: 3px solid black;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 8px 8px 0px #000;
+            text-align: center;
+        }
+
+        .btn-approve {
+            background: #000;
+            color: #fff;
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 16px;
+            border: none;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+        .btn-close {
+            background: transparent;
+            color: #555;
+            border: none;
+            margin-top: 10px;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        /* --- MENU BAWAH (FIXED) --- */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: white; border-top: 3px solid black;
+            display: flex; justify-content: space-around;
+            padding: 15px 0; z-index: 99;
+        }
+        .nav-item { font-size: 24px; color: black; cursor: pointer; }
+        .nav-item.active { color: #555; transform: scale(1.1); }
+
+        /* Loader */
+        .loading { text-align: center; font-style: italic; color: #666; margin-top: 50px; }
+        .empty-state { text-align: center; margin-top: 50px; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="header-title">
+        catatan Superintendent
+    </div>
+
+    <div class="container" id="inbox-container">
+        <div class="loading">Memuat pesan masuk...</div>
+        <div class="empty-state">
+            <img src="https://img.icons8.com/ios/100/000000/checked--v1.png" width="80" style="opacity:0.5"><br><br>
+            Tidak ada laporan pending.<br>Semua aman! 👍
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="approvalModal">
+        <div class="modal-box">
+            <h3 id="modalTitle" style="margin-bottom: 15px;">Judul Laporan</h3>
+            <div style="text-align: left; font-size: 14px; line-height: 1.8;">
+                <p>📅 Tanggal: <span id="modalDate" style="font-weight:bold;">-</span></p>
+                <p>👤 Koordinator: <span id="modalCoord" style="font-weight:bold;">-</span></p>
+                <hr style="border-top: 2px dashed #ccc; margin: 10px 0;">
+                <p>📝 Catatan Koordinator:</p>
+                <div id="modalNote" style="background:#f0f0f0; padding:10px; border-radius:8px; font-style:italic;">-</div>
+            </div>
+            
+            <button class="btn-approve" onclick="prosesApprove()">
+                <i class="fa fa-check-circle"></i> SETUJUI & ARSIPKAN
+            </button>
+            <button class="btn-close" onclick="tutupModal()">Tutup / Nanti Saja</button>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item" onclick="window.location.href='home_akg.html'"><i class="fa fa-home"></i></div>
+        <div class="nav-item"><i class="fa fa-bars"></i></div>
+        <div class="nav-item active"><i class="fa fa-inbox"></i></div> <div class="nav-item"><i class="fa fa-user"></i></div>
+    </div>
+
+    <script>
+        // --- 1. SETUP SUPABASE ---
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let dataGabungan = [];
+        let selectedItem = null; // Menyimpan data item yang sedang dibuka
+
+        // --- 2. AMBIL SEMUA DATA (4 TABEL) ---
+        async function fetchInbox() {
+            const container = document.getElementById('inbox-container');
+            const loading = document.querySelector('.loading');
+            const emptyState = document.querySelector('.empty-state');
+            
+            dataGabungan = []; // Reset
+
+            try {
+                // A. CHSLR LOG (Harian Standlabel & Robot)
+                // Logic: Sudah dikoord (status_verifikasi=true), Belum di-Super (status_final=false)
+                let { data: chslr } = await client.from('chslr_log')
+                    .select('*').eq('status_verifikasi', true).eq('status_final', false);
+                
+                if(chslr) chslr.forEach(item => dataGabungan.push({
+                    type: 'chslr_log',
+                    title: 'Checklist Harian Standlabel & Robot',
+                    id: item.id,
+                    date: item.created_at, // atau bulan/tahun
+                    coordName: item.koordinator_nama || 'Koordinator',
+                    note: item.remark_koordinator || 'Aman (Tidak ada catatan)',
+                    raw: item
+                }));
+
+                // B. CLHMI (Harian Mesin Injection)
+                // Logic: Sudah diapprove coord (approved_by not null), Belum verified super (verified_by null)
+                // Note: Filter 'not.is.null' agak tricky di JS client biasa, jadi kita filter manual setelah fetch atau pakai logic status
+                let { data: clhmi } = await client.from('clhmi')
+                    .select('*').neq('approved_by', null).is('verified_by', null);
+
+                if(clhmi) clhmi.forEach(item => dataGabungan.push({
+                    type: 'clhmi',
+                    title: 'Checklist Harian Mesin Injection',
+                    id: item.id,
+                    date: item.tanggal_isi,
+                    coordName: item.approved_by || 'Koordinator',
+                    note: item.catatan_umum || 'Kondisi OK',
+                    raw: item
+                }));
+
+                // C. PMI HEADER (Preventif Injection)
+                // Logic: status_verifikasi != Pending, signature_superintendent IS NULL
+                let { data: pmi } = await client.from('pmi_header')
+                    .select('*').neq('status_verifikasi', 'Pending').is('signature_superintendent', null);
+
+                if(pmi) pmi.forEach(item => dataGabungan.push({
+                    type: 'pmi_header',
+                    title: 'Preventif Mesin Injection (Clamping)',
+                    id: item.id,
+                    date: item.tanggal,
+                    coordName: item.nama_koordinator || 'Koordinator',
+                    note: item.catatan_koordinator || 'Maintenance Selesai',
+                    raw: item
+                }));
+
+                // D. PRSLB LOG (Preventif Robot & Standlabel)
+                // Logic: status_verifikasi = true, status_final = false
+                let { data: prslb } = await client.from('prslb_log')
+                    .select('*').eq('status_verifikasi', true).eq('status_final', false);
+
+                if(prslb) prslb.forEach(item => dataGabungan.push({
+                    type: 'prslb_log',
+                    title: 'Preventif Robot & Stand Label Bulanan',
+                    id: item.id,
+                    date: item.created_at,
+                    coordName: item.koordinator_nama || 'Koordinator',
+                    note: item.koordinator_note || 'Maintenance OK',
+                    raw: item
+                }));
+
+                // --- RENDER TAMPILAN ---
+                loading.style.display = 'none';
+                container.innerHTML = ''; // Bersihkan loader
+
+                if (dataGabungan.length === 0) {
+                    emptyState.style.display = 'block';
+                    container.appendChild(emptyState);
+                } else {
+                    // Urutkan dari yang paling lama antri
+                    dataGabungan.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                    dataGabungan.forEach((item, index) => {
+                        // Format Tanggal biar cantik
+                        let tgl = new Date(item.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                        
+                        // HTML KARTU (Sesuai Sketsa)
+                        let cardHTML = `
+                            <div class="message-card" onclick="bukaPesan(${index})">
+                                <div class="card-label">${item.title}</div>
+                                <div class="card-content">
+                                    <div class="info-text">
+                                        tanggal/bln/thn : <span>${tgl}</span><br>
+                                        Kondisi mesin : <span>OK</span><br>
+                                        Laporan Koord : <span>${item.note.substring(0, 20)}...</span>
+                                    </div>
+                                    <div class="arrow-btn">
+                                        <i class="fa fa-arrow-right"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        container.innerHTML += cardHTML;
+                    });
+                }
+
+            } catch (err) {
+                console.error(err);
+                loading.innerText = "Gagal memuat data. Cek koneksi.";
+            }
+        }
+
+        // --- 3. BUKA MODAL ---
+        function bukaPesan(index) {
+            selectedItem = dataGabungan[index];
+            
+            document.getElementById('modalTitle').innerText = selectedItem.title;
+            document.getElementById('modalDate').innerText = new Date(selectedItem.date).toLocaleDateString('id-ID');
+            document.getElementById('modalCoord').innerText = selectedItem.coordName;
+            document.getElementById('modalNote').innerText = selectedItem.note;
+            
+            document.getElementById('approvalModal').style.display = 'flex';
+        }
+
+        function tutupModal() {
+            document.getElementById('approvalModal').style.display = 'none';
+            selectedItem = null;
+        }
+
+        // --- 4. PROSES APPROVE (CENTANG & HILANG) ---
+        async function prosesApprove() {
+            if (!selectedItem) return;
+
+            const btn = document.querySelector('.btn-approve');
+            btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> MENYIMPAN...';
+            btn.disabled = true;
+
+            try {
+                // Ambil User Superintendent yang Login (Untuk Tanda Tangan)
+                const { data: { user } } = await client.auth.getUser();
+                const namaSuper = user ? user.user_metadata.full_name : "Superintendent";
+
+                let errorUpdate = null;
+
+                // Update sesuai tabel masing-masing
+                if (selectedItem.type === 'chslr_log') {
+                    const { error } = await client.from('chslr_log').update({
+                        status_final: true,
+                        superintendent_nama: namaSuper,
+                        remark_superintendent: 'Disetujui via Apps',
+                        // signature_superintendent: 'ttd_digital_code' (Nanti bisa ditambah fitur TTD canvas)
+                    }).eq('id', selectedItem.id);
+                    errorUpdate = error;
+                } 
+                else if (selectedItem.type === 'clhmi') {
+                    const { error } = await client.from('clhmi').update({
+                        verified_by: namaSuper,
+                        catatan_super: 'Approved',
+                        paraf_super: 'Signed'
+                    }).eq('id', selectedItem.id);
+                    errorUpdate = error;
+                }
+                else if (selectedItem.type === 'pmi_header') {
+                    const { error } = await client.from('pmi_header').update({
+                        nama_superintendent: namaSuper,
+                        signature_superintendent: 'Signed',
+                        catatan_superintendent: 'Ok'
+                    }).eq('id', selectedItem.id);
+                    errorUpdate = error;
+                }
+                else if (selectedItem.type === 'prslb_log') {
+                    const { error } = await client.from('prslb_log').update({
+                        status_final: true,
+                        superintendent_nama: namaSuper,
+                        superintendent_note: 'Approved',
+                        signature_superintendent: 'Signed'
+                    }).eq('id', selectedItem.id);
+                    errorUpdate = error;
+                }
+
+                if (errorUpdate) throw errorUpdate;
+
+                // SUKSES
+                alert("Laporan Disetujui!");
+                tutupModal();
+                fetchInbox(); // Refresh list biar yang tadi hilang
+
+            } catch (err) {
+                alert("Gagal update: " + err.message);
+            } finally {
+                btn.innerHTML = '<i class="fa fa-check-circle"></i> SETUJUI & ARSIPKAN';
+                btn.disabled = false;
+            }
+        }
+
+        // Jalankan saat load
+        fetchInbox();
+
+    </script>
+</body>
+</html>
