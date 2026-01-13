@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daftar Akun (Diagnostik)</title>
+    <title>Daftar Akun (Verifikasi Email)</title>
     
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
     <style>
         body { font-family: sans-serif; padding: 20px; text-align: center; max-width: 500px; margin: 0 auto; }
-        input { width: 100%; padding: 15px; margin-bottom: 10px; border: 2px solid #000; border-radius: 10px; font-size: 16px; }
+        input { width: 100%; padding: 15px; margin-bottom: 10px; border: 2px solid #000; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
         
         /* Tombol Besar & Jelas */
         button { 
@@ -28,109 +28,130 @@
         .step { margin-bottom: 5px; border-bottom: 1px solid #ddd; padding-bottom: 2px; }
         .ok { color: green; font-weight: bold; }
         .fail { color: red; font-weight: bold; }
+        .info { color: blue; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <h2>DAFTAR AKUN BARU</h2>
-    <p>Silakan isi data di bawah ini:</p>
+    <p>Silakan isi data. Email Wajib Aktif!</p>
 
     <input type="text" id="fullname" placeholder="Nama Lengkap" required>
-    <input type="text" id="divisi" placeholder="Divisi" required>
-    <input type="text" id="jabatan" placeholder="Jabatan" required>
-    <input type="email" id="email" placeholder="Email" required>
-    <input type="password" id="password" placeholder="Password" required>
+    <input type="text" id="divisi" placeholder="Divisi (Contoh: Produksi)" required>
+    <input type="text" id="jabatan" placeholder="Jabatan (Contoh: Operator)" required>
+    <input type="email" id="email" placeholder="Email Kantor / Pribadi" required>
+    <input type="password" id="password" placeholder="Password (Min 6 Karakter)" required>
 
     <button onclick="prosesDaftar()" id="btnDaftar">MULAI DAFTAR</button>
 
-    <h3>STATUS PROSES (BACA DISINI):</h3>
+    <h3>STATUS PROSES:</h3>
     <div id="status-box">Menunggu tombol ditekan...</div>
 
     <script>
-        // --- 1. CEK APAKAH SUPABASE TERLOAD ---
-        const statusBox = document.getElementById('status-box');
+        // --- 1. KONFIGURASI SUPABASE ---
+        // Ganti URL dan KEY ini sesuai project Anda jika berubah
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         
+        // Cek apakah library Supabase terload
         if (typeof supabase === 'undefined') {
-            statusBox.innerHTML = "<h3 class='fail'>CRITICAL ERROR:</h3>Script Supabase GAGAL didownload.<br>Cek koneksi internet Anda atau coba pakai VPN/Tethering HP.";
-            document.getElementById('btnDaftar').disabled = true;
-            document.getElementById('btnDaftar').innerText = "SCRIPT ERROR (CEK KONEKSI)";
-            document.getElementById('btnDaftar').style.background = "grey";
+            document.getElementById('status-box').innerHTML = "<h3 class='fail'>ERROR:</h3>Internet bermasalah. Script Supabase tidak bisa dimuat.";
             throw new Error("Supabase missing");
         }
 
-        // --- 2. KONFIGURASI ---
-        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // --- 3. FUNGSI UTAMA ---
+        // --- 2. FUNGSI DAFTAR ---
         async function prosesDaftar() {
             const btn = document.getElementById('btnDaftar');
+            const statusBox = document.getElementById('status-box');
             
-            // Ambil Nilai
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const fullname = document.getElementById('fullname').value;
-            const divisi = document.getElementById('divisi').value;
-            const jabatan = document.getElementById('jabatan').value;
+            // Ambil Nilai Input
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const fullname = document.getElementById('fullname').value.trim();
+            const divisi = document.getElementById('divisi').value.trim();
+            const jabatan = document.getElementById('jabatan').value.trim();
 
-            // Validasi Sederhana
+            // Validasi Input
             if(!email || !password || !fullname) {
-                alert("Mohon isi semua data!");
+                alert("Mohon isi Nama, Email, dan Password!");
+                return;
+            }
+            if(password.length < 6) {
+                alert("Password minimal 6 karakter!");
                 return;
             }
 
-            // Mulai Proses
+            // Mulai UI Loading
             btn.disabled = true;
             btn.innerText = "SEDANG MEMPROSES...";
-            statusBox.innerHTML = "<div>1. Memulai proses... <span class='ok'>OK</span></div>";
+            statusBox.innerHTML = "<div>1. Memulai pendaftaran... <span class='ok'>OK</span></div>";
 
             try {
-                // STEP A: DAFTAR AUTH
-                statusBox.innerHTML += "<div>2. Mendaftarkan Email... (Tunggu)</div>";
+                // STEP A: DAFTAR AUTH (Sign Up)
+                statusBox.innerHTML += "<div>2. Mendaftarkan Email ke Server... (Tunggu)</div>";
                 
+                // Kirim data tambahan (metadata) langsung saat SignUp agar aman
                 const { data: authData, error: authError } = await client.auth.signUp({
-                    email: email, password: password
+                    email: email, 
+                    password: password,
+                    options: {
+                        data: {
+                            full_name: fullname,
+                            divisi: divisi,
+                            jabatan: jabatan
+                        }
+                    }
                 });
 
                 if (authError) {
                     throw new Error("GAGAL AUTH: " + authError.message);
                 }
 
-                if (!authData.user) {
-                    throw new Error("User tidak terbentuk. Cek inbox email Anda?");
-                }
-
-                statusBox.innerHTML += "<div>-> Auth Sukses! ID: " + authData.user.id.substring(0,5) + "... <span class='ok'>OK</span></div>";
-
-                // STEP B: SIMPAN DATABASE
-                statusBox.innerHTML += "<div>3. Menyimpan Profil ke Database... (Tunggu)</div>";
-
-                const { error: dbError } = await client
-                    .from('profiles')
-                    .insert([{ 
-                        id: authData.user.id, 
-                        full_name: fullname, 
-                        divisi: divisi, 
-                        jabatan: jabatan 
-                    }]);
-
-                if (dbError) {
-                    // Cek kode error spesifik
-                    if(dbError.code === '42P01') throw new Error("TABEL 'profiles' TIDAK DITEMUKAN. Jalankan SQL Query dulu!");
-                    if(dbError.code === '42501') throw new Error("IZIN DITOLAK (RLS). Jalankan SQL Query Reset RLS!");
-                    throw new Error("GAGAL DB: " + dbError.message);
-                }
-
-                statusBox.innerHTML += "<div class='ok'>4. SEMUA SUKSES! DATA TERSIMPAN.</div>";
+                // STEP B: CEK STATUS VERIFIKASI EMAIL
+                // Jika user terbentuk TAPI session null, artinya butuh verifikasi email
+                if (authData.user && !authData.session) {
+                    statusBox.innerHTML += "<div class='info'>3. PENDAFTARAN BERHASIL! TAPI BELUM AKTIF.</div>";
+                    statusBox.innerHTML += "<div class='ok' style='margin-top:10px; border:2px solid green; padding:5px;'>SILAKAN CEK EMAIL ANDA SEKARANG!<br>Link verifikasi telah dikirim ke: <b>" + email + "</b></div>";
+                    
+                    alert("PENDAFTARAN SUKSES!\n\nKami telah mengirim link konfirmasi ke email Anda.\nSilakan BUKA EMAIL (Cek Inbox/Spam) dan KLIK link tersebut untuk Login.");
+                    
+                    // Arahkan ke halaman login (atau biarkan di sini)
+                    // window.location.href = 'index.html'; 
+                    btn.innerText = "CEK EMAIL ANDA";
+                    return; // Stop di sini, tidak perlu insert profile manual (biar trigger backend yang handle atau insert nanti)
+                } 
                 
-                alert("BERHASIL! Akun telah dibuat.");
-                window.location.href = 'index.html';
+                // Jika setting 'Confirm Email' di Supabase MATI (Off), kode ini akan jalan:
+                else if (authData.user && authData.session) {
+                    // STEP C: SIMPAN KE TABEL PROFILES (Jika Auto Confirm)
+                    statusBox.innerHTML += "<div>3. Email otomatis aktif (Tanpa Verifikasi). Menyimpan data...</div>";
+                    
+                    const { error: dbError } = await client
+                        .from('profiles')
+                        .insert([{ 
+                            id: authData.user.id, 
+                            full_name: fullname, 
+                            divisi: divisi, 
+                            jabatan: jabatan 
+                        }]);
+
+                    if (dbError) {
+                        console.error(dbError); // Log error tapi jangan hentikan flow login jika auth sukses
+                        statusBox.innerHTML += "<div class='fail'>Warning: Gagal simpan detail profil, tapi akun aktif.</div>";
+                    } else {
+                        statusBox.innerHTML += "<div class='ok'>4. Profil Tersimpan!</div>";
+                    }
+
+                    alert("AKUN AKTIF! Anda akan diarahkan ke Menu Utama.");
+                    window.location.href = 'home_akg.html';
+                }
 
             } catch (err) {
-                // TANGKAP SEMUA ERROR DISINI
+                // TANGKAP ERROR
                 console.error(err);
-                statusBox.innerHTML += "<div class='fail'>ERROR: " + err.message + "</div>";
+                statusBox.innerHTML += "<div class='fail' style='margin-top:10px;'>ERROR FATAL: " + err.message + "</div>";
                 alert("TERJADI KESALAHAN:\n" + err.message);
                 btn.disabled = false;
                 btn.innerText = "COBA LAGI";
