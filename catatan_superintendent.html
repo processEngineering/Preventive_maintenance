@@ -3,218 +3,193 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catatan Superintendent</title>
+    <title>Viewer Catatan Superintendent</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
-        /* --- STYLE SIMPEL & BERSIH --- */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-        body { background-color: #fff; padding-bottom: 50px; color: #000; }
+        body { background-color: #fcfcfc; color: #000; padding-bottom: 50px; }
 
-        /* HEADER JUDUL */
         .header-box {
             text-align: center; margin: 30px auto;
             border: 2px solid #000; border-radius: 50px;
             padding: 15px 40px; width: fit-content;
             font-weight: 800; font-size: 18px;
-            box-shadow: 4px 4px 0px #000;
+            box-shadow: 4px 4px 0px #000; background: #fff;
         }
 
-        .container { padding: 20px; max-width: 600px; margin: 0 auto; }
+        .container { padding: 20px; max-width: 650px; margin: 0 auto; }
 
-        /* KARTU CATATAN */
-        .note-card {
-            background: white; 
-            border: 3px solid #000; 
-            border-radius: 15px; 
-            margin-bottom: 25px; 
-            padding: 20px; 
-            box-shadow: 6px 6px 0px #000; /* Shadow Tebal */
-            position: relative;
+        /* KARTU UTAMA */
+        .main-card {
+            background: white; border: 3px solid #000; border-radius: 20px;
+            margin-bottom: 35px; padding: 25px; box-shadow: 8px 8px 0px #000;
         }
 
-        /* LABEL JENIS LAPORAN */
-        .badge-type {
-            background: #000; color: #fff; 
-            padding: 5px 12px; border-radius: 8px;
-            font-size: 11px; font-weight: 800; text-transform: uppercase;
-            display: inline-block; margin-bottom: 10px;
+        .type-badge {
+            background: #000; color: #fff; padding: 5px 15px; border-radius: 10px;
+            font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 15px; display: inline-block;
         }
 
-        /* INFO MESIN & TANGGAL */
-        .info-row {
+        .machine-header {
             display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;
+            border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px;
         }
-        .mesin-text { font-weight: 700; font-size: 14px; }
-        .date-text { font-size: 12px; color: #555; font-weight: 600; }
+        .machine-name { font-weight: 800; font-size: 16px; }
+        .report-date { font-size: 12px; color: #666; font-weight: 600; }
 
-        /* AREA KHUSUS CATATAN SUPERINTENDENT */
-        .super-box {
-            background: #fdf2f8; /* Agak pink dikit biar highlight */
-            border: 2px dashed #be185d;
-            border-radius: 10px;
-            padding: 15px;
-        }
+        /* BOX CATATAN 3 LEVEL */
+        .note-section { margin-bottom: 15px; padding: 12px; border-radius: 12px; border: 1px solid #ddd; }
+        
+        .label-group { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+        .label-group i { font-size: 14px; }
+        .label-text { font-size: 11px; font-weight: 800; text-transform: uppercase; }
+        
+        .real-note { font-size: 13px; font-weight: 500; line-height: 1.5; color: #333; }
+        .author-name { font-size: 11px; font-weight: 600; color: #888; margin-top: 5px; display: block; }
 
-        .super-label {
-            color: #be185d; font-size: 12px; font-weight: 800; 
-            margin-bottom: 5px; display: block; text-transform: uppercase;
-        }
+        /* WARNA KHUSUS */
+        .bg-pelaksana { border-left: 5px solid #3b82f6; background: #f0f7ff; }
+        .bg-koordinator { border-left: 5px solid #f59e0b; background: #fffbeb; }
+        .bg-superintendent { border-left: 5px solid #be185d; background: #fdf2f8; }
 
-        .super-text {
-            font-size: 14px; font-weight: 600; color: #333; 
-            font-style: italic; line-height: 1.5;
-        }
-
-        /* MENU BAWAH (NAVIGASI) */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: white; border-top: 3px solid #000;
-            display: flex; justify-content: space-around; padding: 20px 0; z-index: 99;
-        }
-        .nav-item { font-size: 24px; color: #000; cursor: pointer; }
-
-        .loading { text-align: center; margin-top: 50px; font-style: italic; color: gray; }
-        .empty-state { text-align: center; margin-top: 50px; display: none; }
+        .loading { text-align: center; margin-top: 50px; font-style: italic; color: #999; }
+        .empty { text-align: center; margin-top: 50px; font-weight: 600; color: #ccc; }
     </style>
 </head>
 <body>
 
-    <div class="header-box">
-        CATATAN SUPERINTENDENT
-    </div>
+    <div class="header-box">CATATAN LAPORAN REAL</div>
 
-    <div class="container" id="notes-container">
-        <div class="loading">Memuat catatan database...</div>
-        
-        <div class="empty-state" id="empty-msg">
-            <p>Belum ada catatan dari Superintendent.</p>
-        </div>
-    </div>
-
-    <div class="bottom-nav">
-        <div class="nav-item" onclick="window.location.href='home_akg.html'"><i class="fa fa-home"></i></div>
-        <div class="nav-item"><i class="fa fa-bars"></i></div>
-        <div class="nav-item"><i class="fa fa-list-alt"></i></div> <div class="nav-item"><i class="fa fa-user"></i></div>
+    <div class="container" id="content-viewer">
+        <div class="loading">Menghubungkan ke database...</div>
     </div>
 
     <script>
-        // --- KONEKSI DATABASE ---
         const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        async function loadNotes() {
-            const container = document.getElementById('notes-container');
-            const emptyMsg = document.getElementById('empty-msg');
-            const loading = document.querySelector('.loading');
-            
-            let allNotes = [];
+        async function fetchAllNotes() {
+            const container = document.getElementById('content-viewer');
+            let masterData = [];
 
             try {
-                // 1. AMBIL DARI TABEL CHSLR (Robot) - Kolom: remark_superintendent
-                let { data: chslr } = await client.from('chslr_log')
-                    .select('*').eq('status_final', true).limit(20);
-                
-                if(chslr) chslr.forEach(item => {
-                    allNotes.push({
-                        type: 'ROBOT & STANDLABEL',
-                        mesin: item.mesin_id || 'Robot Line',
-                        date: item.created_at,
-                        note: item.remark_superintendent // AMBIL REAL DARI DB
+                // 1. Ambil dari Tabel CHSLR_LOG
+                let { data: chslr } = await client.from('chslr_log').select('*').order('created_at', { ascending: false });
+                if(chslr) chslr.forEach(d => {
+                    masterData.push({
+                        type: 'Robot & Standlabel',
+                        machine: d.mesin_id,
+                        date: d.created_at,
+                        pelaksana: { name: (d.pelaksana_names || []).join(', '), note: d.catatan_pelaksana },
+                        koordinator: { name: d.koordinator_nama, note: d.remark_koordinator },
+                        superintendent: { name: d.superintendent_nama, note: d.remark_superintendent }
                     });
                 });
 
-                // 2. AMBIL DARI TABEL CLHMI (Injection) - Kolom: catatan_super
-                let { data: clhmi } = await client.from('clhmi')
-                    .select('*').not('verified_by', 'is', null).limit(20);
-
-                if(clhmi) clhmi.forEach(item => {
-                    allNotes.push({
-                        type: 'INJECTION MOLDING',
-                        mesin: (item.merk_mesin || '') + ' ' + (item.tonage || ''),
-                        date: item.tanggal_isi,
-                        note: item.catatan_super // AMBIL REAL DARI DB
+                // 2. Ambil dari Tabel CLHMI (Sesuai Struktur Baru Anda)
+                let { data: clhmi } = await client.from('clhmi').select('*').order('tanggal_isi', { ascending: false });
+                if(clhmi) clhmi.forEach(d => {
+                    masterData.push({
+                        type: 'Injection Molding',
+                        machine: (d.merk_mesin || '') + ' ' + (d.tonage || ''),
+                        date: d.tanggal_isi,
+                        pelaksana: { name: d.pelaksana, note: d.catatan_pelaksana },
+                        koordinator: { name: d.approved_by, note: d.catatan_umum },
+                        superintendent: { name: d.verified_by, note: d.catatan_super }
                     });
                 });
 
-                // 3. AMBIL DARI TABEL PMI (Preventif) - Kolom: catatan_superintendent
-                let { data: pmi } = await client.from('pmi_header')
-                    .select('*').not('signature_superintendent', 'is', null).limit(20);
-
-                if(pmi) pmi.forEach(item => {
-                    allNotes.push({
-                        type: 'PREVENTIF (PMI)',
-                        mesin: 'ID: ' + item.machine_id,
-                        date: item.tanggal,
-                        note: item.catatan_superintendent // AMBIL REAL DARI DB
+                // 3. Ambil dari Tabel PMI_HEADER
+                let { data: pmi } = await client.from('pmi_header').select('*').order('tanggal', { ascending: false });
+                if(pmi) pmi.forEach(d => {
+                    masterData.push({
+                        type: 'Preventif Clamping',
+                        machine: 'ID: ' + d.machine_id,
+                        date: d.tanggal,
+                        pelaksana: { name: d.nama_pelaksana, note: d.catatan_pelaksana },
+                        koordinator: { name: d.nama_koordinator, note: d.catatan_koordinator },
+                        superintendent: { name: d.nama_superintendent, note: d.catatan_superintendent }
                     });
                 });
 
-                // 4. AMBIL DARI TABEL PRSLB (Preventif Robot) - Kolom: superintendent_note
-                let { data: prslb } = await client.from('prslb_log')
-                    .select('*').eq('status_final', true).limit(20);
-
-                if(prslb) prslb.forEach(item => {
-                    allNotes.push({
-                        type: 'PREVENTIF ROBOT',
-                        mesin: item.mesin_id,
-                        date: item.created_at,
-                        note: item.superintendent_note // AMBIL REAL DARI DB
+                // 4. Ambil dari Tabel PRSLB_LOG
+                let { data: prslb } = await client.from('prslb_log').select('*').order('created_at', { ascending: false });
+                if(prslb) prslb.forEach(d => {
+                    masterData.push({
+                        type: 'Preventif Robot',
+                        machine: d.mesin_id,
+                        date: d.created_at,
+                        pelaksana: { name: d.pelaksana_nama, note: '-' },
+                        koordinator: { name: d.koordinator_nama, note: d.koordinator_note },
+                        superintendent: { name: d.superintendent_nama, note: d.superintendent_note }
                     });
                 });
 
-                // --- TAMPILKAN DATA ---
-                loading.style.display = 'none';
+                renderUI(masterData);
 
-                if (allNotes.length === 0) {
-                    emptyMsg.style.display = 'block';
-                    return;
-                }
-
-                // Urutkan dari yang terbaru
-                allNotes.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-                allNotes.forEach(item => {
-                    // Cek jika catatan kosong/null, ganti strip
-                    let displayNote = item.note ? item.note : "-";
-                    let displayDate = new Date(item.date).toLocaleDateString('id-ID', {
-                        day: 'numeric', month: 'long', year: 'numeric'
-                    });
-
-                    let cardHTML = `
-                        <div class="note-card">
-                            <span class="badge-type">${item.type}</span>
-                            
-                            <div class="info-row">
-                                <div class="mesin-text">${item.mesin}</div>
-                                <div class="date-text">${displayDate}</div>
-                            </div>
-
-                            <div class="super-box">
-                                <span class="super-label">
-                                    <i class="fa fa-pen-nib"></i> Catatan Superintendent:
-                                </span>
-                                <div class="super-text">
-                                    "${displayNote}"
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    container.innerHTML += cardHTML;
-                });
-
-            } catch (error) {
-                console.error("Error:", error);
-                loading.innerText = "Gagal memuat data.";
+            } catch (e) {
+                container.innerHTML = '<div class="loading">Gagal mengambil data.</div>';
             }
         }
 
-        // Jalankan fungsi saat halaman dibuka
-        loadNotes();
+        function renderUI(data) {
+            const container = document.getElementById('content-viewer');
+            container.innerHTML = '';
+
+            if(data.length === 0) {
+                container.innerHTML = '<div class="empty">Tidak ada data ditemukan.</div>';
+                return;
+            }
+
+            data.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            data.forEach(item => {
+                const dateStr = new Date(item.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                
+                let card = `
+                <div class="main-card">
+                    <span class="type-badge">${item.type}</span>
+                    <div class="machine-header">
+                        <div class="machine-name">${item.machine || 'N/A'}</div>
+                        <div class="report-date">${dateStr}</div>
+                    </div>
+
+                    <div class="note-section bg-pelaksana">
+                        <div class="label-group" style="color:#3b82f6;">
+                            <i class="fa fa-user-gear"></i>
+                            <span class="label-text">Catatan Pelaksana</span>
+                        </div>
+                        <div class="real-note">${item.pelaksana.note || '-'}</div>
+                        <span class="author-name">Oleh: ${item.pelaksana.name || 'N/A'}</span>
+                    </div>
+
+                    <div class="note-section bg-koordinator">
+                        <div class="label-group" style="color:#f59e0b;">
+                            <i class="fa fa-user-check"></i>
+                            <span class="label-text">Catatan Koordinator</span>
+                        </div>
+                        <div class="real-note">${item.koordinator.note || '-'}</div>
+                        <span class="author-name">Oleh: ${item.koordinator.name || 'N/A'}</span>
+                    </div>
+
+                    <div class="note-section bg-superintendent">
+                        <div class="label-group" style="color:#be185d;">
+                            <i class="fa fa-pen-nib"></i>
+                            <span class="label-text">Catatan Superintendent</span>
+                        </div>
+                        <div class="real-note">${item.superintendent.note || '-'}</div>
+                        <span class="author-name">Oleh: ${item.superintendent.name || 'N/A'}</span>
+                    </div>
+                </div>`;
+                container.innerHTML += card;
+            });
+        }
+
+        fetchAllNotes();
     </script>
 </body>
 </html>
