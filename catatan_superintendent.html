@@ -32,7 +32,7 @@
             position: relative;
         }
 
-        /* IKON ARSIP (POJOK KANAN ATAS) */
+        /* IKON ARSIP */
         .archive-icon-btn {
             position: absolute; top: 25px; right: 25px;
             font-size: 28px; cursor: pointer; color: black; z-index: 10;
@@ -75,7 +75,7 @@
         
         .arrow-icon { font-size: 24px; font-weight: 900; margin-top: 10px; }
 
-        /* Tampilan Khusus Arsip: Catatan Super & Tombol Hapus */
+        /* Tampilan Khusus Arsip */
         .super-note-display {
             margin-top: 10px; padding-top: 10px; border-top: 1px dashed #999;
             color: #DC2626; font-weight: bold; font-size: 12px;
@@ -193,8 +193,8 @@
             </div>
 
             <div class="super-section">
-                <div style="font-size: 12px; font-weight: bold;">KEPUTUSAN ANDA:</div>
-                <input type="text" id="d-super-note" class="super-input" placeholder="Tulis catatan..." value="Mantap">
+                <div style="font-size: 12px; font-weight: bold;">CATATAN REAL SUPERINTENDENT:</div>
+                <input type="text" id="d-super-note" class="super-input" placeholder="Tulis catatan persetujuan...">
                 
                 <button class="btn-arsip" onclick="prosesArsip()">
                     <i class="fa fa-check-circle"></i> SETUJUI & ARSIPKAN
@@ -227,13 +227,11 @@
             inboxData = [];
 
             try {
-                // Fetch dari 4 tabel berbeda (Select All Columns)
                 let { data: chslr } = await client.from('chslr_log').select('*').eq('status_verifikasi', true).eq('status_final', false);
                 let { data: clhmi } = await client.from('clhmi').select('*').neq('approved_by', null).is('verified_by', null);
                 let { data: pmi } = await client.from('pmi_header').select('*').neq('status_verifikasi', 'Pending').is('signature_superintendent', null);
                 let { data: prslb } = await client.from('prslb_log').select('*').eq('status_verifikasi', true).eq('status_final', false);
 
-                // Mapping Data agar seragam
                 if(chslr) chslr.forEach(item => inboxData.push(mapData(item, 'chslr')));
                 if(clhmi) clhmi.forEach(item => inboxData.push(mapData(item, 'clhmi')));
                 if(pmi) pmi.forEach(item => inboxData.push(mapData(item, 'pmi')));
@@ -250,7 +248,6 @@
             archiveData = [];
 
             try {
-                // Fetch data yang sudah final (Limit 20 biar ringan)
                 let { data: chslr } = await client.from('chslr_log').select('*').eq('status_final', true).limit(20);
                 let { data: clhmi } = await client.from('clhmi').select('*').not('verified_by', 'is', null).limit(20);
                 let { data: pmi } = await client.from('pmi_header').select('*').not('signature_superintendent', 'is', null).limit(20);
@@ -265,9 +262,7 @@
             } catch (err) { console.error(err); }
         }
 
-        // --- HELPER: MAPPING DATA (Agar field seragam) ---
         function mapData(item, type) {
-            // Default Values
             let title = "", mesin = "", pelaksana = "", notePel = "-", koord = "", noteKoord = "-", noteSuper = "-";
             
             if (type === 'chslr') {
@@ -283,14 +278,14 @@
                 title = "Checklist Harian Injection";
                 mesin = (item.merk_mesin || "") + " " + (item.tonage || ""); 
                 pelaksana = item.pelaksana;
-                notePel = "-"; // Di schema CLHMI catatan umum biasanya gabungan
+                notePel = "-"; 
                 koord = item.approved_by;
                 noteKoord = item.catatan_umum || "-";
                 noteSuper = item.catatan_super;
             }
             else if (type === 'pmi') {
                 title = "Preventif Injection (Clamping)";
-                mesin = "ID Mesin: " + item.machine_id; // Kalau mau nama harus join, sementara pakai ID
+                mesin = "ID Mesin: " + item.machine_id; 
                 pelaksana = item.nama_pelaksana;
                 notePel = item.catatan_pelaksana;
                 koord = item.nama_koordinator;
@@ -309,7 +304,7 @@
 
             return {
                 id: item.id,
-                rawDate: item.created_at || item.tanggal_isi || item.tanggal, // Handle beda nama kolom tanggal
+                rawDate: item.created_at || item.tanggal_isi || item.tanggal, 
                 type: type,
                 title: title,
                 mesin: mesin,
@@ -317,34 +312,32 @@
                 notePel: notePel || "Tidak ada catatan",
                 koord: koord || "Koordinator",
                 noteKoord: noteKoord || "Aman",
-                noteSuper: noteSuper || "-",
+                noteSuper: noteSuper || "", // Default value
                 tableName: type === 'chslr' ? 'chslr_log' : type === 'clhmi' ? 'clhmi' : type === 'pmi' ? 'pmi_header' : 'prslb_log'
             };
         }
 
-        // --- RENDER FUNCTION ---
         function renderList(container, data, isArchive) {
             container.innerHTML = '';
             if (data.length === 0) {
-                container.innerHTML = `<div class="loading-text">${isArchive ? 'Arsip kosong.' : 'Semua pekerjaan beres! '}</div>`;
+                container.innerHTML = `<div class="loading-text">${isArchive ? 'Arsip kosong.' : 'Semua pekerjaan beres! 👍'}</div>`;
                 return;
             }
 
-            // Sort Terbaru
             data.sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
 
             data.forEach((item, index) => {
                 let tgl = new Date(item.rawDate).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'});
                 
-                // HTML ARSIP (Ada Delete & Catatan Super)
                 let archiveExtras = '';
                 let clickAction = `onclick="bukaDetail(${index})"`;
                 
                 if (isArchive) {
-                    clickAction = ''; // Arsip gak usah diklik detail lagi, infonya udah di kartu
+                    // Kalau di Arsip, tombol detail tidak aktif di list, tapi kita kasih tombol sampah
+                    clickAction = ''; 
                     archiveExtras = `
                         <div class="super-note-display">
-                            Catatan superintendent: "${item.noteSuper}"
+                            Catatan Real Anda: "${item.noteSuper}"
                         </div>
                         <div class="delete-btn" onclick="hapusArsip('${item.id}', '${item.tableName}')">
                             <i class="fa fa-trash"></i>
@@ -357,9 +350,9 @@
                     <div class="card-header-badge">${item.title}</div>
                     <div class="card-body">
                         <div class="info-lines">
-                            <span> ${tgl}</span><br>
-                            <span> ${item.mesin}</span><br>
-                             Koord: ${item.noteKoord}
+                            <span>📅 ${tgl}</span><br>
+                            <span>⚙️ ${item.mesin}</span><br>
+                            👤 Koord: ${item.noteKoord}
                             ${archiveExtras}
                         </div>
                         ${!isArchive ? '<div class="arrow-icon"><i class="fa fa-arrow-right"></i></div>' : ''}
@@ -384,7 +377,9 @@
             document.getElementById('d-koordinator').innerText = activeItem.koord;
             document.getElementById('d-catatan-koordinator').innerText = `"${activeItem.noteKoord}"`;
 
-            document.getElementById('d-super-note').value = "Mantap"; // Reset input
+            // PERUBAHAN DISINI: KOSONGKAN INPUT AGAR BISA ISI REAL
+            document.getElementById('d-super-note').value = ""; 
+
             document.getElementById('detail-view').style.display = 'block';
         }
 
@@ -392,11 +387,19 @@
         function bukaHalamanArsip() { document.getElementById('archive-list-view').style.display = 'block'; fetchArsip(); }
         function tutupArsip() { document.getElementById('archive-list-view').style.display = 'none'; }
 
-        // --- ACTION: APPROVE ---
         async function prosesArsip() {
             if(!activeItem) return;
             const btn = document.querySelector('.btn-arsip');
-            const note = document.getElementById('d-super-note').value;
+            
+            // AMBIL CATATAN REAL DARI INPUT
+            const note = document.getElementById('d-super-note').value.trim();
+            
+            // Validasi: Wajib isi catatan
+            if(!note) {
+                alert("Mohon isi Catatan Superintendent terlebih dahulu!");
+                return;
+            }
+
             btn.innerText = "PROCESSING..."; btn.disabled = true;
 
             try {
@@ -404,7 +407,6 @@
                 const nama = user ? user.user_metadata.full_name : "Superintendent";
                 let updateData = {};
 
-                // Logic Update per Tabel
                 if (activeItem.type === 'chslr') updateData = { status_final: true, superintendent_nama: nama, remark_superintendent: note };
                 else if (activeItem.type === 'clhmi') updateData = { verified_by: nama, catatan_super: note, paraf_super: 'Signed' };
                 else if (activeItem.type === 'pmi') updateData = { nama_superintendent: nama, signature_superintendent: 'Signed', catatan_superintendent: note };
@@ -419,7 +421,6 @@
             } catch (err) { alert("Gagal: " + err.message); btn.disabled = false; }
         }
 
-        // --- ACTION: HAPUS ARSIP ---
         async function hapusArsip(id, tableName) {
             if(!confirm("Yakin ingin menghapus arsip ini selamanya?")) return;
             
@@ -428,13 +429,13 @@
                 if(error) throw error;
                 
                 alert("Arsip dihapus.");
-                fetchArsip(); // Refresh list arsip
+                fetchArsip(); 
             } catch (err) {
                 alert("Gagal hapus: " + err.message);
             }
         }
 
-        fetchInbox(); // Load Awal
+        fetchInbox(); 
     </script>
 </body>
 </html>
