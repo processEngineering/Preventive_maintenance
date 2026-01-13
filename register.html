@@ -2,77 +2,99 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CEK ERROR SUPABASE</title>
-    
-    <script>
-        window.onerror = function(message, source, lineno, colno, error) {
-            alert("⚠️ ERROR FATAL DETECTED:\n" + message + "\n\n(Cek koneksi internet Anda!)");
-        };
-    </script>
-
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Daftar Akun</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; text-align: center; }
-        button { padding: 20px; font-size: 20px; background: red; color: white; cursor: pointer; width: 100%; }
-        input { padding: 10px; width: 100%; margin-bottom: 10px; font-size: 16px; }
-        #status { margin-top: 20px; font-weight: bold; font-size: 18px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background-color: #ffffff; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px; }
+        .header { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        .logo { width: 80px; } 
+        .content { width: 100%; max-width: 400px; text-align: center; }
+        h2 { font-size: 22px; font-weight: 700; color: #000; margin-bottom: 10px; }
+        .form-group { margin-bottom: 20px; text-align: left; }
+        input { width: 100%; padding: 10px 0; border: none; border-bottom: 1px solid #ddd; font-size: 14px; outline: none; background: transparent; font-style: italic; color: #333; transition: 0.3s; text-align: center; }
+        input:focus { border-bottom: 2px solid #000; }
+        .btn-mulai { margin-top: 30px; width: 100%; padding: 15px; border: 3px solid #000; border-radius: 15px; background: #fff; color: #000; font-weight: 700; font-size: 18px; cursor: pointer; box-shadow: 4px 4px 0px #000; }
+        .btn-mulai:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #000; }
+        .alert { color: red; font-size: 12px; margin-top: 10px; display: none; }
+        .login-link { margin-top: 20px; font-size: 12px; }
+        .login-link a { color: #000; font-weight: bold; text-decoration: none; }
     </style>
 </head>
 <body>
+    <div class="header">
+        <img src="logo akg.png" alt="AKG" class="logo">
+    </div>
 
-    <h1>TES KONEKSI DATABASE</h1>
-    <p>Isi sembarang, lalu klik tombol.</p>
-
-    <input type="text" id="fullname" placeholder="Nama Anda">
-    <button id="btnTest">TES KLIK SAYA</button>
-    <div id="status">Menunggu klik...</div>
+    <div class="content">
+        <h2>Buat akun anda</h2>
+        <form id="registerForm">
+            <div class="form-group"><input type="text" id="fullname" placeholder="nama lengkap anda" required></div>
+            <div class="form-group"><input type="text" id="divisi" placeholder="divisi" required></div>
+            <div class="form-group"><input type="text" id="jabatan" placeholder="jabatan" required></div>
+            <div class="form-group"><input type="email" id="email" placeholder="email" required></div>
+            <div class="form-group"><input type="password" id="password" placeholder="kata sandi" required></div>
+            <p id="alertMsg" class="alert"></p>
+            <button type="submit" class="btn-mulai" id="btnSubmit">Mulai</button>
+        </form>
+        <div class="login-link">Sudah punya akun? <a href="index.html">Masuk disini</a></div>
+    </div>
 
     <script>
-        // Cek apakah Supabase berhasil didownload?
-        if (typeof supabase === 'undefined') {
-            document.getElementById('status').innerHTML = "❌ GAGAL LOAD SUPABASE!<br>Cek internet atau script terblokir.";
-            document.getElementById('status').style.color = "red";
-            alert("SUPABASE TIDAK DITEMUKAN!\nPastikan internet nyala dan tidak diblokir firewall kantor.");
-        } 
-
-        // KONFIGURASI KAMU
         const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
-        
-        // Inisialisasi
-        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const btn = document.getElementById('btnTest');
-        const status = document.getElementById('status');
-        const inputName = document.getElementById('fullname');
+        const form = document.getElementById('registerForm');
+        const alertMsg = document.getElementById('alertMsg');
+        const btnSubmit = document.getElementById('btnSubmit');
 
-        btn.addEventListener('click', async () => {
-            status.innerHTML = "⏳ Sedang menghubungi server...";
-            
-            // Tes Insert Sederhana ke tabel profiles (pastikan tabel sudah dibuat via SQL nuklir tadi)
-            // Kita pakai ID acak dulu untuk ngetes koneksi tabel (tanpa login/register ribet)
-            const fakeId = crypto.randomUUID(); 
-            
-            const { data, error } = await client
-                .from('profiles')
-                .insert([{ 
-                    id: fakeId, 
-                    full_name: inputName.value || "Tes Koneksi", 
-                    divisi: "Tes", 
-                    jabatan: "Tes" 
-                }])
-                .select();
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            btnSubmit.textContent = "Menyimpan Data...";
+            btnSubmit.disabled = true;
+            alertMsg.style.display = 'none';
 
-            if (error) {
-                status.innerHTML = "❌ ERROR DARI SUPABASE:<br>" + error.message;
-                status.style.color = "red";
-                alert("KONEKSI GAGAL: " + error.message);
-            } else {
-                status.innerHTML = "✅ SUKSES! DATA MASUK.<br>Database kamu sudah aman.";
-                status.style.color = "green";
-                alert("BERHASIL! Database sudah bisa menerima data.");
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const fullname = document.getElementById('fullname').value;
+            const divisi = document.getElementById('divisi').value;
+            const jabatan = document.getElementById('jabatan').value;
+
+            // 1. DAFTAR AUTH (Buat User Login)
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: email, password: password
+            });
+
+            if (authError) {
+                alertMsg.textContent = "Gagal Daftar: " + authError.message;
+                alertMsg.style.display = 'block';
+                btnSubmit.textContent = "Mulai";
+                btnSubmit.disabled = false;
+                return;
+            }
+
+            // 2. SIMPAN PROFIL MANUAL (Ini yang tadi berhasil!)
+            if (authData.user) {
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .insert([{ 
+                        id: authData.user.id, 
+                        full_name: fullname, 
+                        divisi: divisi, 
+                        jabatan: jabatan 
+                    }]);
+
+                if (profileError) {
+                    alert("Akun jadi, tapi profil gagal: " + profileError.message);
+                    // Tetap lanjut login biar user tidak bingung
+                    window.location.href = 'index.html'; 
+                } else {
+                    alert("Pendaftaran SUKSES! Silakan Login.");
+                    window.location.href = 'index.html';
+                }
             }
         });
     </script>
