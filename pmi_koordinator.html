@@ -3,522 +3,502 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Koordinator - Verifikasi Final</title>
+    <title>Koordinator (PMI) - Maintenance</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        /* === STYLE === */
-        :root { --black: #111; --white: #fff; --gray: #f4f4f5; --border: 2px solid #111; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Inter', sans-serif; background: var(--white); color: var(--black); margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        /* ==================== THEME VARIABLES (RED EDITION) ==================== */
+        :root {
+            --primary: #991B1B;       /* Dark Red */
+            --primary-light: #B91C1C; /* Medium Red */
+            --accent: #DC2626;        /* Bright Red */
+            --accent-soft: #FEF2F2;   /* Light Red Bg */
+            --success: #059669;
+            --success-bg: #ECFDF5;
+            --warning: #D97706;
+            --danger: #EF4444;
+            --danger-bg: #FEF2F2;
+            --bg-body: #F3F4F6;
+            --bg-card: #FFFFFF;
+            --text-main: #1F2937;
+            --text-muted: #6B7280;
+            --border: #E5E7EB;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(153, 27, 27, 0.1);
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --nav-height: 70px;
+        }
+
+        /* ==================== BASE RESET ==================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-body); display: flex; justify-content: center; min-height: 100vh; color: var(--text-main); }
         .hidden { display: none !important; }
 
-        /* HEADER */
-        .app-header { padding: 15px; border-bottom: var(--border); text-align: center; background: var(--white); z-index: 10; font-weight: 900; letter-spacing: 1px; font-size: 14px; }
+        /* ==================== APP SHELL ==================== */
+        .app-container {
+            width: 100%; max-width: 480px; background: var(--bg-card); display: flex; 
+            flex-direction: column; padding: 24px 20px 100px 20px; position: relative; 
+            align-items: center; min-height: 100vh;
+        }
+        @media (min-width: 768px) {
+            .app-container { margin: 40px auto; min-height: calc(100vh - 80px); border-radius: 24px; box-shadow: var(--shadow-lg); overflow: hidden; border: 1px solid var(--border); }
+            body { background: #E5E7EB; }
+            .bottom-nav { max-width: 480px; border-radius: 0 0 24px 24px; left: 50%; transform: translateX(-50%); }
+        }
+
+        /* ==================== HEADER ==================== */
+        .header-capsule {
+            width: 100%; display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+        }
+        .header-capsule h1 { font-size: 20px; font-weight: 800; color: var(--primary); letter-spacing: -0.5px; text-transform: capitalize; }
+        .header-capsule::after {
+            content: 'Koordinator Verifikasi'; font-size: 12px; color: var(--text-muted); 
+            font-weight: 600; background: var(--bg-body); padding: 4px 12px; border-radius: 20px;
+        }
+
+        /* ==================== CONTENT SECTIONS ==================== */
+        .content { width: 100%; flex: 1; animation: fadeIn 0.4s ease; display: flex; flex-direction: column; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* LIST CARD STYLE */
+        .card {
+            background: white; border: 1px solid var(--border); border-radius: var(--radius-lg);
+            padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-sm); cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center; transition: transform 0.2s;
+            position: relative; overflow: hidden;
+        }
+        .card:active { transform: scale(0.98); background: var(--bg-body); }
+        .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--primary); }
         
-        /* CONTENT */
-        .content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 90px; }
+        .card h3 { margin: 0 0 4px 0; font-size: 15px; font-weight: 700; color: var(--text-main); }
+        .card p { margin: 0; font-size: 12px; color: var(--text-muted); font-weight: 500; }
+        
+        .status-badge { font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 6px; display: inline-block; margin-top: 8px; text-transform: uppercase; }
+        .bg-ok { background: var(--success-bg); color: var(--success); }
+        .bg-ng { background: var(--danger-bg); color: var(--danger); }
 
-        /* LIST CARD */
-        .card { border: var(--border); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 4px 4px 0 #111; display: flex; justify-content: space-between; align-items: center; transition: 0.1s; cursor: pointer; }
-        .card:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #111; }
-        .card h3 { margin: 0 0 5px 0; font-size: 15px; font-weight: 800; }
-        .card p { margin: 0; font-size: 12px; color: #444; }
-        .status-badge { font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 5px; }
-        .bg-ok { background: #dcfce7; color: #166534; }
-        .bg-ng { background: #fee2e2; color: #991b1b; }
-
-        /* === SCANNER - REDESIGNED === */
-        .scan-container { 
-            height: 100%; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 40px 20px;
-        }
-
-        .scanner-header {
-            background: #fff;
-            border: 2px solid #000;
-            border-radius: 50px;
-            padding: 12px 40px;
-            font-weight: 700;
-            font-size: 16px;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-
-        .scanner-instruction {
-            text-align: center;
-            font-size: 13px;
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 20px;
-            max-width: 300px;
-            font-style: italic;
-        }
-
+        /* SCANNER STYLE */
+        .scan-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        .instruction-text { text-align: center; font-size: 14px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5; max-width: 80%; }
+        
         .qr-frame-container {
-            position: relative;
-            width: 260px;
-            height: 260px;
-            margin-bottom: 20px;
+            width: 260px; height: 260px; border-radius: 24px; overflow: hidden;
+            background: #000; position: relative; margin-bottom: 20px;
+            box-shadow: var(--shadow-lg); border: 4px solid var(--bg-card);
+            display: flex; justify-content: center; align-items: center;
         }
-
-        .qr-frame { 
-            width: 100%;
-            height: 100%;
-            background: #f5f5f5;
-            overflow: hidden;
-            border-radius: 12px;
-            position: relative;
-        }
-
-        /* Corner Borders */
-        .qr-frame::before,
-        .qr-frame::after {
-            content: '';
-            position: absolute;
-            width: 40px;
-            height: 40px;
-            border: 3px solid #000;
-            z-index: 10;
-        }
-        .qr-frame::before {
-            top: 10px;
-            left: 10px;
-            border-right: none;
-            border-bottom: none;
-        }
-        .qr-frame::after {
-            top: 10px;
-            right: 10px;
-            border-left: none;
-            border-bottom: none;
-        }
-
-        .qr-frame-bottom-left,
-        .qr-frame-bottom-right {
-            content: '';
-            position: absolute;
-            width: 40px;
-            height: 40px;
-            border: 3px solid #000;
-            z-index: 10;
-        }
-        .qr-frame-bottom-left {
-            bottom: 10px;
-            left: 10px;
-            border-right: none;
-            border-top: none;
-        }
-        .qr-frame-bottom-right {
-            bottom: 10px;
-            right: 10px;
-            border-left: none;
-            border-top: none;
-        }
-
-        #reader { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: cover; 
-        }
+        #reader { width: 100%; height: 100%; border: none; }
+        #reader video { width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: 20px; }
 
         .scan-label {
-            display: inline-block;
-            padding: 8px 30px;
-            border: 2px solid #000;
-            font-weight: 700;
-            font-size: 14px;
-            margin-bottom: 15px;
-            letter-spacing: 2px;
+            background: var(--accent); color: white; border: none; border-radius: 50px;
+            padding: 14px 40px; font-size: 14px; font-weight: 700; letter-spacing: 0.5px;
+            pointer-events: none; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3); text-transform: uppercase; margin-bottom: 12px;
         }
+        #target-machine { font-size: 13px; color: var(--text-main); font-weight: 700; margin-bottom: 20px; }
 
-        #target-machine {
-            text-align: center;
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 20px;
-            font-weight: 700;
+        /* APPROVAL FORM STYLE */
+        .info-box {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            border-radius: var(--radius-lg); padding: 20px; margin-bottom: 24px;
+            color: white; box-shadow: var(--shadow-sm);
         }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 8px; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-size: 11px; font-weight: 600; opacity: 0.85; text-transform: uppercase; }
+        .info-val { font-size: 13px; font-weight: 700; text-align: right; }
 
-        /* REVIEW FORM */
-        .info-box { background: var(--gray); border: 1px solid #111; padding: 12px; border-radius: 8px; font-size: 12px; margin-bottom: 20px; }
-        .info-row { display: flex; justify-content: space-between; margin-bottom: 4px; border-bottom: 1px dashed #ccc; padding-bottom: 4px; }
-        .info-label { font-weight: 700; color: #555; }
-        .info-val { font-weight: 800; }
+        /* CHECKLIST RESULTS TABLE */
+        .checklist-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+        .cat-header td { 
+            background: var(--accent-soft); padding: 10px; color: var(--primary);
+            font-weight: 700; font-size: 12px; text-transform: uppercase; border-radius: 8px;
+        }
+        .item-row td { padding: 12px 4px; border-bottom: 1px solid var(--border); }
+        .item-title { font-weight: 600; font-size: 13px; color: var(--text-main); display: block; }
+        .item-std { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; display: block; }
 
-        /* TABLE */
-        .checklist-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-        .cat-header td { background: #eee; padding: 8px; border-left: 4px solid #111; font-weight: 800; font-size: 12px; text-transform: uppercase; }
-        .item-row td { padding: 12px 4px; border-bottom: 1px solid #eee; }
-        .item-title { font-weight: 700; font-size: 13px; display: block; }
-        .item-std { font-size: 10px; color: #666; font-style: italic; margin-bottom: 6px; display: block; }
-
-        /* GRID INPUTS */
-        .grid-res { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 6px; align-items: end; }
+        /* Result Grid */
+        .grid-res { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 8px; align-items: end; }
         .res-box { text-align: center; }
-        .res-label { font-size: 9px; font-weight: 700; background: #eee; padding: 2px; border-radius: 3px; display: block; margin-bottom: 2px; }
-        .res-val { border: 1px solid #111; border-radius: 4px; padding: 6px; font-size: 12px; font-weight: 800; width: 100%; background: #fff; }
-        .val-ok { background: #dcfce7; color: #166534; border-color: #166534; }
-        .val-ng { background: #fee2e2; color: #991b1b; border-color: #991b1b; }
-
-        .note-box { font-size: 11px; font-style: italic; background: #fffbeb; padding: 6px; border-radius: 4px; margin-top: 4px; border: 1px solid #fcd34d; }
-
-        /* APPROVAL BOX */
-        .approval-box { background: #111; color: #fff; padding: 20px; border-radius: 12px; }
-        .form-label { font-size: 10px; font-weight: 700; color: #aaa; display: block; margin-bottom: 5px; margin-top: 10px; }
-        .form-input { width: 100%; padding: 10px; background: #222; border: 1px solid #444; color: #fff; border-radius: 6px; }
-        .btn-main { width: 100%; padding: 15px; background: #fff; color: #000; font-weight: 900; border: none; border-radius: 8px; margin-top: 20px; cursor: pointer; text-transform: uppercase; }
-        .btn-sec { width: 100%; padding: 12px; background: #fff; border: 2px solid #111; font-weight: 700; border-radius: 8px; margin-top: 10px; cursor: pointer; }
-
-        /* NAV */
-        .navbar { 
-            position: fixed; 
-            bottom: 0; 
-            width: 100%; 
-            height: 70px; 
-            background: #fff; 
-            border-top: 2px solid #e5e5e5; 
-            display: flex; 
-            justify-content: space-around; 
-            align-items: center; 
-            z-index: 20;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        .res-label { font-size: 9px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 2px; text-transform: uppercase; }
+        .res-val { 
+            border: 1px solid var(--border); border-radius: 6px; padding: 6px; 
+            font-size: 11px; font-weight: 700; width: 100%; background: #fff; display: block;
         }
-        .nav-link { 
-            text-decoration: none; 
-            color: #999; 
-            font-size: 24px; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            width: 100%; 
-            height: 100%;
-            transition: color 0.3s;
+        .val-ok { background: var(--success-bg); color: var(--success); border-color: var(--success); }
+        .val-ng { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+        .note-box { 
+            font-size: 11px; font-style: italic; background: #FEF3C7; padding: 8px; 
+            border-radius: 6px; margin-top: 6px; border: 1px solid #FCD34D; color: #92400E;
         }
-        .nav-link:hover { color: #000; }
+
+        /* FORM INPUTS */
+        .form-label { display: block; font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; }
+        .form-input {
+            width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-md);
+            font-size: 14px; background: var(--bg-body); outline: none; margin-bottom: 16px; transition: all 0.2s;
+        }
+        .form-input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(153, 27, 27, 0.1); }
+
+        /* SIGNATURE & BUTTONS */
+        .sig-wrapper { 
+            border: 2px dashed var(--border); border-radius: var(--radius-lg); height: 160px; 
+            background: #F9FAFB; position: relative; margin-bottom: 12px; overflow: hidden;
+        }
+        canvas { width: 100%; height: 100%; cursor: crosshair; }
+        .btn-clear-sig {
+            position: absolute; bottom: 10px; right: 10px; background: white; border: 1px solid var(--danger);
+            color: var(--danger); font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+        }
+
+        .btn-main {
+            width: 100%; background: var(--primary); color: white; border: none; border-radius: var(--radius-lg);
+            padding: 18px; font-size: 15px; font-weight: 700; text-transform: uppercase; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(153, 27, 27, 0.3); transition: transform 0.2s; margin-top: 10px;
+        }
+        .btn-main:active { transform: scale(0.98); }
+        .btn-sec {
+            width: 100%; background: white; color: var(--text-muted); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 14px; font-size: 13px; font-weight: 600;
+            cursor: pointer; margin-top: 10px; transition: background 0.2s;
+        }
+
+        /* ==================== BOTTOM NAV ==================== */
+        .bottom-nav { 
+            position: fixed; bottom: 0; width: 100%; max-width: 100%; background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px); border-top: 1px solid rgba(0,0,0,0.05); display: flex;
+            justify-content: space-around; padding: 12px 0; z-index: 100; height: var(--nav-height);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.03);
+        }
+        .nav-item { 
+            text-decoration: none; color: var(--text-muted); font-size: 20px; width: 50px; height: 100%;
+            display: flex; align-items: center; justify-content: center; border-radius: 12px; transition: all 0.3s;
+        }
+        .nav-item.active { color: var(--accent); background: var(--accent-soft); }
     </style>
 </head>
 <body>
 
-    <div class="app-header">KOORDINATOR</div>
+<div class="app-container">
 
+    <div class="header-capsule">
+        <h1>Koordinator</h1>
+    </div>
+
+    <!-- VIEW 1: LIST DATA -->
     <div id="view-list" class="content">
-        <div style="font-weight:900; font-size:12px; margin-bottom:15px; text-transform:uppercase;">Menunggu Verifikasi</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <span class="form-label" style="margin:0;">Antrean Verifikasi</span>
+            <button onclick="loadList()" style="background:none; border:none; color:var(--accent); font-size:12px; font-weight:600; cursor:pointer;"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+        </div>
+        
         <div id="list-data">
-            <div style="text-align:center; margin-top:40px;">Memuat data...</div>
+            <div style="text-align:center; padding:40px; color:var(--text-muted);">
+                <i class="fa-solid fa-spinner fa-spin" style="font-size:24px; margin-bottom:10px;"></i><br>Memuat data...
+            </div>
         </div>
     </div>
 
+    <!-- VIEW 2: SCANNER -->
     <div id="view-scan" class="content hidden">
         <div class="scan-container">
-            <div class="scanner-header">Koordinator</div>
-            
-            <div class="scanner-instruction">
-                Pastikan QR code pada mesin sesuai dengan target verifikasi
+            <div class="instruction-text">
+                Scan QR Code pada mesin yang sesuai dengan laporan untuk membuka form verifikasi.
             </div>
             
             <div class="qr-frame-container">
-                <div class="qr-frame">
-                    <div id="reader"></div>
-                    <div class="qr-frame-bottom-left"></div>
-                    <div class="qr-frame-bottom-right"></div>
-                </div>
+                <div id="reader"></div>
             </div>
             
             <div class="scan-label">SCAN QR</div>
+            <div id="target-machine">Target: ...</div>
             
-            <div id="target-machine">...</div>
-            
-            <button class="btn-sec" onclick="goHome()">BATAL</button>
+            <button class="btn-sec" onclick="goHome()">BATALKAN</button>
         </div>
     </div>
 
+    <!-- VIEW 3: APPROVAL FORM -->
     <div id="view-approve" class="content hidden">
-        <button class="btn-sec" onclick="goHome()" style="margin-bottom:20px; padding:8px 15px;">&larr; KEMBALI</button>
-        
         <div id="header-info" class="info-box">Loading info...</div>
 
-        <div style="font-weight:900; font-size:12px; margin-bottom:10px;">HASIL PENGECEKAN</div>
+        <span class="form-label">DETAIL PENGECEKAN</span>
         <table class="checklist-table">
             <tbody id="table-body"></tbody>
         </table>
 
-        <div class="approval-box">
-            <div style="border-bottom:1px solid #444; padding-bottom:10px; margin-bottom:10px; font-weight:900;">VERIFIKASI LAPORAN</div>
-            
+        <div style="margin-top:20px; padding-top:20px; border-top:1px dashed var(--border);">
             <label class="form-label">NAMA KOORDINATOR</label>
-            <input type="text" id="nama_koordinator" class="form-input" placeholder="Nama Anda...">
+            <input type="text" id="nama_koordinator" class="form-input" placeholder="Isi nama lengkap...">
             
             <label class="form-label">CATATAN (OPSIONAL)</label>
-            <textarea id="catatan_koordinator" class="form-input" rows="2" placeholder="Catatan..."></textarea>
+            <textarea id="catatan_koordinator" class="form-input" rows="2" placeholder="Tulis catatan..."></textarea>
 
-            <label class="form-label">PARAF</label>
-            <div style="background:#fff; height:150px; border-radius:6px; position:relative;">
-                <canvas id="sig-canvas" style="width:100%; height:100%; display:block;"></canvas>
-            </div>
-            <div style="text-align:right;">
-                <button onclick="clearPad()" style="background:none; border:none; color:#999; font-size:10px; text-decoration:underline; cursor:pointer; margin-top:5px;">Hapus Paraf</button>
+            <label class="form-label">PARAF DIGITAL</label>
+            <div class="sig-wrapper">
+                <canvas id="sig-canvas"></canvas>
+                <button onclick="clearPad()" class="btn-clear-sig">HAPUS</button>
             </div>
 
-            <button class="btn-main" id="btn-submit" onclick="submitData()">SETUJUI & SIMPAN</button>
+            <button class="btn-main" id="btn-submit" onclick="submitData()">VERIFIKASI & SIMPAN</button>
+            <button class="btn-sec" onclick="goHome()">KEMBALI</button>
         </div>
     </div>
 
-    <div class="navbar">
-        <a href="index.html" class="nav-link"><i class="fa-solid fa-house"></i></a>
-        <a href="menu_utama.html" class="nav-link"><i class="fa-solid fa-bars"></i></a>
-        <a href="download_data.html" class="nav-link"><i class="fa-solid fa-download"></i></a>
-        <a href="informasi_akun.html" class="nav-link"><i class="fa-solid fa-circle-user"></i></a>
-    </div>
+</div>
 
-    <script>
-        // CONFIG
-        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
-        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
-        const _sb = supabase.createClient(SB_URL, SB_KEY);
+<nav class="bottom-nav">
+    <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i></a>
+    <a href="menu_utama.html" class="nav-item active"><i class="fa-solid fa-bars"></i></a>
+    <a href="download_data.html" class="nav-item"><i class="fa-solid fa-download"></i></a>
+    <a href="informasi_akun.html" class="nav-item"><i class="fa-solid fa-circle-user"></i></a>
+</nav>
 
-        let html5QrCode = null;
-        let signaturePad = null;
-        let currentReport = null;
+<script>
+    const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+    const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-        // --- GLOBAL FUNCTION RESIZE CANVAS ---
-        function resizeCanvas() {
-            const canvas = document.getElementById('sig-canvas');
-            if (canvas && signaturePad) {
-                const ratio = Math.max(window.devicePixelRatio || 1, 1);
-                canvas.width = canvas.offsetWidth * ratio;
-                canvas.height = canvas.offsetHeight * ratio;
-                canvas.getContext("2d").scale(ratio, ratio);
-                signaturePad.clear();
+    let html5QrCode = null;
+    let signaturePad = null;
+    let currentReport = null;
+
+    // --- GLOBAL RESIZE CANVAS ---
+    function resizeCanvas() {
+        const canvas = document.getElementById('sig-canvas');
+        if (canvas && signaturePad) {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+            signaturePad.clear();
+        }
+    }
+
+    function clearPad() { if(signaturePad) signaturePad.clear(); }
+
+    window.onload = () => {
+        loadList();
+        const canvas = document.getElementById('sig-canvas');
+        signaturePad = new SignaturePad(canvas, { penColor: 'black', backgroundColor: '#F9FAFB' });
+        window.addEventListener("resize", resizeCanvas);
+    };
+
+    function showView(id) {
+        document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
+        document.getElementById(id).classList.remove('hidden');
+    }
+
+    function goHome() {
+        if(html5QrCode) html5QrCode.stop().catch(()=>{});
+        showView('view-list');
+        loadList();
+    }
+
+    // 1. LOAD LIST
+    async function loadList() {
+        const div = document.getElementById('list-data');
+        div.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px; margin-bottom:10px;"></i><br>Memuat data...</div>';
+
+        const { data, error } = await _sb.from('pmi_header')
+            .select(`id, tanggal, start_jam, nama_pelaksana, pmi_machines(nama_mesin, barcode), pmi_results(status)`)
+            .eq('status_verifikasi', 'Pending')
+            .order('created_at', { ascending: false });
+
+        if (error || !data || data.length === 0) {
+            div.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted); border:2px dashed var(--border); border-radius:12px;"><i class="fa-regular fa-folder-open" style="font-size:32px; margin-bottom:10px;"></i><br>Tidak ada antrean laporan.</div>';
+            return;
+        }
+
+        div.innerHTML = '';
+        data.forEach(row => {
+            let ngCount = row.pmi_results ? row.pmi_results.filter(r => r.status === 'NG').length : 0;
+            let badge = ngCount > 0 
+                ? `<span class="status-badge bg-ng"><i class="fa-solid fa-triangle-exclamation"></i> ADA ${ngCount} NG</span>` 
+                : `<span class="status-badge bg-ok"><i class="fa-solid fa-check"></i> KONDISI OK</span>`;
+
+            let mName = row.pmi_machines ? row.pmi_machines.nama_mesin : 'Unknown';
+            let mCode = row.pmi_machines ? row.pmi_machines.barcode : '';
+
+            let el = document.createElement('div');
+            el.className = 'card';
+            el.innerHTML = `
+                <div>
+                    <h3>${mName}</h3>
+                    <p><i class="fa-regular fa-user"></i> ${row.nama_pelaksana} • <i class="fa-regular fa-calendar"></i> ${row.tanggal}</p>
+                    ${badge}
+                </div>
+                <i class="fa-solid fa-chevron-right" style="color:var(--text-muted);"></i>
+            `;
+            el.onclick = () => openScanner(row.id, mCode, mName);
+            div.appendChild(el);
+        });
+    }
+
+    // 2. SCANNER
+    function openScanner(id, targetBarcode, targetName) {
+        currentReport = { id, targetBarcode };
+        showView('view-scan');
+        document.getElementById('target-machine').innerText = targetName;
+
+        // Aspect Ratio 1.0 for square fit in new UI
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 }, 
+            (decoded) => {
+                let code = decoded.trim();
+                if(code.includes('/')) code = code.split('/').pop().trim();
+                
+                if (code === targetBarcode) {
+                    if(navigator.vibrate) navigator.vibrate(50);
+                    html5QrCode.stop().then(() => openApproval(id));
+                } else {
+                    alert("⚠️ QR Code Salah! Mesin tidak cocok.");
+                }
+            }, 
+            (err) => {}
+        );
+    }
+
+    // 3. LOAD FORM DATA
+    async function openApproval(headerId) {
+        showView('view-approve');
+        setTimeout(resizeCanvas, 300);
+        
+        document.getElementById('nama_koordinator').value = '';
+        document.getElementById('catatan_koordinator').value = '';
+        document.getElementById('header-info').innerHTML = 'Loading...';
+        document.getElementById('table-body').innerHTML = '<tr><td>Loading...</td></tr>';
+
+        try {
+            // A. HEADER
+            const { data: header } = await _sb.from('pmi_header')
+                .select(`*, pmi_machines(nama_mesin)`)
+                .eq('id', headerId).single();
+
+            if(!header) throw new Error("Data header tidak ditemukan");
+
+            document.getElementById('header-info').innerHTML = `
+                <div class="info-row"><span class="info-label">MESIN</span><span class="info-val">${header.pmi_machines?.nama_mesin || '-'}</span></div>
+                <div class="info-row"><span class="info-label">TANGGAL</span><span class="info-val">${header.tanggal}</span></div>
+                <div class="info-row"><span class="info-label">PELAKSANA</span><span class="info-val">${header.nama_pelaksana}</span></div>
+                <div class="info-row"><span class="info-label">HM</span><span class="info-val">${header.running_hours}</span></div>
+            `;
+
+            // B. DETAILS
+            const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
+            const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
+            const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', headerId);
+
+            let resMap = {}; let noteMap = {};
+            if(results) {
+                results.forEach(r => {
+                    resMap[`${r.pmi_item_id}_${r.pmi_item_field_id}`] = r;
+                    if(r.keterangan) noteMap[r.pmi_item_id] = r.keterangan;
+                });
             }
-        }
 
-        function clearPad() {
-            if(signaturePad) signaturePad.clear();
-        }
+            // C. RENDER
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            let lastCat = '';
 
-        window.onload = () => {
-            loadList();
-            
-            const canvas = document.getElementById('sig-canvas');
-            signaturePad = new SignaturePad(canvas, { penColor: 'black' });
-            window.addEventListener("resize", resizeCanvas);
-        };
-
-        function showView(id) {
-            document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-        }
-
-        function goHome() {
-            if(html5QrCode) html5QrCode.stop().catch(()=>{});
-            showView('view-list');
-            loadList();
-        }
-
-        // 1. LOAD LIST
-        async function loadList() {
-            const div = document.getElementById('list-data');
-            div.innerHTML = '<div style="text-align:center; margin-top:20px;">Memuat data...</div>';
-
-            const { data, error } = await _sb.from('pmi_header')
-                .select(`id, tanggal, start_jam, nama_pelaksana, pmi_machines(nama_mesin, barcode), pmi_results(status)`)
-                .eq('status_verifikasi', 'Pending')
-                .order('created_at', { ascending: false });
-
-            if (error || !data || data.length === 0) {
-                div.innerHTML = '<div style="text-align:center; margin-top:40px; color:#666;">Tidak ada laporan pending.</div>';
-                return;
-            }
-
-            div.innerHTML = '';
-            data.forEach(row => {
-                let ngCount = row.pmi_results ? row.pmi_results.filter(r => r.status === 'NG').length : 0;
-                let badge = ngCount > 0 
-                    ? `<span class="status-badge bg-ng">⚠️ ADA ${ngCount} NG</span>` 
-                    : `<span class="status-badge bg-ok">✅ KONDISI OK</span>`;
-
-                let mName = row.pmi_machines ? row.pmi_machines.nama_mesin : 'Unknown';
-                let mCode = row.pmi_machines ? row.pmi_machines.barcode : '';
-
-                let el = document.createElement('div');
-                el.className = 'card';
-                el.innerHTML = `
-                    <div>
-                        <h3>${mName}</h3>
-                        <p>${row.nama_pelaksana} • ${row.tanggal}</p>
-                        ${badge}
-                    </div>
-                    <i class="fa-solid fa-chevron-right"></i>
-                `;
-                el.onclick = () => openScanner(row.id, mCode, mName);
-                div.appendChild(el);
-            });
-        }
-
-        // 2. SCANNER
-        function openScanner(id, targetBarcode, targetName) {
-            currentReport = { id, targetBarcode };
-            showView('view-scan');
-            document.getElementById('target-machine').innerText = "TARGET: " + targetName;
-
-            html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
-                (decoded) => {
-                    let code = decoded.trim();
-                    if(code.includes('/')) code = code.split('/').pop().trim();
-                    
-                    if (code === targetBarcode) {
-                        html5QrCode.stop().then(() => openApproval(id));
-                    } else {
-                        alert("QR Salah! Mesin tidak cocok.");
+            if(items) {
+                items.forEach(item => {
+                    if(item.kategori !== lastCat) {
+                        lastCat = item.kategori;
+                        tbody.innerHTML += `<tr class="cat-header"><td colspan="2">${lastCat}</td></tr>`;
                     }
-                }, 
-                (err) => {}
-            );
-        }
 
-        // 3. LOAD FORM DATA
-        async function openApproval(headerId) {
-            showView('view-approve');
-            setTimeout(resizeCanvas, 300);
-            
-            document.getElementById('nama_koordinator').value = '';
-            document.getElementById('catatan_koordinator').value = '';
-            document.getElementById('header-info').innerHTML = 'Loading...';
-            document.getElementById('table-body').innerHTML = '<tr><td>Loading...</td></tr>';
+                    const myFields = fields.filter(f => f.pmi_item_id === item.id);
+                    let html = `<tr class="item-row"><td>
+                        <span class="item-title">${item.nama_item}</span>
+                        <span class="item-std">${item.standard || ''}</span>
+                        <div class="grid-res">`;
 
-            try {
-                // A. HEADER
-                const { data: header } = await _sb.from('pmi_header')
-                    .select(`*, pmi_machines(nama_mesin)`)
-                    .eq('id', headerId).single();
+                    if(myFields.length > 0) {
+                        myFields.forEach(f => {
+                            let key = `${item.id}_${f.id}`;
+                            let res = resMap[key];
+                            let val = "-";
+                            let css = "";
 
-                if(!header) throw new Error("Data header tidak ditemukan");
-
-                document.getElementById('header-info').innerHTML = `
-                    <div class="info-row"><span class="info-label">MESIN</span><span class="info-val">${header.pmi_machines?.nama_mesin || '-'}</span></div>
-                    <div class="info-row"><span class="info-label">TANGGAL</span><span class="info-val">${header.tanggal}</span></div>
-                    <div class="info-row"><span class="info-label">PELAKSANA</span><span class="info-val">${header.nama_pelaksana}</span></div>
-                    <div class="info-row"><span class="info-label">HM</span><span class="info-val">${header.running_hours}</span></div>
-                `;
-
-                // B. DETAILS
-                const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
-                const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
-                const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', headerId);
-
-                let resMap = {}; let noteMap = {};
-                if(results) {
-                    results.forEach(r => {
-                        resMap[`${r.pmi_item_id}_${r.pmi_item_field_id}`] = r;
-                        if(r.keterangan) noteMap[r.pmi_item_id] = r.keterangan;
-                    });
-                }
-
-                // C. RENDER
-                const tbody = document.getElementById('table-body');
-                tbody.innerHTML = '';
-                let lastCat = '';
-
-                if(items) {
-                    items.forEach(item => {
-                        if(item.kategori !== lastCat) {
-                            lastCat = item.kategori;
-                            tbody.innerHTML += `<tr class="cat-header"><td colspan="2">${lastCat}</td></tr>`;
-                        }
-
-                        const myFields = fields.filter(f => f.pmi_item_id === item.id);
-                        let html = `<tr class="item-row"><td>
-                            <span class="item-title">${item.nama_item}</span>
-                            <span class="item-std">${item.standard || ''}</span>
-                            <div class="grid-res">`;
-
-                        if(myFields.length > 0) {
-                            myFields.forEach(f => {
-                                let key = `${item.id}_${f.id}`;
-                                let res = resMap[key];
-                                let val = "-";
-                                let css = "";
-
-                                if(res) {
-                                    if(f.tipe_input === 'radio_ok_ng') {
-                                        val = res.status || "-";
-                                        if(val === 'OK') css = 'val-ok';
-                                        if(val === 'NG') css = 'val-ng';
-                                    } else {
-                                        val = res.nilai_aktual || "-";
-                                    }
+                            if(res) {
+                                if(f.tipe_input === 'radio_ok_ng') {
+                                    val = res.status || "-";
+                                    if(val === 'OK') css = 'val-ok';
+                                    if(val === 'NG') css = 'val-ng';
+                                } else {
+                                    val = res.nilai_aktual || "-";
                                 }
-                                let label = f.label ? `<span class="res-label">${f.label}</span>` : '';
-                                html += `<div class="res-box">${label}<div class="res-val ${css}">${val}</div></div>`;
-                            });
-                        } else {
-                            html += `<div style="color:#aaa; font-size:10px;">(Tidak ada input)</div>`;
-                        }
+                            }
+                            let label = f.label ? `<span class="res-label">${f.label}</span>` : '';
+                            html += `<div class="res-box">${label}<span class="res-val ${css}">${val}</span></div>`;
+                        });
+                    } else {
+                        html += `<span style="color:#aaa; font-size:10px;">(Tidak ada input)</span>`;
+                    }
 
-                        html += `</div>`;
-                        if(noteMap[item.id]) html += `<div class="note-box">Catatan: ${noteMap[item.id]}</div>`;
-                        html += `</td></tr>`;
-                        tbody.innerHTML += html;
-                    });
-                }
-
-            } catch (err) {
-                alert("Gagal memuat data: " + err.message);
-                goHome();
+                    html += `</div>`;
+                    if(noteMap[item.id]) html += `<div class="note-box">Catatan: ${noteMap[item.id]}</div>`;
+                    html += `</td></tr>`;
+                    tbody.innerHTML += html;
+                });
             }
+
+        } catch (err) {
+            alert("Gagal memuat data: " + err.message);
+            goHome();
+        }
+    }
+
+    // 4. SUBMIT
+    async function submitData() {
+        const nama = document.getElementById('nama_koordinator').value.trim();
+        const note = document.getElementById('catatan_koordinator').value.trim();
+        const btn = document.getElementById('btn-submit');
+        
+        if (!currentReport || !currentReport.id) {
+            alert("ID Laporan hilang. Silakan scan ulang.");
+            goHome();
+            return;
         }
 
-        // 4. SUBMIT
-        async function submitData() {
-            const nama = document.getElementById('nama_koordinator').value.trim();
-            const note = document.getElementById('catatan_koordinator').value.trim();
-            const btn = document.getElementById('btn-submit');
-            
-            if (!currentReport || !currentReport.id) {
-                alert("ID Laporan hilang. Silakan scan ulang.");
-                goHome();
-                return;
-            }
+        if(!nama || signaturePad.isEmpty()) return alert("Wajib isi Nama & Paraf!");
+        if(!confirm("Verifikasi laporan ini?")) return;
 
-            if(!nama || signaturePad.isEmpty()) return alert("Wajib isi Nama & Paraf!");
-            if(!confirm("Verifikasi laporan ini?")) return;
+        const originalText = btn.innerText;
+        btn.innerText = "MENYIMPAN...";
+        btn.disabled = true;
 
-            const originalText = btn.innerText;
-            btn.innerText = "MENYIMPAN...";
-            btn.disabled = true;
+        try {
+            const { error } = await _sb.from('pmi_header').update({
+                nama_koordinator: nama,
+                catatan_koordinator: note,
+                signature_koordinator: signaturePad.toDataURL(),
+                status_verifikasi: 'Verified',
+                verified_at: new Date().toISOString()
+            }).eq('id', currentReport.id);
 
-            try {
-                const { error } = await _sb.from('pmi_header').update({
-                    nama_koordinator: nama,
-                    catatan_koordinator: note,
-                    signature_koordinator: signaturePad.toDataURL(),
-                    status_verifikasi: 'Verified',
-                    verified_at: new Date().toISOString()
-                }).eq('id', currentReport.id);
+            if(error) throw error;
 
-                if(error) throw error;
+            alert("✅ BERHASIL! Laporan Terverifikasi.");
+            goHome();
 
-                alert("✅ BERHASIL! Terverifikasi.");
-                goHome();
-
-            } catch (err) {
-                console.error(err);
-                alert("GAGAL MENYIMPAN: " + (err.message || "Periksa koneksi internet"));
-                btn.innerText = originalText;
-                btn.disabled = false;
-            }
+        } catch (err) {
+            console.error(err);
+            alert("GAGAL MENYIMPAN: " + (err.message || "Periksa koneksi internet"));
+            btn.innerText = originalText;
+            btn.disabled = false;
         }
-    </script>
+    }
+</script>
 </body>
 </html>
