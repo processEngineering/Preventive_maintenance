@@ -3,97 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daftar Akun Debug Mode</title>
+    <title>TEST REGISTER DIAGNOSTIK</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: 0 auto; }
-        input { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: black; color: white; border: none; font-weight: bold; cursor: pointer; }
-        #status { margin-top: 10px; font-weight: bold; color: blue; }
-        .error { color: red; }
-        .success { color: green; }
+        body { font-family: monospace; padding: 20px; background: #f0f0f0; }
+        input { display: block; width: 100%; padding: 10px; margin-bottom: 10px; }
+        button { padding: 15px; width: 100%; background: blue; color: white; font-weight: bold; border: none; cursor: pointer; }
+        
+        /* KOTAK LOG */
+        #log-box {
+            background: black; color: #00ff00; padding: 15px; margin-top: 20px;
+            height: 300px; overflow-y: scroll; border-radius: 8px; white-space: pre-wrap;
+        }
+        .error-text { color: red; font-weight: bold; }
+        .success-text { color: cyan; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h2>Daftar Akun (Mode Debug)</h2>
-    <input type="text" id="fullname" placeholder="Nama Lengkap" required>
-    <input type="text" id="divisi" placeholder="Divisi" required>
-    <input type="text" id="jabatan" placeholder="Jabatan" required>
-    <input type="email" id="email" placeholder="Email" required>
-    <input type="password" id="password" placeholder="Password" required>
+    <h2>FORM TEST (DIAGNOSTIK)</h2>
+    <p>Isi form ini. Kita akan lihat errornya dimana.</p>
     
-    <button id="btnSubmit">DAFTAR SEKARANG</button>
-    <div id="status"></div>
+    <input type="email" id="email" placeholder="Email Baru (JANGAN PAKAI YG LAMA)" required>
+    <input type="password" id="password" placeholder="Password (min 6 karakter)" required>
+    <input type="text" id="fullname" placeholder="Nama Lengkap" value="Tes User">
+    <input type="text" id="divisi" placeholder="Divisi" value="Maintenance">
+    <input type="text" id="jabatan" placeholder="Jabatan" value="Staff">
+    
+    <button id="btnTest">MULAI TEST DAFTAR</button>
+
+    <h3>LOG SISTEM (BACA DISINI):</h3>
+    <div id="log-box">Menunggu input...</div>
 
     <script>
-        // GANTI DENGAN URL & KEY KAMU
+        // --- KONFIGURASI ---
         const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const logBox = document.getElementById('log-box');
 
-        const btn = document.getElementById('btnSubmit');
-        const status = document.getElementById('status');
+        function log(msg, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            let color = type === 'error' ? 'red' : (type === 'success' ? 'cyan' : '#00ff00');
+            logBox.innerHTML += `<span style="color:${color}">[${time}] ${msg}</span>\n`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
 
-        btn.addEventListener('click', async () => {
+        document.getElementById('btnTest').addEventListener('click', async () => {
+            logBox.innerHTML = ""; // Reset Log
+            log("1. Memulai Proses Pendaftaran...", 'info');
+
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const fullname = document.getElementById('fullname').value;
             const divisi = document.getElementById('divisi').value;
             const jabatan = document.getElementById('jabatan').value;
 
-            if(!email || !password) { alert("Isi semua data!"); return; }
+            if(!email || !password) { log("ERROR: Email/Password kosong!", 'error'); return; }
 
-            status.textContent = "1. Mendaftarkan Email...";
-            status.className = "";
-            btn.disabled = true;
-
-            // 1. DAFTAR AUTH
+            // STEP 1: AUTH
+            log("2. Mengirim data ke Authentication Supabase...", 'info');
+            
             const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: email,
-                password: password
+                email: email, password: password
             });
 
             if (authError) {
-                status.textContent = "GAGAL AUTH: " + authError.message;
-                status.className = "error";
-                btn.disabled = false;
+                log("GAGAL AUTH: " + authError.message, 'error');
                 return;
             }
 
             if (!authData.user) {
-                status.textContent = "User tidak terbentuk (mungkin konfirmasi email aktif?)";
-                btn.disabled = false;
+                log("WARNING: User objek kosong. Cek email kamu untuk konfirmasi?", 'error');
                 return;
             }
 
-            // 2. SIMPAN PROFIL
-            status.textContent = "2. Menyimpan Profil ke Database...";
-            
+            log("3. Auth Sukses! User ID: " + authData.user.id, 'success');
+
+            // STEP 2: INSERT DATABASE
+            log("4. Mencoba menyimpan data ke Tabel Profiles...", 'info');
+
+            // Kita pakai insert manual
             const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
                 .insert([
                     {
-                        id: authData.user.id, // ID dari Auth
+                        id: authData.user.id,
                         full_name: fullname,
                         divisi: divisi,
                         jabatan: jabatan
                     }
                 ])
-                .select(); // Minta balikan data untuk konfirmasi
+                .select();
 
             if (profileError) {
-                console.error("ERROR PROFIL:", profileError); // Cek Console Browser (F12) jika ini muncul
-                status.textContent = "GAGAL SIMPAN PROFIL: " + profileError.message + " (Code: " + profileError.code + ")";
-                status.className = "error";
-                alert("Auth berhasil tapi Profil GAGAL: " + profileError.message);
-                btn.disabled = false;
+                log("GAGAL INSERT DB: " + profileError.message, 'error');
+                log("Detail Error: " + JSON.stringify(profileError), 'error');
+                log("HINT: Cek apakah SQL langkah 1 sudah dijalankan?", 'info');
             } else {
-                status.textContent = "SUKSES SEMUA! Mengalihkan...";
-                status.className = "success";
-                alert("Berhasil! Data tersimpan.");
-                window.location.href = 'index.html';
+                log("5. INSERT SUKSES! DATA TERSIMPAN.", 'success');
+                log("Data: " + JSON.stringify(profileData), 'success');
+                alert("BERHASIL! Sekarang coba login di index.html");
+                
+                // Redirect otomatis setelah 2 detik
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
             }
         });
     </script>
