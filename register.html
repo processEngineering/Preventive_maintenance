@@ -11,7 +11,6 @@
         body { font-family: sans-serif; padding: 20px; text-align: center; max-width: 500px; margin: 0 auto; }
         input { width: 100%; padding: 15px; margin-bottom: 10px; border: 2px solid #000; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
         
-        /* Tombol Besar & Jelas */
         button { 
             width: 100%; padding: 20px; background: #DC2626; color: white; 
             font-weight: bold; font-size: 18px; border: none; border-radius: 10px; 
@@ -19,13 +18,11 @@
         }
         button:active { transform: scale(0.98); }
         
-        /* Kotak Status Error/Sukses */
         #status-box { 
             margin-top: 20px; padding: 15px; border: 2px dashed #333; 
             background: #f0f0f0; text-align: left; font-family: monospace; 
             min-height: 100px; word-wrap: break-word;
         }
-        .step { margin-bottom: 5px; border-bottom: 1px solid #ddd; padding-bottom: 2px; }
         .ok { color: green; font-weight: bold; }
         .fail { color: red; font-weight: bold; }
         .info { color: blue; font-weight: bold; }
@@ -49,13 +46,11 @@
 
     <script>
         // --- 1. KONFIGURASI SUPABASE ---
-        // Ganti URL dan KEY ini sesuai project Anda jika berubah
         const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         
-        // Cek apakah library Supabase terload
         if (typeof supabase === 'undefined') {
-            document.getElementById('status-box').innerHTML = "<h3 class='fail'>ERROR:</h3>Internet bermasalah. Script Supabase tidak bisa dimuat.";
+            document.getElementById('status-box').innerHTML = "<h3 class='fail'>ERROR:</h3>Script Supabase Gagal Load.";
             throw new Error("Supabase missing");
         }
 
@@ -66,33 +61,23 @@
             const btn = document.getElementById('btnDaftar');
             const statusBox = document.getElementById('status-box');
             
-            // Ambil Nilai Input
+            // Ambil Input
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value.trim();
             const fullname = document.getElementById('fullname').value.trim();
             const divisi = document.getElementById('divisi').value.trim();
             const jabatan = document.getElementById('jabatan').value.trim();
 
-            // Validasi Input
-            if(!email || !password || !fullname) {
-                alert("Mohon isi Nama, Email, dan Password!");
-                return;
-            }
-            if(password.length < 6) {
-                alert("Password minimal 6 karakter!");
-                return;
-            }
+            if(!email || !password || !fullname) { alert("Isi semua data!"); return; }
+            if(password.length < 6) { alert("Password minimal 6 karakter!"); return; }
 
-            // Mulai UI Loading
             btn.disabled = true;
             btn.innerText = "SEDANG MEMPROSES...";
             statusBox.innerHTML = "<div>1. Memulai pendaftaran... <span class='ok'>OK</span></div>";
 
             try {
-                // STEP A: DAFTAR AUTH (Sign Up)
-                statusBox.innerHTML += "<div>2. Mendaftarkan Email ke Server... (Tunggu)</div>";
-                
-                // Kirim data tambahan (metadata) langsung saat SignUp agar aman
+                // STEP A: SIGN UP
+                // Kita kirim data profil langsung di metadata biar aman
                 const { data: authData, error: authError } = await client.auth.signUp({
                     email: email, 
                     password: password,
@@ -105,54 +90,41 @@
                     }
                 });
 
-                if (authError) {
-                    throw new Error("GAGAL AUTH: " + authError.message);
-                }
+                if (authError) throw new Error(authError.message);
 
-                // STEP B: CEK STATUS VERIFIKASI EMAIL
-                // Jika user terbentuk TAPI session null, artinya butuh verifikasi email
+                // --- LOGIKA UTAMA DIPERBAIKI DISINI ---
+
+                // KONDISI 1: User terbentuk, Session NULL (Berarti setting 'Confirm Email' Supabase SUDAH ON)
+                // Ini kondisi ideal yang kita mau.
                 if (authData.user && !authData.session) {
-                    statusBox.innerHTML += "<div class='info'>3. PENDAFTARAN BERHASIL! TAPI BELUM AKTIF.</div>";
-                    statusBox.innerHTML += "<div class='ok' style='margin-top:10px; border:2px solid green; padding:5px;'>SILAKAN CEK EMAIL ANDA SEKARANG!<br>Link verifikasi telah dikirim ke: <b>" + email + "</b></div>";
-                    
-                    alert("PENDAFTARAN SUKSES!\n\nKami telah mengirim link konfirmasi ke email Anda.\nSilakan BUKA EMAIL (Cek Inbox/Spam) dan KLIK link tersebut untuk Login.");
-                    
-                    // Arahkan ke halaman login (atau biarkan di sini)
-                    // window.location.href = 'index.html'; 
-                    btn.innerText = "CEK EMAIL ANDA";
-                    return; // Stop di sini, tidak perlu insert profile manual (biar trigger backend yang handle atau insert nanti)
+                    statusBox.innerHTML += "<div class='ok'>2. Sukses! Email verifikasi terkirim.</div>";
+                    alert("PENDAFTARAN BERHASIL!\n\nSilakan CEK EMAIL Anda untuk verifikasi, lalu Login kembali.");
+                    window.location.href = 'index.html'; // Kembali ke Login
                 } 
                 
-                // Jika setting 'Confirm Email' di Supabase MATI (Off), kode ini akan jalan:
+                // KONDISI 2: User terbentuk, Session ADA (Berarti setting 'Confirm Email' Supabase MASIH OFF/ERROR)
+                // Di kode lama, ini langsung masuk Home. Di sini KITA CEGAH.
                 else if (authData.user && authData.session) {
-                    // STEP C: SIMPAN KE TABEL PROFILES (Jika Auto Confirm)
-                    statusBox.innerHTML += "<div>3. Email otomatis aktif (Tanpa Verifikasi). Menyimpan data...</div>";
                     
-                    const { error: dbError } = await client
-                        .from('profiles')
-                        .insert([{ 
-                            id: authData.user.id, 
-                            full_name: fullname, 
-                            divisi: divisi, 
-                            jabatan: jabatan 
-                        }]);
+                    // 1. Simpan data profil ke tabel (jaga-jaga trigger belum jalan)
+                    await client.from('profiles').insert([{ 
+                        id: authData.user.id, full_name: fullname, divisi: divisi, jabatan: jabatan 
+                    }]);
 
-                    if (dbError) {
-                        console.error(dbError); // Log error tapi jangan hentikan flow login jika auth sukses
-                        statusBox.innerHTML += "<div class='fail'>Warning: Gagal simpan detail profil, tapi akun aktif.</div>";
-                    } else {
-                        statusBox.innerHTML += "<div class='ok'>4. Profil Tersimpan!</div>";
-                    }
+                    // 2. PAKSA LOGOUT (Supaya user tidak langsung masuk)
+                    await client.auth.signOut();
 
-                    alert("AKUN AKTIF! Anda akan diarahkan ke Menu Utama.");
-                    window.location.href = 'home_akg.html';
+                    statusBox.innerHTML += "<div class='info'>2. Akun dibuat. Silakan Login manual.</div>";
+                    alert("PENDAFTARAN BERHASIL!\nSilakan Login menggunakan email dan password Anda.");
+                    
+                    // 3. Lempar ke halaman Login
+                    window.location.href = 'index.html';
                 }
 
             } catch (err) {
-                // TANGKAP ERROR
                 console.error(err);
-                statusBox.innerHTML += "<div class='fail' style='margin-top:10px;'>ERROR FATAL: " + err.message + "</div>";
-                alert("TERJADI KESALAHAN:\n" + err.message);
+                statusBox.innerHTML += "<div class='fail'>ERROR: " + err.message + "</div>";
+                alert("GAGAL: " + err.message);
                 btn.disabled = false;
                 btn.innerText = "COBA LAGI";
             }
