@@ -7,7 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* Style sama seperti sebelumnya */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
         body { background-color: #ffffff; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px; }
         .header { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
@@ -64,19 +63,42 @@
             const divisi = document.getElementById('divisi').value;
             const jabatan = document.getElementById('jabatan').value;
 
-            const { data, error } = await supabase.auth.signUp({
-                email: email, password: password,
-                options: { data: { full_name: fullname, divisi: divisi, jabatan: jabatan } }
+            // 1. DAFTAR AKUN (AUTH)
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: email, password: password
             });
 
-            if (error) {
-                alertMsg.textContent = error.message;
+            if (authError) {
+                alertMsg.textContent = "Error Daftar: " + authError.message;
                 alertMsg.style.display = 'block';
                 btnSubmit.textContent = "Mulai";
                 btnSubmit.disabled = false;
-            } else {
-                alert("Pendaftaran Berhasil! Silakan Login.");
-                window.location.href = 'index.html'; // Balik ke Login
+                return;
+            }
+
+            // 2. SIMPAN PROFIL SECARA MANUAL (DATABASE)
+            if (authData.user) {
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .insert([
+                        { 
+                            id: authData.user.id, 
+                            full_name: fullname, 
+                            divisi: divisi, 
+                            jabatan: jabatan 
+                        }
+                    ]);
+
+                if (profileError) {
+                    console.error("Gagal simpan profil:", profileError);
+                    alertMsg.textContent = "Akun dibuat, tapi gagal simpan profil: " + profileError.message;
+                    alertMsg.style.display = 'block';
+                    btnSubmit.textContent = "Mulai";
+                    btnSubmit.disabled = false;
+                } else {
+                    alert("Pendaftaran SUKSES! Data tersimpan.");
+                    window.location.href = 'index.html';
+                }
             }
         });
     </script>
