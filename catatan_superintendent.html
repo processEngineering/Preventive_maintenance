@@ -3,218 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catatan Superintendent</title>
+    <title>Hasil Review Superintendent</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
-        /* --- STYLE GLOBAL --- */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-        
-        body { 
-            background-color: #fff; 
-            padding-bottom: 90px; 
-            color: black;
-        }
+        body { background-color: #f0f2f5; padding-bottom: 90px; color: black; }
 
-        /* HEADER JUDUL */
         .header-pill {
-            margin: 40px auto 30px auto;
-            text-align: center;
-            border: 1px solid black;
-            border-radius: 50px;
-            padding: 15px 40px;
-            width: fit-content;
-            font-weight: 700;
-            font-size: 16px;
-            background: white;
-            position: relative;
+            background: #000; color: #fff; margin: 30px auto; text-align: center;
+            border-radius: 50px; padding: 15px 40px; width: fit-content;
+            font-weight: 700; font-size: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
-
-        /* IKON ARSIP */
-        .archive-icon-btn {
-            position: absolute; top: 25px; right: 25px;
-            font-size: 28px; cursor: pointer; color: black; z-index: 10;
-        }
-        .archive-badge { font-size: 10px; font-weight: bold; text-align: center; display: block; margin-top: -5px; }
 
         .container { padding: 20px; max-width: 500px; margin: 0 auto; }
 
-        /* --- KARTU LIST --- */
-        .inbox-card {
-            background: white;
-            border: 3px solid black;
-            border-radius: 20px;
-            margin-bottom: 25px;
-            padding: 0;
-            box-shadow: 8px 8px 0px #000;
-            position: relative;
-            cursor: pointer;
-            overflow: hidden;
-            transition: 0.1s;
-        }
-        .inbox-card:active { transform: translate(2px, 2px); box-shadow: 4px 4px 0px #000; }
-
-        .inbox-card.archived {
-            background: #f0f0f0; /* Pembeda Warna Arsip */
-            border-color: #555;
-            box-shadow: 4px 4px 0px #555;
+        /* KARTU HASIL REVIEW */
+        .result-card {
+            background: white; border-left: 5px solid #22c55e; /* Hijau tanda sukses */
+            border-radius: 15px; margin-bottom: 20px; padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative;
         }
 
-        .card-header-badge {
-            background: white; border-bottom: 3px solid black; padding: 8px 20px;
-            font-weight: 700; font-size: 13px; display: inline-block;
-            border-right: 3px solid black; border-bottom-right-radius: 15px;
-        }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .card-title { font-weight: 800; font-size: 14px; text-transform: uppercase; color: #333; }
+        .date-badge { background: #eee; padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 600; }
 
-        .card-body { padding: 20px; display: flex; justify-content: space-between; align-items: flex-start; }
+        .card-content { font-size: 13px; color: #555; line-height: 1.6; }
+        .mesin-info { font-weight: 700; color: #000; display: block; margin-bottom: 5px; }
+
+        /* KOTAK CATATAN SUPERINTENDENT (HIGHLIGHT) */
+        .super-feedback {
+            margin-top: 15px; background: #fff8f8; 
+            border: 1px dashed #DC2626; border-radius: 10px; padding: 12px;
+        }
+        .feedback-label { color: #DC2626; font-size: 11px; font-weight: 800; display: block; margin-bottom: 3px; }
+        .feedback-text { color: #333; font-size: 13px; font-style: italic; font-weight: 600; }
+
+        .loading-text { text-align: center; margin-top: 50px; color: gray; font-style: italic; }
         
-        .info-lines { font-size: 13px; line-height: 1.6; font-style: italic; width: 85%; }
-        .info-lines span { font-weight: 700; font-style: normal; }
-        
-        .arrow-icon { font-size: 24px; font-weight: 900; margin-top: 10px; }
-
-        /* Tampilan Khusus Arsip */
-        .super-note-display {
-            margin-top: 10px; padding-top: 10px; border-top: 1px dashed #999;
-            color: #DC2626; font-weight: bold; font-size: 12px;
-        }
-        .delete-btn {
-            position: absolute; bottom: 15px; right: 15px;
-            background: white; border: 2px solid red; color: red;
-            width: 40px; height: 40px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 20; /* Lebih tinggi biar bisa diklik terpisah */
-            box-shadow: 2px 2px 0px #ddd;
-        }
-
-        /* --- HALAMAN DETAIL (OVERLAY) --- */
-        #detail-view, #archive-list-view {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
-            background: white; z-index: 50; overflow-y: auto; padding: 20px;
-        }
-
-        .back-icon { position: absolute; top: 20px; left: 20px; font-size: 24px; cursor: pointer; }
-
-        /* DETAIL BLOCKS */
-        .detail-block {
-            text-align: left; margin-bottom: 20px; border: 2px solid black;
-            border-radius: 15px; padding: 15px; box-shadow: 4px 4px 0px #ddd;
-        }
-        .block-title { font-weight: 800; font-size: 14px; text-decoration: underline; margin-bottom: 8px; }
-        .block-content { font-size: 13px; line-height: 1.5; }
-        .block-label { font-size: 11px; color: #666; font-weight: 600; }
-
-        /* INPUT SUPERINTENDENT */
-        .super-section {
-            text-align: center; margin-top: 30px; padding: 20px;
-            border: 3px solid black; border-radius: 20px; box-shadow: 6px 6px 0px #000;
-        }
-        .super-input {
-            border: none; border-bottom: 3px solid black; width: 80%;
-            text-align: center; font-weight: 700; font-size: 16px; padding: 5px; margin-top: 10px;
-            outline: none; background: transparent;
-        }
-        .super-input:focus { border-color: #DC2626; color: #DC2626; }
-        .super-input:disabled { border-bottom: 1px dashed gray; color: #555; background: #eee; }
-
-        .btn-arsip {
-            background: black; color: white; border: none; border-radius: 15px;
-            padding: 15px; width: 100%; font-weight: 700; margin-top: 20px;
-            cursor: pointer; font-size: 14px; box-shadow: 4px 4px 0px #555;
-        }
-        .btn-arsip.readonly-mode {
-            background: #ccc; color: #333; box-shadow: none; cursor: default;
-        }
-
         /* MENU BAWAH */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
-            background: white; border-top: 2px solid #eee;
-            display: flex; justify-content: space-around; padding: 20px 0; z-index: 99;
+            background: white; border-top: 1px solid #ddd;
+            display: flex; justify-content: space-around; padding: 15px 0; z-index: 99;
         }
-        .nav-item { font-size: 24px; color: black; cursor: pointer; }
-
-        .loading-text { text-align: center; margin-top: 50px; color: gray; font-style: italic; }
+        .nav-item { font-size: 24px; color: #999; cursor: pointer; }
+        .nav-item.active { color: #000; }
     </style>
 </head>
 <body>
 
-    <div id="main-view">
-        <div class="archive-icon-btn" onclick="bukaHalamanArsip()">
-            <i class="fa fa-folder-open"></i>
-            <span class="archive-badge">Arsip</span>
-        </div>
-        <div class="header-pill">Tugas Masuk</div>
-        <div class="container" id="inbox-container">
-            <div class="loading-text">Memuat tugas pending...</div>
-        </div>
-    </div>
+    <div class="header-pill">Feedback Superintendent</div>
 
-    <div id="archive-list-view">
-        <div class="back-icon" onclick="tutupArsip()"><i class="fa fa-arrow-left"></i></div>
-        <div class="header-pill">Arsip Laporan</div>
-        <div class="container" id="archive-container"></div>
-    </div>
-
-    <div id="detail-view">
-        <div class="back-icon" onclick="tutupDetail()"><i class="fa fa-times"></i></div>
-        
-        <div class="header-pill" style="margin-top: 10px;">Review Laporan</div>
-
-        <div style="max-width: 500px; margin: 0 auto;">
-            
-            <div class="detail-block" style="background: #eeffff; border-color: teal;">
-                <div class="block-title">DATA MESIN & TANGGAL</div>
-                <div class="block-content">
-                    <span class="block-label">JENIS LAPORAN:</span><br>
-                    <strong id="d-judul">...</strong><br><br>
-                    <span class="block-label">MESIN:</span><br>
-                    <strong id="d-mesin">...</strong><br>
-                    <span class="block-label">TANGGAL LAPORAN:</span><br>
-                    <strong id="d-tanggal">...</strong>
-                </div>
-            </div>
-
-            <div class="detail-block">
-                <div class="block-title">PELAKSANA (TEKNISI)</div>
-                <div class="block-content">
-                    <span class="block-label">NAMA:</span><br>
-                    <strong id="d-pelaksana">...</strong><br><br>
-                    <span class="block-label">CATATAN PELAKSANA:</span><br>
-                    <i id="d-catatan-pelaksana">...</i>
-                </div>
-            </div>
-
-            <div class="detail-block">
-                <div class="block-title">KOORDINATOR</div>
-                <div class="block-content">
-                    <span class="block-label">DIPERIKSA OLEH:</span><br>
-                    <strong id="d-koordinator">...</strong><br><br>
-                    <span class="block-label">CATATAN KOORDINATOR:</span><br>
-                    <i id="d-catatan-koordinator">...</i>
-                </div>
-            </div>
-
-            <div class="super-section">
-                <div style="font-size: 12px; font-weight: bold;">KEPUTUSAN ANDA:</div>
-                
-                <input type="text" id="d-super-note" class="super-input" placeholder="Tulis catatan persetujuan...">
-                
-                <button class="btn-arsip" id="btn-submit-super" onclick="prosesArsip()">
-                    <i class="fa fa-check-circle"></i> SETUJUI & ARSIPKAN
-                </button>
-            </div>
-
-        </div>
+    <div class="container" id="feedback-container">
+        <div class="loading-text">Memuat balasan dari bos...</div>
     </div>
 
     <div class="bottom-nav">
         <div class="nav-item" onclick="window.location.href='home_akg.html'"><i class="fa fa-home"></i></div>
-        <div class="nav-item"><i class="fa fa-bars"></i></div>
-        <div class="nav-item"><i class="fa fa-download"></i></div>
-        <div class="nav-item"><i class="fa fa-user-circle"></i></div>
+        <div class="nav-item active"><i class="fa fa-envelope-open-text"></i></div> <div class="nav-item"><i class="fa fa-clipboard-list"></i></div>
+        <div class="nav-item"><i class="fa fa-user"></i></div>
     </div>
 
     <script>
@@ -222,226 +73,83 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let inboxData = [];
-        let archiveData = [];
-        let activeItem = null;
-
-        // --- FETCH INBOX ---
-        async function fetchInbox() {
-            const container = document.getElementById('inbox-container');
-            container.innerHTML = '<div class="loading-text">Memeriksa tugas...</div>';
-            inboxData = [];
-
-            try {
-                let { data: chslr } = await client.from('chslr_log').select('*').eq('status_verifikasi', true).eq('status_final', false);
-                let { data: clhmi } = await client.from('clhmi').select('*').neq('approved_by', null).is('verified_by', null);
-                let { data: pmi } = await client.from('pmi_header').select('*').neq('status_verifikasi', 'Pending').is('signature_superintendent', null);
-                let { data: prslb } = await client.from('prslb_log').select('*').eq('status_verifikasi', true).eq('status_final', false);
-
-                if(chslr) chslr.forEach(item => inboxData.push(mapData(item, 'chslr')));
-                if(clhmi) clhmi.forEach(item => inboxData.push(mapData(item, 'clhmi')));
-                if(pmi) pmi.forEach(item => inboxData.push(mapData(item, 'pmi')));
-                if(prslb) prslb.forEach(item => inboxData.push(mapData(item, 'prslb')));
-
-                renderList(container, inboxData, false);
-            } catch (err) { console.error(err); }
-        }
-
-        // --- FETCH ARSIP ---
-        async function fetchArsip() {
-            const container = document.getElementById('archive-container');
-            container.innerHTML = '<div class="loading-text">Memuat arsip...</div>';
-            archiveData = [];
-
-            try {
-                let { data: chslr } = await client.from('chslr_log').select('*').eq('status_final', true).limit(20);
-                let { data: clhmi } = await client.from('clhmi').select('*').not('verified_by', 'is', null).limit(20);
-                let { data: pmi } = await client.from('pmi_header').select('*').not('signature_superintendent', 'is', null).limit(20);
-                let { data: prslb } = await client.from('prslb_log').select('*').eq('status_final', true).limit(20);
-
-                if(chslr) chslr.forEach(item => archiveData.push(mapData(item, 'chslr')));
-                if(clhmi) clhmi.forEach(item => archiveData.push(mapData(item, 'clhmi')));
-                if(pmi) pmi.forEach(item => archiveData.push(mapData(item, 'pmi')));
-                if(prslb) prslb.forEach(item => archiveData.push(mapData(item, 'prslb')));
-
-                renderList(container, archiveData, true);
-            } catch (err) { console.error(err); }
-        }
-
-        function mapData(item, type) {
-            let title = "", mesin = "", pelaksana = "", notePel = "-", koord = "", noteKoord = "-", noteSuper = "-";
+        async function fetchFeedback() {
+            const container = document.getElementById('feedback-container');
+            container.innerHTML = '<div class="loading-text">Memuat balasan dari bos...</div>';
             
-            if (type === 'chslr') {
-                title = "Checklist Standlabel & Robot";
-                mesin = item.mesin_id || "Standlabel/Robot";
-                pelaksana = (item.pelaksana_names || []).join(', ') || "Tim Pelaksana";
-                notePel = item.catatan_pelaksana || "-";
-                koord = item.koordinator_nama;
-                noteKoord = item.remark_koordinator;
-                noteSuper = item.remark_superintendent;
-            } 
-            else if (type === 'clhmi') {
-                title = "Checklist Harian Injection";
-                mesin = (item.merk_mesin || "") + " " + (item.tonage || ""); 
-                pelaksana = item.pelaksana;
-                koord = item.approved_by;
-                noteKoord = item.catatan_umum || "-";
-                noteSuper = item.catatan_super;
-            }
-            else if (type === 'pmi') {
-                title = "Preventif Injection (Clamping)";
-                mesin = "ID Mesin: " + item.machine_id; 
-                pelaksana = item.nama_pelaksana;
-                notePel = item.catatan_pelaksana;
-                koord = item.nama_koordinator;
-                noteKoord = item.catatan_koordinator;
-                noteSuper = item.catatan_superintendent;
-            }
-            else if (type === 'prslb') {
-                title = "Preventif Robot & Standlabel";
-                mesin = item.mesin_id;
-                pelaksana = item.pelaksana_nama;
-                koord = item.koordinator_nama;
-                noteKoord = item.koordinator_note;
-                noteSuper = item.superintendent_note;
-            }
+            let allData = [];
 
+            try {
+                // 1. AMBIL DATA YANG SUDAH FINAL (Status = True / Verified)
+                // Kita ambil 10 data terakhir saja biar tidak berat
+                
+                let { data: chslr } = await client.from('chslr_log').select('*').eq('status_final', true).order('created_at', {ascending: false}).limit(5);
+                let { data: clhmi } = await client.from('clhmi').select('*').not('verified_by', 'is', null).order('tanggal_isi', {ascending: false}).limit(5);
+                let { data: pmi } = await client.from('pmi_header').select('*').not('signature_superintendent', 'is', null).order('tanggal', {ascending: false}).limit(5);
+                let { data: prslb } = await client.from('prslb_log').select('*').eq('status_final', true).order('created_at', {ascending: false}).limit(5);
+
+                // Mapping Data
+                if(chslr) chslr.forEach(item => allData.push(mapData(item, 'Checklist Robot', item.created_at, item.remark_superintendent)));
+                if(clhmi) clhmi.forEach(item => allData.push(mapData(item, 'Checklist Injection', item.tanggal_isi, item.catatan_super)));
+                if(pmi) pmi.forEach(item => allData.push(mapData(item, 'Preventif Clamping', item.tanggal, item.catatan_superintendent)));
+                if(prslb) prslb.forEach(item => allData.push(mapData(item, 'Preventif Robot', item.created_at, item.superintendent_note)));
+
+                renderList(container, allData);
+
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = '<div class="loading-text">Gagal memuat data.</div>';
+            }
+        }
+
+        function mapData(item, title, dateRaw, superNote) {
             return {
                 id: item.id,
-                rawDate: item.created_at || item.tanggal_isi || item.tanggal, 
-                type: type, title: title, mesin: mesin,
-                pelaksana: pelaksana || "Operator", notePel: notePel || "Tidak ada catatan",
-                koord: koord || "Koordinator", noteKoord: noteKoord || "Aman",
-                noteSuper: noteSuper || "",
-                tableName: type === 'chslr' ? 'chslr_log' : type === 'clhmi' ? 'clhmi' : type === 'pmi' ? 'pmi_header' : 'prslb_log'
+                title: title,
+                date: dateRaw,
+                superNote: superNote || "Disetujui (Tanpa Catatan)",
+                mesin: item.mesin_id || item.merk_mesin || item.machine_id || "Mesin Umum"
             };
         }
 
-        function renderList(container, data, isArchive) {
+        function renderList(container, data) {
             container.innerHTML = '';
             if (data.length === 0) {
-                container.innerHTML = `<div class="loading-text">${isArchive ? 'Arsip kosong.' : 'Semua pekerjaan beres! 👍'}</div>`;
+                container.innerHTML = `
+                    <div style="text-align:center; margin-top:50px;">
+                        <img src="https://img.icons8.com/ios/100/cccccc/empty-box.png" width="80"><br><br>
+                        Belum ada balasan dari Superintendent.
+                    </div>`;
                 return;
             }
-            data.sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
 
-            data.forEach((item, index) => {
-                let tgl = new Date(item.rawDate).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'});
-                
-                // --- PERUBAHAN UTAMA DISINI ---
-                // Baik INBOX maupun ARSIP, keduanya bisa diklik (bukaDetail)
-                // Kita kirim parameter 'true' jika ini adalah Arsip
-                let clickAction = `onclick="bukaDetail(${index}, ${isArchive})"`
-                
-                let deleteBtn = '';
-                if (isArchive) {
-                    // Tombol hapus dipisah agar tidak memicu clickAction kartu
-                    deleteBtn = `
-                        <div class="delete-btn" onclick="event.stopPropagation(); hapusArsip('${item.id}', '${item.tableName}')">
-                            <i class="fa fa-trash"></i>
-                        </div>
-                    `;
-                }
+            // Urutkan dari yang terbaru disetujui
+            data.sort((a, b) => new Date(b.date) - new Date(a.date));
 
+            data.forEach(item => {
+                let tgl = new Date(item.date).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'});
+                
                 let html = `
-                <div class="inbox-card ${isArchive ? 'archived' : ''}" ${clickAction}>
-                    <div class="card-header-badge">${item.title}</div>
-                    <div class="card-body">
-                        <div class="info-lines">
-                            <span>📅 ${tgl}</span><br>
-                            <span>⚙️ ${item.mesin}</span><br>
-                            👤 Koord: ${item.noteKoord}
-                            ${isArchive ? `<br><span style="color:#DC2626">📝 Catatan Anda: "${item.noteSuper}"</span>` : ''}
+                <div class="result-card">
+                    <div class="card-header">
+                        <span class="card-title">${item.title}</span>
+                        <span class="date-badge">${tgl}</span>
+                    </div>
+                    <div class="card-content">
+                        <span class="mesin-info">⚙️ ${item.mesin}</span>
+                        Status: <span style="color:green; font-weight:bold;">DISETUJUI (FINAL)</span>
+                        
+                        <div class="super-feedback">
+                            <span class="feedback-label">💬 CATATAN SUPERINTENDENT:</span>
+                            <span class="feedback-text">"${item.superNote}"</span>
                         </div>
-                        <div class="arrow-icon"><i class="fa fa-arrow-right"></i></div>
-                        ${deleteBtn}
                     </div>
                 </div>`;
                 container.innerHTML += html;
             });
         }
 
-        // --- BUKA DETAIL (MODE INPUT vs MODE BACA) ---
-        function bukaDetail(index, isReadOnly = false) {
-            // Tentukan sumber data (Inbox atau Arsip)
-            activeItem = isReadOnly ? archiveData[index] : inboxData[index];
-            
-            // Isi Data ke Overlay Detail
-            document.getElementById('d-judul').innerText = activeItem.title;
-            document.getElementById('d-mesin').innerText = activeItem.mesin;
-            document.getElementById('d-tanggal').innerText = new Date(activeItem.rawDate).toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
-            
-            document.getElementById('d-pelaksana').innerText = activeItem.pelaksana;
-            document.getElementById('d-catatan-pelaksana').innerText = `"${activeItem.notePel}"`;
-            
-            document.getElementById('d-koordinator').innerText = activeItem.koord;
-            document.getElementById('d-catatan-koordinator').innerText = `"${activeItem.noteKoord}"`;
-
-            // ATUR INPUT & TOMBOL SESUAI MODE
-            const inputField = document.getElementById('d-super-note');
-            const submitBtn = document.getElementById('btn-submit-super');
-
-            if (isReadOnly) {
-                // MODE ARSIP (HANYA BACA)
-                inputField.value = activeItem.noteSuper; // Tampilkan catatan yang sudah disimpan
-                inputField.disabled = true; // Kunci input
-                submitBtn.innerText = "KEMBALI (SUDAH DIARSIPKAN)";
-                submitBtn.className = "btn-arsip readonly-mode";
-                submitBtn.onclick = tutupDetail; // Tombol jadi fungsi tutup
-            } else {
-                // MODE TUGAS (BISA INPUT)
-                inputField.value = ""; // Kosongkan biar bisa isi baru
-                inputField.disabled = false; // Buka kunci
-                submitBtn.innerText = "SETUJUI & ARSIPKAN";
-                submitBtn.className = "btn-arsip";
-                submitBtn.onclick = prosesArsip; // Tombol jadi fungsi submit
-            }
-
-            document.getElementById('detail-view').style.display = 'block';
-        }
-
-        function tutupDetail() { document.getElementById('detail-view').style.display = 'none'; }
-        function bukaHalamanArsip() { document.getElementById('archive-list-view').style.display = 'block'; fetchArsip(); }
-        function tutupArsip() { document.getElementById('archive-list-view').style.display = 'none'; }
-
-        async function prosesArsip() {
-            if(!activeItem) return;
-            const btn = document.getElementById('btn-submit-super');
-            const note = document.getElementById('d-super-note').value.trim();
-            
-            if(!note) { alert("Mohon isi Catatan Superintendent!"); return; }
-
-            btn.innerText = "PROCESSING..."; btn.disabled = true;
-
-            try {
-                const { data: { user } } = await client.auth.getUser();
-                const nama = user ? user.user_metadata.full_name : "Superintendent";
-                let updateData = {};
-
-                if (activeItem.type === 'chslr') updateData = { status_final: true, superintendent_nama: nama, remark_superintendent: note };
-                else if (activeItem.type === 'clhmi') updateData = { verified_by: nama, catatan_super: note, paraf_super: 'Signed' };
-                else if (activeItem.type === 'pmi') updateData = { nama_superintendent: nama, signature_superintendent: 'Signed', catatan_superintendent: note };
-                else if (activeItem.type === 'prslb') updateData = { status_final: true, superintendent_nama: nama, superintendent_note: note, signature_superintendent: 'Signed' };
-
-                const { error } = await client.from(activeItem.tableName).update(updateData).eq('id', activeItem.id);
-                if (error) throw error;
-
-                alert("Berhasil disetujui!");
-                tutupDetail();
-                fetchInbox(); 
-            } catch (err) { alert("Gagal: " + err.message); btn.disabled = false; }
-        }
-
-        async function hapusArsip(id, tableName) {
-            if(!confirm("Hapus arsip ini selamanya?")) return;
-            try {
-                const { error } = await client.from(tableName).delete().eq('id', id);
-                if(error) throw error;
-                fetchArsip(); 
-            } catch (err) { alert("Gagal: " + err.message); }
-        }
-
-        fetchInbox(); 
+        fetchFeedback();
     </script>
 </body>
 </html>
