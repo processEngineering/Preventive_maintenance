@@ -3,68 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hasil Review Superintendent</title>
+    <title>Arsip & Review Koordinator</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
+        /* --- STYLE GLOBAL --- */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-        body { background-color: #f0f2f5; padding-bottom: 90px; color: black; }
+        body { background-color: #f8f9fa; padding-bottom: 90px; color: #333; }
 
+        /* HEADER */
         .header-pill {
-            background: #000; color: #fff; margin: 30px auto; text-align: center;
-            border-radius: 50px; padding: 15px 40px; width: fit-content;
-            font-weight: 700; font-size: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            background: #fff; color: #000; margin: 30px auto; text-align: center;
+            border: 2px solid #000; border-radius: 50px; padding: 12px 30px; 
+            width: fit-content; font-weight: 800; font-size: 16px; 
+            box-shadow: 4px 4px 0px #000;
         }
 
         .container { padding: 20px; max-width: 500px; margin: 0 auto; }
 
-        /* KARTU HASIL REVIEW */
-        .result-card {
-            background: white; border-left: 5px solid #22c55e; /* Hijau tanda sukses */
-            border-radius: 15px; margin-bottom: 20px; padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative;
+        /* KARTU LIST ARSIP */
+        .review-card {
+            background: white; border: 2px solid #000; border-radius: 15px; 
+            margin-bottom: 20px; padding: 20px; box-shadow: 4px 4px 0px #ccc;
+            position: relative; transition: 0.2s; cursor: pointer;
         }
+        .review-card:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #ccc; }
 
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .card-title { font-weight: 800; font-size: 14px; text-transform: uppercase; color: #333; }
-        .date-badge { background: #eee; padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 600; }
+        .card-top { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .card-type { font-size: 12px; font-weight: 800; text-transform: uppercase; background: #000; color: #fff; padding: 4px 10px; border-radius: 6px; }
+        .card-date { font-size: 12px; font-weight: 600; color: #666; }
 
-        .card-content { font-size: 13px; color: #555; line-height: 1.6; }
-        .mesin-info { font-weight: 700; color: #000; display: block; margin-bottom: 5px; }
-
-        /* KOTAK CATATAN SUPERINTENDENT (HIGHLIGHT) */
-        .super-feedback {
-            margin-top: 15px; background: #fff8f8; 
-            border: 1px dashed #DC2626; border-radius: 10px; padding: 12px;
-        }
-        .feedback-label { color: #DC2626; font-size: 11px; font-weight: 800; display: block; margin-bottom: 3px; }
-        .feedback-text { color: #333; font-size: 13px; font-style: italic; font-weight: 600; }
-
-        .loading-text { text-align: center; margin-top: 50px; color: gray; font-style: italic; }
+        .card-mesin { font-weight: 700; font-size: 14px; margin-bottom: 5px; display: block; }
         
+        .status-badge {
+            display: inline-block; background: #dcfce7; color: #166534; 
+            font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 4px; border: 1px solid #166534;
+        }
+
+        /* OVERLAY DETAIL (POPUP) */
+        #detail-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+            background: #fff; z-index: 100; overflow-y: auto; padding: 20px;
+        }
+
+        .close-btn {
+            position: absolute; top: 20px; right: 20px; font-size: 24px; cursor: pointer; color: #000;
+        }
+
+        /* TIMELINE NOTES (3 LEVEL) */
+        .timeline-box {
+            border-left: 3px solid #ddd; margin-left: 10px; padding-left: 20px; padding-bottom: 30px; position: relative;
+        }
+        .timeline-box::before {
+            content: ''; position: absolute; left: -9px; top: 0; 
+            width: 15px; height: 15px; border-radius: 50%; background: #ddd; border: 2px solid #fff;
+        }
+        
+        /* WARNA LEVEL */
+        .level-pelaksana { border-left-color: #3b82f6; } /* Biru */
+        .level-pelaksana::before { background: #3b82f6; }
+        
+        .level-koordinator { border-left-color: #f59e0b; } /* Kuning/Oranye */
+        .level-koordinator::before { background: #f59e0b; }
+        
+        .level-super { border-left-color: #ef4444; } /* Merah */
+        .level-super::before { background: #ef4444; }
+
+        .note-role { font-size: 12px; font-weight: 800; text-transform: uppercase; margin-bottom: 5px; display: block; }
+        .note-name { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 8px; display: block; }
+        .note-content { 
+            background: #f9f9f9; border: 1px solid #eee; padding: 10px; border-radius: 8px; 
+            font-size: 13px; font-style: italic; color: #333; line-height: 1.5;
+        }
+
         /* MENU BAWAH */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
-            background: white; border-top: 1px solid #ddd;
+            background: white; border-top: 2px solid #000;
             display: flex; justify-content: space-around; padding: 15px 0; z-index: 99;
         }
-        .nav-item { font-size: 24px; color: #999; cursor: pointer; }
-        .nav-item.active { color: #000; }
+        .nav-item { font-size: 24px; color: #000; cursor: pointer; opacity: 0.5; }
+        .nav-item.active { opacity: 1; transform: scale(1.1); }
+
+        .loading-text { text-align: center; margin-top: 50px; color: gray; font-style: italic; }
     </style>
 </head>
 <body>
 
-    <div class="header-pill">Feedback Superintendent</div>
+    <div class="header-pill">Arsip & Review Laporan</div>
 
-    <div class="container" id="feedback-container">
-        <div class="loading-text">Memuat balasan dari bos...</div>
+    <div class="container" id="list-container">
+        <div class="loading-text">Mengambil data arsip...</div>
+    </div>
+
+    <div id="detail-overlay">
+        <div class="close-btn" onclick="tutupDetail()"><i class="fa fa-times"></i></div>
+        
+        <h2 style="font-size:18px; font-weight:800; margin-top:20px; margin-bottom:5px;" id="d-judul">JUDUL LAPORAN</h2>
+        <div style="font-size:13px; color:#666; margin-bottom:30px;" id="d-mesin">Nama Mesin - Tanggal</div>
+
+        <div class="timeline-box level-pelaksana">
+            <span class="note-role" style="color:#3b82f6;">1. PELAKSANA (TEKNISI)</span>
+            <span class="note-name" id="d-nama-pelaksana">Nama Teknisi</span>
+            <div class="note-content" id="d-note-pelaksana">
+                "Mesin aman terkendali."
+            </div>
+        </div>
+
+        <div class="timeline-box level-koordinator">
+            <span class="note-role" style="color:#f59e0b;">2. KOORDINATOR (ANDA)</span>
+            <span class="note-name" id="d-nama-koordinator">Nama Anda</span>
+            <div class="note-content" id="d-note-koordinator">
+                "Sudah dicek, mohon approval."
+            </div>
+        </div>
+
+        <div class="timeline-box level-super" style="border-left:none;">
+            <span class="note-role" style="color:#ef4444;">3. SUPERINTENDENT</span>
+            <span class="note-name" id="d-nama-super">Nama Superintendent</span>
+            <div class="note-content" id="d-note-super" style="background:#fef2f2; border-color:#fecaca; color:#b91c1c; font-weight:bold;">
+                "ACC. Lanjutkan produksi."
+            </div>
+        </div>
+
+        <div style="text-align:center; margin-top:40px; color:#aaa; font-size:12px;">
+            -- Akhir Riwayat Laporan --
+        </div>
     </div>
 
     <div class="bottom-nav">
         <div class="nav-item" onclick="window.location.href='home_akg.html'"><i class="fa fa-home"></i></div>
-        <div class="nav-item active"><i class="fa fa-envelope-open-text"></i></div> <div class="nav-item"><i class="fa fa-clipboard-list"></i></div>
+        <div class="nav-item active"><i class="fa fa-folder-open"></i></div> <div class="nav-item"><i class="fa fa-clipboard-check"></i></div>
         <div class="nav-item"><i class="fa fa-user"></i></div>
     </div>
 
@@ -73,83 +144,156 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        async function fetchFeedback() {
-            const container = document.getElementById('feedback-container');
-            container.innerHTML = '<div class="loading-text">Memuat balasan dari bos...</div>';
-            
-            let allData = [];
+        let allData = [];
+
+        // --- FETCH DATA ARSIP (FINAL) ---
+        async function fetchArsip() {
+            const container = document.getElementById('list-container');
+            container.innerHTML = '<div class="loading-text">Memuat arsip laporan...</div>';
+            allData = [];
 
             try {
-                // 1. AMBIL DATA YANG SUDAH FINAL (Status = True / Verified)
-                // Kita ambil 10 data terakhir saja biar tidak berat
-                
-                let { data: chslr } = await client.from('chslr_log').select('*').eq('status_final', true).order('created_at', {ascending: false}).limit(5);
-                let { data: clhmi } = await client.from('clhmi').select('*').not('verified_by', 'is', null).order('tanggal_isi', {ascending: false}).limit(5);
-                let { data: pmi } = await client.from('pmi_header').select('*').not('signature_superintendent', 'is', null).order('tanggal', {ascending: false}).limit(5);
-                let { data: prslb } = await client.from('prslb_log').select('*').eq('status_final', true).order('created_at', {ascending: false}).limit(5);
+                // Ambil data dari 4 tabel yang statusnya FINAL (Limit 15 biar ringan)
+                let { data: chslr } = await client.from('chslr_log').select('*').eq('status_final', true).order('created_at', {ascending: false}).limit(15);
+                let { data: clhmi } = await client.from('clhmi').select('*').not('verified_by', 'is', null).order('tanggal_isi', {ascending: false}).limit(15);
+                let { data: pmi } = await client.from('pmi_header').select('*').not('signature_superintendent', 'is', null).order('tanggal', {ascending: false}).limit(15);
+                let { data: prslb } = await client.from('prslb_log').select('*').eq('status_final', true).order('created_at', {ascending: false}).limit(15);
 
-                // Mapping Data
-                if(chslr) chslr.forEach(item => allData.push(mapData(item, 'Checklist Robot', item.created_at, item.remark_superintendent)));
-                if(clhmi) clhmi.forEach(item => allData.push(mapData(item, 'Checklist Injection', item.tanggal_isi, item.catatan_super)));
-                if(pmi) pmi.forEach(item => allData.push(mapData(item, 'Preventif Clamping', item.tanggal, item.catatan_superintendent)));
-                if(prslb) prslb.forEach(item => allData.push(mapData(item, 'Preventif Robot', item.created_at, item.superintendent_note)));
+                // Mapping Data agar seragam struktur nya
+                if(chslr) chslr.forEach(item => allData.push(formatData(item, 'chslr')));
+                if(clhmi) clhmi.forEach(item => allData.push(formatData(item, 'clhmi')));
+                if(pmi) pmi.forEach(item => allData.push(formatData(item, 'pmi')));
+                if(prslb) prslb.forEach(item => allData.push(formatData(item, 'prslb')));
 
                 renderList(container, allData);
 
             } catch (err) {
                 console.error(err);
-                container.innerHTML = '<div class="loading-text">Gagal memuat data.</div>';
+                container.innerHTML = '<div class="loading-text">Gagal memuat data. Cek koneksi.</div>';
             }
         }
 
-        function mapData(item, title, dateRaw, superNote) {
-            return {
-                id: item.id,
-                title: title,
-                date: dateRaw,
-                superNote: superNote || "Disetujui (Tanpa Catatan)",
-                mesin: item.mesin_id || item.merk_mesin || item.machine_id || "Mesin Umum"
+        // --- HELPER: FORMAT DATA ---
+        function formatData(item, type) {
+            let res = {
+                rawDate: item.created_at || item.tanggal_isi || item.tanggal,
+                typeLabel: '', mesin: '', 
+                // Level 1
+                pelaksanaName: '', pelaksanaNote: '',
+                // Level 2
+                koordName: '', koordNote: '',
+                // Level 3
+                superName: '', superNote: ''
             };
+
+            if (type === 'chslr') {
+                res.typeLabel = 'CHSLR (Robot)';
+                res.mesin = item.mesin_id || 'Robot/Standlabel';
+                res.pelaksanaName = (item.pelaksana_names || []).join(', ');
+                res.pelaksanaNote = item.catatan_pelaksana || '-';
+                res.koordName = item.koordinator_nama;
+                res.koordNote = item.remark_koordinator;
+                res.superName = item.superintendent_nama;
+                res.superNote = item.remark_superintendent;
+            } 
+            else if (type === 'clhmi') {
+                res.typeLabel = 'CLHMI (Injection)';
+                res.mesin = (item.merk_mesin || '') + ' ' + (item.tonage || '');
+                res.pelaksanaName = item.pelaksana;
+                res.pelaksanaNote = '-'; // CLHMI jarang ada catatan khusus pelaksana terpisah di schema ini
+                res.koordName = item.approved_by;
+                res.koordNote = item.catatan_umum;
+                res.superName = item.verified_by;
+                res.superNote = item.catatan_super;
+            }
+            else if (type === 'pmi') {
+                res.typeLabel = 'PMI (Preventif)';
+                res.mesin = 'ID: ' + item.machine_id;
+                res.pelaksanaName = item.nama_pelaksana;
+                res.pelaksanaNote = item.catatan_pelaksana;
+                res.koordName = item.nama_koordinator;
+                res.koordNote = item.catatan_koordinator;
+                res.superName = item.nama_superintendent;
+                res.superNote = item.catatan_superintendent;
+            }
+            else if (type === 'prslb') {
+                res.typeLabel = 'PRSLB (Preventif)';
+                res.mesin = item.mesin_id;
+                res.pelaksanaName = item.pelaksana_nama;
+                res.pelaksanaNote = '-';
+                res.koordName = item.koordinator_nama;
+                res.koordNote = item.koordinator_note;
+                res.superName = item.superintendent_nama;
+                res.superNote = item.superintendent_note;
+            }
+
+            // Cleanup null values
+            if(!res.pelaksanaNote) res.pelaksanaNote = "Tidak ada catatan.";
+            if(!res.koordNote) res.koordNote = "Aman.";
+            if(!res.superNote) res.superNote = "Disetujui.";
+            
+            return res;
         }
 
+        // --- RENDER LIST ---
         function renderList(container, data) {
             container.innerHTML = '';
             if (data.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align:center; margin-top:50px;">
-                        <img src="https://img.icons8.com/ios/100/cccccc/empty-box.png" width="80"><br><br>
-                        Belum ada balasan dari Superintendent.
-                    </div>`;
+                container.innerHTML = '<div class="loading-text">Belum ada arsip laporan yang selesai.</div>';
                 return;
             }
 
-            // Urutkan dari yang terbaru disetujui
-            data.sort((a, b) => new Date(b.date) - new Date(a.date));
+            // Urutkan Terbaru
+            data.sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
 
-            data.forEach(item => {
-                let tgl = new Date(item.date).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'});
+            data.forEach((item, index) => {
+                let tgl = new Date(item.rawDate).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'});
                 
                 let html = `
-                <div class="result-card">
-                    <div class="card-header">
-                        <span class="card-title">${item.title}</span>
-                        <span class="date-badge">${tgl}</span>
+                <div class="review-card" onclick="bukaDetail(${index})">
+                    <div class="card-top">
+                        <span class="card-type">${item.typeLabel}</span>
+                        <span class="card-date">${tgl}</span>
                     </div>
-                    <div class="card-content">
-                        <span class="mesin-info">⚙️ ${item.mesin}</span>
-                        Status: <span style="color:green; font-weight:bold;">DISETUJUI (FINAL)</span>
-                        
-                        <div class="super-feedback">
-                            <span class="feedback-label">💬 CATATAN SUPERINTENDENT:</span>
-                            <span class="feedback-text">"${item.superNote}"</span>
-                        </div>
+                    <span class="card-mesin">${item.mesin}</span>
+                    <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <span class="status-badge">✅ SELESAI (FINAL)</span>
+                        <i class="fa fa-chevron-right" style="font-size:12px;"></i>
+                    </div>
+                    <div style="margin-top:8px; font-size:11px; color:#888;">
+                        Oleh: ${item.pelaksanaName}
                     </div>
                 </div>`;
                 container.innerHTML += html;
             });
         }
 
-        fetchFeedback();
+        // --- LOGIKA BUKA DETAIL ---
+        function bukaDetail(index) {
+            let d = allData[index];
+            let tgl = new Date(d.rawDate).toLocaleDateString('id-ID', {weekday:'long', day: 'numeric', month: 'long', year: 'numeric'});
+
+            document.getElementById('d-judul').innerText = d.typeLabel + " - " + d.mesin;
+            document.getElementById('d-mesin').innerText = tgl;
+
+            // Isi 3 Tingkat Catatan
+            document.getElementById('d-nama-pelaksana').innerText = d.pelaksanaName || "Teknisi";
+            document.getElementById('d-note-pelaksana').innerText = `"${d.pelaksanaNote}"`;
+
+            document.getElementById('d-nama-koordinator').innerText = d.koordName || "Anda (Koordinator)";
+            document.getElementById('d-note-koordinator').innerText = `"${d.koordNote}"`;
+
+            document.getElementById('d-nama-super').innerText = d.superName || "Superintendent";
+            document.getElementById('d-note-super').innerText = `"${d.superNote}"`;
+
+            document.getElementById('detail-overlay').style.display = 'block';
+        }
+
+        function tutupDetail() {
+            document.getElementById('detail-overlay').style.display = 'none';
+        }
+
+        fetchArsip();
     </script>
 </body>
 </html>
