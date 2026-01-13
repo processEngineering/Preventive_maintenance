@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arsip & Review Koordinator</title>
+    <title>Review & Arsip Koordinator</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -15,15 +15,22 @@
 
         /* HEADER */
         .header-pill {
-            background: #fff; color: #000; margin: 30px auto; text-align: center;
+            background: #fff; color: #000; margin: 30px auto 20px auto; text-align: center;
             border: 2px solid #000; border-radius: 50px; padding: 12px 30px; 
             width: fit-content; font-weight: 800; font-size: 16px; 
-            box-shadow: 4px 4px 0px #000;
+            box-shadow: 4px 4px 0px #000; position: relative;
         }
+
+        /* IKON ARSIP (POJOK KANAN ATAS) */
+        .top-icon-btn {
+            position: absolute; top: 30px; right: 25px;
+            font-size: 28px; cursor: pointer; color: black; z-index: 10;
+        }
+        .icon-label { font-size: 10px; font-weight: bold; text-align: center; display: block; margin-top: -5px; }
 
         .container { padding: 20px; max-width: 500px; margin: 0 auto; }
 
-        /* KARTU LIST ARSIP */
+        /* KARTU LIST */
         .review-card {
             background: white; border: 2px solid #000; border-radius: 15px; 
             margin-bottom: 20px; padding: 20px; box-shadow: 4px 4px 0px #ccc;
@@ -31,26 +38,36 @@
         }
         .review-card:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #ccc; }
 
+        /* Warna Pembeda Inbox vs Arsip */
+        .review-card.is-archived { background: #f4f4f4; border-color: #666; box-shadow: 3px 3px 0px #888; }
+
         .card-top { display: flex; justify-content: space-between; margin-bottom: 10px; }
-        .card-type { font-size: 12px; font-weight: 800; text-transform: uppercase; background: #000; color: #fff; padding: 4px 10px; border-radius: 6px; }
+        .card-type { font-size: 11px; font-weight: 800; text-transform: uppercase; background: #000; color: #fff; padding: 4px 10px; border-radius: 6px; }
         .card-date { font-size: 12px; font-weight: 600; color: #666; }
 
         .card-mesin { font-weight: 700; font-size: 14px; margin-bottom: 5px; display: block; }
         
-        .status-badge {
-            display: inline-block; background: #dcfce7; color: #166534; 
-            font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 4px; border: 1px solid #166534;
+        /* Highlight Catatan Super di Card */
+        .super-preview {
+            margin-top: 10px; font-size: 12px; background: #fee2e2; color: #b91c1c; 
+            padding: 8px; border-radius: 6px; font-weight: 600; border-left: 3px solid #ef4444;
         }
 
-        /* OVERLAY DETAIL (POPUP) */
-        #detail-overlay {
+        /* TOMBOL HAPUS (KHUSUS ARSIP) */
+        .delete-btn {
+            position: absolute; bottom: 15px; right: 15px;
+            width: 35px; height: 35px; background: white; border: 2px solid red; color: red;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 5; box-shadow: 2px 2px 0px #ccc;
+        }
+
+        /* OVERLAY DETAIL (FULLSCREEN) */
+        #detail-overlay, #archive-page {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
             background: #fff; z-index: 100; overflow-y: auto; padding: 20px;
         }
 
-        .close-btn {
-            position: absolute; top: 20px; right: 20px; font-size: 24px; cursor: pointer; color: #000;
-        }
+        .back-btn { font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 20px; display: inline-block; }
 
         /* TIMELINE NOTES (3 LEVEL) */
         .timeline-box {
@@ -61,14 +78,13 @@
             width: 15px; height: 15px; border-radius: 50%; background: #ddd; border: 2px solid #fff;
         }
         
-        /* WARNA LEVEL */
-        .level-pelaksana { border-left-color: #3b82f6; } /* Biru */
+        .level-pelaksana { border-left-color: #3b82f6; } 
         .level-pelaksana::before { background: #3b82f6; }
         
-        .level-koordinator { border-left-color: #f59e0b; } /* Kuning/Oranye */
+        .level-koordinator { border-left-color: #f59e0b; } 
         .level-koordinator::before { background: #f59e0b; }
         
-        .level-super { border-left-color: #ef4444; } /* Merah */
+        .level-super { border-left-color: #ef4444; border-left: none; } 
         .level-super::before { background: #ef4444; }
 
         .note-role { font-size: 12px; font-weight: 800; text-transform: uppercase; margin-bottom: 5px; display: block; }
@@ -77,6 +93,14 @@
             background: #f9f9f9; border: 1px solid #eee; padding: 10px; border-radius: 8px; 
             font-size: 13px; font-style: italic; color: #333; line-height: 1.5;
         }
+
+        /* TOMBOL AKSI UTAMA */
+        .btn-action {
+            width: 100%; padding: 15px; background: #000; color: white;
+            border: none; border-radius: 12px; font-weight: 700; font-size: 14px;
+            cursor: pointer; margin-top: 30px; box-shadow: 4px 4px 0px #555;
+        }
+        .btn-action:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #555; }
 
         /* MENU BAWAH */
         .bottom-nav {
@@ -92,50 +116,65 @@
 </head>
 <body>
 
-    <div class="header-pill">Arsip & Review Laporan</div>
+    <div id="main-view">
+        <div class="top-icon-btn" onclick="bukaHalamanArsip()">
+            <i class="fa fa-folder-open"></i>
+            <span class="icon-label">Arsip Saya</span>
+        </div>
 
-    <div class="container" id="list-container">
-        <div class="loading-text">Mengambil data arsip...</div>
+        <div class="header-pill">Feedback Masuk</div>
+        
+        <div class="container" id="inbox-container">
+            <div class="loading-text">Memuat laporan yang disetujui Superintendent...</div>
+        </div>
+    </div>
+
+    <div id="archive-page">
+        <div class="back-btn" onclick="tutupArsip()"><i class="fa fa-arrow-left"></i> Kembali</div>
+        
+        <div class="header-pill">Arsip Koordinator</div>
+        <p style="text-align: center; font-size: 12px; color: #666; margin-bottom: 20px;">
+            Laporan yang sudah Anda arsipkan.
+        </p>
+
+        <div class="container" id="archive-container">
+            <div class="loading-text">Memuat arsip...</div>
+        </div>
     </div>
 
     <div id="detail-overlay">
-        <div class="close-btn" onclick="tutupDetail()"><i class="fa fa-times"></i></div>
+        <div class="back-btn" onclick="tutupDetail()"><i class="fa fa-times"></i> Tutup</div>
         
-        <h2 style="font-size:18px; font-weight:800; margin-top:20px; margin-bottom:5px;" id="d-judul">JUDUL LAPORAN</h2>
-        <div style="font-size:13px; color:#666; margin-bottom:30px;" id="d-mesin">Nama Mesin - Tanggal</div>
+        <h2 style="font-size:16px; font-weight:800; margin-top:10px; margin-bottom:5px;" id="d-judul">JUDUL</h2>
+        <div style="font-size:13px; color:#666; margin-bottom:30px;" id="d-mesin">Mesin - Tanggal</div>
 
         <div class="timeline-box level-pelaksana">
             <span class="note-role" style="color:#3b82f6;">1. PELAKSANA (TEKNISI)</span>
-            <span class="note-name" id="d-nama-pelaksana">Nama Teknisi</span>
-            <div class="note-content" id="d-note-pelaksana">
-                "Mesin aman terkendali."
-            </div>
+            <span class="note-name" id="d-nama-pelaksana">...</span>
+            <div class="note-content" id="d-note-pelaksana">...</div>
         </div>
 
         <div class="timeline-box level-koordinator">
             <span class="note-role" style="color:#f59e0b;">2. KOORDINATOR (ANDA)</span>
-            <span class="note-name" id="d-nama-koordinator">Nama Anda</span>
-            <div class="note-content" id="d-note-koordinator">
-                "Sudah dicek, mohon approval."
-            </div>
+            <span class="note-name" id="d-nama-koordinator">...</span>
+            <div class="note-content" id="d-note-koordinator">...</div>
         </div>
 
-        <div class="timeline-box level-super" style="border-left:none;">
-            <span class="note-role" style="color:#ef4444;">3. SUPERINTENDENT</span>
-            <span class="note-name" id="d-nama-super">Nama Superintendent</span>
-            <div class="note-content" id="d-note-super" style="background:#fef2f2; border-color:#fecaca; color:#b91c1c; font-weight:bold;">
-                "ACC. Lanjutkan produksi."
-            </div>
+        <div class="timeline-box level-super">
+            <span class="note-role" style="color:#ef4444;">3. SUPERINTENDENT (BOS)</span>
+            <span class="note-name" id="d-nama-super">...</span>
+            <div class="note-content" id="d-note-super" style="background:#fef2f2; border-color:#fecaca; color:#b91c1c; font-weight:bold;">...</div>
         </div>
 
-        <div style="text-align:center; margin-top:40px; color:#aaa; font-size:12px;">
-            -- Akhir Riwayat Laporan --
-        </div>
+        <button id="btn-archive-action" class="btn-action" onclick="prosesArsip()">
+            <i class="fa fa-archive"></i> ARSIPKAN SEKARANG
+        </button>
     </div>
 
     <div class="bottom-nav">
         <div class="nav-item" onclick="window.location.href='home_akg.html'"><i class="fa fa-home"></i></div>
-        <div class="nav-item active"><i class="fa fa-folder-open"></i></div> <div class="nav-item"><i class="fa fa-clipboard-check"></i></div>
+        <div class="nav-item active"><i class="fa fa-envelope-open-text"></i></div>
+        <div class="nav-item"><i class="fa fa-clipboard-list"></i></div>
         <div class="nav-item"><i class="fa fa-user"></i></div>
     </div>
 
@@ -144,156 +183,193 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let allData = [];
+        let inboxData = [];
+        let archiveData = [];
+        let activeItem = null;
 
-        // --- FETCH DATA ARSIP (FINAL) ---
-        async function fetchArsip() {
-            const container = document.getElementById('list-container');
-            container.innerHTML = '<div class="loading-text">Memuat arsip laporan...</div>';
-            allData = [];
+        // --- FETCH INBOX (Sudah Approve Super, TAPI Belum Diarsipkan Koord) ---
+        async function fetchInbox() {
+            const container = document.getElementById('inbox-container');
+            container.innerHTML = '<div class="loading-text">Cek laporan baru...</div>';
+            inboxData = [];
 
             try {
-                // Ambil data dari 4 tabel yang statusnya FINAL (Limit 15 biar ringan)
-                let { data: chslr } = await client.from('chslr_log').select('*').eq('status_final', true).order('created_at', {ascending: false}).limit(15);
-                let { data: clhmi } = await client.from('clhmi').select('*').not('verified_by', 'is', null).order('tanggal_isi', {ascending: false}).limit(15);
-                let { data: pmi } = await client.from('pmi_header').select('*').not('signature_superintendent', 'is', null).order('tanggal', {ascending: false}).limit(15);
-                let { data: prslb } = await client.from('prslb_log').select('*').eq('status_final', true).order('created_at', {ascending: false}).limit(15);
+                // Query: status_final = true AND coordinator_archived = false
+                let { data: chslr } = await client.from('chslr_log').select('*').eq('status_final', true).eq('coordinator_archived', false);
+                let { data: clhmi } = await client.from('clhmi').select('*').not('verified_by', 'is', null).eq('coordinator_archived', false);
+                let { data: pmi } = await client.from('pmi_header').select('*').not('signature_superintendent', 'is', null).eq('coordinator_archived', false);
+                let { data: prslb } = await client.from('prslb_log').select('*').eq('status_final', true).eq('coordinator_archived', false);
 
-                // Mapping Data agar seragam struktur nya
-                if(chslr) chslr.forEach(item => allData.push(formatData(item, 'chslr')));
-                if(clhmi) clhmi.forEach(item => allData.push(formatData(item, 'clhmi')));
-                if(pmi) pmi.forEach(item => allData.push(formatData(item, 'pmi')));
-                if(prslb) prslb.forEach(item => allData.push(formatData(item, 'prslb')));
+                if(chslr) chslr.forEach(item => inboxData.push(formatData(item, 'chslr')));
+                if(clhmi) clhmi.forEach(item => inboxData.push(formatData(item, 'clhmi')));
+                if(pmi) pmi.forEach(item => inboxData.push(formatData(item, 'pmi')));
+                if(prslb) prslb.forEach(item => inboxData.push(formatData(item, 'prslb')));
 
-                renderList(container, allData);
-
-            } catch (err) {
-                console.error(err);
-                container.innerHTML = '<div class="loading-text">Gagal memuat data. Cek koneksi.</div>';
-            }
+                renderList(container, inboxData, false);
+            } catch (err) { console.error(err); }
         }
 
-        // --- HELPER: FORMAT DATA ---
+        // --- FETCH ARSIP (Sudah Approve Super AND Sudah Diarsipkan Koord) ---
+        async function fetchArsip() {
+            const container = document.getElementById('archive-container');
+            container.innerHTML = '<div class="loading-text">Memuat data arsip...</div>';
+            archiveData = [];
+
+            try {
+                // Query: status_final = true AND coordinator_archived = true
+                let { data: chslr } = await client.from('chslr_log').select('*').eq('status_final', true).eq('coordinator_archived', true).limit(20);
+                let { data: clhmi } = await client.from('clhmi').select('*').not('verified_by', 'is', null).eq('coordinator_archived', true).limit(20);
+                let { data: pmi } = await client.from('pmi_header').select('*').not('signature_superintendent', 'is', null).eq('coordinator_archived', true).limit(20);
+                let { data: prslb } = await client.from('prslb_log').select('*').eq('status_final', true).eq('coordinator_archived', true).limit(20);
+
+                if(chslr) chslr.forEach(item => archiveData.push(formatData(item, 'chslr')));
+                if(clhmi) clhmi.forEach(item => archiveData.push(formatData(item, 'clhmi')));
+                if(pmi) pmi.forEach(item => archiveData.push(formatData(item, 'pmi')));
+                if(prslb) prslb.forEach(item => archiveData.push(formatData(item, 'prslb')));
+
+                renderList(container, archiveData, true);
+            } catch (err) { console.error(err); }
+        }
+
         function formatData(item, type) {
             let res = {
-                rawDate: item.created_at || item.tanggal_isi || item.tanggal,
+                id: item.id, tableName: '', rawDate: item.created_at || item.tanggal_isi || item.tanggal,
                 typeLabel: '', mesin: '', 
-                // Level 1
                 pelaksanaName: '', pelaksanaNote: '',
-                // Level 2
                 koordName: '', koordNote: '',
-                // Level 3
                 superName: '', superNote: ''
             };
 
             if (type === 'chslr') {
-                res.typeLabel = 'CHSLR (Robot)';
-                res.mesin = item.mesin_id || 'Robot/Standlabel';
-                res.pelaksanaName = (item.pelaksana_names || []).join(', ');
-                res.pelaksanaNote = item.catatan_pelaksana || '-';
-                res.koordName = item.koordinator_nama;
-                res.koordNote = item.remark_koordinator;
-                res.superName = item.superintendent_nama;
-                res.superNote = item.remark_superintendent;
+                res.tableName = 'chslr_log'; res.typeLabel = 'CHSLR (Robot)';
+                res.mesin = item.mesin_id || 'Robot';
+                res.pelaksanaName = (item.pelaksana_names || []).join(', '); res.pelaksanaNote = item.catatan_pelaksana || '-';
+                res.koordName = item.koordinator_nama; res.koordNote = item.remark_koordinator;
+                res.superName = item.superintendent_nama; res.superNote = item.remark_superintendent;
             } 
             else if (type === 'clhmi') {
-                res.typeLabel = 'CLHMI (Injection)';
+                res.tableName = 'clhmi'; res.typeLabel = 'CLHMI (Injection)';
                 res.mesin = (item.merk_mesin || '') + ' ' + (item.tonage || '');
-                res.pelaksanaName = item.pelaksana;
-                res.pelaksanaNote = '-'; // CLHMI jarang ada catatan khusus pelaksana terpisah di schema ini
-                res.koordName = item.approved_by;
-                res.koordNote = item.catatan_umum;
-                res.superName = item.verified_by;
-                res.superNote = item.catatan_super;
+                res.pelaksanaName = item.pelaksana; res.pelaksanaNote = '-';
+                res.koordName = item.approved_by; res.koordNote = item.catatan_umum;
+                res.superName = item.verified_by; res.superNote = item.catatan_super;
             }
             else if (type === 'pmi') {
-                res.typeLabel = 'PMI (Preventif)';
-                res.mesin = 'ID: ' + item.machine_id;
-                res.pelaksanaName = item.nama_pelaksana;
-                res.pelaksanaNote = item.catatan_pelaksana;
-                res.koordName = item.nama_koordinator;
-                res.koordNote = item.catatan_koordinator;
-                res.superName = item.nama_superintendent;
-                res.superNote = item.catatan_superintendent;
+                res.tableName = 'pmi_header'; res.typeLabel = 'PMI (Preventif)';
+                res.mesin = item.machine_id;
+                res.pelaksanaName = item.nama_pelaksana; res.pelaksanaNote = item.catatan_pelaksana;
+                res.koordName = item.nama_koordinator; res.koordNote = item.catatan_koordinator;
+                res.superName = item.nama_superintendent; res.superNote = item.catatan_superintendent;
             }
             else if (type === 'prslb') {
-                res.typeLabel = 'PRSLB (Preventif)';
+                res.tableName = 'prslb_log'; res.typeLabel = 'PRSLB (Preventif)';
                 res.mesin = item.mesin_id;
-                res.pelaksanaName = item.pelaksana_nama;
-                res.pelaksanaNote = '-';
-                res.koordName = item.koordinator_nama;
-                res.koordNote = item.koordinator_note;
-                res.superName = item.superintendent_nama;
-                res.superNote = item.superintendent_note;
+                res.pelaksanaName = item.pelaksana_nama; res.pelaksanaNote = '-';
+                res.koordName = item.koordinator_nama; res.koordNote = item.koordinator_note;
+                res.superName = item.superintendent_nama; res.superNote = item.superintendent_note;
             }
 
-            // Cleanup null values
             if(!res.pelaksanaNote) res.pelaksanaNote = "Tidak ada catatan.";
-            if(!res.koordNote) res.koordNote = "Aman.";
+            if(!res.koordNote) res.koordNote = "Tidak ada catatan.";
             if(!res.superNote) res.superNote = "Disetujui.";
-            
             return res;
         }
 
-        // --- RENDER LIST ---
-        function renderList(container, data) {
+        function renderList(container, data, isArchive) {
             container.innerHTML = '';
             if (data.length === 0) {
-                container.innerHTML = '<div class="loading-text">Belum ada arsip laporan yang selesai.</div>';
+                container.innerHTML = `<div class="loading-text">${isArchive ? 'Arsip kosong.' : 'Tidak ada laporan baru dari Superintendent.'}</div>`;
                 return;
             }
 
-            // Urutkan Terbaru
             data.sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
 
             data.forEach((item, index) => {
-                let tgl = new Date(item.rawDate).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'});
+                let tgl = new Date(item.rawDate).toLocaleDateString('id-ID', {day: 'numeric', month: 'short'});
                 
+                // Jika arsip, kita kasih parameter khusus saat klik
+                let clickAction = `onclick="bukaDetail(${index}, ${isArchive})"`
+                let deleteBtn = isArchive ? `<div class="delete-btn" onclick="event.stopPropagation(); hapusArsip('${item.id}', '${item.tableName}')"><i class="fa fa-trash"></i></div>` : '';
+
                 let html = `
-                <div class="review-card" onclick="bukaDetail(${index})">
+                <div class="review-card ${isArchive ? 'is-archived' : ''}" ${clickAction}>
                     <div class="card-top">
                         <span class="card-type">${item.typeLabel}</span>
                         <span class="card-date">${tgl}</span>
                     </div>
                     <span class="card-mesin">${item.mesin}</span>
-                    <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
-                        <span class="status-badge">✅ SELESAI (FINAL)</span>
-                        <i class="fa fa-chevron-right" style="font-size:12px;"></i>
+                    <div class="super-preview">
+                        <i class="fa fa-comment-dots"></i> Bos: "${item.superNote}"
                     </div>
-                    <div style="margin-top:8px; font-size:11px; color:#888;">
-                        Oleh: ${item.pelaksanaName}
-                    </div>
+                    ${deleteBtn}
                 </div>`;
                 container.innerHTML += html;
             });
         }
 
-        // --- LOGIKA BUKA DETAIL ---
-        function bukaDetail(index) {
-            let d = allData[index];
-            let tgl = new Date(d.rawDate).toLocaleDateString('id-ID', {weekday:'long', day: 'numeric', month: 'long', year: 'numeric'});
+        function bukaDetail(index, isArchive) {
+            // Ambil dari array yang sesuai
+            activeItem = isArchive ? archiveData[index] : inboxData[index];
+            
+            document.getElementById('d-judul').innerText = activeItem.typeLabel;
+            document.getElementById('d-mesin').innerText = activeItem.mesin + " (" + new Date(activeItem.rawDate).toLocaleDateString() + ")";
 
-            document.getElementById('d-judul').innerText = d.typeLabel + " - " + d.mesin;
-            document.getElementById('d-mesin').innerText = tgl;
+            document.getElementById('d-nama-pelaksana').innerText = activeItem.pelaksanaName || "Teknisi";
+            document.getElementById('d-note-pelaksana').innerText = `"${activeItem.pelaksanaNote}"`;
 
-            // Isi 3 Tingkat Catatan
-            document.getElementById('d-nama-pelaksana').innerText = d.pelaksanaName || "Teknisi";
-            document.getElementById('d-note-pelaksana').innerText = `"${d.pelaksanaNote}"`;
+            document.getElementById('d-nama-koordinator').innerText = activeItem.koordName || "Anda";
+            document.getElementById('d-note-koordinator').innerText = `"${activeItem.koordNote}"`;
 
-            document.getElementById('d-nama-koordinator').innerText = d.koordName || "Anda (Koordinator)";
-            document.getElementById('d-note-koordinator').innerText = `"${d.koordNote}"`;
+            document.getElementById('d-nama-super').innerText = activeItem.superName || "Superintendent";
+            document.getElementById('d-note-super').innerText = `"${activeItem.superNote}"`;
 
-            document.getElementById('d-nama-super').innerText = d.superName || "Superintendent";
-            document.getElementById('d-note-super').innerText = `"${d.superNote}"`;
+            // Tombol Arsip hanya muncul kalau item INI belum diarsip (Inbox)
+            const btn = document.getElementById('btn-archive-action');
+            if (isArchive) {
+                btn.style.display = 'none'; // Sembunyikan tombol arsip di folder arsip
+            } else {
+                btn.style.display = 'block';
+                btn.innerHTML = '<i class="fa fa-archive"></i> ARSIPKAN SEKARANG';
+            }
 
             document.getElementById('detail-overlay').style.display = 'block';
         }
 
-        function tutupDetail() {
-            document.getElementById('detail-overlay').style.display = 'none';
+        function tutupDetail() { document.getElementById('detail-overlay').style.display = 'none'; }
+        function bukaHalamanArsip() { document.getElementById('archive-page').style.display = 'block'; fetchArsip(); }
+        function tutupArsip() { document.getElementById('archive-page').style.display = 'none'; fetchInbox(); } // Refresh inbox saat balik
+
+        // --- AKSI: ARSIPKAN (Pindah ke Folder Arsip) ---
+        async function prosesArsip() {
+            if(!activeItem) return;
+            const btn = document.getElementById('btn-archive-action');
+            btn.innerHTML = 'Menyimpan...'; btn.disabled = true;
+
+            try {
+                // Update kolom coordinator_archived jadi TRUE
+                const { error } = await client.from(activeItem.tableName).update({ coordinator_archived: true }).eq('id', activeItem.id);
+                if(error) throw error;
+
+                alert("Laporan berhasil diarsipkan!");
+                tutupDetail();
+                fetchInbox(); // Refresh tampilan inbox (item akan hilang)
+            } catch (err) {
+                alert("Gagal: " + err.message);
+                btn.disabled = false;
+            }
         }
 
-        fetchArsip();
+        // --- AKSI: HAPUS ARSIP (Delete Permanen) ---
+        async function hapusArsip(id, tableName) {
+            if(!confirm("Yakin ingin menghapus arsip ini selamanya?")) return;
+            try {
+                const { error } = await client.from(tableName).delete().eq('id', id);
+                if(error) throw error;
+                fetchArsip(); // Refresh arsip
+            } catch (err) { alert("Gagal hapus: " + err.message); }
+        }
+
+        fetchInbox();
     </script>
 </body>
 </html>
