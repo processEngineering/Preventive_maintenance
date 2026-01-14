@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Approval SPV - POHM</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --primary: #DC2626;
+            --primary-dark: #B91C1C;
+            --bg-gray: #F9FAFB;
+            --border: #E5E7EB;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-gray); color: #1F2937; padding-bottom: 100px; }
+
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; padding: 24px 20px;
+            border-bottom-left-radius: 24px; border-bottom-right-radius: 24px;
+            box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2); margin-bottom: 20px;
+            position: sticky; top: 0; z-index: 50;
+        }
+        .header h1 { font-size: 18px; font-weight: 800; }
+        .back-link { color: white; text-decoration: none; font-size: 14px; font-weight: 600; display: inline-block; margin-bottom: 10px; }
+
+        .container { max-width: 600px; margin: 0 auto; padding: 0 20px; }
+
+        /* LIST VIEW CARDS */
+        .task-card {
+            background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid var(--border);
+            cursor: pointer; transition: transform 0.2s;
+        }
+        .task-card:active { transform: scale(0.98); background: #FEF2F2; }
+        .task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .machine-name { font-weight: 700; color: #111; font-size: 15px; }
+        .task-date { font-size: 12px; color: #6B7280; }
+        .badge { background: #FEE2E2; color: #B91C1C; font-size: 11px; padding: 4px 8px; border-radius: 20px; font-weight: 600; }
+
+        /* DETAIL VIEW (FORM) */
+        #detailView { display: none; }
+        .form-section {
+            background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border);
+        }
+        .form-section h3 {
+            font-size: 14px; font-weight: 700; color: var(--primary); margin-bottom: 16px;
+            text-transform: uppercase; border-bottom: 1px solid #FEE2E2; padding-bottom: 8px;
+        }
+        
+        /* READ ONLY STYLING */
+        .readonly-text {
+            background: #F3F4F6; border: 1px solid #E5E7EB; color: #374151;
+            padding: 10px; border-radius: 8px; font-size: 14px; width: 100%;
+        }
+        .line-display {
+            border-bottom: 1px dashed #D1D5DB; padding: 6px 0; font-size: 14px; color: #374151;
+            min-height: 28px;
+        }
+        
+        /* TABLE */
+        .table-responsive { overflow-x: auto; }
+        .part-table { width: 100%; border-collapse: collapse; min-width: 500px; }
+        .part-table th { background: #F9FAFB; padding: 10px; font-size: 12px; border-bottom: 2px solid #E5E7EB; text-align: left;}
+        .part-table td { padding: 8px; border-bottom: 1px solid #E5E7EB; font-size: 13px; }
+
+        /* SIGNATURE AREA */
+        .signature-img { width: 100%; max-height: 100px; object-fit: contain; border: 1px dashed #ccc; background: #fff; }
+        .signature-pad {
+            border: 2px dashed #D1D5DB; border-radius: 12px; background: #F9FAFB;
+            width: 100%; height: 200px; touch-action: none;
+        }
+        .sig-tools { display: flex; justify-content: space-between; margin-top: 8px; }
+        .btn-clear { background: #fff; border: 1px solid #D1D5DB; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+
+        /* BUTTONS */
+        .btn-approve {
+            width: 100%; background: var(--primary); color: white; padding: 16px;
+            border: none; border-radius: 12px; font-size: 16px; font-weight: 700;
+            box-shadow: 0 4px 14px rgba(220, 38, 38, 0.3); margin-top: 20px;
+        }
+        .btn-approve:disabled { background: #9CA3AF; }
+
+        .spinner { display: none; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 1s infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+    <div id="listHeader" class="header">
+        <a href="pohm.html" class="back-link"><i class="fa-solid fa-arrow-left"></i> Menu Utama</a>
+        <h1>Daftar Approval POHM</h1>
+        <p>Menunggu persetujuan Superintendent</p>
+    </div>
+
+    <div id="detailHeader" class="header" style="display: none;">
+        <a href="#" onclick="showList()" class="back-link"><i class="fa-solid fa-arrow-left"></i> Kembali ke Daftar</a>
+        <h1>Review Laporan</h1>
+        <p>Silahkan periksa sebelum approve</p>
+    </div>
+
+    <div class="container">
+        
+        <div id="listView">
+            <div id="loadingList" style="text-align: center; padding: 40px; color: #6B7280;">
+                <i class="fa-solid fa-circle-notch fa-spin"></i> Memuat data...
+            </div>
+            <div id="taskList"></div>
+            <div id="emptyList" style="display: none; text-align: center; padding: 40px; color: #6B7280;">
+                <p>Tidak ada laporan yang perlu diapprove saat ini.</p>
+            </div>
+        </div>
+
+        <div id="detailView">
+            
+            <div class="form-section">
+                <h3>Identitas Mesin</h3>
+                <div style="margin-bottom: 10px;">
+                    <label style="font-size:12px; color:#6B7280">Nama Mesin:</label>
+                    <div id="d_machine" class="readonly-text"></div>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="font-size:12px; color:#6B7280">Jenis Pekerjaan:</label>
+                    <div id="d_work_type" class="readonly-text"></div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex:1;">
+                        <label style="font-size:12px; color:#6B7280">Mulai:</label>
+                        <div id="d_start" class="readonly-text"></div>
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:12px; color:#6B7280">Selesai:</label>
+                        <div id="d_end" class="readonly-text"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Diskripsi Permasalahan</h3>
+                <div id="d_problems_container">
+                    </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Tindakan Yang Diambil</h3>
+                <div id="d_actions_container">
+                    </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Penggantian Part</h3>
+                <div class="table-responsive">
+                    <table class="part-table">
+                        <thead>
+                            <tr><th>No</th><th>Nama Part</th><th>Qty</th><th>Status</th></tr>
+                        </thead>
+                        <tbody id="d_parts_body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Laporan Engineer</h3>
+                <div style="margin-bottom: 10px;">
+                    <label style="font-size:12px; color:#6B7280">Rekomendasi Engineer:</label>
+                    <div id="d_eng_rec" class="readonly-text" style="min-height: 60px;"></div>
+                </div>
+                <div style="display: flex; gap: 15px; align-items: flex-end;">
+                    <div style="flex: 1;">
+                        <label style="font-size:12px; color:#6B7280">Dikerjakan Oleh:</label>
+                        <div id="d_eng_name" class="readonly-text" style="font-weight: bold;"></div>
+                    </div>
+                    <div style="width: 100px;">
+                        <label style="font-size:12px; color:#6B7280">Tanda Tangan:</label>
+                        <img id="d_eng_sig" src="" class="signature-img" alt="TTD Engineer">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section" style="border: 2px solid var(--primary);">
+                <h3>Persetujuan Superintendent</h3>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: 700;">Nama Lengkap Superintendent :</label>
+                    <input type="text" id="spv_name" class="readonly-text" style="background: white; border-color: #9CA3AF;" placeholder="Masukkan Nama Anda">
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: 700;">Catatan Untuk Manager :</label>
+                    <textarea id="spv_note" class="readonly-text" style="background: white; border-color: #9CA3AF; min-height: 80px;" placeholder="Tulis catatan khusus untuk manager..."></textarea>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: 700;">Tanda Tangan Approval :</label>
+                    <canvas id="signaturePad" class="signature-pad" width="500" height="200"></canvas>
+                    <div class="sig-tools">
+                        <button type="button" class="btn-clear" onclick="clearSignature()">Hapus Tanda Tangan</button>
+                    </div>
+                </div>
+
+                <button id="btnApprove" class="btn-approve" onclick="submitApproval()">
+                    <span class="btn-text">APPROVE & KIRIM KE MANAGER</span>
+                    <div class="spinner"></div>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let currentItemId = null;
+        let currentLogId = null;
+
+        // --- 1. INITIAL LOAD (LIST VIEW) ---
+        document.addEventListener('DOMContentLoaded', loadList);
+
+        async function loadList() {
+            const listContainer = document.getElementById('taskList');
+            const loading = document.getElementById('loadingList');
+            const empty = document.getElementById('emptyList');
+
+            try {
+                // Join Items dan Log dimana spv_status = Pending
+                const { data, error } = await db
+                    .from('pohm_log')
+                    .select(`
+                        id, 
+                        spv_status,
+                        pohm_items (
+                            id, machine_name, work_type, start_time, engineer_name
+                        )
+                    `)
+                    .eq('spv_status', 'Pending')
+                    .order('created_at', { ascending: false });
+
+                loading.style.display = 'none';
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    empty.style.display = 'block';
+                    return;
+                }
+
+                listContainer.innerHTML = '';
+                data.forEach(log => {
+                    const item = log.pohm_items;
+                    if(!item) return;
+
+                    const dateStr = new Date(item.start_time).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' });
+                    
+                    const card = document.createElement('div');
+                    card.className = 'task-card';
+                    card.onclick = () => openDetail(item.id, log.id);
+                    card.innerHTML = `
+                        <div class="task-header">
+                            <span class="badge">Perlu Approval</span>
+                            <span class="task-date">${dateStr}</span>
+                        </div>
+                        <div class="machine-name">${item.machine_name}</div>
+                        <div style="font-size: 13px; color: #4B5563; margin-top: 4px;">
+                            ${item.work_type} • Oleh: ${item.engineer_name}
+                        </div>
+                    `;
+                    listContainer.appendChild(card);
+                });
+
+            } catch (err) {
+                console.error(err);
+                loading.textContent = 'Gagal memuat data.';
+            }
+        }
+
+        // --- 2. OPEN DETAIL VIEW ---
+        async function openDetail(itemId, logId) {
+            currentItemId = itemId;
+            currentLogId = logId;
+
+            // Fetch Full Data
+            try {
+                const { data, error } = await db.from('pohm_items').select('*').eq('id', itemId).single();
+                if (error) throw error;
+
+                // Populate Fields
+                document.getElementById('d_machine').textContent = data.machine_name;
+                document.getElementById('d_work_type').textContent = data.work_type;
+                document.getElementById('d_start').textContent = new Date(data.start_time).toLocaleString();
+                document.getElementById('d_end').textContent = new Date(data.end_time).toLocaleString();
+                document.getElementById('d_eng_name').textContent = data.engineer_name;
+                document.getElementById('d_eng_rec').textContent = data.recommendations || '-';
+                document.getElementById('d_eng_sig').src = data.engineer_signature || '';
+
+                // Render 8 Lines Problems
+                const probContainer = document.getElementById('d_problems_container');
+                probContainer.innerHTML = '';
+                const problems = (data.problem_desc || '').split('\n');
+                for(let i=0; i<8; i++) {
+                    const line = document.createElement('div');
+                    line.className = 'line-display';
+                    line.textContent = `${i+1}. ${problems[i] || ''}`;
+                    probContainer.appendChild(line);
+                }
+
+                // Render 8 Lines Actions
+                const actContainer = document.getElementById('d_actions_container');
+                actContainer.innerHTML = '';
+                const actions = (data.action_taken || '').split('\n');
+                for(let i=0; i<8; i++) {
+                    const line = document.createElement('div');
+                    line.className = 'line-display';
+                    line.textContent = `${i+1}. ${actions[i] || ''}`;
+                    actContainer.appendChild(line);
+                }
+
+                // Render Parts Table
+                const tbody = document.getElementById('d_parts_body');
+                tbody.innerHTML = '';
+                if(data.spare_parts && data.spare_parts.length > 0) {
+                    data.spare_parts.forEach(p => {
+                        const tr = `<tr><td>${p.no}</td><td>${p.name}</td><td>${p.qty}</td><td>${p.action}</td></tr>`;
+                        tbody.innerHTML += tr;
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:10px;">Tidak ada penggantian part</td></tr>';
+                }
+
+                // Switch Views
+                document.getElementById('listView').style.display = 'none';
+                document.getElementById('listHeader').style.display = 'none';
+                document.getElementById('detailView').style.display = 'block';
+                document.getElementById('detailHeader').style.display = 'flex';
+                window.scrollTo(0,0);
+                
+                // Resize Canvas Logic
+                setTimeout(resizeCanvas, 100);
+
+            } catch (err) {
+                alert('Gagal membuka detail: ' + err.message);
+            }
+        }
+
+        function showList() {
+            document.getElementById('detailView').style.display = 'none';
+            document.getElementById('detailHeader').style.display = 'none';
+            document.getElementById('listView').style.display = 'block';
+            document.getElementById('listHeader').style.display = 'flex';
+        }
+
+        // --- 3. SIGNATURE LOGIC (COPY PASTE FROM ENG) ---
+        const canvas = document.getElementById('signaturePad');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            ctx.scale(ratio, ratio);
+        }
+
+        // Drawing Events
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('touchstart', (e) => { startDraw(e.touches[0]); e.preventDefault(); }, {passive: false});
+        canvas.addEventListener('touchmove', (e) => { draw(e.touches[0]); e.preventDefault(); }, {passive: false});
+        canvas.addEventListener('touchend', stopDraw);
+
+        function startDraw(e) { isDrawing = true; ctx.beginPath(); ctx.moveTo(getX(e), getY(e)); ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000'; }
+        function draw(e) { if(!isDrawing) return; ctx.lineTo(getX(e), getY(e)); ctx.stroke(); }
+        function stopDraw() { isDrawing = false; }
+        function getX(e) { const r = canvas.getBoundingClientRect(); return e.clientX - r.left; }
+        function getY(e) { const r = canvas.getBoundingClientRect(); return e.clientY - r.top; }
+        function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+        function isCanvasBlank() { const b = document.createElement('canvas'); b.width = canvas.width; b.height = canvas.height; return canvas.toDataURL() === b.toDataURL(); }
+
+        // --- 4. SUBMIT APPROVAL ---
+        async function submitApproval() {
+            const spvName = document.getElementById('spv_name').value;
+            const spvNote = document.getElementById('spv_note').value;
+            
+            if(!spvName) { alert('Harap isi Nama Superintendent!'); return; }
+            if(isCanvasBlank()) { if(!confirm('Tanda tangan kosong. Lanjut?')) return; }
+
+            const btn = document.getElementById('btnApprove');
+            const spinner = btn.querySelector('.spinner');
+            const btnText = btn.querySelector('.btn-text');
+
+            btn.disabled = true; spinner.style.display = 'inline-block'; btnText.textContent = 'Memproses...';
+
+            try {
+                const sigData = isCanvasBlank() ? null : canvas.toDataURL();
+
+                // 1. Update pohm_items (Signature & Name)
+                const { error: errItem } = await db
+                    .from('pohm_items')
+                    .update({
+                        spv_name: spvName,
+                        spv_signature: sigData
+                    })
+                    .eq('id', currentItemId);
+                
+                if(errItem) throw errItem;
+
+                // 2. Update pohm_log (Status & Note)
+                const { error: errLog } = await db
+                    .from('pohm_log')
+                    .update({
+                        spv_status: 'Approved',
+                        spv_note: spvNote,   // Catatan untuk Manager masuk sini
+                        manager_status: 'Pending' // Trigger Manager
+                    })
+                    .eq('id', currentLogId);
+
+                if(errLog) throw errLog;
+
+                alert('Laporan berhasil diapprove!');
+                location.reload(); // Refresh list
+
+            } catch (err) {
+                console.error(err);
+                alert('Gagal approve: ' + err.message);
+                btn.disabled = false; spinner.style.display = 'none'; btnText.textContent = 'APPROVE & KIRIM KE MANAGER';
+            }
+        }
+    </script>
+</body>
+</html>
