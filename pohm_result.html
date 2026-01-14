@@ -3,21 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FORM LAPORAN PERAWATAN - ISO OFFICIAL</title>
+    <title>FORM PERAWATAN - ISO STANDARD</title>
     
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <style>
-        /* ==================== RESET & CONFIG ==================== */
+        /* ==================== RESET TOTAL & ATURAN HURUF ==================== */
         @page { size: A4 portrait; margin: 0; }
         
-        * { box-sizing: border-box; font-style: normal !important; }
+        * {
+            box-sizing: border-box;
+            /* PAKSA SEMUA MENJADI TEGAK & NORMAL */
+            font-style: normal !important;
+            font-variant: normal !important;
+            letter-spacing: normal !important;
+        }
 
         body { 
             margin: 0; padding: 0; 
-            background: #CCCCCC; 
+            background: #CCCCCC; /* Background preview */
+            /* FONT STANDAR ADMINISTRATIF */
             font-family: Arial, Helvetica, sans-serif; 
             font-size: 10pt;
             color: black;
@@ -25,11 +32,25 @@
             -webkit-print-color-adjust: exact; 
         }
 
-        /* Helper Classes */
+        /* HANYA KELAS INI YANG BOLEH BOLD */
         .iso-bold { font-weight: bold !important; }
-        .iso-normal { font-weight: normal !important; }
 
-        /* CONTROL BAR (HIDDEN ON PRINT) */
+        /* TABEL DEFAULT */
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            border-spacing: 0; 
+        }
+        
+        td, th { 
+            border: 1px solid black; 
+            padding: 4px 6px; 
+            vertical-align: middle; 
+            font-weight: normal; /* Default sel tabel NORMAL */
+            text-align: left;
+        }
+
+        /* CONTROL BAR (Tidak Dicetak) */
         .control-bar {
             background: #2d3748; color: white; padding: 10px; 
             position: sticky; top: 0; z-index: 9999; 
@@ -43,7 +64,7 @@
         .btn-pdf { background: #dc3545; color: white; font-weight: bold; }
         .btn-back { background: #6c757d; color: white; }
 
-        /* ==================== A4 PAGE ==================== */
+        /* KERTAS A4 */
         .page {
             width: 210mm; min-height: 297mm; 
             background: white; 
@@ -53,79 +74,95 @@
             position: relative;
         }
 
-        /* ==================== TABEL & STRUKTUR ==================== */
-        table { width: 100%; border-collapse: collapse; border-spacing: 0; }
-        td { border: 1px solid black; padding: 4px; vertical-align: middle; font-weight: normal; }
+        /* ==================== STRUKTUR FORM ==================== */
 
-        /* 1. HEADER (3 KOLOM) */
+        /* 1. HEADER UTAMA */
         .col-logo { width: 20%; text-align: center; }
-        .col-company { width: 50%; text-align: center; font-size: 14pt; font-weight: bold; }
+        .col-company { 
+            width: 50%; text-align: center; 
+            font-size: 14pt; /* Sedikit lebih besar */
+            /* BOLD DIIZINKAN */
+            font-weight: bold; 
+        }
         .col-doc { width: 30%; padding: 0 !important; vertical-align: top; }
+        
         .logo-img { max-width: 90px; max-height: 60px; display: block; margin: auto; }
+        
+        /* Sub-tabel Dokumen */
         .tbl-doc td { border: none; border-bottom: 1px solid black; font-size: 8pt; padding: 2px 4px; }
         .tbl-doc tr:last-child td { border-bottom: none; }
 
-        /* 2. JUDUL */
+        /* 2. JUDUL FORM */
         .box-title { 
             border: 1px solid black; border-top: none; 
             text-align: center; padding: 8px; margin-bottom: 10px; 
             background: #f2f2f2;
         }
-        .title-main { font-size: 12pt; font-weight: bold; }
+        .title-main { font-size: 12pt; font-weight: bold; } /* BOLD DIIZINKAN */
         .title-sub { font-size: 10pt; font-weight: normal; margin-top: 2px; }
 
         /* 3. IDENTITAS */
         .tbl-identity { margin-bottom: 10px; }
-        .tbl-identity td { padding: 6px; }
-        .chk-large { font-size: 14pt; vertical-align: middle; line-height: 1; }
+        .chk-large { font-size: 12pt; vertical-align: middle; } /* Checkbox biasa */
 
-        /* 4 & 5. GRID (4x2 CHECKBOX) */
+        /* 4 & 5. GRID (DESKRIPSI & TINDAKAN) */
         .box-section { border: 1px solid black; margin-bottom: 10px; }
         .sec-header { 
             border-bottom: 1px solid black; padding: 5px; 
-            background: #f2f2f2; font-size: 10pt; font-weight: bold;
+            background: #f2f2f2; font-size: 10pt;
+            /* BOLD DIIZINKAN */
+            font-weight: bold; 
         }
-        
+
+        /* Grid Cell Style */
         .tbl-grid td { 
             border: 1px dotted black; /* Garis Titik */
             height: 24px; width: 50%; 
-            vertical-align: bottom; /* Teks nempel garis bawah */
-            font-family: 'Courier New', monospace; 
-            font-size: 10pt; font-weight: normal;
+            vertical-align: bottom;
+            font-family: Arial, sans-serif; /* Pastikan Font Konsisten */
+            font-size: 10pt; 
+            font-weight: normal; /* PASTI NORMAL */
             padding-left: 5px;
             white-space: nowrap; overflow: hidden;
         }
-        /* Hapus border luar grid */
         .tbl-grid tr:last-child td { border-bottom: none; }
         .tbl-grid tr td:last-child { border-right: none; }
         .tbl-grid tr td:first-child { border-left: none; }
-        
-        /* Checkbox dalam Grid */
-        .chk-grid { 
-            font-size: 12pt; margin-right: 5px; 
-            display: inline-block; vertical-align: middle;
-            font-family: Arial, sans-serif; /* Pastikan simbol kotak render benar */
-        }
-        .txt-grid { vertical-align: middle; }
 
         /* 6. KERUSAKAN PART */
         .tbl-parts { margin-bottom: 10px; font-size: 9pt; }
-        .tbl-parts th { background: #f2f2f2; text-align: center; font-weight: bold; }
+        .tbl-parts th { 
+            background: #f2f2f2; text-align: center; 
+            font-weight: bold; /* BOLD DIIZINKAN */
+        }
         .tbl-parts td { height: 20px; font-weight: normal; }
 
         /* 7. REKOMENDASI */
-        .tbl-rec td { border: none; border-bottom: 1px dotted black; height: 22px; font-family: 'Courier New', monospace; font-weight: normal; }
+        .tbl-rec td { border: none; border-bottom: 1px dotted black; height: 22px; font-weight: normal; }
         .tbl-rec tr:last-child td { border-bottom: none; }
 
         /* 8. TANDA TANGAN */
         .tbl-sig { margin-top: 10px; text-align: center; }
         .tbl-sig td { width: 33.33%; vertical-align: top; padding: 0; }
-        .sig-label { border-bottom: 1px solid black; background: #f2f2f2; padding: 5px; font-size: 9pt; font-weight: normal; }
-        .sig-area { height: 75px; position: relative; display: flex; align-items: flex-end; justify-content: center; }
+        
+        .sig-label { 
+            border-bottom: 1px solid black; background: #f2f2f2; 
+            padding: 5px; font-size: 9pt; font-weight: normal; 
+        }
+        .sig-area { 
+            height: 75px; position: relative; 
+            display: flex; align-items: flex-end; justify-content: center; 
+        }
         .sig-img { position: absolute; bottom: 5px; max-height: 65px; max-width: 120px; }
-        .sig-role { border-top: 1px solid black; padding: 5px; font-size: 9pt; font-weight: normal !important; }
+        
+        .sig-role { 
+            border-top: 1px solid black; padding: 5px; font-size: 9pt; 
+            /* MUTLAK NORMAL (SESUAI ATURAN TERAKHIR) */
+            font-weight: normal !important; 
+            font-style: normal !important;
+        }
 
-        /* PRINT MEDIA */
+        /* PRINT MODE */
         @media print {
             body { background: white; }
             .control-bar { display: none; }
@@ -156,7 +193,9 @@
                 <td class="col-logo">
                     <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="LOGO PERUSAHAAN" class="logo-img" onerror="this.style.display='none'; this.parentElement.innerHTML='LOGO PERUSAHAAN'">
                 </td>
-                <td class="col-company iso-bold">PT AMARILYS KARISMA GEMILANG</td>
+                <td class="col-company iso-bold">
+                    PT AMARILYS KARISMA GEMILANG
+                </td>
                 <td class="col-doc">
                     <table class="tbl-doc">
                         <tr><td>No Dokumen : AF.SP 05.01.Rev-00</td></tr>
@@ -170,19 +209,29 @@
 
         <div class="box-title">
             <div class="title-main iso-bold">FORM LAPORAN PERAWATAN & OVER HAUL MESIN</div>
-            <div class="title-sub iso-normal">TOOLS/EQUIPMENT</div>
+            <div class="title-sub">TOOLS/EQUIPMENT</div>
         </div>
 
         <table class="tbl-identity">
             <tr>
-                <td width="65%">Nama Mesin,Tools/equipment : <span id="val_mesin" style="margin-left: 5px;">-</span></td>
+                <td width="65%">
+                    Nama Mesin,Tools/equipment : <span id="val_mesin" style="margin-left: 5px;">-</span>
+                </td>
                 <td width="35%">
                     <span id="chk_perawatan" class="chk-large">&#9744;</span> Perawatan &nbsp;&nbsp;
                     <span id="chk_overhaul" class="chk-large">&#9744;</span> Over Haul
                 </td>
             </tr>
-            <tr><td colspan="2">Tanggal,Jam Mulai &nbsp;&nbsp;&nbsp;: <span id="val_mulai" style="margin-left: 5px;">-</span></td></tr>
-            <tr><td colspan="2">Tanggal,Jam Selesai : <span id="val_selesai" style="margin-left: 5px;">-</span></td></tr>
+            <tr>
+                <td colspan="2">
+                    Tanggal,Jam Mulai &nbsp;&nbsp;&nbsp;: <span id="val_mulai" style="margin-left: 5px;">-</span>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    Tanggal,Jam Selesai : <span id="val_selesai" style="margin-left: 5px;">-</span>
+                </td>
+            </tr>
         </table>
 
         <div class="box-section">
@@ -238,22 +287,23 @@
         <table class="tbl-sig">
             <tr>
                 <td>
-                    <div class="sig-label iso-normal">Dikerjakan Oleh:</div>
+                    <div class="sig-label">Dikerjakan Oleh:</div>
                     <div class="sig-area"><img id="img_sig_eng" src="" class="sig-img" style="display: none;"></div>
-                    <div class="sig-role iso-normal" id="nm_eng">Engineer</div>
+                    <div class="sig-role" id="nm_eng">Engineer</div>
                 </td>
                 <td>
-                    <div class="sig-label iso-normal">Diperiksa Oleh:</div>
+                    <div class="sig-label">Diperiksa Oleh:</div>
                     <div class="sig-area"><img id="img_sig_spv" src="" class="sig-img" style="display: none;"></div>
-                    <div class="sig-role iso-normal" id="nm_spv">Spv/Superintendent</div>
+                    <div class="sig-role" id="nm_spv">Spv/Superintendent</div>
                 </td>
                 <td>
-                    <div class="sig-label iso-normal">Mengetahui:</div>
+                    <div class="sig-label">Mengetahui:</div>
                     <div class="sig-area"><img id="img_sig_mgr" src="" class="sig-img" style="display: none;"></div>
-                    <div class="sig-role iso-normal" id="nm_mgr">Manager</div>
+                    <div class="sig-role" id="nm_mgr">Manager</div>
                 </td>
             </tr>
         </table>
+
     </div>
 
     <script>
@@ -301,7 +351,7 @@
             document.getElementById('val_mulai').textContent = fmt(d.start_time);
             document.getElementById('val_selesai').textContent = fmt(d.end_time);
 
-            // GRID LOGIC: FILL CELL WITH CHECKBOX + TEXT
+            // GRID LOGIC: [BOX] [TEXT]
             fillGridWithCheckbox('grid_masalah', d.problem_desc);
             fillGridWithCheckbox('grid_tindakan', d.action_taken);
 
@@ -329,7 +379,7 @@
             showSig('img_sig_mgr', 'nm_mgr', d.manager_signature, d.manager_name);
         }
 
-        // --- CORE LOGIC FOR GRID CHECKBOXES ---
+        // Logic mengisi grid dengan checkbox di awal
         function fillGridWithCheckbox(tableId, text) {
             const table = document.getElementById(tableId);
             const lines = (text || '').split('\n');
@@ -337,11 +387,10 @@
             
             for(let i=0; i < cells.length; i++) {
                 const content = lines[i] ? lines[i].trim() : '';
-                // LOGIKA: Jika ada teks -> Centang (9745), Jika kosong -> Kosong (9744)
+                // Simbol kotak centang jika ada isi, kotak kosong jika tidak
                 const symbol = content ? '&#9745;' : '&#9744;';
-                
-                // Format: [SYMBOL] [TEXT]
-                cells[i].innerHTML = `<span class="chk-grid">${symbol}</span> <span class="txt-grid">${content}</span>`;
+                // Render [Simbol] [Teks]
+                cells[i].innerHTML = `<span style="font-size:12pt; margin-right:5px;">${symbol}</span> ${content}`;
             }
         }
 
