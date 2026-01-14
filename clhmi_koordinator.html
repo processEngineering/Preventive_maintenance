@@ -166,9 +166,19 @@
 
         window.onload = loadQueue;
 
-        // --- ROUTING & SCANNER ---
-        function showList() {
-            if(scanner) scanner.stop().then(() => scanner.clear());
+        // --- ROUTING & SCANNER (PERBAIKAN UTAMA DISINI) ---
+        async function showList() {
+            // FIX: Matikan scanner dengan aman (Peredam Error)
+            if(scanner) {
+                try {
+                    await scanner.stop();
+                } catch (ignore) {
+                    // Abaikan error "Scanner not running"
+                    console.log("Scanner stop error ignored:", ignore);
+                }
+                scanner.clear();
+            }
+            
             document.getElementById('list-view').classList.remove('hidden');
             document.getElementById('scanner-view').classList.add('hidden');
             document.getElementById('form-view').classList.add('hidden');
@@ -181,6 +191,7 @@
             document.getElementById('scanner-view').classList.remove('hidden');
             document.getElementById('target-mesin').innerText = activeHdr.clhmi_machine?.merk_mesin || 'Unknown';
             
+            // Re-init scanner fresh
             scanner = new Html5Qrcode("reader");
             scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 250, height: 250 } }, onScanSuccess);
         }
@@ -188,7 +199,8 @@
         async function onScanSuccess(decodedText) {
             const targetName = activeHdr.clhmi_machine?.merk_mesin || '';
             if (decodedText.toLowerCase().includes(targetName.toLowerCase()) || targetName.toLowerCase().includes(decodedText.toLowerCase())) {
-                await scanner.stop();
+                // FIX: Stop scanner aman
+                try { await scanner.stop(); } catch(e) {}
                 showForm();
             } else {
                 alert(`❌ QR SALAH!\nTarget: ${targetName}\nScan: ${decodedText}`);
@@ -199,9 +211,10 @@
             document.getElementById('scanner-view').classList.add('hidden');
             document.getElementById('form-view').classList.remove('hidden');
             
-            // ISI DATA (Mengambil dari kolom 'pelaksana' yang baru dibuat)
+            // ISI DATA
             document.getElementById('verif-machine-name').innerText = activeHdr.clhmi_machine?.merk_mesin || '-';
-            document.getElementById('verif-pelaksana').innerText = activeHdr.pelaksana || '-'; 
+            // PENTING: Ambil dari pelaksana, fallback ke diisi_oleh
+            document.getElementById('verif-pelaksana').innerText = activeHdr.pelaksana || activeHdr.diisi_oleh || '-'; 
             document.getElementById('verif-date').innerText = new Date(activeHdr.tanggal_isi).toLocaleDateString('id-ID');
 
             loadFindings();
@@ -216,8 +229,8 @@
 
         function resizeCanvas() {
             const canvas = document.getElementById('sig-canvas');
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
             if(canvas.offsetWidth > 0) {
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
                 canvas.width = canvas.offsetWidth * ratio;
                 canvas.height = canvas.offsetHeight * ratio;
                 canvas.getContext("2d").scale(ratio, ratio);
@@ -245,8 +258,7 @@
             data.forEach(item => {
                 const dateStr = new Date(item.tanggal_isi).toLocaleDateString('id-ID', {day:'numeric', month:'short'});
                 const timeStr = new Date(item.created_at).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
-                // Fallback ke '-' jika pelaksana kosong
-                const pelaksanaName = item.pelaksana || '-'; 
+                const pelaksanaName = item.pelaksana || item.diisi_oleh || '-'; 
 
                 container.insertAdjacentHTML('beforeend', `
                     <div onclick="openScanner('${encodeURIComponent(JSON.stringify(item))}')" class="bg-white p-5 rounded-[1.2rem] shadow-sm border border-slate-200 active:scale-[0.98] transition-transform cursor-pointer relative overflow-hidden">
@@ -305,7 +317,7 @@
             const btn = document.getElementById('btn-approve');
             btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> MENYIMPAN...`; btn.disabled = true;
 
-            // TRY CATCH AGAR TIDAK MENTOK
+            // --- INI BAGIAN PENTING AGAR TIDAK MENTOK LOADING ---
             try {
                 const { error } = await sb.from('clhmi').update({
                     paraf_coord: sigPadKoor.toDataURL(), 
@@ -315,12 +327,14 @@
 
                 if(!error) { 
                     alert("✅ APPROVED!"); 
+                    // Panggil showList dengan aman
                     showList(); 
                     btn.innerHTML = 'APPROVE'; btn.disabled = false;
                 } else { 
                     throw error; 
                 }
             } catch (e) {
+                // TANGKAP ERROR DAN TAMPILKAN
                 alert("GAGAL MENYIMPAN: " + (e.message || JSON.stringify(e)));
                 btn.innerHTML = 'APPROVE'; btn.disabled = false;
             }
