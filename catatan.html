@@ -10,7 +10,7 @@
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-        body { background-color: #fcfcfc; color: #000; padding-bottom: 80px; }
+        body { background-color: #fcfcfc; color: #000; padding-bottom: 100px; }
 
         .header-box {
             text-align: center; margin: 30px auto;
@@ -55,41 +55,17 @@
         .bg-koordinator { border-left: 5px solid #f59e0b; background: #fffbeb; }
         .bg-superintendent { border-left: 5px solid #be185d; background: #fdf2f8; }
 
+        /* BOTTOM NAV */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: white; border-top: 2px solid #000;
+            display: flex; justify-content: space-around; padding: 15px 0; z-index: 99;
+        }
+        .nav-item { font-size: 24px; color: #000; cursor: pointer; text-decoration: none; opacity: 0.6; }
+        .nav-item.active { opacity: 1; transform: scale(1.1); }
+
         .loading { text-align: center; margin-top: 50px; font-style: italic; color: #999; }
         .empty { text-align: center; margin-top: 50px; font-weight: 600; color: #ccc; }
-
-        /* BOTTOM NAVIGATION SESUAI GAMBAR */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 70px;
-            background-color: white;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            border-top: 1px solid #eee;
-            z-index: 1000;
-            padding: 0 10px;
-        }
-
-        .nav-item {
-            text-decoration: none;
-            color: #000;
-            font-size: 24px;
-            transition: transform 0.2s;
-        }
-
-        .nav-item:active {
-            transform: scale(0.9);
-        }
-
-        .nav-item.active {
-            color: #000;
-            border-bottom: 2px solid #000;
-            padding-bottom: 5px;
-        }
     </style>
 </head>
 <body>
@@ -117,14 +93,27 @@
             let masterData = [];
 
             try {
-                // 1. Ambil dari Tabel CHSLR_LOG
-                let { data: chslr } = await client.from('chslr_log').select('*').order('created_at', { ascending: false });
+                // 1. Ambil dari Tabel CHSLR_LOG + CHSLR_RESULT (Join Logic)
+                let { data: chslr } = await client
+                    .from('chslr_log')
+                    .select('*, chslr_result(keterangan)')
+                    .order('created_at', { ascending: false });
+
                 if(chslr) chslr.forEach(d => {
+                    // Logic Kondisional Pelaksana
+                    let noteFinal = d.catatan_pelaksana;
+                    if (!noteFinal || noteFinal.trim() === "") {
+                        noteFinal = d.chslr_result
+                            .map(r => r.keterangan)
+                            .filter(k => k)
+                            .join(", ");
+                    }
+
                     masterData.push({
                         type: 'Robot & Standlabel',
                         machine: d.mesin_id,
                         date: d.created_at,
-                        pelaksana: { name: (d.pelaksana_names || []).join(', '), note: d.catatan_pelaksana },
+                        pelaksana: { name: (d.pelaksana_names || []).join(', '), note: noteFinal || '-' },
                         koordinator: { name: d.koordinator_nama, note: d.remark_koordinator },
                         superintendent: { name: d.superintendent_nama, note: d.remark_superintendent }
                     });
@@ -185,7 +174,6 @@
                 return;
             }
 
-            // Urutkan berdasarkan tanggal terbaru
             data.sort((a, b) => new Date(b.date) - new Date(a.date));
 
             data.forEach(item => {
