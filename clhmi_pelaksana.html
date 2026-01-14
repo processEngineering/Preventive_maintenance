@@ -82,7 +82,7 @@
                     </button>
                 </div>
                 <div class="border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 h-40 relative overflow-hidden">
-                    <canvas id="sig-canvas" class="w-full h-full touch-none"></canvas>
+                    <canvas id="sig-canvas" class="w-full h-full touch-none" style="touch-action: none;"></canvas>
                 </div>
             </div>
 
@@ -112,18 +112,25 @@
             scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 250, height: 250 } }, onScanSuccess);
             
             const canvas = document.getElementById('sig-canvas');
-            sigPad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)' });
-            resizeCanvas();
+            // FIX: Warna pen hitam agar terlihat
+            sigPad = new SignaturePad(canvas, { backgroundColor: 'rgba(255, 255, 255, 0)', penColor: 'rgb(0, 0, 0)' });
+            
             window.addEventListener("resize", resizeCanvas);
         };
 
         function resizeCanvas() {
             const canvas = document.getElementById('sig-canvas');
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext("2d").scale(ratio, ratio);
+            
+            // Cek apakah canvas visible (lebar > 0)
+            if (canvas.offsetWidth > 0) {
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
+                sigPad.clear(); // Bersihkan setelah resize agar tidak stretch
+            }
         }
+        
         function clearSig() { sigPad.clear(); }
 
         async function onScanSuccess(decodedText) {
@@ -138,6 +145,11 @@
                 document.getElementById('submit-bar').classList.remove('hidden');
                 document.getElementById('machine-name').innerText = mesin.merk_mesin;
                 document.getElementById('machine-sn').innerText = `SN: ${mesin.serial_no || 'N/A'}`;
+                
+                // === PERBAIKAN UTAMA DISINI ===
+                // Resize canvas SEKARANG karena elemen form sudah tidak hidden
+                setTimeout(resizeCanvas, 100); 
+                
                 loadChecklistItems();
             } else {
                 alert("❌ MESIN TIDAK TERDAFTAR!");
@@ -153,7 +165,7 @@
             items.forEach(item => {
                 let inputHTML = '';
                 if(item.item_kode === 'i') {
-                    // Running Hour
+                    // Running Hour Input
                     inputHTML = `
                     <div class="mt-2">
                         <label class="text-[10px] font-bold text-slate-400 uppercase">Input Running Hour</label>
@@ -161,39 +173,27 @@
                         <input type="hidden" name="status-${item.id}" value="OK">
                     </div>`;
                 } else {
-                    // 4 TOMBOL PILIHAN SESUAI PERMINTAAN
+                    // 4 TOMBOL: OK, NG, MT, NA
                     inputHTML = `
                     <div class="grid grid-cols-4 gap-2 mt-3">
                         <label class="cursor-pointer relative">
                             <input type="radio" name="status-${item.id}" value="OK" class="peer sr-only" checked onclick="toggleNote('${item.id}', false)">
-                            <div class="w-full py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 font-black text-[10px] text-center uppercase transition-all
-                                peer-checked:bg-green-500 peer-checked:text-white peer-checked:border-green-600 peer-checked:shadow-md">
-                                OK
-                            </div>
+                            <div class="w-full py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 font-black text-[10px] text-center uppercase transition-all peer-checked:bg-green-500 peer-checked:text-white peer-checked:border-green-600 peer-checked:shadow-md">OK</div>
                         </label>
                         
                         <label class="cursor-pointer relative">
                             <input type="radio" name="status-${item.id}" value="NG" class="peer sr-only" onclick="toggleNote('${item.id}', true)">
-                            <div class="w-full py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 font-black text-[10px] text-center uppercase transition-all
-                                peer-checked:bg-red-500 peer-checked:text-white peer-checked:border-red-600 peer-checked:shadow-md">
-                                NG
-                            </div>
+                            <div class="w-full py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 font-black text-[10px] text-center uppercase transition-all peer-checked:bg-red-500 peer-checked:text-white peer-checked:border-red-600 peer-checked:shadow-md">NG</div>
                         </label>
 
                         <label class="cursor-pointer relative">
                             <input type="radio" name="status-${item.id}" value="MT" class="peer sr-only" onclick="toggleNote('${item.id}', true)">
-                            <div class="w-full py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 font-black text-[10px] text-center uppercase transition-all
-                                peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-600 peer-checked:shadow-md">
-                                MT
-                            </div>
+                            <div class="w-full py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 font-black text-[10px] text-center uppercase transition-all peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-600 peer-checked:shadow-md">MT</div>
                         </label>
 
                         <label class="cursor-pointer relative">
                             <input type="radio" name="status-${item.id}" value="NA" class="peer sr-only" onclick="toggleNote('${item.id}', false)">
-                            <div class="w-full py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 font-black text-[10px] text-center uppercase transition-all
-                                peer-checked:bg-slate-500 peer-checked:text-white peer-checked:border-slate-600 peer-checked:shadow-md">
-                                NA
-                            </div>
+                            <div class="w-full py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 font-black text-[10px] text-center uppercase transition-all peer-checked:bg-slate-500 peer-checked:text-white peer-checked:border-slate-600 peer-checked:shadow-md">NA</div>
                         </label>
                     </div>`;
                 }
@@ -205,17 +205,11 @@
                             ${item.kategori || 'Umum'}
                         </span>
                     </div>
-                    
                     <p class="font-bold text-slate-800 text-sm leading-snug mb-1">${item.nama_pengecekan}</p>
-                    <p class="text-[10px] text-slate-500 font-medium italic border-l-2 border-slate-200 pl-2">
-                        Std: ${item.standard || '-'}
-                    </p>
-                    
+                    <p class="text-[10px] text-slate-500 font-medium italic border-l-2 border-slate-200 pl-2">Std: ${item.standard || '-'}</p>
                     ${inputHTML}
-
                     <div id="note-box-${item.id}" class="hidden mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <textarea id="note-${item.id}" placeholder="Jelaskan kondisi NG / Maintenance..." 
-                            class="w-full bg-red-50 border border-red-200 rounded-xl p-3 text-xs font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-red-500 resize-none h-20"></textarea>
+                        <textarea id="note-${item.id}" placeholder="Keterangan..." class="w-full bg-red-50 border border-red-200 rounded-xl p-3 text-xs font-semibold text-slate-700 outline-none resize-none h-20"></textarea>
                     </div>
                 </div>`;
                 container.insertAdjacentHTML('beforeend', card);
@@ -224,13 +218,7 @@
 
         function toggleNote(id, show) {
             const el = document.getElementById(`note-box-${id}`);
-            if(show) {
-                el.classList.remove('hidden');
-            } else {
-                el.classList.add('hidden');
-                const noteInput = document.getElementById(`note-${id}`);
-                if(noteInput) noteInput.value = ""; // Reset note jika pilih OK/NA
-            }
+            if(show) el.classList.remove('hidden'); else el.classList.add('hidden');
         }
 
         async function submitReport() {
@@ -257,9 +245,9 @@
 
                 const { data: items } = await sb.from('clhmi_items').select('id, item_kode');
                 const results = items.map(item => {
-                    let statusVal = 'OK', valueVal = null;
+                    let statusVal, valueVal = null;
                     if(item.item_kode === 'i') {
-                        valueVal = document.getElementById(`val-${item.id}`).value || '0';
+                        statusVal = 'OK'; valueVal = document.getElementById(`val-${item.id}`).value || '0';
                     } else {
                         statusVal = document.querySelector(`input[name="status-${item.id}"]:checked`)?.value || 'OK';
                     }
