@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan POHM - Result</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        /* ==================== THEME & CONTROLS ==================== */
+        :root {
+            --primary: #DC2626;
+            --bg-gray: #F3F4F6;
+            --border: #E5E7EB;
+        }
+
+        body {
+            background-color: var(--bg-gray);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Control Bar (No Print) */
+        .control-bar {
+            width: 100%;
+            background: white;
+            padding: 15px 20px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-group { display: flex; gap: 10px; align-items: center; }
+        
+        select, button {
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        select:focus { outline: 2px solid var(--primary); }
+
+        .btn-show { background: var(--primary); color: white; border: none; font-weight: 600; cursor: pointer; }
+        .btn-pdf { background: #1F2937; color: white; border: none; font-weight: 600; cursor: pointer; }
+        .btn-home { background: white; color: #374151; text-decoration: none; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 600; }
+        
+        /* ==================== A4 PAPER LAYOUT ==================== */
+        .page-container {
+            margin: 30px 0;
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            padding: 15mm 20mm; /* Margin Kertas */
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            position: relative;
+            box-sizing: border-box;
+            color: black;
+            font-family: 'Arial', sans-serif; /* Font mirip dokumen resmi */
+        }
+
+        /* Helper Grid/Flex untuk Form */
+        .header-section { margin-bottom: 20px; }
+        .header-section h2 { text-align: center; text-decoration: underline; font-size: 16pt; margin-bottom: 5px; text-transform: uppercase; }
+        
+        .row { display: flex; margin-bottom: 5px; align-items: flex-end; }
+        .label { font-weight: bold; font-size: 11pt; min-width: 180px; }
+        .value { flex: 1; border-bottom: 1px dotted black; padding-left: 5px; font-family: 'Courier New', monospace; font-size: 11pt; }
+        
+        /* Checkbox Style simulation */
+        .checkbox-group { display: flex; gap: 30px; margin-left: 20px; }
+        .cb-item { display: flex; align-items: center; gap: 5px; font-size: 11pt; }
+        .box { width: 14px; height: 14px; border: 1px solid black; display: inline-block; position: relative; }
+        .box.checked::after { content: '✓'; position: absolute; top: -4px; left: 1px; font-weight: bold; font-size: 12pt; }
+
+        /* Dotted Lines Section */
+        .section-title { font-weight: bold; font-size: 11pt; margin-top: 15px; margin-bottom: 5px; }
+        .dotted-line {
+            width: 100%;
+            border-bottom: 1px dotted black;
+            height: 22px; /* Line height */
+            line-height: 22px;
+            font-family: 'Courier New', monospace;
+            font-size: 11pt;
+            white-space: pre; /* Agar spasi terjaga */
+        }
+
+        /* Table Style */
+        .parts-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+            font-size: 10pt;
+        }
+        .parts-table th, .parts-table td {
+            border: 1px solid black;
+            padding: 4px 8px;
+            text-align: left;
+        }
+        .parts-table th { text-align: center; background: #f0f0f0; }
+        .text-center { text-align: center; }
+
+        /* Signature Section */
+        .signature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            margin-top: 30px;
+            text-align: center;
+            font-size: 11pt;
+            gap: 10px;
+        }
+        .sig-box { min-height: 80px; display: flex; align-items: flex-end; justify-content: center; position: relative; }
+        .sig-img { position: absolute; bottom: 5px; max-height: 70px; max-width: 100px; mix-blend-mode: multiply; }
+        .name-line { border-top: 1px solid black; width: 80%; margin: 0 auto; padding-top: 2px; font-weight: bold; }
+
+        /* PRINT MEDIA QUERY */
+        @media print {
+            body { background: white; }
+            .control-bar { display: none; }
+            .page-container { margin: 0; box-shadow: none; width: 100%; height: auto; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="control-bar no-print">
+        <a href="download_data.html" class="btn-home"><i class="fa-solid fa-arrow-left"></i> Kembali</a>
+        
+        <div class="control-group">
+            <select id="filter_mesin">
+                <option value="">-- Pilih Mesin --</option>
+            </select>
+            <select id="filter_bulan">
+                <option value="">-- Bulan --</option>
+                <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+                <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+                <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+                <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+            </select>
+            <select id="filter_tahun">
+                <option value="2026">2026</option>
+                <option value="2025">2025</option>
+            </select>
+        </div>
+
+        <button onclick="fetchData()" class="btn-show"><i class="fa-solid fa-magnifying-glass"></i> Tampilkan</button>
+        <button onclick="exportPDF()" class="btn-pdf"><i class="fa-solid fa-file-pdf"></i> Ekspor PDF</button>
+    </div>
+
+    <div class="page-container" id="printArea">
+        
+        <div class="header-section">
+            <h2>FORM LAPORAN PERAWATAN &<br>OVER HAUL MESIN TOOLS / EQUIPMENT</h2>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
+            <div style="display: flex; align-items: flex-end; width: 65%;">
+                <span class="label" style="min-width: 190px;">Nama Mesin,Tools/equipment :</span>
+                <span class="value" id="val_mesin"></span>
+            </div>
+            <div class="checkbox-group">
+                <div class="cb-item"><div class="box" id="cb_perawatan"></div> Perawatan</div>
+                <div class="cb-item"><div class="box" id="cb_overhaul"></div> Over Haul</div>
+            </div>
+        </div>
+
+        <div class="row">
+            <span class="label">Tanggal, Jam Mulai :</span>
+            <span class="value" id="val_mulai"></span>
+        </div>
+        <div class="row">
+            <span class="label">Tanggal, Jam Selesai :</span>
+            <span class="value" id="val_selesai"></span>
+        </div>
+
+        <div class="section-title">Diskripsi Permasalahan Mesin Tools/Equipment :</div>
+        <div id="container_masalah">
+            <div class="dotted-line"></div>
+            <div class="dotted-line"></div>
+            <div class="dotted-line"></div>
+            <div class="dotted-line"></div>
+            <div class="dotted-line"></div>
+            <div class="dotted-line"></div>
+            <div class="dotted-line"></div>
+            <div class="dotted-line"></div>
+        </div>
+
+        <div class="section-title">Pekerjaan Yang Dilakukan & Tindakan Yang Diambil :</div>
+        <div id="container_tindakan">
+            <div class="dotted-line"></div>
+            <div class="dotted-line"></div>
+            <div class="dotted-line"></div>
+            <div class="dotted-line"></div>
+            <div class="dotted-line"></div>
+            <div class="dotted-line"></div>
+            <div class="dotted-line"></div>
+            <div class="dotted-line"></div>
+        </div>
+
+        <div class="section-title">Kerusakan Part :</div>
+        <table class="parts-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">NO</th>
+                    <th>Nama Part</th>
+                    <th style="width: 60px;">QTY</th>
+                    <th style="width: 150px;">Tindak Lanjut</th>
+                </tr>
+            </thead>
+            <tbody id="table_body">
+                <tr><td class="text-center">1</td><td></td><td></td><td></td></tr>
+                <tr><td class="text-center">2</td><td></td><td></td><td></td></tr>
+                <tr><td class="text-center">3</td><td></td><td></td><td></td></tr>
+                <tr><td class="text-center">4</td><td></td><td></td><td></td></tr>
+                <tr><td class="text-center">5</td><td></td><td></td><td></td></tr>
+            </tbody>
+        </table>
+
+        <div class="section-title" style="margin-top: 15px;">Rekomendasi & Catatan :</div>
+        <div class="dotted-line" id="val_rekomendasi_1"></div>
+        <div class="dotted-line" id="val_rekomendasi_2"></div>
+
+        <div class="signature-grid">
+            <div>
+                <div style="margin-bottom: 5px;">Dikerjakan Oleh:</div>
+                <div class="sig-box">
+                    <img id="img_sig_eng" src="" class="sig-img" style="display: none;">
+                </div>
+                <div class="name-line" id="txt_nm_eng">Engineer</div>
+            </div>
+
+            <div>
+                <div style="margin-bottom: 5px;">Diperiksa Oleh:</div>
+                <div class="sig-box">
+                    <img id="img_sig_spv" src="" class="sig-img" style="display: none;">
+                </div>
+                <div class="name-line" id="txt_nm_spv">Spv/Superintendent</div>
+            </div>
+
+            <div>
+                <div style="margin-bottom: 5px;">Mengetahui:</div>
+                <div class="sig-box">
+                    <img id="img_sig_mgr" src="" class="sig-img" style="display: none;">
+                </div>
+                <div class="name-line" id="txt_nm_mgr">Manager</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- 1. LOAD DATA MESIN KE DROPDOWN ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            const select = document.getElementById('filter_mesin');
+            const { data } = await db.from('pohm_machine').select('name').order('name');
+            if(data) {
+                data.forEach(m => {
+                    let opt = document.createElement('option');
+                    opt.value = m.name; opt.textContent = m.name;
+                    select.appendChild(opt);
+                });
+            }
+            // Default Tahun Sekarang
+            document.getElementById('filter_tahun').value = new Date().getFullYear();
+        });
+
+        // --- 2. FETCH & RENDER DATA ---
+        async function fetchData() {
+            const mesin = document.getElementById('filter_mesin').value;
+            const bulan = document.getElementById('filter_bulan').value;
+            const tahun = document.getElementById('filter_tahun').value;
+
+            if(!mesin || !bulan || !tahun) {
+                alert('Pilih Mesin, Bulan, dan Tahun terlebih dahulu!');
+                return;
+            }
+
+            // Hitung Rentang Tanggal (Awal - Akhir Bulan)
+            const startDate = new Date(tahun, bulan - 1, 1).toISOString();
+            const endDate = new Date(tahun, bulan, 0, 23, 59, 59).toISOString();
+
+            try {
+                // Ambil data TERAKHIR (Latest) yang sesuai filter
+                const { data, error } = await db
+                    .from('pohm_items')
+                    .select('*')
+                    .eq('machine_name', mesin)
+                    .gte('start_time', startDate)
+                    .lte('start_time', endDate)
+                    .order('start_time', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if(error || !data) {
+                    alert('Data tidak ditemukan untuk periode tersebut.');
+                    resetForm();
+                    return;
+                }
+
+                renderForm(data);
+
+            } catch (err) {
+                console.error(err);
+                alert('Terjadi kesalahan saat mengambil data.');
+            }
+        }
+
+        function renderForm(data) {
+            // 1. Identitas
+            document.getElementById('val_mesin').textContent = data.machine_name;
+            
+            // Checkbox logic
+            document.getElementById('cb_perawatan').className = data.work_type === 'Perawatan' ? 'box checked' : 'box';
+            document.getElementById('cb_overhaul').className = data.work_type === 'Over Haul' ? 'box checked' : 'box';
+
+            // Tanggal Format Indonesia
+            const fmt = (d) => new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour:'2-digit', minute:'2-digit' }).replace('.', ':');
+            document.getElementById('val_mulai').textContent = fmt(data.start_time);
+            document.getElementById('val_selesai').textContent = fmt(data.end_time);
+
+            // 2. Deskripsi Masalah (Pecah per baris)
+            fillLines('container_masalah', data.problem_desc);
+
+            // 3. Tindakan (Pecah per baris)
+            fillLines('container_tindakan', data.action_taken);
+
+            // 4. Parts Table
+            const tbody = document.getElementById('table_body');
+            tbody.innerHTML = '';
+            // Isi 5 baris tetap (sesuai format kertas), isi data jika ada
+            for(let i=0; i<5; i++) {
+                const p = data.spare_parts && data.spare_parts[i] ? data.spare_parts[i] : null;
+                const no = i + 1;
+                const name = p ? p.name : '';
+                const qty = p ? p.qty : '';
+                const action = p ? p.action : '';
+                
+                // Format Tindak Lanjut mirip dokumen (Ganti Baru / Repair)
+                let tl = '';
+                if(action === 'Ganti Baru') tl = 'Ganti Baru [✓] Repair [ ]';
+                else if(action === 'Repair') tl = 'Ganti Baru [ ] Repair [✓]';
+                else tl = 'Ganti Baru [ ] Repair [ ]';
+
+                // Jika nama kosong, kosongkan semua
+                if(!name) tl = ''; 
+
+                const row = `<tr>
+                    <td class="text-center">${no}</td>
+                    <td>${name}</td>
+                    <td class="text-center">${qty}</td>
+                    <td class="text-center" style="font-size:9pt;">${tl}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            }
+
+            // 5. Rekomendasi
+            document.getElementById('val_rekomendasi_1').textContent = data.recommendations || '';
+
+            // 6. Tanda Tangan & Nama
+            // Engineer
+            setSig('img_sig_eng', 'txt_nm_eng', data.engineer_signature, data.engineer_name);
+            // SPV
+            setSig('img_sig_spv', 'txt_nm_spv', data.spv_signature, data.spv_name);
+            // Manager
+            setSig('img_sig_mgr', 'txt_nm_mgr', data.manager_signature, data.manager_name);
+        }
+
+        // Helper: Isi Baris Titik-Titik
+        function fillLines(containerId, text) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = ''; // Reset
+            const lines = (text || '').split('\n');
+            
+            // Buat fix 8 baris
+            for(let i=0; i<8; i++) {
+                const div = document.createElement('div');
+                div.className = 'dotted-line';
+                div.textContent = lines[i] || ''; // Isi teks jika ada
+                container.appendChild(div);
+            }
+        }
+
+        // Helper: Set Signature Image & Name
+        function setSig(imgId, nameId, sigData, nameData) {
+            const img = document.getElementById(imgId);
+            const nm = document.getElementById(nameId);
+            
+            if(sigData) {
+                img.src = sigData;
+                img.style.display = 'block';
+            } else {
+                img.style.display = 'none';
+            }
+            
+            // Tampilkan nama di bawah garis
+            if(nameData) {
+                nm.textContent = nameData;
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('val_mesin').textContent = '';
+            document.getElementById('val_mulai').textContent = '';
+            // ... reset lainnya jika perlu
+        }
+
+        // --- 3. EXPORT PDF ---
+        function exportPDF() {
+            const element = document.getElementById('printArea');
+            
+            // Opsi agar presisi A4
+            const opt = {
+                margin:       0,
+                filename:     'Laporan_POHM.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 }, // Scale 2 biar tajam
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Tambahkan class sementara untuk fix layout saat print
+            element.classList.add('printing');
+            
+            html2pdf().set(opt).from(element).save().then(() => {
+                element.classList.remove('printing');
+            });
+        }
+    </script>
+</body>
+</html>
