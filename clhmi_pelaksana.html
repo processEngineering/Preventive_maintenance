@@ -82,7 +82,7 @@
                     </button>
                 </div>
                 <div class="border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 h-40 relative overflow-hidden">
-                    <canvas id="sig-canvas" class="w-full h-full touch-none" style="touch-action: none;"></canvas>
+                    <canvas id="sig-canvas" class="w-full h-full touch-none"></canvas>
                 </div>
             </div>
 
@@ -112,25 +112,20 @@
             scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 250, height: 250 } }, onScanSuccess);
             
             const canvas = document.getElementById('sig-canvas');
-            // FIX: Warna pen hitam agar terlihat
             sigPad = new SignaturePad(canvas, { backgroundColor: 'rgba(255, 255, 255, 0)', penColor: 'rgb(0, 0, 0)' });
-            
             window.addEventListener("resize", resizeCanvas);
         };
 
         function resizeCanvas() {
             const canvas = document.getElementById('sig-canvas');
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            
-            // Cek apakah canvas visible (lebar > 0)
-            if (canvas.offsetWidth > 0) {
+            if(canvas.offsetWidth > 0) {
                 canvas.width = canvas.offsetWidth * ratio;
                 canvas.height = canvas.offsetHeight * ratio;
                 canvas.getContext("2d").scale(ratio, ratio);
-                sigPad.clear(); // Bersihkan setelah resize agar tidak stretch
+                sigPad.clear();
             }
         }
-        
         function clearSig() { sigPad.clear(); }
 
         async function onScanSuccess(decodedText) {
@@ -146,9 +141,8 @@
                 document.getElementById('machine-name').innerText = mesin.merk_mesin;
                 document.getElementById('machine-sn').innerText = `SN: ${mesin.serial_no || 'N/A'}`;
                 
-                // === PERBAIKAN UTAMA DISINI ===
-                // Resize canvas SEKARANG karena elemen form sudah tidak hidden
-                setTimeout(resizeCanvas, 100); 
+                // Resize canvas setelah tampil
+                setTimeout(resizeCanvas, 100);
                 
                 loadChecklistItems();
             } else {
@@ -165,7 +159,7 @@
             items.forEach(item => {
                 let inputHTML = '';
                 if(item.item_kode === 'i') {
-                    // Running Hour Input
+                    // Running Hour
                     inputHTML = `
                     <div class="mt-2">
                         <label class="text-[10px] font-bold text-slate-400 uppercase">Input Running Hour</label>
@@ -180,17 +174,14 @@
                             <input type="radio" name="status-${item.id}" value="OK" class="peer sr-only" checked onclick="toggleNote('${item.id}', false)">
                             <div class="w-full py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 font-black text-[10px] text-center uppercase transition-all peer-checked:bg-green-500 peer-checked:text-white peer-checked:border-green-600 peer-checked:shadow-md">OK</div>
                         </label>
-                        
                         <label class="cursor-pointer relative">
                             <input type="radio" name="status-${item.id}" value="NG" class="peer sr-only" onclick="toggleNote('${item.id}', true)">
                             <div class="w-full py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 font-black text-[10px] text-center uppercase transition-all peer-checked:bg-red-500 peer-checked:text-white peer-checked:border-red-600 peer-checked:shadow-md">NG</div>
                         </label>
-
                         <label class="cursor-pointer relative">
                             <input type="radio" name="status-${item.id}" value="MT" class="peer sr-only" onclick="toggleNote('${item.id}', true)">
                             <div class="w-full py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 font-black text-[10px] text-center uppercase transition-all peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-600 peer-checked:shadow-md">MT</div>
                         </label>
-
                         <label class="cursor-pointer relative">
                             <input type="radio" name="status-${item.id}" value="NA" class="peer sr-only" onclick="toggleNote('${item.id}', false)">
                             <div class="w-full py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 font-black text-[10px] text-center uppercase transition-all peer-checked:bg-slate-500 peer-checked:text-white peer-checked:border-slate-600 peer-checked:shadow-md">NA</div>
@@ -237,24 +228,38 @@
                 let { data: log } = await sb.from('clhmi').select('*').match({ machine_id: currentMachineId, bulan: m, tahun: y }).maybeSingle();
 
                 if (!log) {
-                    const { data: newLog, error } = await sb.from('clhmi').insert({ machine_id: currentMachineId, bulan: m, tahun: y, tanggal_isi: dateStr, diisi_oleh: name, paraf: sigPad.toDataURL() }).select().single();
-                    if(error) throw error; log = newLog;
+                    // FIX: Gunakan kolom 'pelaksana' sesuai database kamu
+                    const { data: newLog, error } = await sb.from('clhmi').insert({ 
+                        machine_id: currentMachineId, 
+                        bulan: m, 
+                        tahun: y, 
+                        tanggal_isi: dateStr, 
+                        pelaksana: name, // <-- INI YANG PENTING
+                        paraf: sigPad.toDataURL() 
+                    }).select().single();
+                    if(error) throw error; 
+                    log = newLog;
                 } else {
-                    await sb.from('clhmi').update({ diisi_oleh: name, paraf: sigPad.toDataURL() }).eq('id', log.id);
+                    await sb.from('clhmi').update({ 
+                        pelaksana: name, // <-- INI JUGA
+                        paraf: sigPad.toDataURL() 
+                    }).eq('id', log.id);
                 }
 
                 const { data: items } = await sb.from('clhmi_items').select('id, item_kode');
                 const results = items.map(item => {
-                    let statusVal, valueVal = null;
+                    let statusVal = 'OK', valueVal = null;
                     if(item.item_kode === 'i') {
-                        statusVal = 'OK'; valueVal = document.getElementById(`val-${item.id}`).value || '0';
+                        valueVal = document.getElementById(`val-${item.id}`).value || '0';
                     } else {
                         statusVal = document.querySelector(`input[name="status-${item.id}"]:checked`)?.value || 'OK';
                     }
                     return {
                         clhmi_id: log.id, item_id: item.id, item_kode: item.item_kode, tanggal_cek: dateStr,
                         status: statusVal, catatan_item: document.getElementById(`note-${item.id}`)?.value || "",
-                        value: valueVal, diisi_oleh: name
+                        value: valueVal, 
+                        // Jika di tabel clhmi_results ada kolom pelaksana juga, pakai ini:
+                        // pelaksana: name 
                     };
                 });
 
