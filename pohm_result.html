@@ -3,178 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan POHM - Result</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <title>Laporan POHM - Cetak</title>
     
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <style>
-        /* ==================== THEME & CONTROLS ==================== */
-        :root {
-            --primary: #DC2626;
-            --bg-gray: #F3F4F6;
-            --border: #E5E7EB;
-        }
-
-        body {
-            background-color: var(--bg-gray);
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        /* Control Bar (No Print) */
+        /* ==================== RESET & BASIC ==================== */
+        @page { size: A4 portrait; margin: 0; }
+        body { margin: 0; padding: 0; background: #e5e5e5; font-family: 'Arial', sans-serif; -webkit-print-color-adjust: exact; }
+        
+        /* Control Bar (Tidak ikut diprint) */
         .control-bar {
-            width: 100%;
-            background: white;
-            padding: 15px 20px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: center;
-            justify-content: center;
+            background: #333; color: white; padding: 10px; text-align: center;
+            position: sticky; top: 0; z-index: 9999; display: flex; gap: 10px; justify-content: center;
+        }
+        .control-bar select, .control-bar button, .control-bar a {
+            padding: 8px 12px; border-radius: 4px; border: none; font-size: 14px; cursor: pointer; text-decoration: none;
+        }
+        .btn-show { background: #28a745; color: white; }
+        .btn-pdf { background: #dc3545; color: white; }
+        .btn-back { background: #6c757d; color: white; }
+
+        /* ==================== A4 CONTAINER ==================== */
+        .page {
+            width: 210mm; min-height: 297mm; background: white; margin: 20px auto;
+            padding: 10mm 15mm; box-shadow: 0 0 10px rgba(0,0,0,0.3); box-sizing: border-box;
+            position: relative; color: #000;
         }
 
-        .control-group { display: flex; gap: 10px; align-items: center; }
+        /* ==================== HEADER TABLE (ISO STYLE) ==================== */
+        .header-table { width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 5px; }
+        .header-table td { border: 1px solid black; padding: 5px; vertical-align: middle; }
         
-        select, button {
-            padding: 10px 14px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 14px;
-        }
-
-        select:focus { outline: 2px solid var(--primary); }
-
-        .btn-show { background: var(--primary); color: white; border: none; font-weight: 600; cursor: pointer; }
-        .btn-pdf { background: #1F2937; color: white; border: none; font-weight: 600; cursor: pointer; }
-        .btn-home { background: white; color: #374151; text-decoration: none; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 600; }
+        .logo-cell { width: 60%; text-align: center; }
+        .logo-img { max-height: 50px; display: block; margin: 0 auto 5px; }
+        .company-name { font-weight: bold; font-size: 14pt; }
         
-        /* ==================== A4 PAPER LAYOUT ==================== */
-        .page-container {
-            margin: 30px 0;
-            width: 210mm;
-            min-height: 297mm;
-            background: white;
-            padding: 15mm 20mm; /* Margin Kertas */
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-            position: relative;
-            box-sizing: border-box;
-            color: black;
-            font-family: 'Arial', sans-serif; /* Font mirip dokumen resmi */
-        }
-
-        /* Helper Grid/Flex untuk Form */
-        .header-section { margin-bottom: 20px; }
-        .header-section h2 { text-align: center; text-decoration: underline; font-size: 16pt; margin-bottom: 5px; text-transform: uppercase; }
+        .doc-info-cell { width: 40%; padding: 0 !important; }
+        .info-table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+        .info-table td { border: 1px solid black; padding: 3px 5px; border-left: none; border-right: none; }
+        .info-table tr:first-child td { border-top: none; }
+        .info-table tr:last-child td { border-bottom: none; }
         
-        .row { display: flex; margin-bottom: 5px; align-items: flex-end; }
-        .label { font-weight: bold; font-size: 11pt; min-width: 180px; }
-        .value { flex: 1; border-bottom: 1px dotted black; padding-left: 5px; font-family: 'Courier New', monospace; font-size: 11pt; }
+        .title-box {
+            text-align: center; font-weight: bold; font-size: 12pt; 
+            border: 1px solid black; border-top: none; padding: 8px; margin-bottom: 10px;
+            text-transform: uppercase; background: #eee;
+        }
+
+        /* ==================== FORM CONTENT ==================== */
+        .row { display: flex; align-items: flex-end; margin-bottom: 5px; font-size: 10pt; }
+        .label { font-weight: bold; white-space: nowrap; margin-right: 5px; }
+        .field { flex: 1; border-bottom: 1px dotted black; padding-left: 5px; min-height: 18px; }
         
-        /* Checkbox Style simulation */
-        .checkbox-group { display: flex; gap: 30px; margin-left: 20px; }
-        .cb-item { display: flex; align-items: center; gap: 5px; font-size: 11pt; }
-        .box { width: 14px; height: 14px; border: 1px solid black; display: inline-block; position: relative; }
-        .box.checked::after { content: '✓'; position: absolute; top: -4px; left: 1px; font-weight: bold; font-size: 12pt; }
+        /* Checkbox Group */
+        .cb-container { display: flex; gap: 20px; align-items: center; margin-left: 10px; }
+        .cb-item { display: flex; align-items: center; gap: 4px; font-size: 10pt; }
+        .box { width: 12px; height: 12px; border: 1px solid black; display: flex; align-items: center; justify-content: center; font-size: 10px; line-height: 1; }
 
-        /* Dotted Lines Section */
-        .section-title { font-weight: bold; font-size: 11pt; margin-top: 15px; margin-bottom: 5px; }
-        .dotted-line {
-            width: 100%;
-            border-bottom: 1px dotted black;
-            height: 22px; /* Line height */
-            line-height: 22px;
-            font-family: 'Courier New', monospace;
-            font-size: 11pt;
-            white-space: pre; /* Agar spasi terjaga */
+        /* Section Headers */
+        .section-header { font-weight: bold; font-size: 10pt; margin-top: 10px; margin-bottom: 2px; }
+        
+        /* Dotted Lines Area */
+        .dotted-area .line { 
+            border-bottom: 1px dotted black; height: 18px; line-height: 18px; 
+            font-family: 'Courier New', monospace; font-size: 10pt;
         }
 
-        /* Table Style */
-        .parts-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 5px;
-            font-size: 10pt;
-        }
-        .parts-table th, .parts-table td {
-            border: 1px solid black;
-            padding: 4px 8px;
-            text-align: left;
-        }
-        .parts-table th { text-align: center; background: #f0f0f0; }
+        /* Parts Table */
+        .parts-table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 9pt; }
+        .parts-table th, .parts-table td { border: 1px solid black; padding: 4px; }
+        .parts-table th { background: #f0f0f0; text-align: center; font-weight: bold; }
         .text-center { text-align: center; }
 
-        /* Signature Section */
-        .signature-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            margin-top: 30px;
-            text-align: center;
-            font-size: 11pt;
-            gap: 10px;
-        }
-        .sig-box { min-height: 80px; display: flex; align-items: flex-end; justify-content: center; position: relative; }
-        .sig-img { position: absolute; bottom: 5px; max-height: 70px; max-width: 100px; mix-blend-mode: multiply; }
-        .name-line { border-top: 1px solid black; width: 80%; margin: 0 auto; padding-top: 2px; font-weight: bold; }
+        /* Signatures */
+        .sig-table { width: 100%; border-collapse: collapse; margin-top: 20px; border: 1px solid black; text-align: center; }
+        .sig-table td { border: 1px solid black; width: 33.33%; vertical-align: top; }
+        .sig-title { font-weight: bold; font-size: 10pt; padding: 5px; background: #f0f0f0; border-bottom: 1px solid black; }
+        .sig-role { font-size: 9pt; padding: 5px; border-top: 1px solid black; font-style: italic; }
+        .sig-space { height: 70px; display: flex; align-items: flex-end; justify-content: center; }
+        .sig-img { max-height: 60px; max-width: 100px; }
 
-        /* PRINT MEDIA QUERY */
+        /* Print Settings */
         @media print {
-            body { background: white; }
             .control-bar { display: none; }
-            .page-container { margin: 0; box-shadow: none; width: 100%; height: auto; }
+            body { background: white; }
+            .page { margin: 0; box-shadow: none; border: none; width: 100%; height: auto; }
         }
     </style>
 </head>
 <body>
 
-    <div class="control-bar no-print">
-        <a href="download_data.html" class="btn-home"><i class="fa-solid fa-arrow-left"></i> Kembali</a>
-        
-        <div class="control-group">
-            <select id="filter_mesin">
-                <option value="">-- Pilih Mesin --</option>
-            </select>
-            <select id="filter_bulan">
-                <option value="">-- Bulan --</option>
-                <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
-                <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
-                <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
-                <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
-            </select>
-            <select id="filter_tahun">
-                <option value="2026">2026</option>
-                <option value="2025">2025</option>
-            </select>
-        </div>
-
-        <button onclick="fetchData()" class="btn-show"><i class="fa-solid fa-magnifying-glass"></i> Tampilkan</button>
-        <button onclick="exportPDF()" class="btn-pdf"><i class="fa-solid fa-file-pdf"></i> Ekspor PDF</button>
+    <div class="control-bar">
+        <a href="download_data.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Kembali</a>
+        <select id="filter_mesin"><option value="">-- Pilih Mesin --</option></select>
+        <select id="filter_bulan">
+            <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+            <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+            <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+            <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+        </select>
+        <select id="filter_tahun"><option value="2026">2026</option><option value="2025">2025</option></select>
+        <button onclick="fetchData()" class="btn-show">Tampilkan</button>
+        <button onclick="exportPDF()" class="btn-pdf">Download PDF</button>
     </div>
 
-    <div class="page-container" id="printArea">
+    <div class="page" id="printArea">
         
-        <div class="header-section">
-            <h2>FORM LAPORAN PERAWATAN &<br>OVER HAUL MESIN TOOLS / EQUIPMENT</h2>
+        <table class="header-table">
+            <tr>
+                <td class="logo-cell">
+                    <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="AKG Logo" class="logo-img">
+                    <div class="company-name">PT AMARILYS KARISMA GEMILANG</div>
+                </td>
+                <td class="doc-info-cell">
+                    <table class="info-table">
+                        <tr>
+                            <td width="40%">No Dokumen</td>
+                            <td>: AF.SP 05.01.Rev-00</td>
+                        </tr>
+                        <tr>
+                            <td>Tanggal Terbit</td>
+                            <td>: 02 Agustus 2024</td>
+                        </tr>
+                        <tr>
+                            <td>Halaman</td>
+                            <td>: 1/1</td>
+                        </tr>
+                        <tr>
+                            <td>Tanggal Revisi</td>
+                            <td>: -</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+        
+        <div class="title-box">
+            FORM LAPORAN PERAWATAN & OVER HAUL MESIN TOOLS/EQUIPMENT
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
-            <div style="display: flex; align-items: flex-end; width: 65%;">
-                <span class="label" style="min-width: 190px;">Nama Mesin,Tools/equipment :</span>
-                <span class="value" id="val_mesin"></span>
+        <div class="row" style="margin-top: 15px;">
+            <div style="flex: 2; display: flex; align-items: flex-end;">
+                <span class="label">Nama Mesin, Tools/equipment :</span>
+                <span class="field" id="val_mesin"></span>
             </div>
-            <div class="checkbox-group">
+            <div class="cb-container" style="flex: 1; justify-content: flex-end;">
                 <div class="cb-item"><div class="box" id="cb_perawatan"></div> Perawatan</div>
                 <div class="cb-item"><div class="box" id="cb_overhaul"></div> Over Haul</div>
             </div>
@@ -182,45 +158,31 @@
 
         <div class="row">
             <span class="label">Tanggal, Jam Mulai :</span>
-            <span class="value" id="val_mulai"></span>
-        </div>
-        <div class="row">
-            <span class="label">Tanggal, Jam Selesai :</span>
-            <span class="value" id="val_selesai"></span>
+            <span class="field" id="val_mulai"></span>
+            <span class="label" style="margin-left: 20px;">Tanggal, Jam Selesai :</span>
+            <span class="field" id="val_selesai"></span>
         </div>
 
-        <div class="section-title">Diskripsi Permasalahan Mesin Tools/Equipment :</div>
-        <div id="container_masalah">
-            <div class="dotted-line"></div>
-            <div class="dotted-line"></div>
-            <div class="dotted-line"></div>
-            <div class="dotted-line"></div>
-            <div class="dotted-line"></div>
-            <div class="dotted-line"></div>
-            <div class="dotted-line"></div>
-            <div class="dotted-line"></div>
+        <div class="section-header">Diskripsi Permasalahan Mesin Tools/Equipment :</div>
+        <div class="dotted-area" id="container_masalah">
+            <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
+            <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
         </div>
 
-        <div class="section-title">Pekerjaan Yang Dilakukan & Tindakan Yang Diambil :</div>
-        <div id="container_tindakan">
-            <div class="dotted-line"></div>
-            <div class="dotted-line"></div>
-            <div class="dotted-line"></div>
-            <div class="dotted-line"></div>
-            <div class="dotted-line"></div>
-            <div class="dotted-line"></div>
-            <div class="dotted-line"></div>
-            <div class="dotted-line"></div>
+        <div class="section-header">Pekerjaan Yang Dilakukan & Tindakan Yang Diambil :</div>
+        <div class="dotted-area" id="container_tindakan">
+            <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
+            <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
         </div>
 
-        <div class="section-title">Kerusakan Part :</div>
+        <div class="section-header">Kerusakan Part :</div>
         <table class="parts-table">
             <thead>
                 <tr>
-                    <th style="width: 40px;">NO</th>
+                    <th width="30">NO</th>
                     <th>Nama Part</th>
-                    <th style="width: 60px;">QTY</th>
-                    <th style="width: 150px;">Tindak Lanjut</th>
+                    <th width="50">QTY</th>
+                    <th width="150">Tindak Lanjut</th>
                 </tr>
             </thead>
             <tbody id="table_body">
@@ -232,35 +194,41 @@
             </tbody>
         </table>
 
-        <div class="section-title" style="margin-top: 15px;">Rekomendasi & Catatan :</div>
-        <div class="dotted-line" id="val_rekomendasi_1"></div>
-        <div class="dotted-line" id="val_rekomendasi_2"></div>
-
-        <div class="signature-grid">
-            <div>
-                <div style="margin-bottom: 5px;">Dikerjakan Oleh:</div>
-                <div class="sig-box">
-                    <img id="img_sig_eng" src="" class="sig-img" style="display: none;">
-                </div>
-                <div class="name-line" id="txt_nm_eng">Engineer</div>
-            </div>
-
-            <div>
-                <div style="margin-bottom: 5px;">Diperiksa Oleh:</div>
-                <div class="sig-box">
-                    <img id="img_sig_spv" src="" class="sig-img" style="display: none;">
-                </div>
-                <div class="name-line" id="txt_nm_spv">Spv/Superintendent</div>
-            </div>
-
-            <div>
-                <div style="margin-bottom: 5px;">Mengetahui:</div>
-                <div class="sig-box">
-                    <img id="img_sig_mgr" src="" class="sig-img" style="display: none;">
-                </div>
-                <div class="name-line" id="txt_nm_mgr">Manager</div>
-            </div>
+        <div class="section-header" style="margin-top: 10px;">Rekomendasi & Catatan :</div>
+        <div class="dotted-area">
+            <div class="line" id="val_rek_1"></div>
+            <div class="line" id="val_rek_2"></div>
         </div>
+
+        <table class="sig-table">
+            <tr>
+                <td class="sig-title">Dikerjakan Oleh :</td>
+                <td class="sig-title">Diperiksa Oleh :</td>
+                <td class="sig-title">Mengetahui :</td>
+            </tr>
+            <tr>
+                <td>
+                    <div class="sig-space">
+                        <img id="img_sig_eng" src="" class="sig-img" style="display: none;">
+                    </div>
+                </td>
+                <td>
+                    <div class="sig-space">
+                        <img id="img_sig_spv" src="" class="sig-img" style="display: none;">
+                    </div>
+                </td>
+                <td>
+                    <div class="sig-space">
+                        <img id="img_sig_mgr" src="" class="sig-img" style="display: none;">
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="sig-role" id="nm_eng">Engineer</td>
+                <td class="sig-role" id="nm_spv">Spv/Superintendent</td>
+                <td class="sig-role" id="nm_mgr">Manager</td>
+            </tr>
+        </table>
 
     </div>
 
@@ -269,180 +237,127 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // --- 1. LOAD DATA MESIN KE DROPDOWN ---
+        // Init: Load Mesin & Set Tahun
         document.addEventListener('DOMContentLoaded', async () => {
-            const select = document.getElementById('filter_mesin');
+            document.getElementById('filter_tahun').value = new Date().getFullYear();
             const { data } = await db.from('pohm_machine').select('name').order('name');
             if(data) {
+                const sel = document.getElementById('filter_mesin');
                 data.forEach(m => {
-                    let opt = document.createElement('option');
+                    const opt = document.createElement('option');
                     opt.value = m.name; opt.textContent = m.name;
-                    select.appendChild(opt);
+                    sel.appendChild(opt);
                 });
             }
-            // Default Tahun Sekarang
-            document.getElementById('filter_tahun').value = new Date().getFullYear();
         });
 
-        // --- 2. FETCH & RENDER DATA ---
+        // Fetch Data
         async function fetchData() {
             const mesin = document.getElementById('filter_mesin').value;
-            const bulan = document.getElementById('filter_bulan').value;
-            const tahun = document.getElementById('filter_tahun').value;
+            const bln = document.getElementById('filter_bulan').value;
+            const thn = document.getElementById('filter_tahun').value;
 
-            if(!mesin || !bulan || !tahun) {
-                alert('Pilih Mesin, Bulan, dan Tahun terlebih dahulu!');
-                return;
-            }
+            if(!mesin) { alert('Pilih mesin dulu!'); return; }
 
-            // Hitung Rentang Tanggal (Awal - Akhir Bulan)
-            const startDate = new Date(tahun, bulan - 1, 1).toISOString();
-            const endDate = new Date(tahun, bulan, 0, 23, 59, 59).toISOString();
+            // Filter Date Range
+            const start = new Date(thn, bln - 1, 1).toISOString();
+            const end = new Date(thn, bln, 0, 23, 59, 59).toISOString();
 
             try {
-                // Ambil data TERAKHIR (Latest) yang sesuai filter
                 const { data, error } = await db
                     .from('pohm_items')
                     .select('*')
                     .eq('machine_name', mesin)
-                    .gte('start_time', startDate)
-                    .lte('start_time', endDate)
-                    .order('start_time', { ascending: false })
+                    .gte('start_time', start)
+                    .lte('start_time', end)
+                    .order('start_time', {ascending: false})
                     .limit(1)
                     .single();
 
-                if(error || !data) {
-                    alert('Data tidak ditemukan untuk periode tersebut.');
-                    resetForm();
-                    return;
-                }
-
-                renderForm(data);
-
-            } catch (err) {
-                console.error(err);
-                alert('Terjadi kesalahan saat mengambil data.');
-            }
+                if(error || !data) { alert('Data tidak ditemukan.'); resetForm(); return; }
+                renderData(data);
+            } catch(e) { console.error(e); alert('Error ambil data.'); }
         }
 
-        function renderForm(data) {
-            // 1. Identitas
-            document.getElementById('val_mesin').textContent = data.machine_name;
-            
-            // Checkbox logic
-            document.getElementById('cb_perawatan').className = data.work_type === 'Perawatan' ? 'box checked' : 'box';
-            document.getElementById('cb_overhaul').className = data.work_type === 'Over Haul' ? 'box checked' : 'box';
+        function renderData(d) {
+            [cite_start]// 1. Identitas [cite: 33]
+            document.getElementById('val_mesin').textContent = d.machine_name;
+            document.getElementById('cb_perawatan').innerHTML = d.work_type === 'Perawatan' ? '&#10003;' : '';
+            document.getElementById('cb_overhaul').innerHTML = d.work_type === 'Over Haul' ? '&#10003;' : '';
 
-            // Tanggal Format Indonesia
-            const fmt = (d) => new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour:'2-digit', minute:'2-digit' }).replace('.', ':');
-            document.getElementById('val_mulai').textContent = fmt(data.start_time);
-            document.getElementById('val_selesai').textContent = fmt(data.end_time);
+            [cite_start]// Waktu [cite: 37]
+            const fmt = date => new Date(date).toLocaleString('id-ID', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+            document.getElementById('val_mulai').textContent = fmt(d.start_time);
+            document.getElementById('val_selesai').textContent = fmt(d.end_time);
 
-            // 2. Deskripsi Masalah (Pecah per baris)
-            fillLines('container_masalah', data.problem_desc);
+            [cite_start]// 2. Deskripsi Masalah [cite: 38]
+            fillLines('container_masalah', d.problem_desc);
 
-            // 3. Tindakan (Pecah per baris)
-            fillLines('container_tindakan', data.action_taken);
+            [cite_start]// 3. Tindakan [cite: 47]
+            fillLines('container_tindakan', d.action_taken);
 
-            // 4. Parts Table
+            [cite_start]// 4. Parts [cite: 56]
             const tbody = document.getElementById('table_body');
             tbody.innerHTML = '';
-            // Isi 5 baris tetap (sesuai format kertas), isi data jika ada
             for(let i=0; i<5; i++) {
-                const p = data.spare_parts && data.spare_parts[i] ? data.spare_parts[i] : null;
-                const no = i + 1;
-                const name = p ? p.name : '';
-                const qty = p ? p.qty : '';
-                const action = p ? p.action : '';
+                const p = d.spare_parts && d.spare_parts[i] ? d.spare_parts[i] : {};
+                let checkGanti = p.action === 'Ganti Baru' ? '&#9745;' : '&#9744;';
+                let checkRepair = p.action === 'Repair' ? '&#9745;' : '&#9744;';
                 
-                // Format Tindak Lanjut mirip dokumen (Ganti Baru / Repair)
-                let tl = '';
-                if(action === 'Ganti Baru') tl = 'Ganti Baru [✓] Repair [ ]';
-                else if(action === 'Repair') tl = 'Ganti Baru [ ] Repair [✓]';
-                else tl = 'Ganti Baru [ ] Repair [ ]';
+                if(!p.name) { checkGanti = '&#9744;'; checkRepair = '&#9744;'; } // Kosongkan checkbox jika part kosong
 
-                // Jika nama kosong, kosongkan semua
-                if(!name) tl = ''; 
-
-                const row = `<tr>
-                    <td class="text-center">${no}</td>
-                    <td>${name}</td>
-                    <td class="text-center">${qty}</td>
-                    <td class="text-center" style="font-size:9pt;">${tl}</td>
-                </tr>`;
-                tbody.innerHTML += row;
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="text-center">${i+1}</td>
+                        <td>${p.name || ''}</td>
+                        <td class="text-center">${p.qty || ''}</td>
+                        <td style="font-size: 8pt;">${checkGanti} Ganti Baru &nbsp; ${checkRepair} Repair</td>
+                    </tr>
+                `;
             }
 
-            // 5. Rekomendasi
-            document.getElementById('val_rekomendasi_1').textContent = data.recommendations || '';
+            [cite_start]// 5. Rekomendasi [cite: 79]
+            document.getElementById('val_rek_1').textContent = d.recommendations || '';
 
-            // 6. Tanda Tangan & Nama
-            // Engineer
-            setSig('img_sig_eng', 'txt_nm_eng', data.engineer_signature, data.engineer_name);
-            // SPV
-            setSig('img_sig_spv', 'txt_nm_spv', data.spv_signature, data.spv_name);
-            // Manager
-            setSig('img_sig_mgr', 'txt_nm_mgr', data.manager_signature, data.manager_name);
+            [cite_start]// 6. Signatures [cite: 80, 81, 82]
+            showSig('img_sig_eng', 'nm_eng', d.engineer_signature, d.engineer_name);
+            showSig('img_sig_spv', 'nm_spv', d.spv_signature, d.spv_name);
+            showSig('img_sig_mgr', 'nm_mgr', d.manager_signature, d.manager_name);
         }
 
-        // Helper: Isi Baris Titik-Titik
-        function fillLines(containerId, text) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = ''; // Reset
+        function fillLines(id, text) {
+            const container = document.getElementById(id);
+            container.innerHTML = '';
             const lines = (text || '').split('\n');
-            
-            // Buat fix 8 baris
             for(let i=0; i<8; i++) {
-                const div = document.createElement('div');
-                div.className = 'dotted-line';
-                div.textContent = lines[i] || ''; // Isi teks jika ada
-                container.appendChild(div);
+                container.innerHTML += `<div class="line">${lines[i] || ''}</div>`;
             }
         }
 
-        // Helper: Set Signature Image & Name
-        function setSig(imgId, nameId, sigData, nameData) {
+        function showSig(imgId, nameId, sigData, nameData) {
             const img = document.getElementById(imgId);
             const nm = document.getElementById(nameId);
-            
-            if(sigData) {
-                img.src = sigData;
-                img.style.display = 'block';
-            } else {
-                img.style.display = 'none';
-            }
-            
-            // Tampilkan nama di bawah garis
-            if(nameData) {
-                nm.textContent = nameData;
-            }
+            if(sigData) { img.src = sigData; img.style.display = 'block'; }
+            else { img.style.display = 'none'; }
+            if(nameData) nm.textContent = nameData;
         }
 
         function resetForm() {
             document.getElementById('val_mesin').textContent = '';
-            document.getElementById('val_mulai').textContent = '';
-            // ... reset lainnya jika perlu
+            fillLines('container_masalah', '');
+            fillLines('container_tindakan', '');
+            // ... reset others
         }
 
-        // --- 3. EXPORT PDF ---
         function exportPDF() {
-            const element = document.getElementById('printArea');
-            
-            // Opsi agar presisi A4
+            const el = document.getElementById('printArea');
             const opt = {
-                margin:       0,
-                filename:     'Laporan_POHM.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 }, // Scale 2 biar tajam
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                margin: 0, filename: 'Laporan_POHM.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
-
-            // Tambahkan class sementara untuk fix layout saat print
-            element.classList.add('printing');
-            
-            html2pdf().set(opt).from(element).save().then(() => {
-                element.classList.remove('printing');
-            });
+            html2pdf().set(opt).from(el).save();
         }
     </script>
 </body>
