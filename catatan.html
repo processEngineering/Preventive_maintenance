@@ -93,7 +93,10 @@
             let masterData = [];
 
             try {
-                // 1. CHSLR_LOG (Ada Logic Kondisional: Catatan vs Result)
+                // -----------------------------------------------------------
+                // 1. CHSLR_LOG (Robot & Standlabel)
+                // Logic: Jika catatan_pelaksana kosong -> Ambil chslr_result.keterangan
+                // -----------------------------------------------------------
                 let { data: chslr } = await client
                     .from('chslr_log')
                     .select('*, chslr_result(keterangan)')
@@ -101,7 +104,6 @@
 
                 if(chslr) chslr.forEach(d => {
                     let noteFinal = d.catatan_pelaksana;
-                    // Logic: Kalau kosong, ambil dari chslr_result.keterangan
                     if (!noteFinal || noteFinal.trim() === "") {
                         noteFinal = (d.chslr_result || [])
                             .map(r => r.keterangan)
@@ -119,7 +121,10 @@
                     });
                 });
 
-                // 2. CLHMI (Injection)
+                // -----------------------------------------------------------
+                // 2. CLHMI (Injection Molding)
+                // Logic: Langsung dari kolom catatan_pelaksana
+                // -----------------------------------------------------------
                 let { data: clhmi } = await client.from('clhmi').select('*').order('tanggal_isi', { ascending: false });
                 if(clhmi) clhmi.forEach(d => {
                     masterData.push({
@@ -132,21 +137,22 @@
                     });
                 });
 
-                // 3. PMI_HEADER (Ada Logic Kondisional BARU: Catatan vs PMI Results)
+                // -----------------------------------------------------------
+                // 3. PMI_HEADER (Preventif Clamping)
+                // Logic: Jika catatan_pelaksana kosong -> Ambil pmi_results.keterangan
+                // -----------------------------------------------------------
                 let { data: pmi } = await client
                     .from('pmi_header')
-                    .select('*, pmi_results(keterangan)') // Join ke tabel results
+                    .select('*, pmi_results(keterangan)')
                     .order('tanggal', { ascending: false });
 
                 if(pmi) pmi.forEach(d => {
                     let noteFinal = d.catatan_pelaksana;
-                    
-                    // Logic: Kalau kosong, ambil dari pmi_results.keterangan
                     if (!noteFinal || noteFinal.trim() === "") {
                         noteFinal = (d.pmi_results || [])
                             .map(r => r.keterangan)
-                            .filter(k => k) // Hapus yang null/kosong
-                            .join(", ");   // Gabung pakai koma
+                            .filter(k => k)
+                            .join(", ");
                     }
 
                     masterData.push({
@@ -159,14 +165,42 @@
                     });
                 });
 
-                // 4. PRSLB_LOG
-                let { data: prslb } = await client.from('prslb_log').select('*').order('created_at', { ascending: false });
+                // -----------------------------------------------------------
+                // 4. PRSLB_LOG (Preventif Robot)
+                // Logic BARU:
+                // - Cek prslb_result.status
+                // - Jika semua "OK" -> Tulis "Semua Kondisi OK"
+                // - Jika ada "NG" -> Ambil prslb_result.keterangan yang NG
+                // -----------------------------------------------------------
+                let { data: prslb } = await client
+                    .from('prslb_log')
+                    .select('*, prslb_result(status, keterangan)') // Ambil status & keterangan
+                    .order('created_at', { ascending: false });
+
                 if(prslb) prslb.forEach(d => {
+                    let noteFinal = "Semua Kondisi OK"; // Default kalau semua OK
+                    const results = d.prslb_result || [];
+                    
+                    // Cek apakah ada yang NG?
+                    const adaNG = results.some(r => r.status === 'NG');
+
+                    if (adaNG) {
+                        // Kalau ada NG, ambil keterangannya
+                        const keteranganNG = results
+                            .filter(r => r.status === 'NG')
+                            .map(r => r.keterangan)
+                            .filter(k => k) // Hapus yang kosong
+                            .join(", ");
+                        
+                        // Jika keterangan kosong tapi status NG, kasih info default
+                        noteFinal = keteranganNG || "Ada item NG (Tanpa Keterangan)";
+                    }
+
                     masterData.push({
                         type: 'Preventif Robot',
                         machine: d.mesin_id,
                         date: d.created_at,
-                        pelaksana: { name: d.pelaksana_nama, note: '-' },
+                        pelaksana: { name: d.pelaksana_nama, note: noteFinal },
                         koordinator: { name: d.koordinator_nama, note: d.koordinator_note },
                         superintendent: { name: d.superintendent_nama, note: d.superintendent_note }
                     });
@@ -189,6 +223,7 @@
                 return;
             }
 
+            // Urutkan data berdasarkan tanggal terbaru
             data.sort((a, b) => new Date(b.date) - new Date(a.date));
 
             data.forEach(item => {
