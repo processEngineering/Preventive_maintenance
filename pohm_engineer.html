@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Form Engineer - POHM</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* ==================== THEME STYLES ==================== */
+        :root {
+            --primary: #DC2626;
+            --primary-dark: #B91C1C;
+            --primary-light: #FEE2E2;
+            --text-dark: #1F2937;
+            --text-medium: #4B5563;
+            --bg-gray: #F9FAFB;
+            --bg-white: #FFFFFF;
+            --border: #E5E7EB;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background-color: var(--bg-gray);
+            color: var(--text-dark);
+            min-height: 100vh;
+            padding-bottom: 80px; /* Space for button */
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 24px 20px;
+            border-bottom-left-radius: 24px;
+            border-bottom-right-radius: 24px;
+            box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .header h1 { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+        .header p { font-size: 14px; opacity: 0.9; }
+
+        .container { max-width: 600px; margin: 0 auto; padding: 0 20px; }
+
+        /* FORM ELEMENTS */
+        .form-section {
+            background: var(--bg-white);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .form-section h3 {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--primary-light);
+            padding-bottom: 8px;
+        }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-medium); margin-bottom: 6px; }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fff;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus { outline: none; border-color: var(--primary); }
+        textarea.form-control { min-height: 100px; resize: vertical; }
+
+        /* Radio Group for Work Type */
+        .radio-group { display: flex; gap: 16px; margin-top: 8px; }
+        .radio-option { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+        .radio-option input[type="radio"] { accent-color: var(--primary); width: 18px; height: 18px; }
+
+        /* TABLE SPAREPART */
+        .table-responsive { overflow-x: auto; }
+        .part-table { width: 100%; border-collapse: collapse; min-width: 500px; }
+        .part-table th { background: var(--bg-gray); text-align: left; padding: 10px; font-size: 12px; font-weight: 700; border-bottom: 2px solid var(--border); }
+        .part-table td { padding: 8px; border-bottom: 1px solid var(--border); }
+        .part-table input, .part-table select { width: 100%; padding: 8px; font-size: 13px; border: 1px solid var(--border); border-radius: 4px; }
+
+        /* SUBMIT BUTTON */
+        .btn-submit {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: calc(100% - 40px); max-width: 560px;
+            background: var(--primary); color: white;
+            padding: 16px; border: none; border-radius: 12px;
+            font-size: 16px; font-weight: 700;
+            box-shadow: 0 4px 14px rgba(220, 38, 38, 0.3);
+            cursor: pointer; z-index: 100;
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+        }
+        .btn-submit:active { transform: translateX(-50%) scale(0.98); }
+        .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+
+        /* LOADING SPINNER */
+        .spinner { display: none; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 1s ease-in-out infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Status Message */
+        #statusMessage { text-align: center; margin-top: 10px; font-size: 14px; font-weight: 600; display: none; }
+        .success { color: #059669; }
+        .error { color: #DC2626; }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Form Laporan POHM</h1>
+        <p>Perawatan & Over Haul Mesin - Engineer</p>
+    </div>
+
+    <div class="container">
+        <form id="pohmForm">
+
+            <div class="form-section">
+                <h3>Identitas & Waktu</h3>
+                
+                <div class="form-group">
+                    <label>Nama Mesin, Tools/Equipment</label>
+                    <select id="nama_mesin" class="form-control" required>
+                        <option value="">-- Pilih Mesin --</option>
+                        </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Jenis Pekerjaan</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="jenis_pekerjaan" value="Perawatan" required> Perawatan
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="jenis_pekerjaan" value="Over Haul"> Over Haul
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" style="display: flex; gap: 10px;">
+                    <div style="flex:1;">
+                        <label>Mulai (Tgl, Jam)</label>
+                        <input type="datetime-local" id="waktu_mulai" class="form-control" required>
+                    </div>
+                    <div style="flex:1;">
+                        <label>Selesai (Tgl, Jam)</label>
+                        <input type="datetime-local" id="waktu_selesai" class="form-control" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Deskripsi Permasalahan</h3>
+                <div class="form-group">
+                    <label>Deskripsi Permasalahan Mesin Tools/Equipment</label>
+                    <textarea id="deskripsi_masalah" class="form-control" placeholder="Tuliskan detail permasalahan..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Tindakan</h3>
+                <div class="form-group">
+                    <label>Pekerjaan Yang Dilakukan & Tindakan Yang Diambil</label>
+                    <textarea id="tindakan_diambil" class="form-control" placeholder="Jelaskan tindakan perbaikan..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Kerusakan Part</h3>
+                <div class="table-responsive">
+                    <table class="part-table" id="partsTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">No</th>
+                                <th>Nama Part</th>
+                                <th style="width: 60px;">QTY</th>
+                                <th style="width: 120px;">Tindak Lanjut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td><input type="text" class="part-name"></td>
+                                <td><input type="number" class="part-qty"></td>
+                                <td>
+                                    <select class="part-action">
+                                        <option value="Ganti Baru">Ganti Baru</option>
+                                        <option value="Repair">Repair</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td><input type="text" class="part-name"></td>
+                                <td><input type="number" class="part-qty"></td>
+                                <td>
+                                    <select class="part-action">
+                                        <option value="Ganti Baru">Ganti Baru</option>
+                                        <option value="Repair">Repair</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>3</td>
+                                <td><input type="text" class="part-name"></td>
+                                <td><input type="number" class="part-qty"></td>
+                                <td>
+                                    <select class="part-action">
+                                        <option value="Ganti Baru">Ganti Baru</option>
+                                        <option value="Repair">Repair</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>4</td>
+                                <td><input type="text" class="part-name"></td>
+                                <td><input type="number" class="part-qty"></td>
+                                <td>
+                                    <select class="part-action">
+                                        <option value="Ganti Baru">Ganti Baru</option>
+                                        <option value="Repair">Repair</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>5</td>
+                                <td><input type="text" class="part-name"></td>
+                                <td><input type="number" class="part-qty"></td>
+                                <td>
+                                    <select class="part-action">
+                                        <option value="Ganti Baru">Ganti Baru</option>
+                                        <option value="Repair">Repair</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Penutup</h3>
+                <div class="form-group">
+                    <label>Rekomendasi & Catatan</label>
+                    <textarea id="rekomendasi" class="form-control" placeholder="Rekomendasi untuk kedepannya..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Dikerjakan Oleh (Engineer Name)</label>
+                    <input type="text" id="engineer_name" class="form-control" placeholder="Masukkan Nama Anda" required>
+                </div>
+            </div>
+
+            <div id="statusMessage"></div>
+        </form>
+    </div>
+
+    <button type="button" class="btn-submit" onclick="submitForm()">
+        <span class="btn-text">Simpan Laporan</span>
+        <div class="spinner"></div>
+    </button>
+
+    <script>
+        // --- KONFIGURASI SUPABASE ---
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- LOAD DATA MESIN SAAT HALAMAN DIBUKA ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            const mesinSelect = document.getElementById('nama_mesin');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('pohm_machine')
+                    .select('name')
+                    .order('name', { ascending: true });
+
+                if (error) throw error;
+
+                data.forEach(mesin => {
+                    const option = document.createElement('option');
+                    option.value = mesin.name;
+                    option.textContent = mesin.name;
+                    mesinSelect.appendChild(option);
+                });
+            } catch (err) {
+                console.error('Gagal memuat mesin:', err);
+                alert('Gagal memuat daftar mesin. Periksa koneksi internet.');
+            }
+        });
+
+        // --- FUNGSI SUBMIT FORM ---
+        async function submitForm() {
+            const btn = document.querySelector('.btn-submit');
+            const spinner = document.querySelector('.spinner');
+            const btnText = document.querySelector('.btn-text');
+            const msgDiv = document.getElementById('statusMessage');
+
+            // 1. Validasi Input Dasar
+            const namaMesin = document.getElementById('nama_mesin').value;
+            const jenisPekerjaan = document.querySelector('input[name="jenis_pekerjaan"]:checked');
+            const waktuMulai = document.getElementById('waktu_mulai').value;
+            const waktuSelesai = document.getElementById('waktu_selesai').value;
+            const engineerName = document.getElementById('engineer_name').value;
+
+            if (!namaMesin || !jenisPekerjaan || !waktuMulai || !waktuSelesai || !engineerName) {
+                alert('Mohon lengkapi data wajib: Mesin, Jenis Pekerjaan, Waktu, dan Nama Engineer.');
+                return;
+            }
+
+            // UI Loading
+            btn.disabled = true;
+            spinner.style.display = 'block';
+            btnText.textContent = 'Menyimpan...';
+            msgDiv.textContent = '';
+
+            try {
+                // 2. Ambil Data Sparepart dari Tabel
+                const parts = [];
+                const rows = document.querySelectorAll('#partsTable tbody tr');
+                
+                rows.forEach((row, index) => {
+                    const name = row.querySelector('.part-name').value;
+                    const qty = row.querySelector('.part-qty').value;
+                    const action = row.querySelector('.part-action').value;
+
+                    // Hanya simpan jika nama part diisi
+                    if (name.trim() !== "") {
+                        parts.push({
+                            no: index + 1,
+                            name: name,
+                            qty: qty || 1,
+                            action: action
+                        });
+                    }
+                });
+
+                // 3. Insert ke Tabel pohm_items (Tabel Utama)
+                const { data: itemData, error: itemError } = await supabase
+                    .from('pohm_items')
+                    .insert([
+                        {
+                            machine_name: namaMesin,
+                            work_type: jenisPekerjaan.value,
+                            start_time: new Date(waktuMulai).toISOString(),
+                            end_time: new Date(waktuSelesai).toISOString(),
+                            problem_desc: document.getElementById('deskripsi_masalah').value,
+                            action_taken: document.getElementById('tindakan_diambil').value,
+                            spare_parts: parts, // JSONB Array
+                            recommendations: document.getElementById('rekomendasi').value,
+                            engineer_name: engineerName
+                        }
+                    ])
+                    .select()
+                    .single();
+
+                if (itemError) throw itemError;
+
+                // 4. Insert ke Tabel pohm_log (Initial Log)
+                const { error: logError } = await supabase
+                    .from('pohm_log')
+                    .insert([
+                        {
+                            item_id: itemData.id,
+                            engineer_status: 'Submitted',
+                            engineer_note: 'Laporan dibuat.',
+                            spv_status: 'Pending',
+                            manager_status: 'Pending'
+                        }
+                    ]);
+
+                if (logError) throw logError;
+
+                // Sukses
+                msgDiv.textContent = 'Laporan Berhasil Disimpan!';
+                msgDiv.className = 'success';
+                msgDiv.style.display = 'block';
+                
+                // Reset Form
+                document.getElementById('pohmForm').reset();
+                setTimeout(() => {
+                    window.location.href = 'pohm.html'; // Kembali ke menu
+                }, 1500);
+
+            } catch (err) {
+                console.error('Error:', err);
+                msgDiv.textContent = 'Gagal menyimpan: ' + err.message;
+                msgDiv.className = 'error';
+                msgDiv.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+                btnText.textContent = 'Simpan Laporan';
+            }
+        }
+    </script>
+</body>
+</html>
