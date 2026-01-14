@@ -93,17 +93,17 @@
             let masterData = [];
 
             try {
-                // 1. Ambil dari Tabel CHSLR_LOG + CHSLR_RESULT (Join Logic)
+                // 1. CHSLR_LOG (Ada Logic Kondisional: Catatan vs Result)
                 let { data: chslr } = await client
                     .from('chslr_log')
                     .select('*, chslr_result(keterangan)')
                     .order('created_at', { ascending: false });
 
                 if(chslr) chslr.forEach(d => {
-                    // Logic Kondisional Pelaksana
                     let noteFinal = d.catatan_pelaksana;
+                    // Logic: Kalau kosong, ambil dari chslr_result.keterangan
                     if (!noteFinal || noteFinal.trim() === "") {
-                        noteFinal = d.chslr_result
+                        noteFinal = (d.chslr_result || [])
                             .map(r => r.keterangan)
                             .filter(k => k)
                             .join(", ");
@@ -119,7 +119,7 @@
                     });
                 });
 
-                // 2. Ambil dari Tabel CLHMI
+                // 2. CLHMI (Injection)
                 let { data: clhmi } = await client.from('clhmi').select('*').order('tanggal_isi', { ascending: false });
                 if(clhmi) clhmi.forEach(d => {
                     masterData.push({
@@ -132,20 +132,34 @@
                     });
                 });
 
-                // 3. Ambil dari Tabel PMI_HEADER
-                let { data: pmi } = await client.from('pmi_header').select('*').order('tanggal', { ascending: false });
+                // 3. PMI_HEADER (Ada Logic Kondisional BARU: Catatan vs PMI Results)
+                let { data: pmi } = await client
+                    .from('pmi_header')
+                    .select('*, pmi_results(keterangan)') // Join ke tabel results
+                    .order('tanggal', { ascending: false });
+
                 if(pmi) pmi.forEach(d => {
+                    let noteFinal = d.catatan_pelaksana;
+                    
+                    // Logic: Kalau kosong, ambil dari pmi_results.keterangan
+                    if (!noteFinal || noteFinal.trim() === "") {
+                        noteFinal = (d.pmi_results || [])
+                            .map(r => r.keterangan)
+                            .filter(k => k) // Hapus yang null/kosong
+                            .join(", ");   // Gabung pakai koma
+                    }
+
                     masterData.push({
                         type: 'Preventif Clamping',
                         machine: 'ID: ' + d.machine_id,
                         date: d.tanggal,
-                        pelaksana: { name: d.nama_pelaksana, note: d.catatan_pelaksana },
+                        pelaksana: { name: d.nama_pelaksana, note: noteFinal || '-' },
                         koordinator: { name: d.nama_koordinator, note: d.catatan_koordinator },
                         superintendent: { name: d.nama_superintendent, note: d.catatan_superintendent }
                     });
                 });
 
-                // 4. Ambil dari Tabel PRSLB_LOG
+                // 4. PRSLB_LOG
                 let { data: prslb } = await client.from('prslb_log').select('*').order('created_at', { ascending: false });
                 if(prslb) prslb.forEach(d => {
                     masterData.push({
@@ -161,6 +175,7 @@
                 renderUI(masterData);
 
             } catch (e) {
+                console.error(e);
                 container.innerHTML = '<div class="loading">Gagal mengambil data.</div>';
             }
         }
