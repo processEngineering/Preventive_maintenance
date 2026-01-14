@@ -29,7 +29,7 @@
         .nav-item i { font-size: 20px; margin-bottom: 4px; }
         .nav-item.active { color: #0f172a; }
         
-        /* KANVAS TANDA TANGAN */
+        /* KANVAS TANDA TANGAN (FIXED) */
         #sig-canvas { width: 100%; height: 100%; touch-action: none; }
     </style>
 </head>
@@ -113,10 +113,10 @@
             <div class="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-200">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="font-black text-slate-800 text-xs uppercase tracking-widest">Paraf Digital</h3>
-                    <button onclick="clearSig()" class="text-[10px] font-bold text-red-500 bg-red-50 px-3 py-1 rounded-full">Hapus</button>
+                    <button onclick="sigPadKoor.clear()" class="text-[10px] font-bold text-red-500 bg-red-50 px-3 py-1 rounded-full">Hapus</button>
                 </div>
                 <div class="border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 h-32 relative overflow-hidden">
-                    <canvas id="sig-canvas"></canvas>
+                    <canvas id="sig-canvas" class="w-full h-full touch-none"></canvas>
                 </div>
             </div>
 
@@ -150,10 +150,9 @@
         
         let activeHdr = null, scanner = null, sigPadKoor = null;
 
-        // --- INIT ---
         window.onload = loadQueue;
 
-        // --- ROUTING ---
+        // --- ROUTING & SCANNER ---
         function showList() {
             if(scanner) scanner.stop().then(() => scanner.clear());
             document.getElementById('list-view').classList.remove('hidden');
@@ -168,16 +167,12 @@
             document.getElementById('scanner-view').classList.remove('hidden');
             document.getElementById('target-mesin').innerText = activeHdr.clhmi_machine?.merk_mesin || 'Unknown';
             
-            // Start Camera
             scanner = new Html5Qrcode("reader");
             scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 250, height: 250 } }, onScanSuccess);
         }
 
         async function onScanSuccess(decodedText) {
-            // Validasi QR Code vs Data Pilihan
             const targetName = activeHdr.clhmi_machine?.merk_mesin || '';
-            
-            // Cek apakah QR mengandung nama mesin (Flexible match)
             if (decodedText.toLowerCase().includes(targetName.toLowerCase()) || targetName.toLowerCase().includes(decodedText.toLowerCase())) {
                 await scanner.stop();
                 showForm();
@@ -190,21 +185,18 @@
             document.getElementById('scanner-view').classList.add('hidden');
             document.getElementById('form-view').classList.remove('hidden');
             
-            // Isi Data Header
+            // ISI DATA (FIX: Ambil pelaksana dengan benar)
             document.getElementById('verif-machine-name').innerText = activeHdr.clhmi_machine?.merk_mesin || '-';
-            document.getElementById('verif-pelaksana').innerText = activeHdr.pelaksana || '-'; // Ganti dari diisi_oleh ke pelaksana
+            document.getElementById('verif-pelaksana').innerText = activeHdr.pelaksana || '-'; 
             document.getElementById('verif-date').innerText = new Date(activeHdr.tanggal_isi).toLocaleDateString('id-ID');
 
-            // Load Temuan
             loadFindings();
 
-            // Init Canvas (FIXED RESIZING)
+            // RESIZE CANVAS (FIX SIGNATURE BUG)
             const canvas = document.getElementById('sig-canvas');
-            // Pastikan background transparan dan pen hitam
             sigPadKoor = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)', penColor: 'rgb(0,0,0)' });
             
-            // Trigger resize setelah elemen tampil
-            setTimeout(resizeCanvas, 100);
+            setTimeout(resizeCanvas, 100); // Tunggu render layout selesai
             window.addEventListener("resize", resizeCanvas);
         }
 
@@ -215,15 +207,13 @@
                 canvas.width = canvas.offsetWidth * ratio;
                 canvas.height = canvas.offsetHeight * ratio;
                 canvas.getContext("2d").scale(ratio, ratio);
-                sigPadKoor.clear(); // Bersihkan setelah resize agar tinta tidak melar
+                sigPadKoor.clear();
             }
         }
-        
         function clearSig() { sigPadKoor.clear(); }
 
         // --- DATA LOGIC ---
         async function loadQueue() {
-            // Ambil data header (clhmi) yang belum diapprove (paraf_coord null)
             const { data, error } = await sb.from('clhmi')
                 .select('*, clhmi_machine(merk_mesin)')
                 .is('paraf_coord', null) // Hanya yang belum diapprove
@@ -233,11 +223,7 @@
             container.innerHTML = "";
 
             if (!data || data.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-20 opacity-40">
-                        <i class="fa-regular fa-folder-open text-4xl mb-2"></i>
-                        <p class="text-xs font-bold uppercase">Tidak ada laporan baru</p>
-                    </div>`;
+                container.innerHTML = `<div class="text-center py-20 opacity-40"><i class="fa-regular fa-folder-open text-4xl mb-2"></i><p class="text-xs font-bold uppercase">Tidak ada laporan baru</p></div>`;
                 return;
             }
 
@@ -245,7 +231,7 @@
                 const machineName = item.clhmi_machine?.merk_mesin || 'Unknown Machine';
                 const dateStr = new Date(item.tanggal_isi).toLocaleDateString('id-ID', {day:'numeric', month:'short'});
                 const timeStr = new Date(item.created_at).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
-                const pelaksanaName = item.pelaksana || item.diisi_oleh || '-'; // Handle nama kolom lama/baru
+                const pelaksanaName = item.pelaksana || '-'; 
 
                 container.insertAdjacentHTML('beforeend', `
                     <div onclick="openScanner('${encodeURIComponent(JSON.stringify(item))}')" class="bg-white p-5 rounded-[1.2rem] shadow-sm border border-slate-200 active:scale-[0.98] transition-transform cursor-pointer relative overflow-hidden">
@@ -264,11 +250,11 @@
             const container = document.getElementById("findings-container");
             container.innerHTML = `<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-slate-300"></i></div>`;
 
-            // Cari item NG/MT/NA pada laporan ini
+            // Filter NG, NA, dan MT
             const { data: results } = await sb.from('clhmi_results')
                 .select('status, catatan_item, clhmi_items(nama_pengecekan)')
                 .eq('clhmi_id', activeHdr.id)
-                .or('status.eq.NG,status.eq.NA,status.eq.MT'); // Hanya ambil yang bermasalah/maintenance/NA
+                .or('status.eq.NG,status.eq.NA,status.eq.MT');
 
             container.innerHTML = "";
 
@@ -276,23 +262,19 @@
                 container.innerHTML = `
                     <div class="bg-green-50 border border-green-100 p-4 rounded-xl flex items-center gap-3">
                         <div class="bg-green-100 text-green-600 w-8 h-8 rounded-full flex items-center justify-center"><i class="fa-solid fa-check"></i></div>
-                        <div>
-                            <p class="font-bold text-xs text-green-800 uppercase">Kondisi Aman</p>
-                            <p class="text-[10px] text-green-600">Tidak ada temuan NG / Perbaikan</p>
-                        </div>
+                        <div><p class="font-bold text-xs text-green-800 uppercase">Kondisi Aman</p><p class="text-[10px] text-green-600">Semua item OK</p></div>
                     </div>`;
             } else {
                 results.forEach(res => {
-                    let color = 'gray';
-                    if(res.status === 'NG') color = 'red';
-                    else if(res.status === 'MT') color = 'blue';
-                    else if(res.status === 'NA') color = 'slate';
-
+                    let color = 'gray', label = 'NA';
+                    if(res.status === 'NG') { color = 'red'; label='NG'; }
+                    else if(res.status === 'MT') { color = 'blue'; label='MT'; }
+                    
                     container.insertAdjacentHTML('beforeend', `
                         <div class="bg-white border-l-4 border-${color}-500 p-3 shadow-sm rounded-r-xl mb-2">
                             <div class="flex justify-between items-start mb-1">
                                 <p class="text-[10px] font-black uppercase w-3/4 text-slate-700">${res.clhmi_items?.nama_pengecekan}</p>
-                                <span class="bg-${color}-100 text-${color}-700 text-[8px] font-black px-2 py-0.5 rounded uppercase">${res.status}</span>
+                                <span class="bg-${color}-100 text-${color}-700 text-[8px] font-black px-2 py-0.5 rounded uppercase">${label}</span>
                             </div>
                             <p class="text-[10px] font-bold italic text-slate-500">"${res.catatan_item || '-'}"</p>
                         </div>
@@ -306,22 +288,16 @@
             if(!name || sigPadKoor.isEmpty()) return alert("⚠️ Mohon isi Nama & Paraf!");
             
             const btn = document.getElementById('btn-approve');
-            btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i>`; 
-            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i>`; btn.disabled = true;
 
             const { error } = await sb.from('clhmi').update({
-                paraf_coord: sigPadKoor.toDataURL(), // Simpan paraf koordinator
-                // Gabungkan nama & catatan ke kolom catatan_umum karena tidak ada kolom nama koordinator khusus di tabel lama
-                catatan_umum: `[Approved by: ${name}] ${document.getElementById('koor-remark').value}`
+                paraf_coord: sigPadKoor.toDataURL(), 
+                status_form: 'approved', // Update Status jadi Approved
+                catatan_umum: `[Coord: ${name}] ${document.getElementById('koor-remark').value}`
             }).eq('id', activeHdr.id);
 
-            if(!error) {
-                alert("✅ APPROVED!");
-                showList();
-            } else {
-                alert("Gagal: " + error.message);
-                btn.innerHTML = 'APPROVE'; btn.disabled = false;
-            }
+            if(!error) { alert("✅ APPROVED!"); showList(); } 
+            else { alert("Gagal: " + error.message); btn.innerHTML = 'APPROVE'; btn.disabled = false; }
         }
     </script>
 </body>
