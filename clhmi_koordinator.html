@@ -16,12 +16,18 @@
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
         .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* SCANNER */
         #reader { width: 100%; border-radius: 24px; overflow: hidden; position: relative; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         #reader video { object-fit: cover; border-radius: 24px; }
+        
+        /* NAVIGASI */
         .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; border-top: 1px solid #eee; display: flex; justify-content: space-around; padding: 12px 0; z-index: 50; padding-bottom: 20px; }
         .nav-item { display: flex; flex-direction: column; align-items: center; color: #94a3b8; font-size: 10px; font-weight: 600; cursor: pointer; transition: 0.2s; text-decoration: none; }
         .nav-item i { font-size: 20px; margin-bottom: 4px; }
         .nav-item.active { color: #0f172a; }
+        
+        /* CANVAS */
         #sig-canvas { width: 100%; height: 100%; touch-action: none; }
     </style>
 </head>
@@ -40,6 +46,7 @@
     </nav>
 
     <div class="max-w-md mx-auto pt-20 px-4">
+
         <div id="list-view" class="fade-in">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest">Menunggu Review</h2>
@@ -55,7 +62,9 @@
                 <h2 class="text-lg font-black text-slate-800 uppercase">Validasi Fisik</h2>
                 <p class="text-xs text-slate-500 mt-1 px-10">Scan QR Code pada mesin <span id="target-mesin" class="text-slate-900 font-bold underline">...</span> untuk melanjutkan.</p>
             </div>
-            <div class="bg-white p-2 rounded-[2rem] shadow-xl mb-6 relative border border-slate-100"><div id="reader"></div></div>
+            <div class="bg-white p-2 rounded-[2rem] shadow-xl mb-6 relative border border-slate-100">
+                <div id="reader"></div>
+            </div>
             <button onclick="showList()" class="w-full py-4 text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600">Kembali ke Antrean</button>
         </div>
 
@@ -92,8 +101,8 @@
     </div>
 
     <div class="bottom-nav">
-        <a href="index.html" class="nav-item active"><i class="fa-solid fa-list-check"></i><span>Queue</span></a>
-        <a href="history.html" class="nav-item"><i class="fa-solid fa-clock-rotate-left"></i><span>History</span></a>
+        <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i><span>Home</span></a>
+        <a href="menu_utama.html" class="nav-item"><i class="fa-solid fa-bars"></i><span>Menu</span></a>
         <a href="download_data.html" class="nav-item"><i class="fa-solid fa-download"></i><span>Data</span></a>
         <a href="informasi_akun.html" class="nav-item"><i class="fa-solid fa-user"></i><span>Akun</span></a>
     </div>
@@ -135,7 +144,7 @@
             document.getElementById('scanner-view').classList.add('hidden');
             document.getElementById('form-view').classList.remove('hidden');
             document.getElementById('verif-machine-name').innerText = activeHdr.clhmi_machine?.merk_mesin || '-';
-            // UPDATE: Support nama kolom lama (diisi_oleh) dan baru (pelaksana) agar tidak error
+            // UPDATE: Membaca 'pelaksana' atau 'diisi_oleh' agar tidak kosong
             document.getElementById('verif-pelaksana').innerText = activeHdr.pelaksana || activeHdr.diisi_oleh || '-'; 
             document.getElementById('verif-date').innerText = new Date(activeHdr.tanggal_isi).toLocaleDateString('id-ID');
             loadFindings();
@@ -185,7 +194,6 @@
             if(!name || sigPadKoor.isEmpty()) return alert("⚠️ Mohon isi Nama & Paraf!");
             const btn = document.getElementById('btn-approve'); btn.innerHTML = `MENYIMPAN...`; btn.disabled = true;
 
-            // TRY-CATCH BLOCK (PENTING BIAR GAK MENTOK)
             try {
                 const { error } = await sb.from('clhmi').update({
                     paraf_coord: sigPadKoor.toDataURL(), 
@@ -196,9 +204,11 @@
                 if(!error) { 
                     alert("✅ APPROVED!"); 
                     showList(); 
+                    btn.innerHTML = 'APPROVE'; btn.disabled = false;
                 } else { throw error; }
             } catch (e) {
-                alert("GAGAL MENYIMPAN: " + e.message + "\n\n(Cek Koneksi atau Izin Database)");
+                // Tampilkan pesan error yang JELAS
+                alert("GAGAL: " + (e.message || JSON.stringify(e)));
                 btn.innerHTML = 'APPROVE'; btn.disabled = false;
             }
         }
