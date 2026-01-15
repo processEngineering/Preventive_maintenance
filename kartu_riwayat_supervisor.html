@@ -257,7 +257,7 @@
             else row.classList.remove('selected-row');
         }
 
-        // --- SUBMIT APPROVAL (DENGAN ANIMASI HAPUS) ---
+        // --- SUBMIT APPROVAL (FIXED LOGIC) ---
         async function submitApproval() {
             const checkedBoxes = document.querySelectorAll('.item-check:checked');
             const ids = Array.from(checkedBoxes).map(cb => cb.value);
@@ -273,6 +273,9 @@
 
             const signatureData = isCanvasBlank() ? null : canvas.toDataURL();
             const btn = document.querySelector('.btn-approve');
+            
+            // Simpan teks tombol asli agar bisa dikembalikan jika error
+            const originalBtnText = '<i class="fa-solid fa-check-circle"></i> APPROVE ITEM TERPILIH (<span id="countSelected">0</span>)';
             
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...'; 
             btn.disabled = true;
@@ -290,27 +293,30 @@
 
                 if (error) throw error;
 
-                // --- EFEK UI: HAPUS BARIS TANPA RELOAD ---
                 alert(`Berhasil meng-approve ${ids.length} data!`);
 
                 // 1. Hapus baris yang dicentang
                 checkedBoxes.forEach(cb => {
                     const row = cb.closest('tr');
-                    row.classList.add('fade-out'); // Tambah animasi
-                    setTimeout(() => row.remove(), 500); // Hapus elemen setelah animasi
+                    row.classList.add('fade-out'); 
+                    setTimeout(() => row.remove(), 500); 
                 });
 
-                // 2. Reset Form Bawah
+                // 2. Reset Form
                 clearSignature();
                 document.getElementById('spv_name').value = '';
                 document.getElementById('spv_note').value = '';
-                document.getElementById('countSelected').innerText = '0';
                 document.getElementById('checkAll').checked = false;
 
-                // 3. Cek jika tabel kosong setelah dihapus
+                // 3. KEMBALIKAN TOMBOL KE POSISI SEMULA (PENTING AGAR TIDAK ERROR)
+                btn.innerHTML = originalBtnText;
+                btn.disabled = false;
+
+                // 4. Cek Tabel Kosong
                 setTimeout(() => {
                     const remainingRows = document.querySelectorAll('#tableBody tr');
-                    if (remainingRows.length === 0) {
+                    // Jika tidak ada baris tersisa atau hanya baris pesan kosong lama
+                    if (remainingRows.length === 0 || (remainingRows.length === 1 && remainingRows[0].classList.contains('empty-state'))) {
                         document.getElementById('tableBody').innerHTML = '<tr><td colspan="7" class="empty-state">Semua data sudah diapprove!</td></tr>';
                     }
                 }, 600);
@@ -318,8 +324,10 @@
             } catch (err) {
                 console.error(err);
                 alert('Gagal approve: ' + err.message);
-            } finally {
-                btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> APPROVE ITEM TERPILIH (<span id="countSelected">0</span>)';
+                
+                // Kembalikan tombol jika error, update angka ke sisa
+                const count = document.querySelectorAll('.item-check:checked').length;
+                btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> APPROVE ITEM TERPILIH (<span id="countSelected">' + count + '</span>)';
                 btn.disabled = false;
             }
         }
