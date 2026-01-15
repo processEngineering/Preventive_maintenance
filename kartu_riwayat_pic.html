@@ -2,351 +2,219 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Form PIC - Riwayat Mesin</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Log Excel & Tanda Tangan</title>
     <style>
-        /* Menggunakan tema merah yang sama */
-        :root {
-            --primary: #DC2626;
-            --primary-dark: #B91C1C;
-            --bg-gray: #F9FAFB;
-            --text-dark: #1F2937;
-            --border: #D1D5DB;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        
-        body {
-            background-color: var(--bg-gray);
-            padding-bottom: 80px; /* Space for bottom nav */
-            display: flex;
-            justify-content: center;
-        }
-
-        .app-container {
+        /* Style agar tabel terlihat seperti Excel */
+        .excel-table {
             width: 100%;
-            max-width: 600px;
-            background: white;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 0 20px rgba(0,0,0,0.05);
-        }
-
-        /* Header */
-        .header {
-            background: var(--primary);
-            padding: 20px;
-            color: white;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        .back-btn {
-            color: white;
-            font-size: 18px;
-            text-decoration: none;
-        }
-
-        .header h1 {
-            font-size: 18px;
-            font-weight: 700;
-        }
-
-        /* Form Area */
-        .form-content {
-            padding: 24px 20px;
-        }
-
-        .form-group {
+            border-collapse: collapse;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
             margin-bottom: 20px;
         }
 
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: var(--text-dark);
-            font-size: 14px;
+        .excel-table th, .excel-table td {
+            border: 1px solid #ccc;
+            padding: 5px;
         }
 
-        .form-input, .form-select, .form-textarea {
+        .excel-table th {
+            background-color: #f0f0f0; /* Warna abu-abu khas header Excel */
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .excel-table input {
             width: 100%;
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 14px;
-            background: #fff;
-            transition: border-color 0.2s;
-        }
-
-        .form-input:focus, .form-select:focus, .form-textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .form-textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-
-        /* Signature Pad */
-        .signature-wrapper {
-            border: 1px dashed var(--primary);
-            border-radius: 8px;
-            background: #fff;
-            position: relative;
-            height: 200px;
-            margin-bottom: 10px;
-        }
-
-        canvas {
-            width: 100%;
-            height: 100%;
-            border-radius: 8px;
-            display: block;
-        }
-
-        .clear-sig-btn {
-            padding: 5px 10px;
-            background: #eee;
             border: none;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-            color: #555;
-            margin-top: 5px;
+            outline: none;
+            padding: 4px;
+            box-sizing: border-box; /* Agar padding tidak merusak lebar */
         }
 
-        /* Submit Button */
-        .submit-btn {
-            width: 100%;
-            padding: 16px;
-            background: var(--primary);
+        .excel-table input:focus {
+            background-color: #e6f7ff; /* Highlight saat diketik */
+        }
+
+        /* Style untuk Tanda Tangan */
+        .signature-container {
+            border: 2px dashed #ccc;
+            display: inline-block;
+            position: relative;
+            background: #fff;
+        }
+        
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        .btn-clear {
+            margin-top: 5px;
+            padding: 5px 10px;
+            background: #ff4d4d;
             color: white;
             border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 700;
             cursor: pointer;
-            margin-top: 20px;
-            box-shadow: 0 4px 10px rgba(220, 38, 38, 0.3);
         }
-
-        .submit-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            box-shadow: none;
-        }
-
-        /* Loading Overlay */
-        #loading {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.8);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            flex-direction: column;
-        }
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--primary);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
     </style>
 </head>
 <body>
 
-    <div class="app-container">
-        <div class="header">
-            <a href="kartu_riwayat.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
-            <h1>Input Riwayat Mesin (PIC)</h1>
+    <h2>Form Input Data Mesin</h2>
+
+    <form id="logForm">
+        <table class="excel-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">No</th>
+                    <th>Parameter / Item Cek</th>
+                    <th style="width: 100px;">Nilai</th>
+                    <th>Keterangan</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                </tbody>
+        </table>
+
+        <h3>Tanda Tangan Pelaksana</h3>
+        <div class="signature-container">
+            <canvas id="signatureCanvas" width="300" height="150"></canvas>
         </div>
+        <br>
+        <button type="button" class="btn-clear" onclick="clearSignature()">Hapus Tanda Tangan</button>
+        <input type="hidden" id="signatureData" name="signature">
 
-        <div class="form-content">
-            <form id="logForm">
-                
-                <div class="form-group">
-                    <label class="form-label">Pilih Mesin</label>
-                    <select id="machine_id" class="form-select" required>
-                        <option value="" disabled selected>Sedang memuat data mesin...</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Tanggal</label>
-                    <input type="date" id="date" class="form-input" required>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Permasalahan</label>
-                    <textarea id="issue" class="form-textarea" placeholder="Jelaskan kerusakan/masalah..."></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Tindakan Perbaikan</label>
-                    <textarea id="action" class="form-textarea" placeholder="Apa yang dilakukan..."></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Spare Part (Jika ada)</label>
-                    <input type="text" id="spare_part" class="form-input" placeholder="-">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Keterangan Tambahan</label>
-                    <input type="text" id="remarks" class="form-input" placeholder="-">
-                </div>
-
-                <hr style="border: 0; border-top: 1px dashed #ddd; margin: 20px 0;">
-
-                <div class="form-group">
-                    <label class="form-label">Nama PIC</label>
-                    <input type="text" id="pic_name" class="form-input" placeholder="Nama Anda" required>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Tanda Tangan PIC</label>
-                    <div class="signature-wrapper">
-                        <canvas id="signature-canvas"></canvas>
-                    </div>
-                    <button type="button" class="clear-sig-btn" id="clear-signature">Hapus Tanda Tangan</button>
-                </div>
-
-                <button type="submit" class="submit-btn">Simpan Laporan</button>
-            </form>
-        </div>
-    </div>
-
-    <div id="loading">
-        <div class="spinner"></div>
-        <p style="margin-top:10px; font-weight:600;">Menyimpan...</p>
-    </div>
+        <br><br>
+        <button type="submit" style="padding: 10px 20px; background: blue; color: white;">Simpan Data</button>
+    </form>
 
     <script>
-        // ================= KONFIGURASI SUPABASE =================
-        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // --- BAGIAN 1: GENERATE TABEL 25 BARIS ---
+        const tableBody = document.getElementById('tableBody');
+        const rowCount = 25; // Jumlah baris yang diinginkan
 
-        // ================= INISIALISASI SIGNATURE PAD =================
-        const canvas = document.getElementById('signature-canvas');
-        
-        // Resize canvas agar pas dengan layar HP
-        function resizeCanvas() {
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext("2d").scale(ratio, ratio);
-        }
-        window.onresize = resizeCanvas;
-        resizeCanvas();
-
-        const signaturePad = new SignaturePad(canvas, {
-            backgroundColor: 'rgba(255, 255, 255, 0)',
-            penColor: 'black'
-        });
-
-        document.getElementById('clear-signature').addEventListener('click', () => {
-            signaturePad.clear();
-        });
-
-        // ================= LOAD DATA MESIN (DROPDOWN) =================
-        async function loadMachines() {
-            const select = document.getElementById('machine_id');
+        for (let i = 1; i <= rowCount; i++) {
+            const row = document.createElement('tr');
             
-            try {
-                // Mengambil data dari tabel machines
-                const { data, error } = await supabase
-                    .from('kartu_riwayat_machines')
-                    .select('id, name')
-                    .order('name', { ascending: true });
-
-                if (error) throw error;
-
-                // Reset dropdown dan isi data
-                select.innerHTML = '<option value="" disabled selected>-- Pilih Mesin --</option>';
-                data.forEach(machine => {
-                    const option = document.createElement('option');
-                    option.value = machine.id;
-                    option.textContent = machine.name;
-                    select.appendChild(option);
-                });
-            } catch (err) {
-                console.error('Error loading machines:', err);
-                select.innerHTML = '<option disabled>Gagal memuat data (Cek Console)</option>';
-                alert('Gagal memuat daftar mesin. Pastikan tabel kartu_riwayat_machines sudah dibuat di Supabase.');
-            }
+            row.innerHTML = `
+                <td style="text-align: center; background: #fafafa;">${i}</td>
+                <td><input type="text" name="item_${i}" placeholder="Item cek..."></td>
+                <td><input type="text" name="nilai_${i}" style="text-align: center;" placeholder="OK/Angka"></td>
+                <td><input type="text" name="keterangan_${i}" placeholder="..."></td>
+            `;
+            tableBody.appendChild(row);
         }
 
-        // Jalankan saat halaman siap
-        loadMachines();
-        
-        // Set tanggal hari ini otomatis
-        document.getElementById('date').valueAsDate = new Date();
+        // --- BAGIAN 2: LOGIKA TANDA TANGAN (CANVAS) ---
+        const canvas = document.getElementById('signatureCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
 
-        // ================= HANDLE SUBMIT FORM =================
-        document.getElementById('logForm').addEventListener('submit', async (e) => {
+        // Setup gaya garis
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#000';
+
+        // Fungsi untuk mendapatkan posisi pointer (mouse atau touch)
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+            
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        // Event Listeners Mouse (Desktop)
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            const pos = getPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        });
+
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mouseout', () => isDrawing = false);
+
+        // Event Listeners Touch (HP/Tablet) - PENTING AGAR TIDAK SCROLL
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Mencegah layar scroll saat tanda tangan
+            isDrawing = true;
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault(); // Mencegah layar scroll
+            if (!isDrawing) return;
+            const pos = getPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', () => isDrawing = false);
+
+        // Fungsi Hapus Tanda Tangan
+        function clearSignature() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // --- BAGIAN 3: PROSES SUBMIT ---
+        document.getElementById('logForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            // Cek Tanda Tangan
-            if (signaturePad.isEmpty()) {
-                alert("Harap tanda tangan terlebih dahulu!");
-                return;
+            // 1. Simpan Tanda Tangan ke format Gambar (Base64)
+            // Cek apakah canvas kosong (opsional)
+            const signatureDataUrl = canvas.toDataURL('image/png');
+            document.getElementById('signatureData').value = signatureDataUrl;
+
+            // 2. Ambil Data dari Tabel
+            // Kita bisa loop lagi untuk mengambil value dari input
+            let logData = [];
+            for (let i = 1; i <= rowCount; i++) {
+                // Ambil value berdasarkan nama input
+                let item = document.querySelector(`input[name="item_${i}"]`).value;
+                let nilai = document.querySelector(`input[name="nilai_${i}"]`).value;
+                let ket = document.querySelector(`input[name="keterangan_${i}"]`).value;
+
+                // Hanya masukkan ke data jika item diisi (opsional)
+                if(item || nilai || ket) {
+                    logData.push({
+                        no: i,
+                        item: item,
+                        nilai: nilai,
+                        keterangan: ket
+                    });
+                }
             }
 
-            // Tampilkan Loading
-            document.getElementById('loading').style.display = 'flex';
-            document.querySelector('.submit-btn').disabled = true;
+            console.log("Data Tanda Tangan:", signatureDataUrl);
+            console.log("Data Tabel:", logData);
 
-            // Ambil Data Form
-            const formData = {
-                machine_id: document.getElementById('machine_id').value,
-                date: document.getElementById('date').value,
-                issue: document.getElementById('issue').value,
-                action: document.getElementById('action').value,
-                spare_part: document.getElementById('spare_part').value,
-                remarks: document.getElementById('remarks').value,
-                pic_name: document.getElementById('pic_name').value,
-                pic_signature: signaturePad.toDataURL(), // Convert ttd jadi base64 string
-                status: 'Submitted'
-            };
-
-            try {
-                // Simpan ke tabel logs
-                const { data, error } = await supabase
-                    .from('kartu_riwayat_logs')
-                    .insert([formData]);
-
-                if (error) throw error;
-
-                alert('Laporan Berhasil Disimpan!');
-                window.location.href = 'kartu_riwayat.html'; // Balik ke menu
-            } catch (err) {
-                console.error('Error saving log:', err);
-                alert('Gagal menyimpan laporan: ' + err.message);
-                document.getElementById('loading').style.display = 'none';
-                document.querySelector('.submit-btn').disabled = false;
-            }
+            alert("Cek Console untuk melihat data yang siap dikirim ke Supabase!");
+            
+            // --- DISINI KODE SUPABASE INSERT ANDA ---
+            // const { data, error } = await supabase.from('namatabel').insert([...])
         });
     </script>
 </body>
