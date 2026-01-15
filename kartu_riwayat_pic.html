@@ -3,294 +3,324 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Form Log Mesin (Excel Mode)</title>
+    <title>Kartu Riwayat Mesin</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         body { 
-            font-family: Arial, sans-serif; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             padding: 10px; 
             max-width: 100%; 
             margin: auto; 
-            box-sizing: border-box;
-            background-color: #f9f9f9;
-        }
-        
-        /* INFO HEADER */
-        .info-box {
-            background: #fff;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-left: 5px solid #007bff;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            border-radius: 4px;
+            background-color: #f4f6f9;
         }
 
-        /* STYLE TABEL EXCEL */
+        /* CARD STYLE */
+        .card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        select, input[type="date"], input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box; /* Agar padding tidak merusak lebar */
+        }
+
+        /* EXCEL TABLE STYLE */
         .table-container {
-            overflow-x: auto; /* Agar bisa digeser jika layar kekecilan */
+            overflow-x: auto;
+            border: 1px solid #ccc;
         }
         .excel-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 13px;
-            margin-bottom: 20px;
-            background: #fff;
-        }
-        .excel-table th, .excel-table td {
-            border: 1px solid #ccc;
-            padding: 8px;
+            min-width: 600px; /* Agar tidak gepeng di HP */
         }
         .excel-table th {
-            background-color: #e0e0e0;
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            border: 1px solid #0056b3;
             text-align: center;
-            font-weight: bold;
-            color: #333;
+        }
+        .excel-table td {
+            border: 1px solid #ccc;
+            padding: 0;
         }
         .excel-table td:first-child {
-            background-color: #f0f0f0;
+            background: #eee;
+            text-align: center;
             font-weight: bold;
-            color: #555;
+            width: 30px;
         }
         .excel-table input {
-            width: 100%;
             border: none;
-            outline: none;
+            margin: 0;
+            padding: 8px;
+            border-radius: 0;
+            width: 100%;
             background: transparent;
-            font-family: inherit;
-            padding: 4px;
         }
         .excel-table input:focus {
-            background-color: #e6f7ff;
-            border-bottom: 2px solid #007bff;
+            background-color: #e8f0fe;
+            outline: 2px solid #007bff;
+            z-index: 10; /* Agar border fokus terlihat */
         }
 
-        /* STYLE TANDA TANGAN */
+        /* SIGNATURE STYLE */
         .signature-wrapper {
             border: 2px dashed #999;
             background: #fff;
             position: relative;
             width: 100%;
-            height: 200px;
-            touch-action: none; /* PENTING: Mematikan scroll browser di area ini */
+            height: 180px;
+            touch-action: none; /* KUNCI ANTI SCROLL DI HP */
         }
         canvas {
-            display: block;
             width: 100%;
             height: 100%;
-            cursor: crosshair;
         }
-        
-        /* TOMBOL */
+
+        /* BUTTONS */
         .btn {
-            padding: 12px 20px;
-            cursor: pointer;
-            border: none;
-            color: white;
-            font-size: 16px;
-            border-radius: 5px;
+            padding: 12px;
             width: 100%;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
             margin-top: 10px;
         }
-        .btn-blue { background: #007bff; }
-        .btn-blue:hover { background: #0056b3; }
-        .btn-red { background: #dc3545; width: auto; font-size: 14px; padding: 8px 15px;}
+        .btn-primary { background-color: #28a745; color: white; font-weight: bold; }
+        .btn-danger { background-color: #dc3545; color: white; width: auto; padding: 5px 10px; font-size: 12px; }
+        
+        .loading { opacity: 0.5; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <h2 style="text-align:center;">📋 Log Sheet Harian</h2>
-
-    <div class="info-box">
-        <p><strong>Mesin:</strong> <span id="displayMesin">Memuat...</span></p>
-        <p><strong>Petugas:</strong> <span id="displayUser">Memuat...</span></p>
-        <p><strong>Tanggal:</strong> <span id="displayDate">-</span></p>
-    </div>
+    <h2 style="text-align:center;">🔧 Kartu Riwayat Mesin</h2>
 
     <form id="logForm">
-        <div class="table-container">
-            <table class="excel-table">
-                <thead>
-                    <tr>
-                        <th style="width: 30px;">No</th>
-                        <th>Item Pengecekan</th>
-                        <th style="width: 80px;">Nilai</th>
-                        <th>Keterangan</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    </tbody>
-            </table>
+        
+        <div class="card">
+            <label>Pilih Mesin:</label>
+            <select id="machineSelect" required>
+                <option value="">-- Sedang Memuat Daftar Mesin... --</option>
+            </select>
+
+            <label>Tanggal Pengerjaan:</label>
+            <input type="date" id="dateInput" required>
+
+            <label>Nama PIC (Teknisi):</label>
+            <input type="text" id="picName" placeholder="Masukkan Nama Anda" required>
         </div>
 
-        <h3>Tanda Tangan Pelaksana</h3>
-        <p style="font-size: 12px; color: #666;">Silakan tanda tangan di dalam kotak:</p>
-        <div class="signature-wrapper" id="sigContainer">
-            <canvas id="signatureCanvas"></canvas>
+        <div class="card">
+            <label>Detail Pengerjaan (Isi baris yang diperlukan saja):</label>
+            <div class="table-container">
+                <table class="excel-table">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Issue (Masalah)</th>
+                            <th>Action (Tindakan)</th>
+                            <th>Spare Part</th>
+                            <th>Remarks (Ket)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        </tbody>
+                </table>
+            </div>
         </div>
-        <button type="button" class="btn btn-red" onclick="clearSignature()">Hapus Tanda Tangan</button>
 
-        <br><br>
-        <button type="submit" class="btn btn-blue" id="btnSubmit">💾 Simpan Laporan</button>
+        <div class="card">
+            <label>Tanda Tangan PIC:</label>
+            <div class="signature-wrapper" id="sigContainer">
+                <canvas id="signatureCanvas"></canvas>
+            </div>
+            <button type="button" class="btn btn-danger" onclick="clearSignature()">Hapus Tanda Tangan</button>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="btnSubmit">💾 SIMPAN DATA</button>
     </form>
 
     <script>
-        // --- 1. KONFIGURASI SUPABASE (SUDAH TERISI) ---
+        // --- 1. KONEKSI SUPABASE ---
         const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // --- 2. LOAD DATA USER & MESIN ---
-        // Mengambil data dari LocalStorage (hasil scan barcode sebelumnya)
-        const machineName = localStorage.getItem('machine_name') || 'UNKNOWN-MESIN';
-        const userName = localStorage.getItem('username') || 'Guest';
+        // --- 2. INIT HALAMAN (LOAD MESIN & BIKIN TABEL) ---
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Set Tanggal Hari Ini
+            document.getElementById('dateInput').valueAsDate = new Date();
 
-        document.getElementById('displayMesin').textContent = machineName;
-        document.getElementById('displayUser').textContent = userName;
-        document.getElementById('displayDate').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            // Load Data Mesin untuk Dropdown
+            const machineSelect = document.getElementById('machineSelect');
+            try {
+                // Mengambil id dan name dari tabel kartu_riwayat_machines
+                const { data, error } = await supabase
+                    .from('kartu_riwayat_machines')
+                    .select('id, name')
+                    .order('name', { ascending: true });
 
-        // --- 3. GENERATE 25 BARIS TABEL EXCEL ---
-        const tableBody = document.getElementById('tableBody');
-        for (let i = 1; i <= 25; i++) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td style="text-align:center;">${i}</td>
-                <td><input type="text" id="item_${i}" placeholder="Item ${i}..."></td>
-                <td><input type="text" id="nilai_${i}" style="text-align:center;" placeholder="-"></td>
-                <td><input type="text" id="ket_${i}" placeholder="Keterangan"></td>
-            `;
-            tableBody.appendChild(tr);
-        }
+                if (error) throw error;
 
-        // --- 4. LOGIKA TANDA TANGAN (FIX TOUCH SCROLL) ---
+                machineSelect.innerHTML = '<option value="">-- Pilih Mesin --</option>';
+                data.forEach(mesin => {
+                    const option = document.createElement('option');
+                    option.value = mesin.id; // Value adalah ID (Foreign Key)
+                    option.textContent = mesin.name; // Tampilan adalah Nama
+                    machineSelect.appendChild(option);
+                });
+            } catch (err) {
+                alert("Gagal memuat daftar mesin: " + err.message);
+            }
+
+            // Generate 25 Baris Tabel Excel
+            const tableBody = document.getElementById('tableBody');
+            for (let i = 1; i <= 25; i++) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${i}</td>
+                    <td><input type="text" name="issue_${i}" placeholder="Masalah..."></td>
+                    <td><input type="text" name="action_${i}" placeholder="Tindakan..."></td>
+                    <td><input type="text" name="part_${i}" placeholder="Part..."></td>
+                    <td><input type="text" name="remarks_${i}" placeholder="Ket..."></td>
+                `;
+                tableBody.appendChild(tr);
+            }
+        });
+
+        // --- 3. LOGIKA TANDA TANGAN (CANVAS) ---
         const canvas = document.getElementById('signatureCanvas');
         const container = document.getElementById('sigContainer');
         const ctx = canvas.getContext('2d');
         let isDrawing = false;
 
-        // Resize canvas agar resolusinya tajam sesuai layar
         function resizeCanvas() {
             canvas.width = container.offsetWidth;
             canvas.height = container.offsetHeight;
-            ctx.strokeStyle = "#000";
             ctx.lineWidth = 2;
             ctx.lineCap = "round";
+            ctx.strokeStyle = "#000";
         }
         window.addEventListener('resize', resizeCanvas);
-        resizeCanvas(); // Panggil sekali saat load
+        // Delay sedikit agar container render dulu
+        setTimeout(resizeCanvas, 500); 
 
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
-            // Cek apakah touch atau mouse
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: clientX - rect.left, y: clientY - rect.top };
+            const cx = e.touches ? e.touches[0].clientX : e.clientX;
+            const cy = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: cx - rect.left, y: cy - rect.top };
         }
 
-        function startDraw(e) {
-            isDrawing = true;
-            ctx.beginPath();
-            const pos = getPos(e);
-            ctx.moveTo(pos.x, pos.y);
-        }
+        function startDraw(e) { isDrawing = true; ctx.beginPath(); ctx.moveTo(getPos(e).x, getPos(e).y); }
+        function moveDraw(e) { if(!isDrawing) return; ctx.lineTo(getPos(e).x, getPos(e).y); ctx.stroke(); }
+        function endDraw() { isDrawing = false; }
 
-        function moveDraw(e) {
-            if (!isDrawing) return;
-            const pos = getPos(e);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
-        }
-
-        function endDraw() {
-            isDrawing = false;
-        }
-
-        // Mouse Events
         canvas.addEventListener('mousedown', startDraw);
         canvas.addEventListener('mousemove', moveDraw);
         canvas.addEventListener('mouseup', endDraw);
-
-        // Touch Events (HP) - Mencegah Scroll Layar saat Tanda Tangan
-        canvas.addEventListener('touchstart', (e) => {
-            if(e.target == canvas) e.preventDefault();
-            startDraw(e);
-        }, { passive: false });
-
-        canvas.addEventListener('touchmove', (e) => {
-            if(e.target == canvas) e.preventDefault();
-            moveDraw(e);
-        }, { passive: false });
         
+        // Touch Events (Prevent Scroll)
+        canvas.addEventListener('touchstart', (e) => { if(e.target == canvas) e.preventDefault(); startDraw(e); }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => { if(e.target == canvas) e.preventDefault(); moveDraw(e); }, { passive: false });
         canvas.addEventListener('touchend', endDraw);
 
-        function clearSignature() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+        function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
-        // --- 5. SIMPAN KE SUPABASE ---
+
+        // --- 4. PROSES SUBMIT KE DATABASE ---
         document.getElementById('logForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btnSubmit');
-            btn.innerHTML = "⏳ Sedang Menyimpan...";
-            btn.disabled = true;
+            btn.innerHTML = "⏳ Mengirim Data...";
+            btn.classList.add('loading');
 
-            // 1. Ambil Tanda Tangan (Base64)
-            const signatureBase64 = canvas.toDataURL(); 
+            // Ambil Data Umum
+            const machineId = document.getElementById('machineSelect').value;
+            const dateVal = document.getElementById('dateInput').value;
+            const picName = document.getElementById('picName').value;
+            const signatureBase64 = canvas.toDataURL();
 
-            // 2. Ambil Data Tabel (Loop 25 baris)
-            let detailLogs = [];
-            let isFilled = false; // Cek apakah minimal ada 1 baris diisi
-            
-            for(let i=1; i<=25; i++){
-                let item = document.getElementById(`item_${i}`).value;
-                let nilai = document.getElementById(`nilai_${i}`).value;
-                let ket = document.getElementById(`ket_${i}`).value;
-                
-                // Simpan baris hanya jika Item atau Nilai diisi
-                if(item || nilai){
-                    detailLogs.push({ no: i, item, nilai, keterangan: ket });
-                    isFilled = true;
+            if (!machineId) {
+                alert("Harap pilih mesin terlebih dahulu!");
+                btn.classList.remove('loading');
+                btn.innerHTML = "💾 SIMPAN DATA";
+                return;
+            }
+
+            // Ambil Data dari 25 Baris Tabel
+            // Kita akan menyusun Array untuk di-insert sekaligus (Bulk Insert)
+            let logsToInsert = [];
+
+            for (let i = 1; i <= 25; i++) {
+                const issue = document.querySelector(`input[name="issue_${i}"]`).value;
+                const action = document.querySelector(`input[name="action_${i}"]`).value;
+                const part = document.querySelector(`input[name="part_${i}"]`).value;
+                const remarks = document.querySelector(`input[name="remarks_${i}"]`).value;
+
+                // LOGIKA PENTING:
+                // Hanya simpan baris yang kolom 'Issue' atau 'Action'-nya diisi.
+                // Baris kosong tidak perlu dikirim ke database.
+                if (issue || action || part || remarks) {
+                    logsToInsert.push({
+                        machine_id: machineId,  // Sesuai schema (FK)
+                        date: dateVal,          // Sesuai schema
+                        issue: issue,           // Sesuai schema
+                        action: action,         // Sesuai schema
+                        spare_part: part,       // Sesuai schema
+                        remarks: remarks,       // Sesuai schema
+                        pic_name: picName,      // Sesuai schema
+                        pic_signature: signatureBase64, // Sesuai schema
+                        status: 'Submitted'     // Default
+                    });
                 }
             }
 
-            if (!isFilled) {
-                alert("Mohon isi minimal satu baris pengecekan!");
-                btn.innerHTML = "💾 Simpan Laporan";
-                btn.disabled = false;
+            if (logsToInsert.length === 0) {
+                alert("Mohon isi minimal satu baris tabel (Issue/Action)!");
+                btn.classList.remove('loading');
+                btn.innerHTML = "💾 SIMPAN DATA";
                 return;
             }
 
             try {
-                // KIRIM KE SUPABASE
-                // PENTING: Saya set nama tabelnya 'logs'. Ganti jika nama tabelmu beda.
+                // Insert ke tabel kartu_riwayat_logs
                 const { data, error } = await supabase
-                    .from('logs') 
-                    .insert([
-                        {
-                            nama_mesin: machineName,
-                            nama_petugas: userName,
-                            detail_cek: detailLogs, // Kolom ini harus tipe JSONB/JSON
-                            tanda_tangan: signatureBase64, // Kolom ini tipe Text
-                            tanggal: new Date()
-                        }
-                    ]);
+                    .from('kartu_riwayat_logs')
+                    .insert(logsToInsert);
 
                 if (error) throw error;
 
-                alert('✅ Sukses! Data laporan berhasil disimpan.');
-                
-                // Reset Form
-                clearSignature();
-                document.getElementById('logForm').reset();
-                window.location.reload(); // Reload halaman
+                alert(`✅ Sukses! ${logsToInsert.length} data berhasil disimpan.`);
+                window.location.reload(); // Refresh halaman
 
             } catch (err) {
                 console.error(err);
-                alert('❌ Gagal simpan: ' + err.message);
-            } finally {
-                btn.innerHTML = "💾 Simpan Laporan";
-                btn.disabled = false;
+                alert("❌ Gagal menyimpan: " + err.message);
+                btn.classList.remove('loading');
+                btn.innerHTML = "💾 SIMPAN DATA";
             }
         });
     </script>
