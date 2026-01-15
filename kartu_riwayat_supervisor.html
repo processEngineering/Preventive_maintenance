@@ -19,7 +19,7 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background-color: var(--bg-gray); color: var(--text-dark); min-height: 100vh; padding-bottom: 250px; /* Space for fixed bottom */ }
+        body { background-color: var(--bg-gray); color: var(--text-dark); min-height: 100vh; padding-bottom: 380px; /* Space lebih besar untuk panel bawah */ }
 
         /* HEADER */
         .header {
@@ -54,16 +54,16 @@
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: white; border-top: 1px solid #ddd;
             padding: 15px 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-            z-index: 100;
+            z-index: 100; max-height: 80vh; overflow-y: auto; /* Agar bisa scroll jika layar kecil */
         }
         
-        .signature-container {
-            max-width: 600px; margin: 0 auto;
-        }
+        .signature-container { max-width: 600px; margin: 0 auto; }
 
         .input-spv {
-            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 10px;
+            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 10px; font-family: inherit;
         }
+        
+        textarea.input-spv { min-height: 60px; resize: vertical; }
 
         .signature-pad {
             border: 2px dashed #ccc; border-radius: 8px; background: #f9f9f9;
@@ -120,6 +120,8 @@
         <div class="signature-container">
             <input type="text" id="spv_name" class="input-spv" placeholder="Nama Supervisor (Wajib Diisi)">
             
+            <textarea id="spv_note" class="input-spv" placeholder="Catatan Supervisor untuk item terpilih (Opsional)"></textarea>
+            
             <div class="sig-header">
                 <span style="font-size:12px; font-weight:600; color:#555;">Tanda Tangan Approval:</span>
                 <button class="btn-clear" onclick="clearSignature()">Hapus TTD</button>
@@ -150,7 +152,7 @@
             ctx.scale(ratio, ratio);
         }
         window.addEventListener('resize', resizeCanvas);
-        setTimeout(resizeCanvas, 500); // Delay init
+        setTimeout(resizeCanvas, 500); 
 
         ['mousedown', 'touchstart'].forEach(evt => canvas.addEventListener(evt, (e) => startDraw(e)));
         ['mousemove', 'touchmove'].forEach(evt => canvas.addEventListener(evt, (e) => draw(e)));
@@ -185,7 +187,7 @@
             const tbody = document.getElementById('tableBody');
             
             try {
-                // Ambil data yang BELUM ada tanda tangan supervisor (spv_signature IS NULL)
+                // Ambil data yang BELUM ada tanda tangan supervisor
                 const { data, error } = await db
                     .from('kartu_riwayat_items')
                     .select('*')
@@ -242,6 +244,7 @@
             const checkedBoxes = document.querySelectorAll('.item-check:checked');
             const ids = Array.from(checkedBoxes).map(cb => cb.value);
             const spvName = document.getElementById('spv_name').value.trim();
+            const spvNote = document.getElementById('spv_note').value.trim(); // Ambil Catatan
 
             // Validasi
             if (ids.length === 0) { alert('Pilih setidaknya satu item untuk diapprove!'); return; }
@@ -256,19 +259,20 @@
             btn.innerHTML = 'Memproses...'; btn.disabled = true;
 
             try {
-                // Update Batch menggunakan ID yang dipilih
+                // Update Batch: Nama, TTD, dan Catatan
                 const { error } = await db
                     .from('kartu_riwayat_items')
                     .update({
                         spv_name: spvName,
-                        spv_signature: signatureData
+                        spv_signature: signatureData,
+                        spv_note: spvNote // Simpan Catatan
                     })
                     .in('id', ids);
 
                 if (error) throw error;
 
                 alert('Berhasil meng-approve ' + ids.length + ' item!');
-                location.reload(); // Refresh halaman
+                location.reload(); 
 
             } catch (err) {
                 console.error(err);
