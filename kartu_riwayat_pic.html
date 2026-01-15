@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Form PIC - Riwayat Mesin</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+
+    <style>
+        /* Menggunakan tema merah yang sama */
+        :root {
+            --primary: #DC2626;
+            --primary-dark: #B91C1C;
+            --bg-gray: #F9FAFB;
+            --text-dark: #1F2937;
+            --border: #D1D5DB;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        
+        body {
+            background-color: var(--bg-gray);
+            padding-bottom: 80px; /* Space for bottom nav */
+            display: flex;
+            justify-content: center;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+
+        /* Header */
+        .header {
+            background: var(--primary);
+            padding: 20px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .back-btn {
+            color: white;
+            font-size: 18px;
+            text-decoration: none;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        /* Form Area */
+        .form-content {
+            padding: 24px 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 14px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fff;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Signature Pad */
+        .signature-wrapper {
+            border: 1px dashed var(--primary);
+            border-radius: 8px;
+            background: #fff;
+            position: relative;
+            height: 200px;
+            margin-bottom: 10px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            display: block;
+        }
+
+        .clear-sig-btn {
+            padding: 5px 10px;
+            background: #eee;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            color: #555;
+            margin-top: 5px;
+        }
+
+        /* Submit Button */
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 4px 10px rgba(220, 38, 38, 0.3);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Loading Overlay */
+        #loading {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            flex-direction: column;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="header">
+            <a href="kartu_riwayat.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
+            <h1>Input Riwayat Mesin (PIC)</h1>
+        </div>
+
+        <div class="form-content">
+            <form id="logForm">
+                
+                <div class="form-group">
+                    <label class="form-label">Pilih Mesin</label>
+                    <select id="machine_id" class="form-select" required>
+                        <option value="" disabled selected>Sedang memuat data mesin...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tanggal</label>
+                    <input type="date" id="date" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Permasalahan</label>
+                    <textarea id="issue" class="form-textarea" placeholder="Jelaskan kerusakan/masalah..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tindakan Perbaikan</label>
+                    <textarea id="action" class="form-textarea" placeholder="Apa yang dilakukan..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Spare Part (Jika ada)</label>
+                    <input type="text" id="spare_part" class="form-input" placeholder="-">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Keterangan Tambahan</label>
+                    <input type="text" id="remarks" class="form-input" placeholder="-">
+                </div>
+
+                <hr style="border: 0; border-top: 1px dashed #ddd; margin: 20px 0;">
+
+                <div class="form-group">
+                    <label class="form-label">Nama PIC</label>
+                    <input type="text" id="pic_name" class="form-input" placeholder="Nama Anda" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tanda Tangan PIC</label>
+                    <div class="signature-wrapper">
+                        <canvas id="signature-canvas"></canvas>
+                    </div>
+                    <button type="button" class="clear-sig-btn" id="clear-signature">Hapus Tanda Tangan</button>
+                </div>
+
+                <button type="submit" class="submit-btn">Simpan Laporan</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <p style="margin-top:10px; font-weight:600;">Menyimpan...</p>
+    </div>
+
+    <script>
+        // ================= KONFIGURASI SUPABASE =================
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ================= INISIALISASI SIGNATURE PAD =================
+        const canvas = document.getElementById('signature-canvas');
+        
+        // Resize canvas agar pas dengan layar HP
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+        }
+        window.onresize = resizeCanvas;
+        resizeCanvas();
+
+        const signaturePad = new SignaturePad(canvas, {
+            backgroundColor: 'rgba(255, 255, 255, 0)',
+            penColor: 'black'
+        });
+
+        document.getElementById('clear-signature').addEventListener('click', () => {
+            signaturePad.clear();
+        });
+
+        // ================= LOAD DATA MESIN (DROPDOWN) =================
+        async function loadMachines() {
+            const select = document.getElementById('machine_id');
+            
+            try {
+                // Mengambil data dari tabel machines
+                const { data, error } = await supabase
+                    .from('kartu_riwayat_machines')
+                    .select('id, name')
+                    .order('name', { ascending: true });
+
+                if (error) throw error;
+
+                // Reset dropdown dan isi data
+                select.innerHTML = '<option value="" disabled selected>-- Pilih Mesin --</option>';
+                data.forEach(machine => {
+                    const option = document.createElement('option');
+                    option.value = machine.id;
+                    option.textContent = machine.name;
+                    select.appendChild(option);
+                });
+            } catch (err) {
+                console.error('Error loading machines:', err);
+                select.innerHTML = '<option disabled>Gagal memuat data (Cek Console)</option>';
+                alert('Gagal memuat daftar mesin. Pastikan tabel kartu_riwayat_machines sudah dibuat di Supabase.');
+            }
+        }
+
+        // Jalankan saat halaman siap
+        loadMachines();
+        
+        // Set tanggal hari ini otomatis
+        document.getElementById('date').valueAsDate = new Date();
+
+        // ================= HANDLE SUBMIT FORM =================
+        document.getElementById('logForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Cek Tanda Tangan
+            if (signaturePad.isEmpty()) {
+                alert("Harap tanda tangan terlebih dahulu!");
+                return;
+            }
+
+            // Tampilkan Loading
+            document.getElementById('loading').style.display = 'flex';
+            document.querySelector('.submit-btn').disabled = true;
+
+            // Ambil Data Form
+            const formData = {
+                machine_id: document.getElementById('machine_id').value,
+                date: document.getElementById('date').value,
+                issue: document.getElementById('issue').value,
+                action: document.getElementById('action').value,
+                spare_part: document.getElementById('spare_part').value,
+                remarks: document.getElementById('remarks').value,
+                pic_name: document.getElementById('pic_name').value,
+                pic_signature: signaturePad.toDataURL(), // Convert ttd jadi base64 string
+                status: 'Submitted'
+            };
+
+            try {
+                // Simpan ke tabel logs
+                const { data, error } = await supabase
+                    .from('kartu_riwayat_logs')
+                    .insert([formData]);
+
+                if (error) throw error;
+
+                alert('Laporan Berhasil Disimpan!');
+                window.location.href = 'kartu_riwayat.html'; // Balik ke menu
+            } catch (err) {
+                console.error('Error saving log:', err);
+                alert('Gagal menyimpan laporan: ' + err.message);
+                document.getElementById('loading').style.display = 'none';
+                document.querySelector('.submit-btn').disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
