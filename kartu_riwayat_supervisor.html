@@ -46,10 +46,7 @@
         }
         td { border-bottom: 1px solid var(--border); padding: 10px; vertical-align: top; color: #374151; transition: background 0.3s; }
         
-        /* Highlight row saat dicentang */
         tr.selected-row td { background-color: #FEF2F2; }
-
-        /* Checkbox Custom */
         input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
 
         /* BOTTOM APPROVAL PANEL */
@@ -82,13 +79,8 @@
         .btn-clear { font-size: 12px; color: var(--primary); background: none; border: none; font-weight: 600; cursor: pointer; }
 
         .empty-state { text-align: center; padding: 40px; color: #999; font-style: italic; }
-        
-        /* Animasi Hilang */
         .fade-out { animation: fadeOut 0.5s forwards; }
-        @keyframes fadeOut {
-            from { opacity: 1; transform: translateX(0); }
-            to { opacity: 0; transform: translateX(100%); display: none; }
-        }
+        @keyframes fadeOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); display: none; } }
     </style>
 </head>
 <body>
@@ -100,7 +92,6 @@
     </div>
 
     <div class="container">
-        
         <div class="table-wrapper">
             <table id="dataList">
                 <thead>
@@ -121,7 +112,6 @@
                 </tbody>
             </table>
         </div>
-
     </div>
 
     <div class="approval-panel">
@@ -195,17 +185,17 @@
             const tbody = document.getElementById('tableBody');
             
             try {
-                // FILTER: Hanya ambil yang BELUM ada tanda tangan SPV
+                // UPDATE FILTER: Menggunakan 'spv_name' sebagai patokan validasi, BUKAN 'spv_signature'
                 const { data, error } = await db
                     .from('kartu_riwayat_items')
                     .select('*')
-                    .is('spv_signature', null) 
+                    .is('spv_name', null)  // <--- PERBAIKAN DI SINI
                     .order('entry_date', { ascending: false });
 
                 if (error) throw error;
 
                 if (!data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Tidak ada data pending. Semua sudah diapprove!</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Tidak ada data yang perlu diapprove.</td></tr>';
                     return;
                 }
 
@@ -257,14 +247,13 @@
             else row.classList.remove('selected-row');
         }
 
-        // --- SUBMIT APPROVAL (FIXED LOGIC) ---
+        // --- SUBMIT APPROVAL (FIXED) ---
         async function submitApproval() {
             const checkedBoxes = document.querySelectorAll('.item-check:checked');
             const ids = Array.from(checkedBoxes).map(cb => cb.value);
             const spvName = document.getElementById('spv_name').value.trim();
             const spvNote = document.getElementById('spv_note').value.trim();
 
-            // Validasi
             if (ids.length === 0) { alert('Pilih setidaknya satu item!'); return; }
             if (!spvName) { alert('Nama Supervisor wajib diisi!'); return; }
             if (isCanvasBlank()) {
@@ -273,15 +262,12 @@
 
             const signatureData = isCanvasBlank() ? null : canvas.toDataURL();
             const btn = document.querySelector('.btn-approve');
-            
-            // Simpan teks tombol asli agar bisa dikembalikan jika error
             const originalBtnText = '<i class="fa-solid fa-check-circle"></i> APPROVE ITEM TERPILIH (<span id="countSelected">0</span>)';
             
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...'; 
             btn.disabled = true;
 
             try {
-                // Update Database
                 const { error } = await db
                     .from('kartu_riwayat_items')
                     .update({
@@ -308,14 +294,13 @@
                 document.getElementById('spv_note').value = '';
                 document.getElementById('checkAll').checked = false;
 
-                // 3. KEMBALIKAN TOMBOL KE POSISI SEMULA (PENTING AGAR TIDAK ERROR)
+                // 3. Kembalikan Tombol (DULUAN)
                 btn.innerHTML = originalBtnText;
                 btn.disabled = false;
 
                 // 4. Cek Tabel Kosong
                 setTimeout(() => {
                     const remainingRows = document.querySelectorAll('#tableBody tr');
-                    // Jika tidak ada baris tersisa atau hanya baris pesan kosong lama
                     if (remainingRows.length === 0 || (remainingRows.length === 1 && remainingRows[0].classList.contains('empty-state'))) {
                         document.getElementById('tableBody').innerHTML = '<tr><td colspan="7" class="empty-state">Semua data sudah diapprove!</td></tr>';
                     }
@@ -324,10 +309,8 @@
             } catch (err) {
                 console.error(err);
                 alert('Gagal approve: ' + err.message);
-                
-                // Kembalikan tombol jika error, update angka ke sisa
                 const count = document.querySelectorAll('.item-check:checked').length;
-                btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> APPROVE ITEM TERPILIH (<span id="countSelected">' + count + '</span>)';
+                btn.innerHTML = `<i class="fa-solid fa-check-circle"></i> APPROVE ITEM TERPILIH (<span id="countSelected">${count}</span>)`;
                 btn.disabled = false;
             }
         }
