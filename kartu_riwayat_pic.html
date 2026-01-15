@@ -2,398 +2,355 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kartu Riwayat Mesin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Form PIC - Riwayat Mesin</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
 
     <style>
-        /* SETUP HALAMAN A4 & UMUM */
-        body {
-            font-family: "Times New Roman", Times, serif; /* Font formal dokumen */
-            background-color: #f0f0f0;
-            margin: 0;
-            padding: 20px;
-            color: #000;
+        :root {
+            --primary: #DC2626;      /* Merah Utama */
+            --primary-dark: #B91C1C; /* Merah Gelap (Hover) */
+            --bg-gray: #F3F4F6;
+            --text-dark: #1F2937;
+            --border: #D1D5DB;
         }
 
-        .page-container {
-            background-color: white;
-            width: 210mm; /* Lebar A4 */
-            min-height: 297mm; /* Tinggi A4 */
-            margin: auto;
-            padding: 20mm;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            box-sizing: border-box;
-        }
-
-        h2, h3 {
-            text-align: center;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-        }
-
-        .header-line {
-            border-bottom: 2px solid black;
-            margin-bottom: 20px;
-        }
-
-        /* SECTION STYLING */
-        .section-title {
-            background-color: #ddd;
-            padding: 5px 10px;
-            font-weight: bold;
-            border: 1px solid #000;
-            margin-top: 20px;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-        }
-
-        label {
-            font-weight: bold;
-            display: block;
-            margin-top: 10px;
-            font-size: 14px;
-        }
-
-        /* INPUT STYLES (Agar terlihat seperti garis isian) */
-        input[type="text"], input[type="date"], textarea, select {
-            width: 100%;
-            border: none;
-            border-bottom: 1px dotted #000; /* Garis titik-titik klasik */
-            background: transparent;
-            font-family: inherit;
-            font-size: 14px;
-            padding: 5px 0;
-            outline: none;
-        }
-
-        input:focus, textarea:focus, select:focus {
-            background-color: #eef;
-            border-bottom: 1px solid blue;
-        }
-
-        textarea {
-            resize: vertical;
-            min-height: 40px;
-        }
-
-        /* LAYOUT IDENTITAS MESIN (GRID) */
-        .identity-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        /* BLOK RIWAYAT (ISIAN BERURUTAN) */
-        .history-block {
-            border: 1px solid #000;
-            padding: 15px;
-            margin-bottom: 20px;
-            page-break-inside: avoid; /* Agar saat print tidak terpotong di tengah */
-        }
-
-        .history-header {
-            font-weight: bold;
-            text-decoration: underline;
-            margin-bottom: 10px;
-            display: block;
-        }
-
-        /* KOLOM DALAM RIWAYAT */
-        .row-2-col {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        /* TANDA TANGAN */
-        .validation-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 10px;
-            margin-top: 30px;
-            text-align: center;
-        }
-        .signature-box {
-            height: 100px;
-            border: 1px solid #ccc;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
         
-        /* CANVAS TANDA TANGAN DIGITAL */
+        body {
+            background-color: var(--bg-gray);
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 500px; /* Ukuran pas HP */
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+
+        /* Header */
+        .header {
+            background: var(--primary);
+            padding: 20px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .back-btn {
+            color: white;
+            font-size: 18px;
+            text-decoration: none;
+            background: rgba(255,255,255,0.2);
+            width: 35px; height: 35px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+        }
+
+        /* Form Content */
+        .form-content {
+            padding: 20px;
+            flex: 1;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 14px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fff;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Signature Area */
+        .signature-wrapper {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            background: #fff;
+            height: 180px;
+            position: relative;
+            margin-bottom: 10px;
+            touch-action: none; /* PENTING: Biar gak scroll saat tanda tangan */
+        }
+
         canvas {
             width: 100%;
             height: 100%;
-            background: #fff;
+            display: block;
+            border-radius: 8px;
         }
 
-        /* TOMBOL (Tidak ikut di-print) */
-        .btn-action {
-            display: block;
+        .btn-clear {
+            font-size: 12px;
+            color: #666;
+            background: #eee;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Submit Button */
+        .submit-btn {
             width: 100%;
             padding: 15px;
-            margin-top: 20px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            background: #007bff;
+            background: var(--primary);
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(220, 38, 38, 0.2);
+            transition: background 0.2s;
+            margin-top: 10px;
+            margin-bottom: 30px;
         }
 
-        @media print {
-            body { background: white; padding: 0; }
-            .page-container { width: 100%; box-shadow: none; margin: 0; padding: 10mm; }
-            .no-print { display: none !important; }
-            input, textarea, select { border-bottom: 1px solid #000; } /* Perjelas garis saat print */
+        .submit-btn:hover { background: var(--primary-dark); }
+        .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+        /* Loading Overlay */
+        #loadingOverlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
         }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid #eee;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
     </style>
 </head>
 <body>
 
-<div class="page-container">
-    <h2>KARTU RIWAYAT MESIN</h2>
-    <div class="header-line"></div>
-
-    <form id="logForm">
-        
-        <div class="section-title">A. IDENTITAS MESIN</div>
-        <div class="identity-grid">
-            <div>
-                <label>NAMA MESIN :</label>
-                <select id="machineSelect" required>
-                    <option value="">-- Memuat Data... --</option>
-                </select>
-            </div>
-            <div>
-                <label>NO. MESIN (ID) :</label>
-                <input type="text" id="machineIdDisplay" readonly placeholder="Otomatis terisi...">
-            </div>
-            <div>
-                <label>TAHUN PEMBUATAN :</label>
-                <input type="text" placeholder="(Isi manual jika ada)">
-            </div>
-            <div>
-                <label>LOKASI MESIN :</label>
-                <input type="text" placeholder="Contoh: Line Produksi A">
-            </div>
+    <div class="app-container">
+        <div class="header">
+            <a href="javascript:history.back()" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
+            <h1>Lapor Perbaikan Mesin</h1>
         </div>
 
-        <div class="section-title">B. RIWAYAT PERAWATAN / PERBAIKAN MESIN</div>
-        <div id="historyContainer">
-            </div>
-
-        <div class="section-title">C. VALIDASI</div>
-        <div class="validation-grid">
-            <div>
-                <label>Dibuat oleh (PIC):</label>
-                <div class="signature-box" style="position:relative; border: 1px dashed #000;">
-                    <canvas id="picCanvas"></canvas>
+        <div class="form-content">
+            <form id="logForm">
+                
+                <div class="form-group">
+                    <label class="form-label">Pilih Mesin <span style="color:red">*</span></label>
+                    <select id="machine_id" class="form-select" required>
+                        <option value="">-- Sedang Memuat Data... --</option>
+                    </select>
                 </div>
-                <input type="text" id="picName" placeholder="Nama PIC" style="text-align:center;">
-                <br>
-                <small>Tanggal: <span id="currentDate"></span></small>
-                <button type="button" class="no-print" onclick="clearSig()" style="font-size:10px; margin-top:5px;">Hapus Ttd</button>
-            </div>
 
-            <div>
-                <label>Diperiksa Supervisor:</label>
-                <div class="signature-box">
+                <div class="form-group">
+                    <label class="form-label">Tanggal Pengerjaan <span style="color:red">*</span></label>
+                    <input type="date" id="date" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Permasalahan (Issue) <span style="color:red">*</span></label>
+                    <textarea id="issue" class="form-textarea" placeholder="Contoh: Mesin bunyi kasar..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tindakan (Action) <span style="color:red">*</span></label>
+                    <textarea id="action" class="form-textarea" placeholder="Contoh: Ganti bearing..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Spare Part (Opsional)</label>
+                    <input type="text" id="spare_part" class="form-input" placeholder="Nama part jika ada pergantian">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Keterangan (Remarks)</label>
+                    <input type="text" id="remarks" class="form-input" placeholder="Catatan tambahan...">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Nama PIC (Teknisi) <span style="color:red">*</span></label>
+                    <input type="text" id="pic_name" class="form-input" placeholder="Nama Lengkap Anda" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tanda Tangan PIC <span style="color:red">*</span></label>
+                    <div class="signature-wrapper">
+                        <canvas id="signature-canvas"></canvas>
                     </div>
-                <input type="text" placeholder="Nama Supervisor" style="text-align:center;">
-                <br>
-                <small>Tanggal: __________</small>
-            </div>
-
-            <div>
-                <label>Disetujui Superintendent:</label>
-                <div class="signature-box">
-                    </div>
-                <input type="text" placeholder="Nama Superintendent" style="text-align:center;">
-                <br>
-                <small>Tanggal: __________</small>
-            </div>
-        </div>
-
-        <div class="no-print" style="margin-top: 40px; margin-bottom: 50px;">
-            <button type="submit" class="btn-action" id="btnSubmit">💾 SIMPAN KE DATABASE</button>
-            <button type="button" class="btn-action" style="background:#6c757d; margin-top:10px;" onclick="window.print()">🖨️ CETAK FORMULIR (PDF)</button>
-        </div>
-
-    </form>
-</div>
-
-<script>
-    // --- 1. SETUP SUPABASE ---
-    const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    // Set Tanggal Hari Ini di tampilan
-    document.getElementById('currentDate').innerText = new Date().toLocaleDateString('id-ID');
-
-    // --- 2. GENERATE 25 FORM ISIAN ---
-    const historyContainer = document.getElementById('historyContainer');
-    
-    for (let i = 1; i <= 25; i++) {
-        const block = document.createElement('div');
-        block.className = 'history-block';
-        block.innerHTML = `
-            <span class="history-header">RIWAYAT KE-${i}</span>
-            
-            <div class="row-2-col">
-                <div>
-                    <label>Tanggal :</label>
-                    <input type="date" name="date_${i}">
+                    <button type="button" class="btn-clear" id="clear-sig">Hapus & Ulangi Tanda Tangan</button>
                 </div>
-                <div>
-                    <label>Spare Part :</label>
-                    <input type="text" name="part_${i}" placeholder="Nama part (jika ada)">
-                </div>
-            </div>
 
-            <label>Permasalahan (Issue) :</label>
-            <textarea name="issue_${i}" rows="2"></textarea>
+                <button type="submit" class="submit-btn">KIRIM LAPORAN</button>
+            </form>
+        </div>
+    </div>
 
-            <label>Tindakan (Action) :</label>
-            <textarea name="action_${i}" rows="2"></textarea>
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <p style="margin-top:10px; font-weight:600; color:#333;">Mengirim Data...</p>
+    </div>
 
-            <label>Keterangan (Remarks) :</label>
-            <textarea name="remarks_${i}" rows="1"></textarea>
-        `;
-        historyContainer.appendChild(block);
-    }
+    <script>
+        // 1. CONFIG SUPABASE
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // --- 3. LOAD DATA MESIN ---
-    window.addEventListener('DOMContentLoaded', async () => {
-        const machineSelect = document.getElementById('machineSelect');
-        const machineIdDisplay = document.getElementById('machineIdDisplay');
+        // 2. SETUP TANDA TANGAN (SIGNATURE PAD)
+        const canvas = document.getElementById('signature-canvas');
         
-        try {
-            const { data, error } = await supabase.from('kartu_riwayat_machines').select('id, name').order('name');
-            if (error) throw error;
-
-            machineSelect.innerHTML = '<option value="">-- Pilih Nama Mesin --</option>';
-            data.forEach(m => {
-                let opt = document.createElement('option');
-                opt.value = m.id;
-                opt.textContent = m.name;
-                machineSelect.appendChild(opt);
-            });
-
-            // Update display ID saat mesin dipilih
-            machineSelect.addEventListener('change', (e) => {
-                machineIdDisplay.value = e.target.value ? `ID-${e.target.value}` : '';
-            });
-
-        } catch (err) { alert("Gagal load mesin: " + err.message); }
-    });
-
-    // --- 4. TANDA TANGAN (CANVAS) ---
-    const canvas = document.getElementById('picCanvas');
-    const ctx = canvas.getContext('2d');
-    let isDrawing = false;
-
-    // Resize canvas resolusi
-    function resizeCanvas() {
-        canvas.width = canvas.parentElement.offsetWidth;
-        canvas.height = canvas.parentElement.offsetHeight;
-        ctx.lineWidth = 2;
-        ctx.lineCap = "round";
-    }
-    // Delay agar render layout selesai dulu
-    setTimeout(resizeCanvas, 500);
-
-    function getPos(e) {
-        const rect = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return { x: clientX - rect.left, y: clientY - rect.top };
-    }
-
-    // Logic menggambar
-    const start = (e) => { 
-        if(e.type==='touchstart') e.preventDefault(); 
-        isDrawing = true; ctx.beginPath(); ctx.moveTo(getPos(e).x, getPos(e).y); 
-    };
-    const move = (e) => { 
-        if(e.type==='touchmove') e.preventDefault(); 
-        if(!isDrawing) return; ctx.lineTo(getPos(e).x, getPos(e).y); ctx.stroke(); 
-    };
-    const end = () => isDrawing = false;
-
-    canvas.addEventListener('mousedown', start);
-    canvas.addEventListener('mousemove', move);
-    canvas.addEventListener('mouseup', end);
-    canvas.addEventListener('touchstart', start, {passive:false});
-    canvas.addEventListener('touchmove', move, {passive:false});
-    canvas.addEventListener('touchend', end);
-
-    function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
-
-    // --- 5. SUBMIT DATA ---
-    document.getElementById('logForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById('btnSubmit');
-        btn.innerHTML = "⏳ Sedang Mengirim...";
-
-        const machineId = document.getElementById('machineSelect').value;
-        const picName = document.getElementById('picName').value;
-        const signatureBase64 = canvas.toDataURL();
-
-        if (!machineId || !picName) {
-            alert("Harap isi Nama Mesin dan Nama PIC!");
-            btn.innerHTML = "💾 SIMPAN KE DATABASE";
-            return;
+        // Fungsi agar canvas tajam di layar HP
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
         }
+        window.addEventListener("resize", resizeCanvas);
+        // Panggil setelah loading
+        setTimeout(resizeCanvas, 500); 
 
-        let logsToInsert = [];
-        // Loop ambil data dari 25 blok
-        for (let i = 1; i <= 25; i++) {
-            const dateVal = document.querySelector(`[name="date_${i}"]`).value;
-            const issue = document.querySelector(`[name="issue_${i}"]`).value;
-            const action = document.querySelector(`[name="action_${i}"]`).value;
-            const part = document.querySelector(`[name="part_${i}"]`).value;
-            const remarks = document.querySelector(`[name="remarks_${i}"]`).value;
+        const signaturePad = new SignaturePad(canvas, {
+            backgroundColor: 'rgba(255, 255, 255, 0)', // Transparan
+            penColor: 'black'
+        });
 
-            // Jika Issue atau Action diisi, anggap baris ini valid
-            if (issue || action) {
-                logsToInsert.push({
-                    machine_id: machineId,
-                    date: dateVal || new Date(), // Gunakan tgl hari ini jika kosong
-                    issue: issue,
-                    action: action,
-                    spare_part: part,
-                    remarks: remarks,
-                    pic_name: picName,
-                    pic_signature: signatureBase64,
-                    status: 'Submitted'
+        document.getElementById('clear-sig').addEventListener('click', () => signaturePad.clear());
+
+        // Set Tanggal Hari Ini
+        document.getElementById('date').valueAsDate = new Date();
+
+        // 3. LOAD DATA MESIN (DROPDOWN)
+        async function loadMachines() {
+            const selectInfo = document.getElementById('machine_id');
+            try {
+                // Ambil id dan name dari tabel kartu_riwayat_machines
+                const { data, error } = await supabase
+                    .from('kartu_riwayat_machines') 
+                    .select('id, name')
+                    .order('name', { ascending: true });
+
+                if (error) throw error;
+
+                // Masukkan ke Dropdown
+                selectInfo.innerHTML = '<option value="">-- Pilih Mesin --</option>';
+                data.forEach(m => {
+                    let opt = document.createElement('option');
+                    opt.value = m.id; // Value = ID Mesin (Integer)
+                    opt.textContent = m.name; // Text = Nama Mesin
+                    selectInfo.appendChild(opt);
                 });
+
+            } catch (err) {
+                console.error(err);
+                alert("Gagal memuat daftar mesin: " + err.message);
+                selectInfo.innerHTML = '<option value="">Gagal Memuat Data</option>';
             }
         }
+        loadMachines();
 
-        if (logsToInsert.length === 0) {
-            alert("Harap isi minimal 1 Riwayat (Permasalahan & Tindakan)!");
-            btn.innerHTML = "💾 SIMPAN KE DATABASE";
-            return;
-        }
+        // 4. SUBMIT DATA KE SERVER
+        document.getElementById('logForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-        try {
-            const { error } = await supabase.from('kartu_riwayat_logs').insert(logsToInsert);
-            if (error) throw error;
-            
-            alert(`✅ Berhasil menyimpan ${logsToInsert.length} riwayat!`);
-            window.location.reload();
-        } catch (err) {
-            alert("Gagal: " + err.message);
-            btn.innerHTML = "💾 SIMPAN KE DATABASE";
-        }
-    });
-</script>
+            // Validasi Tanda Tangan
+            if (signaturePad.isEmpty()) {
+                alert("Harap isi tanda tangan terlebih dahulu!");
+                return;
+            }
 
+            // Tampilkan Loading
+            const loading = document.getElementById('loadingOverlay');
+            loading.style.display = 'flex';
+
+            // Ambil Value Form
+            const formData = {
+                machine_id: document.getElementById('machine_id').value, // Masuk sebagai Integer (FK)
+                date: document.getElementById('date').value,
+                issue: document.getElementById('issue').value,
+                action: document.getElementById('action').value,
+                spare_part: document.getElementById('spare_part').value,
+                remarks: document.getElementById('remarks').value,
+                pic_name: document.getElementById('pic_name').value,
+                pic_signature: signaturePad.toDataURL(), // Gambar Base64
+                status: 'Submitted'
+            };
+
+            try {
+                // Insert ke kartu_riwayat_logs
+                const { error } = await supabase
+                    .from('kartu_riwayat_logs')
+                    .insert([formData]);
+
+                if (error) throw error;
+
+                alert("✅ Laporan Berhasil Disimpan!");
+                
+                // Reset Form
+                signaturePad.clear();
+                document.getElementById('logForm').reset();
+                document.getElementById('date').valueAsDate = new Date();
+
+            } catch (err) {
+                console.error(err);
+                alert("❌ Gagal simpan: " + err.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+    </script>
 </body>
 </html>
