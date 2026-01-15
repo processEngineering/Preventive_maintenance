@@ -19,7 +19,7 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background-color: var(--bg-gray); color: var(--text-dark); min-height: 100vh; padding-bottom: 380px; /* Space lebih besar untuk panel bawah */ }
+        body { background-color: var(--bg-gray); color: var(--text-dark); min-height: 100vh; padding-bottom: 380px; }
 
         /* HEADER */
         .header {
@@ -36,7 +36,7 @@
         .table-wrapper {
             background: white; border-radius: 12px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid var(--border);
-            overflow-x: auto; margin-bottom: 15px;
+            overflow-x: auto; margin-bottom: 15px; transition: all 0.3s;
         }
         table { width: 100%; border-collapse: collapse; min-width: 900px; font-size: 13px; }
         th {
@@ -44,8 +44,11 @@
             font-weight: 700; color: #4B5563; border-bottom: 2px solid var(--border);
             white-space: nowrap;
         }
-        td { border-bottom: 1px solid var(--border); padding: 10px; vertical-align: top; color: #374151; }
+        td { border-bottom: 1px solid var(--border); padding: 10px; vertical-align: top; color: #374151; transition: background 0.3s; }
         
+        /* Highlight row saat dicentang */
+        tr.selected-row td { background-color: #FEF2F2; }
+
         /* Checkbox Custom */
         input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
 
@@ -54,15 +57,12 @@
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: white; border-top: 1px solid #ddd;
             padding: 15px 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-            z-index: 100; max-height: 80vh; overflow-y: auto; /* Agar bisa scroll jika layar kecil */
+            z-index: 100; max-height: 80vh; overflow-y: auto;
         }
         
         .signature-container { max-width: 600px; margin: 0 auto; }
 
-        .input-spv {
-            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 10px; font-family: inherit;
-        }
-        
+        .input-spv { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 10px; font-family: inherit; }
         textarea.input-spv { min-height: 60px; resize: vertical; }
 
         .signature-pad {
@@ -73,14 +73,22 @@
         .btn-approve {
             background: var(--primary); color: white; width: 100%; padding: 12px;
             border: none; border-radius: 8px; font-weight: 700; font-size: 15px;
-            margin-top: 10px; cursor: pointer;
+            margin-top: 10px; cursor: pointer; transition: background 0.2s;
         }
+        .btn-approve:hover { background: var(--primary-dark); }
         .btn-approve:disabled { background: #ccc; }
         
         .sig-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
         .btn-clear { font-size: 12px; color: var(--primary); background: none; border: none; font-weight: 600; cursor: pointer; }
 
         .empty-state { text-align: center; padding: 40px; color: #999; font-style: italic; }
+        
+        /* Animasi Hilang */
+        .fade-out { animation: fadeOut 0.5s forwards; }
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(100%); display: none; }
+        }
     </style>
 </head>
 <body>
@@ -109,7 +117,7 @@
                     </tr>
                 </thead>
                 <tbody id="tableBody">
-                    <tr><td colspan="7" class="empty-state">Memuat data...</td></tr>
+                    <tr><td colspan="7" class="empty-state"><i class="fa-solid fa-circle-notch fa-spin"></i> Memuat data...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -187,7 +195,7 @@
             const tbody = document.getElementById('tableBody');
             
             try {
-                // Ambil data yang BELUM ada tanda tangan supervisor
+                // FILTER: Hanya ambil yang BELUM ada tanda tangan SPV
                 const { data, error } = await db
                     .from('kartu_riwayat_items')
                     .select('*')
@@ -197,7 +205,7 @@
                 if (error) throw error;
 
                 if (!data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Tidak ada data yang perlu diapprove.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Tidak ada data pending. Semua sudah diapprove!</td></tr>';
                     return;
                 }
 
@@ -206,9 +214,9 @@
                     const dateStr = new Date(item.entry_date).toLocaleDateString('id-ID');
                     
                     const row = `
-                        <tr>
+                        <tr id="row-${item.id}">
                             <td style="text-align: center;">
-                                <input type="checkbox" class="item-check" value="${item.id}" onchange="updateCount()">
+                                <input type="checkbox" class="item-check" value="${item.id}" onchange="updateCount(this)">
                             </td>
                             <td>${dateStr}</td>
                             <td style="font-weight:600;">${item.machine_name}</td>
@@ -230,54 +238,88 @@
         // --- CHECKBOX LOGIC ---
         function toggleAll(source) {
             const checkboxes = document.querySelectorAll('.item-check');
-            checkboxes.forEach(cb => cb.checked = source.checked);
+            checkboxes.forEach(cb => {
+                cb.checked = source.checked;
+                highlightRow(cb);
+            });
             updateCount();
         }
 
-        function updateCount() {
+        function updateCount(source) {
+            if(source) highlightRow(source);
             const count = document.querySelectorAll('.item-check:checked').length;
             document.getElementById('countSelected').innerText = count;
         }
 
-        // --- SUBMIT APPROVAL ---
+        function highlightRow(checkbox) {
+            const row = checkbox.closest('tr');
+            if(checkbox.checked) row.classList.add('selected-row');
+            else row.classList.remove('selected-row');
+        }
+
+        // --- SUBMIT APPROVAL (DENGAN ANIMASI HAPUS) ---
         async function submitApproval() {
             const checkedBoxes = document.querySelectorAll('.item-check:checked');
             const ids = Array.from(checkedBoxes).map(cb => cb.value);
             const spvName = document.getElementById('spv_name').value.trim();
-            const spvNote = document.getElementById('spv_note').value.trim(); // Ambil Catatan
+            const spvNote = document.getElementById('spv_note').value.trim();
 
             // Validasi
-            if (ids.length === 0) { alert('Pilih setidaknya satu item untuk diapprove!'); return; }
+            if (ids.length === 0) { alert('Pilih setidaknya satu item!'); return; }
             if (!spvName) { alert('Nama Supervisor wajib diisi!'); return; }
             if (isCanvasBlank()) {
-                if(!confirm('Tanda tangan kosong. Lanjut approve tanpa tanda tangan?')) return;
+                if(!confirm('Tanda tangan kosong. Lanjut approve?')) return;
             }
 
             const signatureData = isCanvasBlank() ? null : canvas.toDataURL();
             const btn = document.querySelector('.btn-approve');
             
-            btn.innerHTML = 'Memproses...'; btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...'; 
+            btn.disabled = true;
 
             try {
-                // Update Batch: Nama, TTD, dan Catatan
+                // Update Database
                 const { error } = await db
                     .from('kartu_riwayat_items')
                     .update({
                         spv_name: spvName,
                         spv_signature: signatureData,
-                        spv_note: spvNote // Simpan Catatan
+                        spv_note: spvNote
                     })
                     .in('id', ids);
 
                 if (error) throw error;
 
-                alert('Berhasil meng-approve ' + ids.length + ' item!');
-                location.reload(); 
+                // --- EFEK UI: HAPUS BARIS TANPA RELOAD ---
+                alert(`Berhasil meng-approve ${ids.length} data!`);
+
+                // 1. Hapus baris yang dicentang
+                checkedBoxes.forEach(cb => {
+                    const row = cb.closest('tr');
+                    row.classList.add('fade-out'); // Tambah animasi
+                    setTimeout(() => row.remove(), 500); // Hapus elemen setelah animasi
+                });
+
+                // 2. Reset Form Bawah
+                clearSignature();
+                document.getElementById('spv_name').value = '';
+                document.getElementById('spv_note').value = '';
+                document.getElementById('countSelected').innerText = '0';
+                document.getElementById('checkAll').checked = false;
+
+                // 3. Cek jika tabel kosong setelah dihapus
+                setTimeout(() => {
+                    const remainingRows = document.querySelectorAll('#tableBody tr');
+                    if (remainingRows.length === 0) {
+                        document.getElementById('tableBody').innerHTML = '<tr><td colspan="7" class="empty-state">Semua data sudah diapprove!</td></tr>';
+                    }
+                }, 600);
 
             } catch (err) {
                 console.error(err);
                 alert('Gagal approve: ' + err.message);
-                btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> APPROVE ITEM TERPILIH';
+            } finally {
+                btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> APPROVE ITEM TERPILIH (<span id="countSelected">0</span>)';
                 btn.disabled = false;
             }
         }
