@@ -19,7 +19,7 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background-color: var(--bg-gray); color: var(--text-dark); min-height: 100vh; padding-bottom: 400px; /* Space panel bawah */ }
+        body { background-color: var(--bg-gray); color: var(--text-dark); min-height: 100vh; padding-bottom: 400px; }
 
         /* HEADER */
         .header {
@@ -52,8 +52,8 @@
         /* BADGE CATATAN SPV */
         .spv-note-box {
             background: #EFF6FF; border: 1px dashed #3B82F6; color: #1E40AF;
-            padding: 5px 8px; border-radius: 6px; font-size: 12px; margin-top: 5px;
-            display: inline-block; font-weight: 500;
+            padding: 6px 10px; border-radius: 6px; font-size: 12px; margin-top: 5px;
+            display: inline-block; font-weight: 500; width: 100%;
         }
 
         /* BOTTOM APPROVAL PANEL */
@@ -111,8 +111,7 @@
                         <th>Permasalahan</th>
                         <th>Tindakan</th>
                         <th style="width: 150px;">Spare Part</th>
-                        <th style="width: 200px;">Catatan SPV</th>
-                        <th style="width: 100px;">PIC</th>
+                        <th style="width: 200px;">Catatan SPV</th> <th style="width: 100px;">PIC</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
@@ -196,14 +195,14 @@
             const tbody = document.getElementById('tableBody');
             
             try {
-                // LOGIC FETCH (UPDATED):
-                // 1. spv_name TIDAK NULL (Artinya sudah diapprove Supervisor)
-                // 2. superintendent_signature IS NULL (Belum diapprove Superintendent)
+                // LOGIC FILTER PENTING:
+                // 1. spv_name NOT NULL (Artinya sudah lolos Supervisor)
+                // 2. superintendent_name IS NULL (Artinya belum diapprove Superintendent)
                 const { data, error } = await db
                     .from('kartu_riwayat_items')
                     .select('*')
-                    .not('spv_name', 'is', null) // Filter Nama SPV
-                    .is('superintendent_signature', null) // Filter TTD Supt
+                    .not('spv_name', 'is', null) // Syarat lolos SPV
+                    .is('superintendent_name', null) // Syarat pending Superintendent
                     .order('entry_date', { ascending: false });
 
                 if (error) throw error;
@@ -217,7 +216,7 @@
                 data.forEach(item => {
                     const dateStr = new Date(item.entry_date).toLocaleDateString('id-ID');
                     
-                    // Render Catatan SPV jika ada
+                    // Render Catatan SPV
                     const spvNoteDisplay = item.spv_note 
                         ? `<div class="spv-note-box"><i class="fa-regular fa-comment-dots"></i> ${item.spv_note}</div>` 
                         : '<span style="color:#999; font-size:12px;">-</span>';
@@ -267,7 +266,7 @@
             else row.classList.remove('selected-row');
         }
 
-        // --- SUBMIT APPROVAL ---
+        // --- SUBMIT APPROVAL (FIXED & ROBUST) ---
         async function submitApproval() {
             const checkedBoxes = document.querySelectorAll('.item-check:checked');
             const ids = Array.from(checkedBoxes).map(cb => cb.value);
@@ -288,19 +287,21 @@
             btn.disabled = true;
 
             try {
-                // Update Database
-                const { error } = await db
+                // Update Database + Select untuk verifikasi
+                const { data, error } = await db
                     .from('kartu_riwayat_items')
                     .update({
                         superintendent_name: suptName,
                         superintendent_signature: signatureData,
                         superintendent_note: suptNote
                     })
-                    .in('id', ids);
+                    .in('id', ids)
+                    .select();
 
                 if (error) throw error;
+                if (!data || data.length === 0) throw new Error("Gagal update. Cek izin database.");
 
-                alert(`Berhasil Validasi ${ids.length} Data!`);
+                alert(`Berhasil Validasi ${data.length} Data!`);
 
                 // 1. Hapus baris dari tabel
                 checkedBoxes.forEach(cb => {
@@ -315,7 +316,7 @@
                 document.getElementById('supt_note').value = '';
                 document.getElementById('checkAll').checked = false;
 
-                // 3. Kembalikan Tombol (DULUAN AGAR TIDAK ERROR)
+                // 3. Kembalikan Tombol (DULUAN)
                 btn.innerHTML = originalBtnText;
                 btn.disabled = false;
 
@@ -331,7 +332,7 @@
                 console.error(err);
                 alert('Gagal: ' + err.message);
                 
-                // Kembalikan Tombol jika error
+                // Restore Button on Error
                 const count = document.querySelectorAll('.item-check:checked').length;
                 btn.innerHTML = `<i class="fa-solid fa-check-double"></i> APPROVE FINAL (<span id="countSelected">${count}</span>)`;
                 btn.disabled = false;
