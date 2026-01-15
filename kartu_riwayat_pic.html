@@ -2,219 +2,296 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Form Log Excel & Tanda Tangan</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Form Log Mesin (Excel Mode)</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
-        /* Style agar tabel terlihat seperti Excel */
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 10px; 
+            max-width: 100%; 
+            margin: auto; 
+            box-sizing: border-box;
+            background-color: #f9f9f9;
+        }
+        
+        /* INFO HEADER */
+        .info-box {
+            background: #fff;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-left: 5px solid #007bff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 4px;
+        }
+
+        /* STYLE TABEL EXCEL */
+        .table-container {
+            overflow-x: auto; /* Agar bisa digeser jika layar kekecilan */
+        }
         .excel-table {
             width: 100%;
             border-collapse: collapse;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
+            font-size: 13px;
             margin-bottom: 20px;
+            background: #fff;
         }
-
         .excel-table th, .excel-table td {
             border: 1px solid #ccc;
-            padding: 5px;
+            padding: 8px;
         }
-
         .excel-table th {
-            background-color: #f0f0f0; /* Warna abu-abu khas header Excel */
+            background-color: #e0e0e0;
             text-align: center;
             font-weight: bold;
+            color: #333;
         }
-
+        .excel-table td:first-child {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            color: #555;
+        }
         .excel-table input {
             width: 100%;
             border: none;
             outline: none;
+            background: transparent;
+            font-family: inherit;
             padding: 4px;
-            box-sizing: border-box; /* Agar padding tidak merusak lebar */
         }
-
         .excel-table input:focus {
-            background-color: #e6f7ff; /* Highlight saat diketik */
+            background-color: #e6f7ff;
+            border-bottom: 2px solid #007bff;
         }
 
-        /* Style untuk Tanda Tangan */
-        .signature-container {
-            border: 2px dashed #ccc;
-            display: inline-block;
-            position: relative;
+        /* STYLE TANDA TANGAN */
+        .signature-wrapper {
+            border: 2px dashed #999;
             background: #fff;
+            position: relative;
+            width: 100%;
+            height: 200px;
+            touch-action: none; /* PENTING: Mematikan scroll browser di area ini */
         }
-        
         canvas {
             display: block;
+            width: 100%;
+            height: 100%;
             cursor: crosshair;
         }
-
-        .btn-clear {
-            margin-top: 5px;
-            padding: 5px 10px;
-            background: #ff4d4d;
-            color: white;
-            border: none;
+        
+        /* TOMBOL */
+        .btn {
+            padding: 12px 20px;
             cursor: pointer;
+            border: none;
+            color: white;
+            font-size: 16px;
+            border-radius: 5px;
+            width: 100%;
+            margin-top: 10px;
         }
+        .btn-blue { background: #007bff; }
+        .btn-blue:hover { background: #0056b3; }
+        .btn-red { background: #dc3545; width: auto; font-size: 14px; padding: 8px 15px;}
     </style>
 </head>
 <body>
 
-    <h2>Form Input Data Mesin</h2>
+    <h2 style="text-align:center;">📋 Log Sheet Harian</h2>
+
+    <div class="info-box">
+        <p><strong>Mesin:</strong> <span id="displayMesin">Memuat...</span></p>
+        <p><strong>Petugas:</strong> <span id="displayUser">Memuat...</span></p>
+        <p><strong>Tanggal:</strong> <span id="displayDate">-</span></p>
+    </div>
 
     <form id="logForm">
-        <table class="excel-table">
-            <thead>
-                <tr>
-                    <th style="width: 40px;">No</th>
-                    <th>Parameter / Item Cek</th>
-                    <th style="width: 100px;">Nilai</th>
-                    <th>Keterangan</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody">
-                </tbody>
-        </table>
+        <div class="table-container">
+            <table class="excel-table">
+                <thead>
+                    <tr>
+                        <th style="width: 30px;">No</th>
+                        <th>Item Pengecekan</th>
+                        <th style="width: 80px;">Nilai</th>
+                        <th>Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    </tbody>
+            </table>
+        </div>
 
         <h3>Tanda Tangan Pelaksana</h3>
-        <div class="signature-container">
-            <canvas id="signatureCanvas" width="300" height="150"></canvas>
+        <p style="font-size: 12px; color: #666;">Silakan tanda tangan di dalam kotak:</p>
+        <div class="signature-wrapper" id="sigContainer">
+            <canvas id="signatureCanvas"></canvas>
         </div>
-        <br>
-        <button type="button" class="btn-clear" onclick="clearSignature()">Hapus Tanda Tangan</button>
-        <input type="hidden" id="signatureData" name="signature">
+        <button type="button" class="btn btn-red" onclick="clearSignature()">Hapus Tanda Tangan</button>
 
         <br><br>
-        <button type="submit" style="padding: 10px 20px; background: blue; color: white;">Simpan Data</button>
+        <button type="submit" class="btn btn-blue" id="btnSubmit">💾 Simpan Laporan</button>
     </form>
 
     <script>
-        // --- BAGIAN 1: GENERATE TABEL 25 BARIS ---
-        const tableBody = document.getElementById('tableBody');
-        const rowCount = 25; // Jumlah baris yang diinginkan
+        // --- 1. KONFIGURASI SUPABASE (SUDAH TERISI) ---
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        for (let i = 1; i <= rowCount; i++) {
-            const row = document.createElement('tr');
-            
-            row.innerHTML = `
-                <td style="text-align: center; background: #fafafa;">${i}</td>
-                <td><input type="text" name="item_${i}" placeholder="Item cek..."></td>
-                <td><input type="text" name="nilai_${i}" style="text-align: center;" placeholder="OK/Angka"></td>
-                <td><input type="text" name="keterangan_${i}" placeholder="..."></td>
+        // --- 2. LOAD DATA USER & MESIN ---
+        // Mengambil data dari LocalStorage (hasil scan barcode sebelumnya)
+        const machineName = localStorage.getItem('machine_name') || 'UNKNOWN-MESIN';
+        const userName = localStorage.getItem('username') || 'Guest';
+
+        document.getElementById('displayMesin').textContent = machineName;
+        document.getElementById('displayUser').textContent = userName;
+        document.getElementById('displayDate').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        // --- 3. GENERATE 25 BARIS TABEL EXCEL ---
+        const tableBody = document.getElementById('tableBody');
+        for (let i = 1; i <= 25; i++) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="text-align:center;">${i}</td>
+                <td><input type="text" id="item_${i}" placeholder="Item ${i}..."></td>
+                <td><input type="text" id="nilai_${i}" style="text-align:center;" placeholder="-"></td>
+                <td><input type="text" id="ket_${i}" placeholder="Keterangan"></td>
             `;
-            tableBody.appendChild(row);
+            tableBody.appendChild(tr);
         }
 
-        // --- BAGIAN 2: LOGIKA TANDA TANGAN (CANVAS) ---
+        // --- 4. LOGIKA TANDA TANGAN (FIX TOUCH SCROLL) ---
         const canvas = document.getElementById('signatureCanvas');
+        const container = document.getElementById('sigContainer');
         const ctx = canvas.getContext('2d');
         let isDrawing = false;
 
-        // Setup gaya garis
-        ctx.lineWidth = 2;
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = '#000';
+        // Resize canvas agar resolusinya tajam sesuai layar
+        function resizeCanvas() {
+            canvas.width = container.offsetWidth;
+            canvas.height = container.offsetHeight;
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 2;
+            ctx.lineCap = "round";
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas(); // Panggil sekali saat load
 
-        // Fungsi untuk mendapatkan posisi pointer (mouse atau touch)
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
-            let clientX, clientY;
-            
-            if (e.touches && e.touches.length > 0) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
-
-            return {
-                x: clientX - rect.left,
-                y: clientY - rect.top
-            };
+            // Cek apakah touch atau mouse
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
         }
 
-        // Event Listeners Mouse (Desktop)
-        canvas.addEventListener('mousedown', (e) => {
+        function startDraw(e) {
             isDrawing = true;
-            const pos = getPos(e);
             ctx.beginPath();
+            const pos = getPos(e);
             ctx.moveTo(pos.x, pos.y);
-        });
+        }
 
-        canvas.addEventListener('mousemove', (e) => {
+        function moveDraw(e) {
             if (!isDrawing) return;
             const pos = getPos(e);
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
-        });
+        }
 
-        canvas.addEventListener('mouseup', () => isDrawing = false);
-        canvas.addEventListener('mouseout', () => isDrawing = false);
+        function endDraw() {
+            isDrawing = false;
+        }
 
-        // Event Listeners Touch (HP/Tablet) - PENTING AGAR TIDAK SCROLL
+        // Mouse Events
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', moveDraw);
+        canvas.addEventListener('mouseup', endDraw);
+
+        // Touch Events (HP) - Mencegah Scroll Layar saat Tanda Tangan
         canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Mencegah layar scroll saat tanda tangan
-            isDrawing = true;
-            const pos = getPos(e);
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y);
+            if(e.target == canvas) e.preventDefault();
+            startDraw(e);
         }, { passive: false });
 
         canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault(); // Mencegah layar scroll
-            if (!isDrawing) return;
-            const pos = getPos(e);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
+            if(e.target == canvas) e.preventDefault();
+            moveDraw(e);
         }, { passive: false });
+        
+        canvas.addEventListener('touchend', endDraw);
 
-        canvas.addEventListener('touchend', () => isDrawing = false);
-
-        // Fungsi Hapus Tanda Tangan
         function clearSignature() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
-        // --- BAGIAN 3: PROSES SUBMIT ---
-        document.getElementById('logForm').addEventListener('submit', async function(e) {
+        // --- 5. SIMPAN KE SUPABASE ---
+        document.getElementById('logForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const btn = document.getElementById('btnSubmit');
+            btn.innerHTML = "⏳ Sedang Menyimpan...";
+            btn.disabled = true;
 
-            // 1. Simpan Tanda Tangan ke format Gambar (Base64)
-            // Cek apakah canvas kosong (opsional)
-            const signatureDataUrl = canvas.toDataURL('image/png');
-            document.getElementById('signatureData').value = signatureDataUrl;
+            // 1. Ambil Tanda Tangan (Base64)
+            const signatureBase64 = canvas.toDataURL(); 
 
-            // 2. Ambil Data dari Tabel
-            // Kita bisa loop lagi untuk mengambil value dari input
-            let logData = [];
-            for (let i = 1; i <= rowCount; i++) {
-                // Ambil value berdasarkan nama input
-                let item = document.querySelector(`input[name="item_${i}"]`).value;
-                let nilai = document.querySelector(`input[name="nilai_${i}"]`).value;
-                let ket = document.querySelector(`input[name="keterangan_${i}"]`).value;
-
-                // Hanya masukkan ke data jika item diisi (opsional)
-                if(item || nilai || ket) {
-                    logData.push({
-                        no: i,
-                        item: item,
-                        nilai: nilai,
-                        keterangan: ket
-                    });
+            // 2. Ambil Data Tabel (Loop 25 baris)
+            let detailLogs = [];
+            let isFilled = false; // Cek apakah minimal ada 1 baris diisi
+            
+            for(let i=1; i<=25; i++){
+                let item = document.getElementById(`item_${i}`).value;
+                let nilai = document.getElementById(`nilai_${i}`).value;
+                let ket = document.getElementById(`ket_${i}`).value;
+                
+                // Simpan baris hanya jika Item atau Nilai diisi
+                if(item || nilai){
+                    detailLogs.push({ no: i, item, nilai, keterangan: ket });
+                    isFilled = true;
                 }
             }
 
-            console.log("Data Tanda Tangan:", signatureDataUrl);
-            console.log("Data Tabel:", logData);
+            if (!isFilled) {
+                alert("Mohon isi minimal satu baris pengecekan!");
+                btn.innerHTML = "💾 Simpan Laporan";
+                btn.disabled = false;
+                return;
+            }
 
-            alert("Cek Console untuk melihat data yang siap dikirim ke Supabase!");
-            
-            // --- DISINI KODE SUPABASE INSERT ANDA ---
-            // const { data, error } = await supabase.from('namatabel').insert([...])
+            try {
+                // KIRIM KE SUPABASE
+                // PENTING: Saya set nama tabelnya 'logs'. Ganti jika nama tabelmu beda.
+                const { data, error } = await supabase
+                    .from('logs') 
+                    .insert([
+                        {
+                            nama_mesin: machineName,
+                            nama_petugas: userName,
+                            detail_cek: detailLogs, // Kolom ini harus tipe JSONB/JSON
+                            tanda_tangan: signatureBase64, // Kolom ini tipe Text
+                            tanggal: new Date()
+                        }
+                    ]);
+
+                if (error) throw error;
+
+                alert('✅ Sukses! Data laporan berhasil disimpan.');
+                
+                // Reset Form
+                clearSignature();
+                document.getElementById('logForm').reset();
+                window.location.reload(); // Reload halaman
+
+            } catch (err) {
+                console.error(err);
+                alert('❌ Gagal simpan: ' + err.message);
+            } finally {
+                btn.innerHTML = "💾 Simpan Laporan";
+                btn.disabled = false;
+            }
         });
     </script>
 </body>
