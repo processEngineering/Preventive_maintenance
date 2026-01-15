@@ -96,7 +96,16 @@
         
         .sign-box { border: 1px solid black; height: 100px; position: relative; }
         .sign-header { border-bottom: 1px solid black; background: #EFEFEF; font-weight: bold; padding: 5px; font-size: 10pt; }
+        .sign-content { padding: 5px; height: 60px; display: flex; align-items: center; justify-content: center; }
         .sign-name { position: absolute; bottom: 0; width: 100%; border-top: 1px solid black; padding: 5px; font-weight: bold; }
+        
+        /* Gambar Tanda Tangan di Footer */
+        .sig-footer { 
+            max-width: 80px; 
+            max-height: 50px; 
+            display: block; 
+            margin: 0 auto; 
+        }
 
         @media print {
             body { background: white; }
@@ -181,18 +190,21 @@
                 <td>
                     <div class="sign-box">
                         <div class="sign-header">Dibuat</div>
+                        <div class="sign-content" id="pic_signatures"></div>
                         <div class="sign-name">PIC</div> 
                     </div>
                 </td>
                 <td>
                     <div class="sign-box">
                         <div class="sign-header">Diketahui</div>
+                        <div class="sign-content" id="spv_signatures"></div>
                         <div class="sign-name">Spv</div>
                     </div>
                 </td>
                 <td>
                     <div class="sign-box">
                         <div class="sign-header">Disetujui</div>
+                        <div class="sign-content" id="supt_signatures"></div>
                         <div class="sign-name">Superintendent</div>
                     </div>
                 </td>
@@ -249,16 +261,31 @@
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
 
+            // Reset signatures
+            document.getElementById('pic_signatures').innerHTML = '';
+            document.getElementById('spv_signatures').innerHTML = '';
+            document.getElementById('supt_signatures').innerHTML = '';
+
             if(!data || data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">Data Kosong.</td></tr>';
                 fillEmptyRows(10);
                 return;
             }
 
+            // Kumpulkan semua tanda tangan unik
+            const picSigs = new Set();
+            const spvSigs = new Set();
+            const suptSigs = new Set();
+
             // Loop Data
             data.forEach((item, index) => {
                 const tgl = new Date(item.entry_date).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'2-digit'});
                 
+                // Kumpulkan tanda tangan
+                if(item.pic_signature) picSigs.add(item.pic_signature);
+                if(item.spv_signature) spvSigs.add(item.spv_signature);
+                if(item.superintendent_signature) suptSigs.add(item.superintendent_signature);
+
                 const row = `
                     <tr>
                         <td style="text-align:center;">${index + 1}</td>
@@ -271,6 +298,20 @@
                 `;
                 tbody.innerHTML += row;
             });
+
+            // Tampilkan tanda tangan di footer (ambil yang pertama jika ada banyak)
+            if(picSigs.size > 0) {
+                const firstPic = Array.from(picSigs)[0];
+                document.getElementById('pic_signatures').innerHTML = `<img src="${firstPic}" class="sig-footer" crossorigin="anonymous">`;
+            }
+            if(spvSigs.size > 0) {
+                const firstSpv = Array.from(spvSigs)[0];
+                document.getElementById('spv_signatures').innerHTML = `<img src="${firstSpv}" class="sig-footer" crossorigin="anonymous">`;
+            }
+            if(suptSigs.size > 0) {
+                const firstSupt = Array.from(suptSigs)[0];
+                document.getElementById('supt_signatures').innerHTML = `<img src="${firstSupt}" class="sig-footer" crossorigin="anonymous">`;
+            }
 
             // Isi baris kosong agar tabel penuh 1 halaman (Minimal 12 baris)
             if(data.length < 12) fillEmptyRows(12 - data.length);
