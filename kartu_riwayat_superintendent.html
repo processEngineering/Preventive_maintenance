@@ -111,7 +111,8 @@
                         <th>Permasalahan</th>
                         <th>Tindakan</th>
                         <th style="width: 150px;">Spare Part</th>
-                        <th style="width: 200px;">Catatan SPV</th> <th style="width: 100px;">PIC</th>
+                        <th style="width: 200px;">Catatan SPV</th>
+                        <th style="width: 100px;">PIC</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
@@ -195,14 +196,14 @@
             const tbody = document.getElementById('tableBody');
             
             try {
-                // LOGIC FETCH:
-                // 1. spv_signature TIDAK NULL (Sudah diapprove SPV)
+                // LOGIC FETCH (UPDATED):
+                // 1. spv_name TIDAK NULL (Artinya sudah diapprove Supervisor)
                 // 2. superintendent_signature IS NULL (Belum diapprove Superintendent)
                 const { data, error } = await db
                     .from('kartu_riwayat_items')
                     .select('*')
-                    .not('spv_signature', 'is', null) // Sudah lolos SPV
-                    .is('superintendent_signature', null) // Menunggu Superintendent
+                    .not('spv_name', 'is', null) // Filter Nama SPV
+                    .is('superintendent_signature', null) // Filter TTD Supt
                     .order('entry_date', { ascending: false });
 
                 if (error) throw error;
@@ -231,7 +232,8 @@
                             <td>${item.problem_desc || '-'}</td>
                             <td>${item.action_taken || '-'}</td>
                             <td>${item.spare_parts || '-'}</td>
-                            <td>${spvNoteDisplay}</td> <td style="font-weight:600; color:var(--primary);">${item.pic_name}</td>
+                            <td>${spvNoteDisplay}</td>
+                            <td style="font-weight:600; color:var(--primary);">${item.pic_name}</td>
                         </tr>
                     `;
                     tbody.innerHTML += row;
@@ -280,13 +282,13 @@
 
             const signatureData = isCanvasBlank() ? null : canvas.toDataURL();
             const btn = document.querySelector('.btn-approve');
-            const originalBtnText = btn.innerHTML;
+            const originalBtnText = '<i class="fa-solid fa-check-double"></i> APPROVE FINAL (<span id="countSelected">0</span>)';
             
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...'; 
             btn.disabled = true;
 
             try {
-                // Update Database (Isi kolom Superintendent)
+                // Update Database
                 const { error } = await db
                     .from('kartu_riwayat_items')
                     .update({
@@ -300,7 +302,7 @@
 
                 alert(`Berhasil Validasi ${ids.length} Data!`);
 
-                // 1. Hapus baris dari tabel (Animasi)
+                // 1. Hapus baris dari tabel
                 checkedBoxes.forEach(cb => {
                     const row = cb.closest('tr');
                     row.classList.add('fade-out'); 
@@ -313,8 +315,8 @@
                 document.getElementById('supt_note').value = '';
                 document.getElementById('checkAll').checked = false;
 
-                // 3. Kembalikan Tombol
-                btn.innerHTML = '<i class="fa-solid fa-check-double"></i> APPROVE FINAL (<span id="countSelected">0</span>)';
+                // 3. Kembalikan Tombol (DULUAN AGAR TIDAK ERROR)
+                btn.innerHTML = originalBtnText;
                 btn.disabled = false;
 
                 // 4. Cek Empty State
@@ -328,7 +330,10 @@
             } catch (err) {
                 console.error(err);
                 alert('Gagal: ' + err.message);
-                btn.innerHTML = originalBtnText; // Restore text jika error
+                
+                // Kembalikan Tombol jika error
+                const count = document.querySelectorAll('.item-check:checked').length;
+                btn.innerHTML = `<i class="fa-solid fa-check-double"></i> APPROVE FINAL (<span id="countSelected">${count}</span>)`;
                 btn.disabled = false;
             }
         }
