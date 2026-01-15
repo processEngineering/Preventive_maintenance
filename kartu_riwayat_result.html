@@ -75,18 +75,34 @@
         .val-underline { border-bottom: 1px dotted black; display: inline-block; width: 95%; }
 
         /* TABEL UTAMA (DATA) */
-        .main-table { font-size: 10pt; flex-grow: 1; margin-bottom: 20px; }
+        .main-table { font-size: 9pt; flex-grow: 1; margin-bottom: 20px; }
         .main-table th { 
             background: #EFEFEF; text-align: center; font-weight: bold; 
             height: 40px; vertical-align: middle;
         }
-        .main-table td { vertical-align: top; height: 30px; }
+        .main-table td { vertical-align: top; padding: 2px; }
+
+        /* Pengaturan Lebar Kolom Agar Muat */
+        .col-no { width: 4%; text-align: center; }
+        .col-tgl { width: 8%; text-align: center; }
+        .col-desc { width: 22%; }
+        .col-act { width: 22%; }
+        .col-part { width: 14%; }
+        .col-ket { width: 9%; }
+        /* 3 Kolom Paraf */
+        .col-paraf { width: 7%; text-align: center; font-size: 8pt; }
+
+        /* Gambar Tanda Tangan Kecil di Tabel */
+        .sig-mini { 
+            max-width: 50px; max-height: 35px; 
+            display: block; margin: 0 auto; 
+        }
 
         /* Footer Paraf (Paling Bawah) */
         .footer-table { width: 100%; margin-top: auto; page-break-inside: avoid; }
         .footer-table td { width: 33.33%; text-align: center; vertical-align: top; padding: 0; }
         
-        .sign-box { border: 1px solid black; height: 120px; position: relative; }
+        .sign-box { border: 1px solid black; height: 100px; position: relative; }
         .sign-header { border-bottom: 1px solid black; background: #EFEFEF; font-weight: bold; padding: 5px; font-size: 10pt; }
         .sign-name { position: absolute; bottom: 0; width: 100%; border-top: 1px solid black; padding: 5px; font-weight: bold; }
 
@@ -111,7 +127,7 @@
             <button onclick="fetchData()" class="btn-green">Tampilkan</button>
         </div>
         <div style="flex-grow: 1;"></div>
-        <button onclick="exportPDF()" class="btn-red"><i class="fa-solid fa-file-pdf"></i> Download PDF (Landscape)</button>
+        <button onclick="exportPDF()" class="btn-red"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
     </div>
 
     <div class="page" id="printArea">
@@ -155,16 +171,22 @@
         <table class="main-table">
             <thead>
                 <tr>
-                    <th style="width: 5%;">NO</th>
-                    <th style="width: 10%;">TANGGAL</th>
-                    <th style="width: 25%;">PERMASALAHAN</th>
-                    <th style="width: 25%;">TINDAKAN PERBAIKAN</th>
-                    <th style="width: 15%;">SPARE PART</th>
-                    <th style="width: 10%;">KETERANGAN</th>
-                    <th style="width: 10%;">NAMA PIC</th> </tr>
+                    <th rowspan="2" class="col-no">NO</th>
+                    <th rowspan="2" class="col-tgl">TANGGAL</th>
+                    <th rowspan="2" class="col-desc">PERMASALAHAN</th>
+                    <th rowspan="2" class="col-act">TINDAKAN PERBAIKAN</th>
+                    <th rowspan="2" class="col-part">SPARE PART</th>
+                    <th rowspan="2" class="col-ket">KET</th>
+                    <th colspan="3" style="height: 20px;">PARAF</th>
+                </tr>
+                <tr>
+                    <th class="col-paraf">PIC</th>
+                    <th class="col-paraf">SPV</th>
+                    <th class="col-paraf">SUPT</th>
+                </tr>
             </thead>
             <tbody id="tableBody">
-                <tr><td colspan="7" style="text-align: center; padding: 50px; color: #999;">Silakan Pilih Mesin dan Tahun</td></tr>
+                <tr><td colspan="9" style="text-align: center; padding: 50px; color: #999;">Silakan Pilih Mesin dan Tahun</td></tr>
             </tbody>
         </table>
 
@@ -179,13 +201,13 @@
                 <td>
                     <div class="sign-box">
                         <div class="sign-header">Diketahui Oleh</div>
-                         <div class="sign-name">Supervisor</div>
+                        <div class="sign-name">Supervisor</div>
                     </div>
                 </td>
                 <td>
                     <div class="sign-box">
                         <div class="sign-header">Disetujui Oleh</div>
-                         <div class="sign-name">Superintendent</div>
+                        <div class="sign-name">Superintendent</div>
                     </div>
                 </td>
             </tr>
@@ -215,7 +237,7 @@
             const tbody = document.getElementById('tableBody');
 
             if(!mesin) { alert('Pilih mesin!'); return; }
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Loading...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">Loading...</td></tr>';
 
             const start = `${tahun}-01-01`;
             const end = `${tahun}-12-31`;
@@ -242,14 +264,18 @@
             tbody.innerHTML = '';
 
             if(!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px;">Data Kosong.</td></tr>';
-                fillEmptyRows(8);
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px;">Data Kosong.</td></tr>';
+                fillEmptyRows(10);
                 return;
             }
 
+            // Loop Data
             data.forEach((item, index) => {
                 const tgl = new Date(item.entry_date).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'2-digit'});
                 
+                // Helper Gambar Tanda Tangan
+                const showSig = (sig) => sig ? `<img src="${sig}" class="sig-mini" crossorigin="anonymous">` : '';
+
                 const row = `
                     <tr>
                         <td style="text-align:center;">${index + 1}</td>
@@ -258,20 +284,27 @@
                         <td>${item.action_taken || ''}</td>
                         <td>${item.spare_parts || ''}</td>
                         <td>${item.remarks || ''}</td>
-                        <td style="text-align:center; font-weight:bold;">${item.pic_name || ''}</td>
+                        <td style="text-align:center;">${showSig(item.pic_signature)}</td>
+                        <td style="text-align:center;">${showSig(item.spv_signature)}</td>
+                        <td style="text-align:center;">${showSig(item.superintendent_signature)}</td>
                     </tr>
                 `;
                 tbody.innerHTML += row;
             });
 
-            // Isi baris kosong agar tabel penuh 1 halaman
+            // Isi baris kosong agar tabel penuh 1 halaman (Minimal 12 baris)
             if(data.length < 12) fillEmptyRows(12 - data.length);
         }
 
         function fillEmptyRows(count) {
             const tbody = document.getElementById('tableBody');
             for(let i=0; i<count; i++) {
-                tbody.innerHTML += '<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+                tbody.innerHTML += `
+                    <tr>
+                        <td></td><td></td><td></td><td></td><td></td><td></td>
+                        <td></td><td></td><td></td>
+                    </tr>
+                `;
             }
         }
 
@@ -285,8 +318,8 @@
                 margin: 0,
                 filename: `Kartu_Riwayat_Landscape.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } // SETTING LANDSCAPE
+                html2canvas: { scale: 2, useCORS: true }, // WAJIB AGAR GAMBAR MUNCUL
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
             };
 
             html2pdf().set(opt).from(element).save().then(() => {
