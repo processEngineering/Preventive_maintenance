@@ -2,327 +2,398 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kartu Riwayat Mesin</title>
-    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            padding: 10px; 
-            max-width: 100%; 
-            margin: auto; 
-            background-color: #f4f6f9;
+        /* SETUP HALAMAN A4 & UMUM */
+        body {
+            font-family: "Times New Roman", Times, serif; /* Font formal dokumen */
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            color: #000;
         }
 
-        /* CARD STYLE */
-        .card {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        .page-container {
+            background-color: white;
+            width: 210mm; /* Lebar A4 */
+            min-height: 297mm; /* Tinggi A4 */
+            margin: auto;
+            padding: 20mm;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+        }
+
+        h2, h3 {
+            text-align: center;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .header-line {
+            border-bottom: 2px solid black;
             margin-bottom: 20px;
+        }
+
+        /* SECTION STYLING */
+        .section-title {
+            background-color: #ddd;
+            padding: 5px 10px;
+            font-weight: bold;
+            border: 1px solid #000;
+            margin-top: 20px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
         }
 
         label {
             font-weight: bold;
             display: block;
-            margin-bottom: 5px;
+            margin-top: 10px;
             font-size: 14px;
         }
 
-        select, input[type="date"], input[type="text"] {
+        /* INPUT STYLES (Agar terlihat seperti garis isian) */
+        input[type="text"], input[type="date"], textarea, select {
             width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box; /* Agar padding tidak merusak lebar */
-        }
-
-        /* EXCEL TABLE STYLE */
-        .table-container {
-            overflow-x: auto;
-            border: 1px solid #ccc;
-        }
-        .excel-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-            min-width: 600px; /* Agar tidak gepeng di HP */
-        }
-        .excel-table th {
-            background-color: #007bff;
-            color: white;
-            padding: 10px;
-            border: 1px solid #0056b3;
-            text-align: center;
-        }
-        .excel-table td {
-            border: 1px solid #ccc;
-            padding: 0;
-        }
-        .excel-table td:first-child {
-            background: #eee;
-            text-align: center;
-            font-weight: bold;
-            width: 30px;
-        }
-        .excel-table input {
             border: none;
-            margin: 0;
-            padding: 8px;
-            border-radius: 0;
-            width: 100%;
+            border-bottom: 1px dotted #000; /* Garis titik-titik klasik */
             background: transparent;
-        }
-        .excel-table input:focus {
-            background-color: #e8f0fe;
-            outline: 2px solid #007bff;
-            z-index: 10; /* Agar border fokus terlihat */
+            font-family: inherit;
+            font-size: 14px;
+            padding: 5px 0;
+            outline: none;
         }
 
-        /* SIGNATURE STYLE */
-        .signature-wrapper {
-            border: 2px dashed #999;
-            background: #fff;
-            position: relative;
-            width: 100%;
-            height: 180px;
-            touch-action: none; /* KUNCI ANTI SCROLL DI HP */
+        input:focus, textarea:focus, select:focus {
+            background-color: #eef;
+            border-bottom: 1px solid blue;
         }
+
+        textarea {
+            resize: vertical;
+            min-height: 40px;
+        }
+
+        /* LAYOUT IDENTITAS MESIN (GRID) */
+        .identity-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* BLOK RIWAYAT (ISIAN BERURUTAN) */
+        .history-block {
+            border: 1px solid #000;
+            padding: 15px;
+            margin-bottom: 20px;
+            page-break-inside: avoid; /* Agar saat print tidak terpotong di tengah */
+        }
+
+        .history-header {
+            font-weight: bold;
+            text-decoration: underline;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        /* KOLOM DALAM RIWAYAT */
+        .row-2-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* TANDA TANGAN */
+        .validation-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        .signature-box {
+            height: 100px;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        
+        /* CANVAS TANDA TANGAN DIGITAL */
         canvas {
             width: 100%;
             height: 100%;
+            background: #fff;
         }
 
-        /* BUTTONS */
-        .btn {
-            padding: 12px;
+        /* TOMBOL (Tidak ikut di-print) */
+        .btn-action {
+            display: block;
             width: 100%;
-            border: none;
-            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
             font-size: 16px;
+            font-weight: bold;
             cursor: pointer;
-            margin-top: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
         }
-        .btn-primary { background-color: #28a745; color: white; font-weight: bold; }
-        .btn-danger { background-color: #dc3545; color: white; width: auto; padding: 5px 10px; font-size: 12px; }
-        
-        .loading { opacity: 0.5; pointer-events: none; }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .page-container { width: 100%; box-shadow: none; margin: 0; padding: 10mm; }
+            .no-print { display: none !important; }
+            input, textarea, select { border-bottom: 1px solid #000; } /* Perjelas garis saat print */
+        }
     </style>
 </head>
 <body>
 
-    <h2 style="text-align:center;">🔧 Kartu Riwayat Mesin</h2>
+<div class="page-container">
+    <h2>KARTU RIWAYAT MESIN</h2>
+    <div class="header-line"></div>
 
     <form id="logForm">
         
-        <div class="card">
-            <label>Pilih Mesin:</label>
-            <select id="machineSelect" required>
-                <option value="">-- Sedang Memuat Daftar Mesin... --</option>
-            </select>
-
-            <label>Tanggal Pengerjaan:</label>
-            <input type="date" id="dateInput" required>
-
-            <label>Nama PIC (Teknisi):</label>
-            <input type="text" id="picName" placeholder="Masukkan Nama Anda" required>
-        </div>
-
-        <div class="card">
-            <label>Detail Pengerjaan (Isi baris yang diperlukan saja):</label>
-            <div class="table-container">
-                <table class="excel-table">
-                    <thead>
-                        <tr>
-                            <th>No</th>
-                            <th>Issue (Masalah)</th>
-                            <th>Action (Tindakan)</th>
-                            <th>Spare Part</th>
-                            <th>Remarks (Ket)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                        </tbody>
-                </table>
+        <div class="section-title">A. IDENTITAS MESIN</div>
+        <div class="identity-grid">
+            <div>
+                <label>NAMA MESIN :</label>
+                <select id="machineSelect" required>
+                    <option value="">-- Memuat Data... --</option>
+                </select>
+            </div>
+            <div>
+                <label>NO. MESIN (ID) :</label>
+                <input type="text" id="machineIdDisplay" readonly placeholder="Otomatis terisi...">
+            </div>
+            <div>
+                <label>TAHUN PEMBUATAN :</label>
+                <input type="text" placeholder="(Isi manual jika ada)">
+            </div>
+            <div>
+                <label>LOKASI MESIN :</label>
+                <input type="text" placeholder="Contoh: Line Produksi A">
             </div>
         </div>
 
-        <div class="card">
-            <label>Tanda Tangan PIC:</label>
-            <div class="signature-wrapper" id="sigContainer">
-                <canvas id="signatureCanvas"></canvas>
+        <div class="section-title">B. RIWAYAT PERAWATAN / PERBAIKAN MESIN</div>
+        <div id="historyContainer">
             </div>
-            <button type="button" class="btn btn-danger" onclick="clearSignature()">Hapus Tanda Tangan</button>
+
+        <div class="section-title">C. VALIDASI</div>
+        <div class="validation-grid">
+            <div>
+                <label>Dibuat oleh (PIC):</label>
+                <div class="signature-box" style="position:relative; border: 1px dashed #000;">
+                    <canvas id="picCanvas"></canvas>
+                </div>
+                <input type="text" id="picName" placeholder="Nama PIC" style="text-align:center;">
+                <br>
+                <small>Tanggal: <span id="currentDate"></span></small>
+                <button type="button" class="no-print" onclick="clearSig()" style="font-size:10px; margin-top:5px;">Hapus Ttd</button>
+            </div>
+
+            <div>
+                <label>Diperiksa Supervisor:</label>
+                <div class="signature-box">
+                    </div>
+                <input type="text" placeholder="Nama Supervisor" style="text-align:center;">
+                <br>
+                <small>Tanggal: __________</small>
+            </div>
+
+            <div>
+                <label>Disetujui Superintendent:</label>
+                <div class="signature-box">
+                    </div>
+                <input type="text" placeholder="Nama Superintendent" style="text-align:center;">
+                <br>
+                <small>Tanggal: __________</small>
+            </div>
         </div>
 
-        <button type="submit" class="btn btn-primary" id="btnSubmit">💾 SIMPAN DATA</button>
+        <div class="no-print" style="margin-top: 40px; margin-bottom: 50px;">
+            <button type="submit" class="btn-action" id="btnSubmit">💾 SIMPAN KE DATABASE</button>
+            <button type="button" class="btn-action" style="background:#6c757d; margin-top:10px;" onclick="window.print()">🖨️ CETAK FORMULIR (PDF)</button>
+        </div>
+
     </form>
+</div>
 
-    <script>
-        // --- 1. KONEKSI SUPABASE ---
-        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<script>
+    // --- 1. SETUP SUPABASE ---
+    const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // --- 2. INIT HALAMAN (LOAD MESIN & BIKIN TABEL) ---
-        window.addEventListener('DOMContentLoaded', async () => {
-            // Set Tanggal Hari Ini
-            document.getElementById('dateInput').valueAsDate = new Date();
+    // Set Tanggal Hari Ini di tampilan
+    document.getElementById('currentDate').innerText = new Date().toLocaleDateString('id-ID');
 
-            // Load Data Mesin untuk Dropdown
-            const machineSelect = document.getElementById('machineSelect');
-            try {
-                // Mengambil id dan name dari tabel kartu_riwayat_machines
-                const { data, error } = await supabase
-                    .from('kartu_riwayat_machines')
-                    .select('id, name')
-                    .order('name', { ascending: true });
+    // --- 2. GENERATE 25 FORM ISIAN ---
+    const historyContainer = document.getElementById('historyContainer');
+    
+    for (let i = 1; i <= 25; i++) {
+        const block = document.createElement('div');
+        block.className = 'history-block';
+        block.innerHTML = `
+            <span class="history-header">RIWAYAT KE-${i}</span>
+            
+            <div class="row-2-col">
+                <div>
+                    <label>Tanggal :</label>
+                    <input type="date" name="date_${i}">
+                </div>
+                <div>
+                    <label>Spare Part :</label>
+                    <input type="text" name="part_${i}" placeholder="Nama part (jika ada)">
+                </div>
+            </div>
 
-                if (error) throw error;
+            <label>Permasalahan (Issue) :</label>
+            <textarea name="issue_${i}" rows="2"></textarea>
 
-                machineSelect.innerHTML = '<option value="">-- Pilih Mesin --</option>';
-                data.forEach(mesin => {
-                    const option = document.createElement('option');
-                    option.value = mesin.id; // Value adalah ID (Foreign Key)
-                    option.textContent = mesin.name; // Tampilan adalah Nama
-                    machineSelect.appendChild(option);
-                });
-            } catch (err) {
-                alert("Gagal memuat daftar mesin: " + err.message);
-            }
+            <label>Tindakan (Action) :</label>
+            <textarea name="action_${i}" rows="2"></textarea>
 
-            // Generate 25 Baris Tabel Excel
-            const tableBody = document.getElementById('tableBody');
-            for (let i = 1; i <= 25; i++) {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${i}</td>
-                    <td><input type="text" name="issue_${i}" placeholder="Masalah..."></td>
-                    <td><input type="text" name="action_${i}" placeholder="Tindakan..."></td>
-                    <td><input type="text" name="part_${i}" placeholder="Part..."></td>
-                    <td><input type="text" name="remarks_${i}" placeholder="Ket..."></td>
-                `;
-                tableBody.appendChild(tr);
-            }
-        });
+            <label>Keterangan (Remarks) :</label>
+            <textarea name="remarks_${i}" rows="1"></textarea>
+        `;
+        historyContainer.appendChild(block);
+    }
 
-        // --- 3. LOGIKA TANDA TANGAN (CANVAS) ---
-        const canvas = document.getElementById('signatureCanvas');
-        const container = document.getElementById('sigContainer');
-        const ctx = canvas.getContext('2d');
-        let isDrawing = false;
-
-        function resizeCanvas() {
-            canvas.width = container.offsetWidth;
-            canvas.height = container.offsetHeight;
-            ctx.lineWidth = 2;
-            ctx.lineCap = "round";
-            ctx.strokeStyle = "#000";
-        }
-        window.addEventListener('resize', resizeCanvas);
-        // Delay sedikit agar container render dulu
-        setTimeout(resizeCanvas, 500); 
-
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const cx = e.touches ? e.touches[0].clientX : e.clientX;
-            const cy = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: cx - rect.left, y: cy - rect.top };
-        }
-
-        function startDraw(e) { isDrawing = true; ctx.beginPath(); ctx.moveTo(getPos(e).x, getPos(e).y); }
-        function moveDraw(e) { if(!isDrawing) return; ctx.lineTo(getPos(e).x, getPos(e).y); ctx.stroke(); }
-        function endDraw() { isDrawing = false; }
-
-        canvas.addEventListener('mousedown', startDraw);
-        canvas.addEventListener('mousemove', moveDraw);
-        canvas.addEventListener('mouseup', endDraw);
+    // --- 3. LOAD DATA MESIN ---
+    window.addEventListener('DOMContentLoaded', async () => {
+        const machineSelect = document.getElementById('machineSelect');
+        const machineIdDisplay = document.getElementById('machineIdDisplay');
         
-        // Touch Events (Prevent Scroll)
-        canvas.addEventListener('touchstart', (e) => { if(e.target == canvas) e.preventDefault(); startDraw(e); }, { passive: false });
-        canvas.addEventListener('touchmove', (e) => { if(e.target == canvas) e.preventDefault(); moveDraw(e); }, { passive: false });
-        canvas.addEventListener('touchend', endDraw);
+        try {
+            const { data, error } = await supabase.from('kartu_riwayat_machines').select('id, name').order('name');
+            if (error) throw error;
 
-        function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+            machineSelect.innerHTML = '<option value="">-- Pilih Nama Mesin --</option>';
+            data.forEach(m => {
+                let opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = m.name;
+                machineSelect.appendChild(opt);
+            });
 
+            // Update display ID saat mesin dipilih
+            machineSelect.addEventListener('change', (e) => {
+                machineIdDisplay.value = e.target.value ? `ID-${e.target.value}` : '';
+            });
 
-        // --- 4. PROSES SUBMIT KE DATABASE ---
-        document.getElementById('logForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btnSubmit');
-            btn.innerHTML = "⏳ Mengirim Data...";
-            btn.classList.add('loading');
+        } catch (err) { alert("Gagal load mesin: " + err.message); }
+    });
 
-            // Ambil Data Umum
-            const machineId = document.getElementById('machineSelect').value;
-            const dateVal = document.getElementById('dateInput').value;
-            const picName = document.getElementById('picName').value;
-            const signatureBase64 = canvas.toDataURL();
+    // --- 4. TANDA TANGAN (CANVAS) ---
+    const canvas = document.getElementById('picCanvas');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
 
-            if (!machineId) {
-                alert("Harap pilih mesin terlebih dahulu!");
-                btn.classList.remove('loading');
-                btn.innerHTML = "💾 SIMPAN DATA";
-                return;
+    // Resize canvas resolusi
+    function resizeCanvas() {
+        canvas.width = canvas.parentElement.offsetWidth;
+        canvas.height = canvas.parentElement.offsetHeight;
+        ctx.lineWidth = 2;
+        ctx.lineCap = "round";
+    }
+    // Delay agar render layout selesai dulu
+    setTimeout(resizeCanvas, 500);
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    // Logic menggambar
+    const start = (e) => { 
+        if(e.type==='touchstart') e.preventDefault(); 
+        isDrawing = true; ctx.beginPath(); ctx.moveTo(getPos(e).x, getPos(e).y); 
+    };
+    const move = (e) => { 
+        if(e.type==='touchmove') e.preventDefault(); 
+        if(!isDrawing) return; ctx.lineTo(getPos(e).x, getPos(e).y); ctx.stroke(); 
+    };
+    const end = () => isDrawing = false;
+
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    canvas.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', start, {passive:false});
+    canvas.addEventListener('touchmove', move, {passive:false});
+    canvas.addEventListener('touchend', end);
+
+    function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+    // --- 5. SUBMIT DATA ---
+    document.getElementById('logForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btnSubmit');
+        btn.innerHTML = "⏳ Sedang Mengirim...";
+
+        const machineId = document.getElementById('machineSelect').value;
+        const picName = document.getElementById('picName').value;
+        const signatureBase64 = canvas.toDataURL();
+
+        if (!machineId || !picName) {
+            alert("Harap isi Nama Mesin dan Nama PIC!");
+            btn.innerHTML = "💾 SIMPAN KE DATABASE";
+            return;
+        }
+
+        let logsToInsert = [];
+        // Loop ambil data dari 25 blok
+        for (let i = 1; i <= 25; i++) {
+            const dateVal = document.querySelector(`[name="date_${i}"]`).value;
+            const issue = document.querySelector(`[name="issue_${i}"]`).value;
+            const action = document.querySelector(`[name="action_${i}"]`).value;
+            const part = document.querySelector(`[name="part_${i}"]`).value;
+            const remarks = document.querySelector(`[name="remarks_${i}"]`).value;
+
+            // Jika Issue atau Action diisi, anggap baris ini valid
+            if (issue || action) {
+                logsToInsert.push({
+                    machine_id: machineId,
+                    date: dateVal || new Date(), // Gunakan tgl hari ini jika kosong
+                    issue: issue,
+                    action: action,
+                    spare_part: part,
+                    remarks: remarks,
+                    pic_name: picName,
+                    pic_signature: signatureBase64,
+                    status: 'Submitted'
+                });
             }
+        }
 
-            // Ambil Data dari 25 Baris Tabel
-            // Kita akan menyusun Array untuk di-insert sekaligus (Bulk Insert)
-            let logsToInsert = [];
+        if (logsToInsert.length === 0) {
+            alert("Harap isi minimal 1 Riwayat (Permasalahan & Tindakan)!");
+            btn.innerHTML = "💾 SIMPAN KE DATABASE";
+            return;
+        }
 
-            for (let i = 1; i <= 25; i++) {
-                const issue = document.querySelector(`input[name="issue_${i}"]`).value;
-                const action = document.querySelector(`input[name="action_${i}"]`).value;
-                const part = document.querySelector(`input[name="part_${i}"]`).value;
-                const remarks = document.querySelector(`input[name="remarks_${i}"]`).value;
+        try {
+            const { error } = await supabase.from('kartu_riwayat_logs').insert(logsToInsert);
+            if (error) throw error;
+            
+            alert(`✅ Berhasil menyimpan ${logsToInsert.length} riwayat!`);
+            window.location.reload();
+        } catch (err) {
+            alert("Gagal: " + err.message);
+            btn.innerHTML = "💾 SIMPAN KE DATABASE";
+        }
+    });
+</script>
 
-                // LOGIKA PENTING:
-                // Hanya simpan baris yang kolom 'Issue' atau 'Action'-nya diisi.
-                // Baris kosong tidak perlu dikirim ke database.
-                if (issue || action || part || remarks) {
-                    logsToInsert.push({
-                        machine_id: machineId,  // Sesuai schema (FK)
-                        date: dateVal,          // Sesuai schema
-                        issue: issue,           // Sesuai schema
-                        action: action,         // Sesuai schema
-                        spare_part: part,       // Sesuai schema
-                        remarks: remarks,       // Sesuai schema
-                        pic_name: picName,      // Sesuai schema
-                        pic_signature: signatureBase64, // Sesuai schema
-                        status: 'Submitted'     // Default
-                    });
-                }
-            }
-
-            if (logsToInsert.length === 0) {
-                alert("Mohon isi minimal satu baris tabel (Issue/Action)!");
-                btn.classList.remove('loading');
-                btn.innerHTML = "💾 SIMPAN DATA";
-                return;
-            }
-
-            try {
-                // Insert ke tabel kartu_riwayat_logs
-                const { data, error } = await supabase
-                    .from('kartu_riwayat_logs')
-                    .insert(logsToInsert);
-
-                if (error) throw error;
-
-                alert(`✅ Sukses! ${logsToInsert.length} data berhasil disimpan.`);
-                window.location.reload(); // Refresh halaman
-
-            } catch (err) {
-                console.error(err);
-                alert("❌ Gagal menyimpan: " + err.message);
-                btn.classList.remove('loading');
-                btn.innerHTML = "💾 SIMPAN DATA";
-            }
-        });
-    </script>
 </body>
 </html>
