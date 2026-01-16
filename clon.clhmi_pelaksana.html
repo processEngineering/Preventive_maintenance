@@ -34,6 +34,7 @@
             overflow-x: hidden;
         }
 
+        /* Background Effect */
         .bg-glow {
             position: fixed; top: -200px; left: 50%; transform: translateX(-50%);
             width: 600px; height: 600px;
@@ -74,7 +75,7 @@
         }
         .machine-item strong { font-size: 15px; font-weight: 800; color: #fff; }
 
-        /* Input Styles */
+        /* Input Styles inside Card */
         .card-input {
             width: 100%;
             background: rgba(0, 0, 0, 0.2);
@@ -87,8 +88,10 @@
             outline: none;
         }
         .card-input option { background: #111; color: white; }
+        /* Icon kalender putih */
         ::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
 
+        /* Form Titles & Inputs */
         .section-title {
             font-size: 10px; font-weight: 700; color: var(--text-muted);
             text-transform: uppercase; letter-spacing: 1.5px; margin: 28px 0 12px;
@@ -100,7 +103,7 @@
         }
         .input-field:focus { border-color: var(--accent); }
 
-        /* Checklist */
+        /* Checklist Items */
         .check-card {
             background: var(--bg-card); border: 1px solid var(--border);
             border-radius: var(--radius); padding: 20px; margin-bottom: 12px;
@@ -111,13 +114,13 @@
             text-transform: uppercase; margin-bottom: 12px;
         }
         .check-title { font-size: 14px; font-weight: 700; color: var(--text-white); margin-bottom: 6px; }
-        .check-standard, .check-method { color: var(--text-muted); font-size: 10px; margin-bottom: 4px; }
         
         .status-select {
             width: 100%; background: var(--bg-input); border: 1px solid var(--border);
             border-radius: 10px; padding: 14px 16px; font-size: 13px; font-weight: 600;
             color: var(--text-white); outline: none; margin-top: 8px;
         }
+        
         .value-input { margin-top: 12px; }
         .value-input input {
             width: 100%; background: var(--accent-soft); border: 1px solid var(--border-red);
@@ -132,6 +135,7 @@
             outline: none; resize: none; height: 80px;
         }
 
+        /* Container Catatan Aman Selalu Muncul */
         #container_catatan_aman textarea {
             width: 100%; background: var(--bg-input); border: 1px solid var(--border);
             border-radius: 12px; padding: 16px; font-size: 13px; color: var(--text-white);
@@ -142,7 +146,7 @@
         .signature-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-top: 12px; }
         .signature-pad { border: 2px dashed var(--border-red); border-radius: 12px; height: 150px; background: rgba(0,0,0,0.3); }
         .signature-pad canvas { width: 100%; height: 100%; }
-        .btn-clear { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 4px 12px; border-radius: 6px; font-size: 10px; font-weight: bold; }
+        .btn-clear { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 4px 12px; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer; }
 
         .btn-submit {
             width: 100%; padding: 18px; background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
@@ -151,6 +155,7 @@
         }
         .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
+        /* Nav */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10, 10, 10, 0.95);
             backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex;
@@ -265,10 +270,13 @@
     // 1. Load Data Mesin untuk Dropdown
     async function loadMachines() {
         const selectEl = document.getElementById("select_machine");
+        
+        // Ambil data mesin, sama seperti sebelumnya
         const { data, error } = await sb.from("clhmi_machine").select("*").order('merk_mesin', { ascending: true });
 
         if (error) {
-            selectEl.innerHTML = '<option value="">Error Memuat Mesin</option>';
+            selectEl.innerHTML = '<option value="">Gagal Memuat Data</option>';
+            alert("Koneksi Error: Gagal memuat data mesin.");
             return;
         }
 
@@ -282,7 +290,7 @@
         });
     }
 
-    // 2. Event Ganti Mesin
+    // 2. Update Info Saat Mesin Dipilih
     function onMachineChange() {
         const selectedId = document.getElementById("select_machine").value;
         const serialEl = document.getElementById("m_serial");
@@ -294,10 +302,10 @@
             return;
         }
 
-        const selectedMachine = allMachines.find(m => m.id == selectedId);
-        if (selectedMachine) {
-            serialEl.innerText = selectedMachine.serial_no || "-";
-            tonEl.innerText = (selectedMachine.tonage || "-") + " T";
+        const m = allMachines.find(x => x.id == selectedId);
+        if (m) {
+            serialEl.innerText = m.serial_no || "-";
+            tonEl.innerText = (m.tonage || "-") + " T";
         }
     }
 
@@ -308,7 +316,7 @@
             .eq('aktif', true)
             .order('urutan', { ascending: true });
 
-        if (error) { alert("Gagal memuat item: " + error.message); return; }
+        if (error) { alert("Gagal memuat item checklist."); return; }
         fetchedItems = data;
         renderForm();
     }
@@ -350,11 +358,12 @@
         });
     }
 
+    // Hanya tampilkan kotak NG jika status "Rusak"
     function onItemChange(id, el) {
         document.getElementById(`ng_container_${id}`).style.display = (el.value === "NG") ? "block" : "none";
     }
 
-    // 4. Canvas
+    // 4. Setup Canvas Tanda Tangan
     function setupCanvas() {
         setTimeout(() => {
             const r = cvs.getBoundingClientRect(); cvs.width = r.width; cvs.height = r.height;
@@ -371,31 +380,31 @@
     }
     function resetCanvas() { ctx.clearRect(0,0,cvs.width,cvs.height); }
 
-    // 5. Submit (LOGIKA TETAP SAMA)
+    // 5. Submit Data (LOGIKA DATABASE TIDAK DIUBAH)
     async function processSubmit() {
         const nama = document.getElementById("nama_pelaksana").value.trim();
-        const selectedId = document.getElementById("select_machine").value; // Input Manual Mesin
-        const inputDate = document.getElementById("input_date").value;     // Input Manual Tanggal
+        const mId = document.getElementById("select_machine").value; // Manual ID
+        const tgl = document.getElementById("input_date").value;     // Manual Tanggal
         const btn = document.getElementById("btnSubmit");
         
-        if (!selectedId) return alert("Mohon Pilih Mesin!");
-        if (!inputDate) return alert("Mohon Pilih Tanggal!");
-        if (!nama) return alert("Mohon isi Nama Pelaksana!");
-        if (cvs.toDataURL().length < 1500) return alert("Tanda tangan dulu!");
+        if (!mId) return alert("Pilih Mesin dulu!");
+        if (!tgl) return alert("Pilih Tanggal dulu!");
+        if (!nama) return alert("Isi Nama Pelaksana!");
+        if (cvs.toDataURL().length < 1500) return alert("Tanda tangan wajib diisi!");
 
-        const mData = allMachines.find(m => m.id == selectedId);
+        const mData = allMachines.find(m => m.id == mId);
         
-        // Parse Tanggal Manual
-        const dateObj = new Date(inputDate);
-        const bln = dateObj.getMonth() + 1;
-        const thn = dateObj.getFullYear();
+        // Parsing Tanggal Manual untuk kolom Bulan & Tahun
+        const d = new Date(tgl);
+        const bln = d.getMonth() + 1;
+        const thn = d.getFullYear();
 
         btn.disabled = true; btn.innerText = "MENGIRIM...";
 
         try {
-            const catatan_aman = document.getElementById("catatan_aman").value;
+            const catatanUtama = document.getElementById("catatan_aman").value;
 
-            // Header
+            // INSERT HEADER
             const { data: hdr, error: e1 } = await sb.from("clhmi").insert([{
                 machine_id: mData.id, 
                 merk_mesin: mData.merk_mesin, 
@@ -403,15 +412,15 @@
                 pelaksana: nama, 
                 paraf: cvs.toDataURL(), 
                 status_form: 'submitted',
-                tanggal_isi: inputDate, // Ambil dari input manual
+                tanggal_isi: tgl, // Menggunakan tanggal manual
                 bulan: bln, 
                 tahun: thn,
-                catatan_pelaksana: catatan_aman 
+                catatan_pelaksana: catatanUtama 
             }]).select().single();
 
             if (e1) throw e1;
 
-            // Details
+            // INSERT DETAILS
             const details = fetchedItems.map(item => ({
                 clhmi_id: hdr.id,
                 item_id: item.id,
@@ -422,12 +431,12 @@
                 catatan: document.getElementById(`note_${item.id}`)?.value || null
             }));
 
-            // JIKA NAMA TABEL BUKAN 'clhmi_details', GANTI TULISAN DI BAWAH INI
+            // Pastikan nama tabel ini sesuai dengan yang ada di Supabase Anda
             const { error: e2 } = await sb.from("clhmi_details").insert(details);
             if (e2) throw e2;
 
-            alert("Sukses!");
-            location.href = "menu_utama.html";
+            alert("Laporan Berhasil Dikirim!");
+            window.location.href = "menu_utama.html";
 
         } catch (err) {
             alert("Gagal menyimpan: " + err.message);
