@@ -581,7 +581,6 @@
         <p>Daily Machine Inspection</p>
     </div>
 
-    <!-- SCANNER SECTION -->
     <div id="step-scan">
         <p class="scan-title">Arahkan kamera ke QR Code mesin<br>untuk memulai pengecekan</p>
         
@@ -599,7 +598,6 @@
         <div class="scan-status">Scanning...</div>
     </div>
 
-    <!-- FORM SECTION -->
     <div id="step-form">
         <div class="machine-card">
             <div class="machine-grid">
@@ -681,6 +679,9 @@
 
     async function handleScanSuccess(text) {
         if (scanner) await scanner.stop();
+        // Bersihkan area scanner setelah sukses
+        document.getElementById('reader').innerHTML = ""; 
+        
         const { data, error } = await sb.from("clhmi_machine").select("*").ilike("merk_mesin", text.trim()).single();
         if (error || !data) { alert("Mesin '" + text + "' tidak terdaftar!"); location.reload(); return; }
         
@@ -689,6 +690,7 @@
     }
 
     async function fetchChecklistItems() {
+        // Ambil data checklist
         const { data, error } = await sb.from('clhmi_items')
             .select('*')
             .eq('aktif', true)
@@ -728,6 +730,7 @@
                     <select id="st_${item.id}" class="status-select" onchange="onItemChange('${item.id}', this)">
                         <option value="OK">OK - Normal</option>
                         <option value="NG">NG - Rusak</option>
+                        <option value="MT">MT - Maintenance</option>
                         <option value="NA">NA - Tidak Ada</option>
                     </select>
 
@@ -748,7 +751,8 @@
 
     function onItemChange(id, el) {
         const noteContainer = document.getElementById(`ng_container_${id}`);
-        if (el.value === "NG") {
+        // Tampilkan catatan jika NG atau MT (Maintenance)
+        if (el.value === "NG" || el.value === "MT") {
             noteContainer.style.display = "block";
         } else {
             noteContainer.style.display = "none";
@@ -759,31 +763,64 @@
 
     function checkOverallStatus() {
         const allSelects = document.querySelectorAll('select[id^="st_"]');
-        let hasNG = false;
-        allSelects.forEach(s => { if(s.value === "NG") hasNG = true; });
-        document.getElementById("container_catatan_aman").style.display = hasNG ? "none" : "block";
+        let hasIssue = false;
+        allSelects.forEach(s => { if(s.value === "NG" || s.value === "MT") hasIssue = true; });
+        document.getElementById("container_catatan_aman").style.display = hasIssue ? "none" : "block";
     }
 
     function setupCanvas() {
-        const r = cvs.getBoundingClientRect(); cvs.width = r.width; cvs.height = r.height;
+        const r = cvs.getBoundingClientRect(); 
+        // FIX: Handle resolusi tinggi (Retina/HP) agar tidak pecah
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        cvs.width = r.width * ratio; 
+        cvs.height = r.height * ratio;
+        cvs.style.width = r.width + "px";
+        cvs.style.height = r.height + "px";
+        ctx.scale(ratio, ratio);
+
         ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.strokeStyle = "#dc2626";
+        
         const getXY = (e) => {
             const rect = cvs.getBoundingClientRect();
-            return { x: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left, y: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top };
+            // Support Touch & Mouse
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
         };
-        ['mousedown', 'touchstart'].forEach(evt => cvs.addEventListener(evt, e => { drawing = true; ctx.beginPath(); const p = getXY(e); ctx.moveTo(p.x, p.y); if(e.touches) e.preventDefault(); }, {passive:false}));
-        ['mousemove', 'touchmove'].forEach(evt => cvs.addEventListener(evt, e => { if(!drawing) return; const p = getXY(e); ctx.lineTo(p.x, p.y); ctx.stroke(); if(e.touches) e.preventDefault(); }, {passive:false}));
+
+        ['mousedown', 'touchstart'].forEach(evt => cvs.addEventListener(evt, e => { 
+            drawing = true; 
+            ctx.beginPath(); 
+            const p = getXY(e); 
+            ctx.moveTo(p.x, p.y); 
+            if(e.cancelable) e.preventDefault(); // Mencegah scroll saat tanda tangan
+        }, {passive:false}));
+
+        ['mousemove', 'touchmove'].forEach(evt => cvs.addEventListener(evt, e => { 
+            if(!drawing) return; 
+            const p = getXY(e); 
+            ctx.lineTo(p.x, p.y); 
+            ctx.stroke(); 
+            if(e.cancelable) e.preventDefault(); 
+        }, {passive:false}));
+
         ['mouseup', 'touchend'].forEach(evt => window.addEventListener(evt, () => drawing = false));
     }
 
-    function resetCanvas() { ctx.clearRect(0,0,cvs.width,cvs.height); }
+    function resetCanvas() { 
+        ctx.clearRect(0,0,cvs.width,cvs.height); 
+        ctx.beginPath(); // Reset path
+    }
 
     async function processSubmit() {
         const nama = document.getElementById("nama_pelaksana").value.trim();
         const btn = document.getElementById("btnSubmit");
         
         if (!nama) return alert("Mohon isi Nama Pelaksana!");
-        if (cvs.toDataURL().length < 1500) return alert("Mohon isi tanda tangan!");
+        // Cek canvas kosong (simple check)
+        const blank = document.createElement('canvas');
+        blank.width = cvs.width; blank.height = cvs.height;
+        if (cvs.toDataURL() === blank.toDataURL()) return alert("Mohon isi tanda tangan!");
 
         btn.disabled = true; btn.innerText = "MENGIRIM...";
 
@@ -795,6 +832,7 @@
             const isAman = document.getElementById("container_catatan_aman").style.display !== "none";
             const catatan_aman = isAman ? document.getElementById("catatan_aman").value : null;
 
+            // 1. INSERT HEADER (Tabel: clhmi)
             const { data: hdr, error: e1 } = await sb.from("clhmi").insert([{
                 machine_id: mData.id, 
                 merk_mesin: mData.merk_mesin, 
@@ -805,34 +843,41 @@
                 tanggal_isi: now.toISOString().split('T')[0],
                 bulan: bln, 
                 tahun: thn,
-                catatan_pelaksana: catatan_aman 
+                catatan_pelaksana: catatan_aman,
+                // Pastikan kolom ini ada di database atau hapus jika error
+                tonage: mData.tonage 
             }]).select().single();
 
-            if (e1) throw e1;
+            if (e1) throw new Error("Gagal Header: " + e1.message);
 
+            // 2. INSERT DETAILS (Tabel: clhmi_results)
             const details = fetchedItems.map(item => {
                 const st = document.getElementById(`st_${item.id}`).value;
                 const valEl = document.getElementById(`val_${item.id}`);
                 const noteEl = document.getElementById(`note_${item.id}`);
+                
                 return {
                     clhmi_id: hdr.id,
                     item_id: item.id,
-                    kategori: item.kategori,
-                    nama_pengecekan: item.nama_pengecekan,
+                    item_kode: item.item_kode, // Penting untuk report
+                    // kategori & nama tidak perlu disimpan berulang jika sudah ada relasi item_id, 
+                    // tapi jika tabel result butuh, uncomment bawah ini:
+                    // nama_pengecekan: item.nama_pengecekan, 
                     status: st,
-                    nilai_aktual: valEl ? valEl.value : null,
-                    catatan: noteEl ? noteEl.value : null
+                    value: valEl ? valEl.value : null, // FIX: nama kolom 'value'
+                    catatan_item: noteEl ? noteEl.value : null, // FIX: nama kolom 'catatan_item'
+                    pelaksana: nama // FIX: tambah pelaksana di detail
                 };
             });
 
-            const { error: e2 } = await sb.from("clhmi_detail").insert(details);
-            if (e2) throw e2;
+            const { error: e2 } = await sb.from("clhmi_results").insert(details);
+            if (e2) throw new Error("Gagal Detail: " + e2.message);
 
-            alert("Data berhasil dikirim!");
+            alert("✅ Data berhasil dikirim!");
             location.href = "menu_utama.html";
 
         } catch (err) {
-            alert("Gagal menyimpan: " + err.message);
+            alert("❌ ERROR: " + err.message);
             btn.disabled = false; btn.innerText = "KIRIM LAPORAN";
         }
     }
