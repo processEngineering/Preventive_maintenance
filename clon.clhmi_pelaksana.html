@@ -3,162 +3,581 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Manual Input - AKG Maintenance</title>
+    <title>Pelaksana - AKG Maintenance</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --primary: #003366;
-            --text-dark: #000000;
-            --border-thick: 2px;
-            --shadow-rigid: 4px 4px 0px var(--text-dark);
-            --danger: #ff4d4d;
+            --primary: #991B1B;
+            --primary-light: #B91C1C;
+            --accent: #DC2626;
+            --accent-soft: rgba(220, 38, 38, 0.1);
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #ef4444;
+            --bg-dark: #0a0a0a;
+            --bg-card: #111111;
+            --bg-input: #1a1a1a;
+            --text-white: #ffffff;
+            --text-muted: #6b7280;
+            --text-soft: #9ca3af;
+            --border: rgba(255,255,255,0.08);
+            --border-red: rgba(220, 38, 38, 0.3);
+            --radius: 16px;
+            --nav-height: 70px;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        body { background-color: white; display: flex; justify-content: center; min-height: 100vh; color: var(--text-dark); }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background: var(--bg-dark);
+            min-height: 100vh;
+            color: var(--text-white);
+            position: relative;
+            overflow-x: hidden;
+        }
 
+        /* Subtle Background Effect */
+        .bg-glow {
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(220, 38, 38, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hidden { display: none !important; }
+
+        /* App Container */
         .app-container {
-            width: 100%; max-width: 420px; background: white;
-            display: flex; flex-direction: column;
-            padding: 40px 20px 120px 20px; position: relative; align-items: center;
+            position: relative;
+            z-index: 1;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px 16px 100px;
+            min-height: 100vh;
         }
 
-        .header-capsule {
-            border: var(--border-thick) solid var(--text-dark); border-radius: 50px;
-            padding: 12px 35px; text-align: center; margin-bottom: 25px; display: inline-block; background: #fffbeb;
+        @media (min-width: 768px) {
+            body { background: #050505; }
+            .app-container { 
+                margin: 30px auto; 
+                background: var(--bg-dark);
+                border: 1px solid var(--border);
+                border-radius: 24px;
+                min-height: calc(100vh - 60px);
+            }
         }
-        .header-capsule h1 { font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
 
-        /* UI PILIH MESIN & TANGGAL (PENGGANTI SCANNER) */
-        #step-setup { width: 100%; display: flex; flex-direction: column; align-items: center; }
-        
-        .setup-card {
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 16px 0 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .header p {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Form Section */
+        #step-form {
+            display: none;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Machine Info Card */
+        .machine-card {
+            background: linear-gradient(145deg, var(--primary) 0%, var(--primary-light) 100%);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .machine-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
             width: 100%;
-            background: #f8fafc;
-            border: 2px solid var(--text-dark);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: var(--shadow-rigid);
-            margin-bottom: 20px;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
         }
 
-        .label-setup { font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; display: block; color: var(--primary); }
-        
-        /* Custom Select & Date */
-        .input-setup {
-            width: 100%; padding: 14px; border: 2px solid var(--text-dark); 
-            border-radius: 10px; font-size: 14px; font-weight: 700; 
-            outline: none; margin-bottom: 20px; background: white;
+        .machine-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .machine-item span {
+            display: block;
+            font-size: 9px;
+            color: rgba(255,255,255,0.7);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .machine-item strong {
+            font-size: 15px;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        /* Section Title */
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin: 28px 0 12px;
+        }
+
+        /* Input Field */
+        .input-field {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-white);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
+        }
+
+        .input-field::placeholder {
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        /* Date Input Specific */
+        input[type="date"] {
+            color-scheme: dark;
+        }
+
+        /* Select Input Specific */
+        select.input-field {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
             cursor: pointer;
         }
-        
-        .btn-start {
-            width: 100%; background: var(--text-dark); color: white; border: none; 
-            border-radius: 12px; padding: 16px; font-size: 14px; font-weight: 800; 
-            text-transform: uppercase; cursor: pointer; box-shadow: 0 4px 0px #333;
+
+        /* Checklist Card */
+        .check-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
         }
-        .btn-start:active { transform: translateY(4px); box-shadow: 0 0 0 #333; }
 
-        /* FORM UI (SAMA KAYA ASLI) */
-        #step-form { display: none; width: 100%; text-align: left; }
-        .form-section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; margin: 25px 0 12px 0; border-bottom: 2px solid var(--text-dark); padding-bottom: 5px; letter-spacing: 1px; }
+        .check-card:hover {
+            border-color: var(--border-red);
+        }
 
-        .machine-info { background: #f8fafc; border: 2px solid var(--text-dark); border-radius: 12px; padding: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .info-detail span { font-size: 10px; color: #64748b; text-transform: uppercase; display: block; font-weight: 800; }
-        .info-detail strong { font-size: 13px; font-weight: 800; }
+        .category-tag {
+            display: inline-block;
+            padding: 6px 12px;
+            background: var(--accent-soft);
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 800;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
 
-        input, select, textarea { width: 100%; padding: 14px; border: 2px solid var(--text-dark); border-radius: 10px; font-size: 14px; font-weight: 700; outline: none; margin-bottom: 15px; background: white; }
+        .check-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-white);
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
 
-        /* CHECKLIST CARDS */
-        .category-header { font-size: 12px; font-weight: 800; color: var(--primary); margin: 30px 0 12px; text-transform: uppercase; background: #f1f5f9; padding: 10px 15px; border-radius: 8px; border-left: 4px solid var(--primary); }
-        .check-card { background: white; border: 2px solid var(--text-dark); border-radius: 15px; padding: 18px; margin-bottom: 18px; box-shadow: 0 4px 0px var(--text-dark); }
-        .check-label { font-weight: 800; font-size: 14px; display: block; margin-bottom: 4px; line-height: 1.4; }
-        .check-standard { font-size: 11px; font-weight: 600; color: #1e3a8a; display: block; margin-bottom: 4px; }
-        .check-method { font-size: 11px; color: #64748b; font-style: italic; margin-bottom: 15px; display: block; font-weight: 600; }
-        .ng-container { display: none; margin-top: 15px; }
+        .check-standard {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
 
-        /* AREA CATATAN KONDISI AMAN */
-        #container_catatan_aman { display: block; }
+        .check-method {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-style: italic;
+            margin-bottom: 16px;
+        }
 
-        /* SIGNATURE */
-        .signature-pad { border: 2px dashed #cbd5e1; border-radius: 15px; height: 160px; background: #f9fafb; position: relative; }
-        canvas { width: 100%; height: 100%; touch-action: none; border-radius: 15px; }
-        .btn-clear-sig { background: none; border: none; color: #ef4444; font-size: 10px; font-weight: 800; cursor: pointer; padding: 8px; float: right; text-transform: uppercase; }
+        /* Status Select */
+        .status-select {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-white);
+            outline: none;
+            appearance: none;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23DC2626' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            transition: all 0.3s ease;
+        }
 
-        .btn-submit-form { width: 100%; background: var(--text-dark); color: white; border: none; border-radius: 15px; padding: 20px; font-size: 14px; font-weight: 800; text-transform: uppercase; cursor: pointer; margin-top: 30px; box-shadow: 0 6px 0px #333; }
-        .btn-submit-form:active { transform: translateY(4px); box-shadow: 0 2px 0px #333; }
+        .status-select:focus {
+            border-color: var(--accent);
+        }
 
-        /* BOTTOM NAV */
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; max-width: 420px; background: white; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-around; padding: 15px 0; z-index: 100; }
-        .nav-item { text-decoration: none; color: var(--text-dark); font-size: 24px; }
-        .nav-item.active { color: #000; }
+        /* NG Note */
+        .ng-note {
+            margin-top: 12px;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .ng-note textarea {
+            width: 100%;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 12px;
+            color: var(--text-white);
+            outline: none;
+            resize: none;
+            height: 80px;
+        }
+
+        .ng-note textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Value Input */
+        .value-input {
+            margin-top: 12px;
+        }
+
+        .value-input input {
+            width: 100%;
+            background: var(--accent-soft);
+            border: 1px solid var(--border-red);
+            border-radius: 10px;
+            padding: 14px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-white);
+            outline: none;
+        }
+
+        .value-input input:focus {
+            box-shadow: 0 0 0 3px var(--accent-soft);
+        }
+
+        /* Additional Notes */
+        #container_catatan_aman textarea {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 13px;
+            color: var(--text-white);
+            outline: none;
+            resize: none;
+            height: 100px;
+        }
+
+        #container_catatan_aman textarea:focus {
+            border-color: var(--accent);
+        }
+
+        /* Signature */
+        .signature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-top: 12px;
+        }
+
+        .signature-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .signature-header h3 {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-clear {
+            padding: 8px 14px;
+            background: transparent;
+            border: 1px solid var(--danger);
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--danger);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-clear:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .signature-pad {
+            border: 2px dashed var(--border-red);
+            border-radius: 12px;
+            height: 150px;
+            background: rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .signature-pad canvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        /* Submit Button */
+        .btn-submit {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+            border: none;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 800;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            margin-top: 32px;
+            box-shadow: 0 8px 24px rgba(220, 38, 38, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(220, 38, 38, 0.5);
+        }
+
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            padding: 14px 0;
+            z-index: 100;
+        }
+
+        @media (min-width: 768px) {
+            .bottom-nav {
+                max-width: 500px;
+                left: 50%;
+                transform: translateX(-50%);
+                border-radius: 0 0 24px 24px;
+            }
+        }
+
+        .nav-item {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .nav-item svg {
+            width: 22px;
+            height: 22px;
+            stroke: var(--text-muted);
+            fill: none;
+            stroke-width: 2;
+            transition: all 0.3s ease;
+        }
+
+        .nav-item.active {
+            background: var(--accent-soft);
+        }
+
+        .nav-item.active svg {
+            stroke: var(--accent);
+        }
+
+        /* Loading */
+        .loading-checklist {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
 
+<div class="bg-glow"></div>
+
 <div class="app-container">
-    <div class="header-capsule">
-        <h1>Input Manual</h1>
+    <div class="header">
+        <h1>Pelaksana</h1>
+        <p>Daily Machine Inspection</p>
     </div>
 
-    <div id="step-setup">
-        <p style="text-align:center; font-size:13px; color:#475569; margin-bottom:20px;">
-            Pilih mesin dan tanggal laporan secara manual tanpa scan QR.
-        </p>
+    <div id="step-select">
+        <p class="section-title">Pilih Mesin</p>
+        <select id="machine_selector" class="input-field">
+            <option value="" disabled selected>-- Memuat Data Mesin --</option>
+        </select>
 
-        <div class="setup-card">
-            <label class="label-setup">Pilih Mesin</label>
-            <select id="pilih_mesin" class="input-setup">
-                <option value="">-- Memuat Data Mesin --</option>
-            </select>
+        <p class="section-title">Tanggal Pengecekan</p>
+        <input type="date" id="date_selector" class="input-field">
 
-            <label class="label-setup">Tanggal Laporan</label>
-            <input type="date" id="pilih_tanggal" class="input-setup">
-            
-            <button class="btn-start" onclick="startManualEntry()">Mulai Isi Laporan <i class="fa-solid fa-arrow-right"></i></button>
-        </div>
+        <button id="btnStart" class="btn-submit" onclick="startChecklist()">Mulai Pengecekan</button>
     </div>
 
     <div id="step-form">
-        <div class="machine-info">
-            <div class="info-detail"><span>Mesin</span><strong id="m_merk">-</strong></div>
-            <div class="info-detail"><span>Serial No.</span><strong id="m_serial">-</strong></div>
-            <div class="info-detail"><span>Tonnage</span><strong id="m_ton">-</strong></div>
-            <div class="info-detail"><span>Tanggal</span><strong id="view_tanggal" style="color:blue;">-</strong></div>
+        <div class="machine-card">
+            <div class="machine-grid">
+                <div class="machine-item"><span>Mesin</span><strong id="m_merk">-</strong></div>
+                <div class="machine-item"><span>Serial No.</span><strong id="m_serial">-</strong></div>
+                <div class="machine-item"><span>Tonnage</span><strong id="m_ton">-</strong></div>
+                <div class="machine-item"><span>Tanggal</span><strong id="m_date">-</strong></div>
+            </div>
         </div>
 
-        <p class="form-section-title">Identitas Pelaksana</p>
-        <input type="text" id="nama_pelaksana" placeholder="nama lengkap anda">
+        <p class="section-title">Nama Pelaksana</p>
+        <input type="text" id="nama_pelaksana" class="input-field" placeholder="Ketik nama lengkap...">
 
-        <p class="form-section-title">Poin Pengecekan</p>
+        <p class="section-title">Poin Pengecekan</p>
         <div id="dynamic-checklist">
-            <p style="text-align:center; padding:30px; font-size:12px; color:#94a3b8; font-weight:600;">Memuat data checklist...</p>
+            <div class="loading-checklist">
+                <div class="spinner"></div>
+                <p>Memuat checklist...</p>
+            </div>
         </div>
 
         <div id="container_catatan_aman">
-            <p class="form-section-title">Catatan Kondisi Aman</p>
-            <textarea id="catatan_aman" rows="3" placeholder="catatan singkat untuk laporan pada koordinator"></textarea>
+            <p class="section-title">Catatan Tambahan (Opsional)</p>
+            <textarea id="catatan_aman" placeholder="Tulis catatan jika ada hal perlu diperhatikan..."></textarea>
         </div>
 
-        <p class="form-section-title">Paraf digital anda</p>
-        <div class="signature-pad"><canvas id="canvas"></canvas></div>
-        <button class="btn-clear-sig" onclick="resetCanvas()">Hapus Paraf </button>
-        
-        <button id="btnSubmit" class="btn-submit-form" onclick="processSubmit()">Simpan Laporan</button>
-        <br><br>
-        <button onclick="location.reload()" style="background:none; border:none; color:#ef4444; width:100%; font-weight:700; cursor:pointer;">Batal / Kembali</button>
+        <p class="section-title">Paraf Digital</p>
+        <div class="signature-card">
+            <div class="signature-header">
+                <h3>Tanda Tangan</h3>
+                <button class="btn-clear" onclick="resetCanvas()">Ulangi</button>
+            </div>
+            <div class="signature-pad">
+                <canvas id="canvas"></canvas>
+            </div>
+        </div>
+
+        <button id="btnSubmit" class="btn-submit" onclick="processSubmit()">Kirim Laporan</button>
     </div>
 </div>
 
 <nav class="bottom-nav">
-    <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i></a>
-    <a href="menu_utama.html" class="nav-item active"><i class="fa-solid fa-bars"></i></a>
-    <a href="download_data.html" class="nav-item"><i class="fa-solid fa-download"></i></a>
-    <a href="informasi_akun.html" class="nav-item"><i class="fa-solid fa-circle-user"></i></a>
+    <a href="index.html" class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </a>
+    <a href="menu_utama.html" class="nav-item active">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    </a>
+    <a href="download_data.html" class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </a>
+    <a href="informasi_akun.html" class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </a>
 </nav>
 
 <script>
@@ -167,58 +586,55 @@
     const sb = supabase.createClient(_URL, _KEY);
 
     let mData = null, drawing = false, fetchedItems = [];
-    let allMachines = []; // Menyimpan list semua mesin
+    let allMachines = [];
+    let selectedDate = null;
     const cvs = document.getElementById("canvas"), ctx = cvs.getContext("2d");
 
-    // --- 1. INITIAL LOAD (GANTI INITSCANNER) ---
-    document.addEventListener("DOMContentLoaded", async () => {
-        // Set Default Date ke Hari Ini
+    window.onload = function() {
+        loadMachines();
+        // Set default date to today
         const today = new Date().toISOString().split('T')[0];
-        document.getElementById("pilih_tanggal").value = today;
+        document.getElementById('date_selector').value = today;
+    };
 
-        // Load Data Mesin buat Dropdown
-        const selectBox = document.getElementById("pilih_mesin");
-        try {
-            const { data, error } = await sb.from("clhmi_machine").select("*").order("merk_mesin", { ascending: true });
-            if (error) throw error;
-            
-            allMachines = data;
-            selectBox.innerHTML = '<option value="">-- Pilih Mesin --</option>';
-            
-            data.forEach(m => {
-                // Tampilkan Merk + Tonnage biar gampang milih
-                selectBox.innerHTML += `<option value="${m.id}">${m.merk_mesin} (${m.tonage}T)</option>`;
-            });
-        } catch (err) {
-            alert("Gagal memuat daftar mesin: " + err.message);
+    // Load machines for dropdown
+    async function loadMachines() {
+        const select = document.getElementById("machine_selector");
+        const { data, error } = await sb.from("clhmi_machine").select("*").order("merk_mesin", { ascending: true });
+        
+        if (error) {
+            console.error(error);
+            select.innerHTML = '<option value="" disabled selected>Gagal memuat data</option>';
+            return;
         }
-    });
 
-    // --- 2. START MANUAL ENTRY ---
-    function startManualEntry() {
-        const mid = document.getElementById("pilih_mesin").value;
-        const tgl = document.getElementById("pilih_tanggal").value;
-
-        if (!mid) return alert("Harap pilih mesin terlebih dahulu!");
-        if (!tgl) return alert("Harap tentukan tanggal laporan!");
-
-        // Cari data mesin lengkap dari array yang sudah di-load
-        mData = allMachines.find(m => m.id == mid);
-
-        // Render Info Mesin
-        document.getElementById("m_merk").innerText = mData.merk_mesin;
-        document.getElementById("m_serial").innerText = mData.serial_no;
-        document.getElementById("m_ton").innerText = (mData.tonage || "-") + " T";
-        document.getElementById("view_tanggal").innerText = tgl; // Tampilkan tanggal yg dipilih
-
-        // Ganti Tampilan
-        document.getElementById("step-setup").style.display = "none";
-        document.getElementById("step-form").style.display = "block";
-
-        fetchChecklistItems();
+        allMachines = data;
+        select.innerHTML = '<option value="" disabled selected>-- Pilih Mesin --</option>';
+        
+        data.forEach(m => {
+            const opt = document.createElement("option");
+            opt.value = m.id;
+            opt.textContent = `${m.merk_mesin} (SN: ${m.serial_no})`;
+            select.appendChild(opt);
+        });
     }
 
-    // --- 3. AMBIL DATA CHECKLIST (SAMA) ---
+    function startChecklist() {
+        const machineId = document.getElementById("machine_selector").value;
+        const dateVal = document.getElementById("date_selector").value;
+
+        if (!machineId) return alert("Silakan pilih mesin terlebih dahulu.");
+        if (!dateVal) return alert("Silakan pilih tanggal pengecekan.");
+
+        // Find selected machine data
+        mData = allMachines.find(m => m.id == machineId);
+        selectedDate = dateVal;
+
+        if (mData) {
+            fetchChecklistItems();
+        }
+    }
+
     async function fetchChecklistItems() {
         const { data, error } = await sb.from('clhmi_items')
             .select('*')
@@ -230,35 +646,48 @@
         renderForm();
     }
 
-    // --- 4. RENDER FORM & LOGIKA (SAMA) ---
     function renderForm() {
+        document.getElementById("step-select").style.display = "none";
+        document.getElementById("step-form").style.display = "block";
+        
+        document.getElementById("m_merk").innerText = mData.merk_mesin;
+        document.getElementById("m_serial").innerText = mData.serial_no;
+        document.getElementById("m_ton").innerText = (mData.tonage || "-") + " T";
+        
+        // Format date for display
+        const dateObj = new Date(selectedDate);
+        document.getElementById("m_date").innerText = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+
         const container = document.getElementById("dynamic-checklist");
         container.innerHTML = ''; 
         let currentKategori = "";
 
         fetchedItems.forEach(item => {
-            if (item.kategori !== currentKategori) {
-                currentKategori = item.kategori;
-                container.innerHTML += `<div class="category-header">${currentKategori}</div>`;
-            }
+            const isNewCategory = item.kategori !== currentKategori;
+            if (isNewCategory) currentKategori = item.kategori;
 
             const isRunningHour = item.nama_pengecekan.toLowerCase().includes("running hour");
 
             container.innerHTML += `
                 <div class="check-card">
-                    <label class="check-label">${item.nama_pengecekan}</label>
-                    <span class="check-standard">Std: ${item.standard || '-'}</span>
-                    <span class="check-method">Metode: ${item.metode || '-'}</span>
+                    ${isNewCategory ? `<span class="category-tag">${currentKategori}</span>` : ''}
+                    <p class="check-title">${item.nama_pengecekan}</p>
+                    <p class="check-standard">Standar: ${item.standard || '-'}</p>
+                    <p class="check-method">Metode: ${item.metode || '-'}</p>
                     
-                    <select id="st_${item.id}" onchange="onItemChange('${item.id}', this)" style="margin-bottom: ${isRunningHour ? '15px' : '0'};">
-                        <option value="OK">🟢 OK</option>
-                        <option value="NG">🔴 NG</option>
-                        <option value="NA">⚪ NA</option>
+                    <select id="st_${item.id}" class="status-select" onchange="onItemChange('${item.id}', this)">
+                        <option value="OK">OK - Normal</option>
+                        <option value="NG">NG - Rusak</option>
+                        <option value="NA">NA - Tidak Ada</option>
                     </select>
 
-                    ${isRunningHour ? `<input type="number" id="val_${item.id}" placeholder="Input Jam Aktual" style="margin-bottom:0;">` : ''}
+                    ${isRunningHour ? `
+                        <div class="value-input">
+                            <input type="number" id="val_${item.id}" placeholder="Input jam aktual...">
+                        </div>
+                    ` : ''}
 
-                    <div id="ng_container_${item.id}" class="ng-container">
+                    <div id="ng_container_${item.id}" class="ng-note">
                         <textarea id="note_${item.id}" placeholder="Jelaskan detail kerusakan..."></textarea>
                     </div>
                 </div>
@@ -268,7 +697,13 @@
     }
 
     function onItemChange(id, el) {
-        document.getElementById(`ng_container_${id}`).style.display = (el.value === "NG") ? "block" : "none";
+        const noteContainer = document.getElementById(`ng_container_${id}`);
+        if (el.value === "NG") {
+            noteContainer.style.display = "block";
+        } else {
+            noteContainer.style.display = "none";
+            document.getElementById(`note_${id}`).value = "";
+        }
         checkOverallStatus();
     }
 
@@ -279,10 +714,9 @@
         document.getElementById("container_catatan_aman").style.display = hasNG ? "none" : "block";
     }
 
-    // --- 5. SIGNATURE PAD (SAMA) ---
     function setupCanvas() {
         const r = cvs.getBoundingClientRect(); cvs.width = r.width; cvs.height = r.height;
-        ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.strokeStyle = "#000";
+        ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.strokeStyle = "#dc2626";
         const getXY = (e) => {
             const rect = cvs.getBoundingClientRect();
             return { x: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left, y: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top };
@@ -291,31 +725,27 @@
         ['mousemove', 'touchmove'].forEach(evt => cvs.addEventListener(evt, e => { if(!drawing) return; const p = getXY(e); ctx.lineTo(p.x, p.y); ctx.stroke(); if(e.touches) e.preventDefault(); }, {passive:false}));
         ['mouseup', 'touchend'].forEach(evt => window.addEventListener(evt, () => drawing = false));
     }
+
     function resetCanvas() { ctx.clearRect(0,0,cvs.width,cvs.height); }
 
-    // --- 6. SIMPAN DATA (MODIFIKASI TANGGAL) ---
     async function processSubmit() {
         const nama = document.getElementById("nama_pelaksana").value.trim();
         const btn = document.getElementById("btnSubmit");
         
-        // Ambil tanggal dari input manual, bukan new Date() saat ini
-        const tglInput = document.getElementById("pilih_tanggal").value; 
-
         if (!nama) return alert("Mohon isi Nama Pelaksana!");
         if (cvs.toDataURL().length < 1500) return alert("Mohon isi tanda tangan!");
 
-        // Parsing Tanggal Pilihan untuk Bulan & Tahun
-        const dateObj = new Date(tglInput);
-        const bln = dateObj.getMonth() + 1; // getMonth() mulai dari 0
-        const thn = dateObj.getFullYear();
+        btn.disabled = true; btn.innerText = "MENGIRIM...";
 
-        btn.disabled = true; btn.innerText = "SEDANG MENGIRIM";
+        // Use selectedDate for logic
+        const dateObj = new Date(selectedDate);
+        const bln = dateObj.getMonth() + 1;
+        const thn = dateObj.getFullYear();
 
         try {
             const isAman = document.getElementById("container_catatan_aman").style.display !== "none";
             const catatan_aman = isAman ? document.getElementById("catatan_aman").value : null;
 
-            // Simpan ke clhmi (Header) - Gunakan tglInput
             const { data: hdr, error: e1 } = await sb.from("clhmi").insert([{
                 machine_id: mData.id, 
                 merk_mesin: mData.merk_mesin, 
@@ -323,38 +753,41 @@
                 pelaksana: nama, 
                 paraf: cvs.toDataURL(), 
                 status_form: 'submitted',
-                tanggal_isi: tglInput, // <-- PENTING: Pakai tanggal pilihan User
+                tanggal_isi: selectedDate, // Use manual date
                 bulan: bln, 
-                tahun: thn
+                tahun: thn,
+                catatan_pelaksana: catatan_aman 
             }]).select().single();
 
             if (e1) throw e1;
 
-            // Mapping data ke clhmi_results (Detail)
-            const results = fetchedItems.map((item, index) => {
-                const valInput = document.getElementById(`val_${item.id}`);
+            const details = fetchedItems.map(item => {
+                const st = document.getElementById(`st_${item.id}`).value;
+                const valEl = document.getElementById(`val_${item.id}`);
+                const noteEl = document.getElementById(`note_${item.id}`);
                 return {
-                    clhmi_id: hdr.id, 
-                    item_id: item.id, 
-                    item_kode: item.item_kode,
-                    status: document.getElementById(`st_${item.id}`).value,
-                    catatan_item: document.getElementById(`note_${item.id}`).value || null,
-                    value: valInput ? valInput.value : null,
-                    catatan_pelaksana: (index === 0) ? catatan_aman : null
+                    clhmi_id: hdr.id,
+                    item_id: item.id,
+                    kategori: item.kategori,
+                    nama_pengecekan: item.nama_pengecekan,
+                    status: st,
+                    nilai_aktual: valEl ? valEl.value : null,
+                    catatan: noteEl ? noteEl.value : null
                 };
             });
 
-            const { error: e2 } = await sb.from("clhmi_results").insert(results);
+            const { error: e2 } = await sb.from("clhmi_details").insert(details);
             if (e2) throw e2;
 
-            alert("Laporan Manual Berhasil disimpan untuk tanggal " + tglInput);
-            location.reload();
+            alert("Data berhasil dikirim!");
+            location.href = "menu_utama.html";
 
         } catch (err) {
-            alert("GAGAL: " + err.message);
-            btn.disabled = false; btn.innerText = "SIMPAN LAPORAN";
+            alert("Gagal menyimpan: " + err.message);
+            btn.disabled = false; btn.innerText = "KIRIM LAPORAN";
         }
     }
 </script>
+
 </body>
 </html>
