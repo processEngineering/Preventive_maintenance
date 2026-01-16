@@ -6,7 +6,6 @@
     <title>Koordinator Verifikasi</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
@@ -19,10 +18,6 @@
         .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* SCANNER STYLE */
-        #reader { width: 100%; border-radius: 24px; overflow: hidden; position: relative; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-        #reader video { object-fit: cover; border-radius: 24px; }
-        
         /* NAVIGASI BAWAH (4 TOMBOL) */
         .bottom-nav { 
             position: fixed; bottom: 0; left: 0; width: 100%; 
@@ -72,21 +67,6 @@
             </div>
         </div>
 
-        <div id="scanner-view" class="hidden fade-in">
-            <div class="text-center mb-6">
-                <h2 class="text-lg font-black text-slate-800 uppercase">Validasi Fisik</h2>
-                <p class="text-xs text-slate-500 mt-1 px-10">Scan QR Code pada mesin <span id="target-mesin" class="text-slate-900 font-bold underline">...</span> untuk melanjutkan.</p>
-            </div>
-
-            <div class="bg-white p-2 rounded-[2rem] shadow-xl mb-6 relative border border-slate-100">
-                <div id="reader"></div>
-            </div>
-
-            <button onclick="showList()" class="w-full py-4 text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600">
-                Kembali ke Antrean
-            </button>
-        </div>
-
         <div id="form-view" class="hidden fade-in space-y-6 pb-10">
             <div class="bg-white p-6 rounded-[1.5rem] shadow-sm border border-slate-200">
                 <h1 id="verif-machine-name" class="text-2xl font-black text-slate-800 uppercase mb-1">...</h1>
@@ -132,9 +112,7 @@
 
             <div class="grid grid-cols-2 gap-3 pt-4">
                 <button onclick="showList()" class="py-4 rounded-xl border border-slate-200 bg-white text-slate-500 font-bold text-xs uppercase">Batal</button>
-                <button onclick="submitApproval()" id="btn-approve" class="py-4 rounded-xl bg-slate-900 text-white font-black text-xs uppercase shadow-lg shadow-slate-200 flex justify-center items-center gap-2">
-                    Approve
-                </button>
+                <button onclick="submitApproval()" id="btn-approve" class="py-4 rounded-xl bg-slate-900 text-white font-black text-xs uppercase shadow-lg shadow-slate-200">Approve</button>
             </div>
         </div>
 
@@ -164,59 +142,38 @@
         const _KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const sb = supabase.createClient(_URL, _KEY);
         
-        let activeHdr = null, scanner = null, sigPadKoor = null;
+        let activeHdr = null, sigPadKoor = null;
 
         window.onload = loadQueue;
 
-        // --- NAVIGASI & SCANNER ---
-        async function showList() {
-            // Matikan scanner dengan aman
-            if(scanner) {
-                try { await scanner.stop(); } catch (ignore) { console.log("Stop error ignored"); }
-                scanner.clear();
-            }
-            
+        // --- NAVIGASI ANTAR HALAMAN (TANPA SCANNER) ---
+        
+        // 1. Tampilkan List
+        function showList() {
             document.getElementById('list-view').classList.remove('hidden');
-            document.getElementById('scanner-view').classList.add('hidden');
             document.getElementById('form-view').classList.add('hidden');
-            loadQueue(); // Refresh data
+            loadQueue(); // Refresh data saat kembali ke list
         }
 
-        function openScanner(hdrStr) {
+        // 2. Tampilkan Detail (Dipanggil saat klik item di list)
+        function openDetail(hdrStr) {
             activeHdr = JSON.parse(decodeURIComponent(hdrStr));
-            document.getElementById('list-view').classList.add('hidden');
-            document.getElementById('scanner-view').classList.remove('hidden');
-            document.getElementById('target-mesin').innerText = activeHdr.clhmi_machine?.merk_mesin || 'Unknown';
             
-            // Inisialisasi Scanner
-            scanner = new Html5Qrcode("reader");
-            scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 250, height: 250 } }, onScanSuccess);
-        }
-
-        async function onScanSuccess(decodedText) {
-            const targetName = activeHdr.clhmi_machine?.merk_mesin || '';
-            // Validasi sederhana: Cek apakah nama mesin ada di text QR
-            if (decodedText.toLowerCase().includes(targetName.toLowerCase()) || targetName.toLowerCase().includes(decodedText.toLowerCase())) {
-                try { await scanner.stop(); } catch(e) {}
-                showForm();
-            } else {
-                alert(`❌ QR SALAH!\nTarget: ${targetName}\nScan: ${decodedText}`);
-            }
-        }
-
-        async function showForm() {
-            document.getElementById('scanner-view').classList.add('hidden');
+            // Sembunyikan List, Tampilkan Form
+            document.getElementById('list-view').classList.add('hidden');
             document.getElementById('form-view').classList.remove('hidden');
             
-            // Isi Data Header
+            // ISI DATA KE FORM
             document.getElementById('verif-machine-name').innerText = activeHdr.clhmi_machine?.merk_mesin || '-';
             document.getElementById('verif-pelaksana').innerText = activeHdr.pelaksana || activeHdr.diisi_oleh || '-'; 
             document.getElementById('verif-date').innerText = new Date(activeHdr.tanggal_isi).toLocaleDateString('id-ID');
 
-            // Load Temuan (Findings)
             loadFindings();
 
-            // Inisialisasi Signature Pad (dengan delay agar container ter-render dulu)
+            // RESIZE CANVAS (Agar Tanda Tangan Lancar)
+            const canvas = document.getElementById('sig-canvas');
+            sigPadKoor = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)', penColor: 'rgb(0,0,0)' });
+            
             setTimeout(resizeCanvas, 100); 
             window.addEventListener("resize", resizeCanvas);
         }
@@ -228,22 +185,19 @@
                 canvas.width = canvas.offsetWidth * ratio;
                 canvas.height = canvas.offsetHeight * ratio;
                 canvas.getContext("2d").scale(ratio, ratio);
-                
-                // Re-init pad agar scale terbaca benar
-                sigPadKoor = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)', penColor: 'rgb(0,0,0)' });
+                sigPadKoor.clear(); 
             }
         }
         
-        // --- DATA LOGIC ---
-        async function loadQueue() {
-            const container = document.getElementById("queue-container");
-            container.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-slate-300 text-2xl"></i></div>`;
+        // --- LOGIKA DATA ---
 
+        async function loadQueue() {
             const { data, error } = await sb.from('clhmi')
                 .select('*, clhmi_machine(merk_mesin)')
                 .is('paraf_coord', null) // Hanya yang belum diapprove
                 .order('created_at', { ascending: false });
 
+            const container = document.getElementById("queue-container");
             container.innerHTML = "";
 
             if (!data || data.length === 0) {
@@ -256,8 +210,9 @@
                 const timeStr = new Date(item.created_at).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
                 const pelaksanaName = item.pelaksana || item.diisi_oleh || '-'; 
 
+                // Perubahan di sini: onclick langsung ke openDetail, bukan scanner
                 container.insertAdjacentHTML('beforeend', `
-                    <div onclick="openScanner('${encodeURIComponent(JSON.stringify(item))}')" class="bg-white p-5 rounded-[1.2rem] shadow-sm border border-slate-200 active:scale-[0.98] transition-transform cursor-pointer relative overflow-hidden">
+                    <div onclick="openDetail('${encodeURIComponent(JSON.stringify(item))}')" class="bg-white p-5 rounded-[1.2rem] shadow-sm border border-slate-200 active:scale-[0.98] transition-transform cursor-pointer relative overflow-hidden">
                         <div class="absolute top-0 right-0 bg-yellow-100 text-yellow-700 text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-widest">Pending</div>
                         <h3 class="font-black text-lg text-slate-800 uppercase mb-1">${item.clhmi_machine?.merk_mesin}</h3>
                         <div class="flex items-center gap-4 text-xs font-bold text-slate-400">
@@ -273,7 +228,7 @@
             const container = document.getElementById("findings-container");
             container.innerHTML = `<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-slate-300"></i></div>`;
 
-            // Filter status: NG, MT, NA
+            // Mengambil hasil inspeksi yang NG/MT/NA
             const { data: results } = await sb.from('clhmi_results')
                 .select('status, catatan_item, clhmi_items(nama_pengecekan)')
                 .eq('clhmi_id', activeHdr.id)
@@ -311,9 +266,7 @@
             if(!name || sigPadKoor.isEmpty()) return alert("⚠️ Mohon isi Nama & Paraf!");
             
             const btn = document.getElementById('btn-approve');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> Menyimpan...`; 
-            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> MENYIMPAN...`; btn.disabled = true;
 
             try {
                 const { error } = await sb.from('clhmi').update({
@@ -322,15 +275,16 @@
                     catatan_umum: `[Coord: ${name}] ${document.getElementById('koor-remark').value}`
                 }).eq('id', activeHdr.id);
 
-                if(error) throw error;
-
-                alert("✅ Approved Berhasil!");
-                showList(); // Kembali ke list & refresh
+                if(!error) { 
+                    alert("✅ APPROVED!"); 
+                    showList(); 
+                    btn.innerHTML = 'APPROVE'; btn.disabled = false;
+                } else { 
+                    throw error; 
+                }
             } catch (e) {
-                alert("Gagal: " + e.message);
-            } finally {
-                btn.innerHTML = originalText; 
-                btn.disabled = false;
+                alert("GAGAL MENYIMPAN: " + (e.message || JSON.stringify(e)));
+                btn.innerHTML = 'APPROVE'; btn.disabled = false;
             }
         }
     </script>
