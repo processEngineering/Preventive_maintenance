@@ -34,7 +34,6 @@
             overflow-x: hidden;
         }
 
-        /* Background Effect */
         .bg-glow {
             position: fixed; top: -200px; left: 50%; transform: translateX(-50%);
             width: 600px; height: 600px;
@@ -66,7 +65,6 @@
             background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%); pointer-events: none;
         }
         
-        /* Grid Layout */
         .machine-grid { display: grid; grid-template-columns: 1fr; gap: 12px; position: relative; z-index: 1; }
         
         .machine-item span {
@@ -75,7 +73,7 @@
         }
         .machine-item strong { font-size: 15px; font-weight: 800; color: #fff; }
 
-        /* Input Styles inside Card */
+        /* Inputs */
         .card-input {
             width: 100%;
             background: rgba(0, 0, 0, 0.2);
@@ -88,10 +86,8 @@
             outline: none;
         }
         .card-input option { background: #111; color: white; }
-        /* Icon kalender putih */
         ::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
 
-        /* Form Titles & Inputs */
         .section-title {
             font-size: 10px; font-weight: 700; color: var(--text-muted);
             text-transform: uppercase; letter-spacing: 1.5px; margin: 28px 0 12px;
@@ -103,7 +99,7 @@
         }
         .input-field:focus { border-color: var(--accent); }
 
-        /* Checklist Items */
+        /* Checklist */
         .check-card {
             background: var(--bg-card); border: 1px solid var(--border);
             border-radius: var(--radius); padding: 20px; margin-bottom: 12px;
@@ -135,7 +131,6 @@
             outline: none; resize: none; height: 80px;
         }
 
-        /* Container Catatan Aman Selalu Muncul */
         #container_catatan_aman textarea {
             width: 100%; background: var(--bg-input); border: 1px solid var(--border);
             border-radius: 12px; padding: 16px; font-size: 13px; color: var(--text-white);
@@ -155,7 +150,6 @@
         }
         .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        /* Nav */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10, 10, 10, 0.95);
             backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex;
@@ -267,16 +261,13 @@
         setupCanvas();
     };
 
-    // 1. Load Data Mesin untuk Dropdown
+    // 1. Load Machines
     async function loadMachines() {
         const selectEl = document.getElementById("select_machine");
-        
-        // Ambil data mesin, sama seperti sebelumnya
         const { data, error } = await sb.from("clhmi_machine").select("*").order('merk_mesin', { ascending: true });
 
         if (error) {
             selectEl.innerHTML = '<option value="">Gagal Memuat Data</option>';
-            alert("Koneksi Error: Gagal memuat data mesin.");
             return;
         }
 
@@ -290,7 +281,7 @@
         });
     }
 
-    // 2. Update Info Saat Mesin Dipilih
+    // 2. Machine Change Event
     function onMachineChange() {
         const selectedId = document.getElementById("select_machine").value;
         const serialEl = document.getElementById("m_serial");
@@ -316,7 +307,7 @@
             .eq('aktif', true)
             .order('urutan', { ascending: true });
 
-        if (error) { alert("Gagal memuat item checklist."); return; }
+        if (error) { alert("Gagal memuat item: " + error.message); return; }
         fetchedItems = data;
         renderForm();
     }
@@ -341,6 +332,7 @@
                     <select id="st_${item.id}" class="status-select" onchange="onItemChange('${item.id}', this)">
                         <option value="OK">OK - Normal</option>
                         <option value="NG">NG - Rusak</option>
+                        <option value="MT">MT - Maintenance</option>
                         <option value="NA">NA - Tidak Ada</option>
                     </select>
 
@@ -358,12 +350,11 @@
         });
     }
 
-    // Hanya tampilkan kotak NG jika status "Rusak"
     function onItemChange(id, el) {
         document.getElementById(`ng_container_${id}`).style.display = (el.value === "NG") ? "block" : "none";
     }
 
-    // 4. Setup Canvas Tanda Tangan
+    // 4. Canvas
     function setupCanvas() {
         setTimeout(() => {
             const r = cvs.getBoundingClientRect(); cvs.width = r.width; cvs.height = r.height;
@@ -380,11 +371,11 @@
     }
     function resetCanvas() { ctx.clearRect(0,0,cvs.width,cvs.height); }
 
-    // 5. Submit Data (LOGIKA DATABASE TIDAK DIUBAH)
+    // 5. Submit Data (DISESUAIKAN DENGAN SKEMA DATABASE BARU)
     async function processSubmit() {
         const nama = document.getElementById("nama_pelaksana").value.trim();
-        const mId = document.getElementById("select_machine").value; // Manual ID
-        const tgl = document.getElementById("input_date").value;     // Manual Tanggal
+        const mId = document.getElementById("select_machine").value; 
+        const tgl = document.getElementById("input_date").value;     
         const btn = document.getElementById("btnSubmit");
         
         if (!mId) return alert("Pilih Mesin dulu!");
@@ -394,7 +385,6 @@
 
         const mData = allMachines.find(m => m.id == mId);
         
-        // Parsing Tanggal Manual untuk kolom Bulan & Tahun
         const d = new Date(tgl);
         const bln = d.getMonth() + 1;
         const thn = d.getFullYear();
@@ -404,15 +394,17 @@
         try {
             const catatanUtama = document.getElementById("catatan_aman").value;
 
-            // INSERT HEADER
+            // INSERT HEADER (Tabel: clhmi)
             const { data: hdr, error: e1 } = await sb.from("clhmi").insert([{
                 machine_id: mData.id, 
                 merk_mesin: mData.merk_mesin, 
                 serial_no: mData.serial_no,
-                pelaksana: nama, 
+                tonage: (mData.tonage || '').toString(), // Sesuai Skema
+                pelaksana: nama,
+                diisi_oleh: nama, // Sesuai Skema
                 paraf: cvs.toDataURL(), 
                 status_form: 'submitted',
-                tanggal_isi: tgl, // Menggunakan tanggal manual
+                tanggal_isi: tgl,
                 bulan: bln, 
                 tahun: thn,
                 catatan_pelaksana: catatanUtama 
@@ -420,19 +412,21 @@
 
             if (e1) throw e1;
 
-            // INSERT DETAILS
-            const details = fetchedItems.map(item => ({
+            // INSERT RESULTS (Tabel: clhmi_results)
+            // Mapping kolom disesuaikan dengan clhmi_results
+            const results = fetchedItems.map(item => ({
                 clhmi_id: hdr.id,
                 item_id: item.id,
-                kategori: item.kategori,
-                nama_pengecekan: item.nama_pengecekan,
+                // item_code: item.kode, (opsional jika ada di clhmi_items)
                 status: document.getElementById(`st_${item.id}`).value,
-                nilai_aktual: document.getElementById(`val_${item.id}`)?.value || null,
-                catatan: document.getElementById(`note_${item.id}`)?.value || null
+                value: document.getElementById(`val_${item.id}`)?.value || null, // nilai_aktual -> value
+                catatan_item: document.getElementById(`note_${item.id}`)?.value || null, // catatan -> catatan_item
+                tanggal_cek: tgl, // Kolom baru sesuai skema
+                diisi_oleh: nama, // Kolom baru sesuai skema
+                pelaksana: nama   // Kolom baru sesuai skema
             }));
 
-            // Pastikan nama tabel ini sesuai dengan yang ada di Supabase Anda
-            const { error: e2 } = await sb.from("clhmi_details").insert(details);
+            const { error: e2 } = await sb.from("clhmi_results").insert(results);
             if (e2) throw e2;
 
             alert("Laporan Berhasil Dikirim!");
