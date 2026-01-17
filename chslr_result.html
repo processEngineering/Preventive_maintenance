@@ -68,7 +68,7 @@
         .legend-box { width: 60%; font-size: 6.5pt; }
         .legend-table td { border: none; padding: 1px 0; vertical-align: top; }
 
-        /* === KOTAK TTD SUPERINTENDENT === */
+        /* === KOTAK TTD === */
         .approval-box {
             width: 200px;
             border: 1px solid black;
@@ -229,9 +229,10 @@
             const { data: mData } = await _sb.from('chslr_mesin').select('tonage').eq('nama_mesin', m).single();
             document.getElementById('txt-ton').innerText = mData?.tonage || '-';
 
-            // AMBIL DATA LOG (HEADER BULANAN) - DISINI LETAK TTD KOORDINATOR & SUPERINTENDENT
+            // 1. AMBIL LOG UTAMA (HEADER) - Ini Kunci Data Pengecek & Superintendent
             const { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', m).eq('bulan', b).eq('tahun', t).maybeSingle();
             
+            // 2. AMBIL RESULT DETAIL (HARIAN)
             const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
             const { data: res } = log ? await _sb.from('chslr_result').select('*').eq('log_id', log.id) : { data: [] };
 
@@ -278,16 +279,15 @@
                 subIdx++;
             });
 
-            // --- RENDER TANDA TANGAN ---
+            // --- SIGNATURE LOGIC FIXED ---
             const rPel = document.getElementById('row-pel');
             const rCek = document.getElementById('row-cek');
             
-            // Reset cell tanda tangan (hapus sisa load sebelumnya)
             while(rPel.cells.length > 1) rPel.deleteCell(1);
             while(rCek.cells.length > 1) rCek.deleteCell(1);
 
             for(let d=1; d<=31; d++) {
-                // 1. TANDA TANGAN PELAKSANA (Harian)
+                // 1. PELAKSANA (Ambil dari tabel result harian)
                 const dayRes = res.filter(x => x.tanggal === d && x.signature);
                 let cellPel = rPel.insertCell();
                 cellPel.className = "col-date";
@@ -295,20 +295,20 @@
                     cellPel.innerHTML = `<img src="${dayRes[0].signature}" class="sig-img">`;
                 }
 
-                // 2. TANDA TANGAN PENGECEK (KOORDINATOR)
-                // Syarat: Ada data di tanggal itu & log punya signature_koordinator
+                // 2. PENGECEK / KOORDINATOR (Ambil dari tabel LOG)
+                // Cek: Apakah ada data hari itu? DAN Apakah di tabel LOG sudah ada TTD Koordinator?
                 const hasData = res.some(x => x.tanggal === d);
                 let cellCek = rCek.insertCell();
                 cellCek.className = "col-date";
                 
-                // DISINI PERBAIKANNYA: Ambil dari 'log' (tabel chslr_log)
+                // LOGIKA: Jika hari itu ada data, dan log induk sudah ditandatangani koordinator, TAMPILKAN.
+                // Saya hapus syarat status_verifikasi agar lebih fleksibel, cukup cek gambar TTD saja.
                 if(hasData && log && log.signature_koordinator) {
                     cellCek.innerHTML = `<img src="${log.signature_koordinator}" class="sig-img">`;
                 }
             }
 
-            // 3. TANDA TANGAN SUPERINTENDENT (Footer)
-            // DISINI PERBAIKANNYA: Ambil dari 'log' (tabel chslr_log)
+            // 3. SUPERINTENDENT (Ambil dari tabel LOG)
             const supBox = document.getElementById('super-sig-box');
             const supName = document.getElementById('super-name-txt');
             
