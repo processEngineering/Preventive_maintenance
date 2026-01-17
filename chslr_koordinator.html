@@ -346,7 +346,7 @@
             loadQueue();
         }
 
-        // --- 1. LOAD QUEUE (Antrean) ---
+        // --- 1. LOAD QUEUE (LOGIKA DIPERBAIKI) ---
         async function loadQueue() {
             const now = new Date();
             const todayDate = now.getDate();
@@ -356,14 +356,15 @@
             const container = document.getElementById('log-container');
             container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px;"></i><p>Memuat...</p></div>';
 
+            // REVISI: Hapus filter status_verifikasi.
+            // Kita cari log BULAN INI, lalu cek apakah ada result HARI INI.
             const { data: logs } = await _sb.from('chslr_log')
                 .select('*')
                 .eq('bulan', currentMonth)
-                .eq('tahun', currentYear)
-                .neq('status_verifikasi', true); 
+                .eq('tahun', currentYear);
 
             if (!logs || logs.length === 0) {
-                container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted); border:2px dashed var(--border); border-radius:12px;"><p>Tidak ada antrean.</p></div>`;
+                container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted); border:2px dashed var(--border); border-radius:12px;"><p>Belum ada Log bulan ini.</p></div>`;
                 return;
             }
 
@@ -371,12 +372,14 @@
             let count = 0;
 
             for (let log of logs) {
+                // Cek apakah ada isian checklist UNTUK TANGGAL HARI INI?
                 const { data: results } = await _sb.from('chslr_result')
-                    .select('id') 
+                    .select('id, status')
                     .eq('log_id', log.id)
                     .eq('tanggal', todayDate) 
                     .limit(1);
 
+                // Jika ada result hari ini, TAMPILKAN KARTUNYA
                 if (results && results.length > 0) {
                     count++;
                     const names = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
@@ -387,13 +390,13 @@
                             <div class="card-row"><span class="lbl">MESIN</span> <span class="val">${log.mesin_id}</span></div>
                             <div class="card-row"><span class="lbl">PELAKSANA</span> <span class="val" style="font-size:11px;">${names}</span></div>
                             <div class="card-row"><span class="lbl">TANGGAL</span> <span class="val">${dateStr}</span></div>
-                            <div class="badge-status">KETUK UNTUK VERIFIKASI</div>
+                            <div class="badge-status">ADA LAPORAN BARU</div>
                         </div>`);
                 }
             }
 
             if(count === 0) {
-                container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted); border:2px dashed var(--border); border-radius:12px;"><p>Menunggu Pelaksana...</p></div>`;
+                container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted); border:2px dashed var(--border); border-radius:12px;"><p>Tidak ada laporan masuk hari ini.</p></div>`;
             }
         }
 
@@ -412,7 +415,7 @@
                 try { await scanner.stop(); scanner.clear(); } catch(e){}
                 openForm();
             } else {
-                alert(`QR SALAH!\nTarget: ${activeLog.mesin_id}`);
+                alert(`❌ QR SALAH!\nTarget: ${activeLog.mesin_id}`);
             }
         }
 
@@ -430,14 +433,14 @@
 
             const today = new Date().getDate();
 
-            // 1. Ambil Log Terbaru (utk memastikan catatan pelaksana terambil)
+            // 1. Ambil Log Terbaru
             const { data: freshLog } = await _sb.from('chslr_log').select('catatan_pelaksana').eq('id', activeLog.id).single();
             document.getElementById('form-catatan-pel').innerText = (freshLog && freshLog.catatan_pelaksana) ? freshLog.catatan_pelaksana : '-';
 
-            // 2. Ambil Semua Item Standard (Untuk Nama & Standard)
+            // 2. Ambil Semua Item
             const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
             
-            // 3. Ambil Result Hari Ini (Isian Pelaksana)
+            // 3. Ambil Result Hari Ini
             const { data: results } = await _sb.from('chslr_result')
                 .select('*')  
                 .eq('log_id', activeLog.id)
@@ -460,13 +463,9 @@
                     if(res.status === 'NA') badgeClass = 'bg-na';
 
                     let extraHtml = '';
-                    
-                    // Tampilkan Input Value jika ada
                     if(res.input_value) {
                         extraHtml += `<div class="ri-val"><i class="fa-solid fa-pen"></i> Value: ${res.input_value}</div>`;
                     }
-                    
-                    // Tampilkan Keterangan/Note jika ada
                     if(res.keterangan) {
                         extraHtml += `<div class="ri-note"><i class="fa-solid fa-note-sticky"></i> ${res.keterangan}</div>`;
                     }
@@ -498,12 +497,13 @@
             const remark = document.getElementById('koor-remark').value.trim();
             const btn = document.getElementById('btn-approve');
 
-            if(!name) return alert("Nama Koordinator wajib diisi!");
-            if(sigPadKoor.isEmpty()) return alert("Harap tanda tangan dulu!");
+            if(!name) return alert("⚠️ Nama Koordinator wajib diisi!");
+            if(sigPadKoor.isEmpty()) return alert("⚠️ Harap tanda tangan dulu!");
 
             btn.innerHTML = 'MENYIMPAN...'; btn.disabled = true;
 
             try {
+                // UPDATE LOG DENGAN DATA KOORDINATOR
                 const { error } = await _sb.from('chslr_log').update({
                     koordinator_nama: name,
                     signature_koordinator: sigPadKoor.toDataURL(),
