@@ -53,12 +53,14 @@
         .cat-row { background-color: #bfbfbf; font-weight: bold; text-align: left !important; padding-left: 5px !important; height: 16px; }
         .sig-row td { height: 26px; vertical-align: middle; background-color: #f2f2f2; }
         
-        /* GAMBAR TANDA TANGAN (Untuk Tabel) */
+        /* === PERBAIKAN PENTING: FILTER WARNA TANDA TANGAN === */
+        /* Karena input di HP background gelap (tinta putih), saat di kertas putih jadi hilang. */
+        /* Filter ini membalik warna (Putih -> Hitam) */
         .sig-img { 
             width: 100%; height: 24px; 
             object-fit: contain; 
             display: block; margin: 0 auto; 
-            mix-blend-mode: multiply; /* Agar background transparan menyatu */
+            filter: invert(1) brightness(0); /* MAGIC FIX: UBAH PUTIH JADI HITAM PEKAT */
         }
         
         /* STYLING STATUS */
@@ -86,8 +88,13 @@
         .app-name { font-weight: bold; text-transform: uppercase; display: block; font-size: 7pt; padding: 4px 0 2px 0; border-bottom: 1px solid black; }
         .app-role { font-size: 7pt; text-transform: uppercase; display: block; padding: 2px 0 5px 0; }
         
-        /* GAMBAR TANDA TANGAN (Untuk Footer) */
-        .super-img { max-height: 55px; max-width: 90%; object-fit: contain; mix-blend-mode: multiply; }
+        /* MAGIC FIX JUGA UNTUK SUPERINTENDENT */
+        .super-img { 
+            max-height: 55px; 
+            max-width: 90%; 
+            object-fit: contain; 
+            filter: invert(1) brightness(0); /* UBAH TINTA PUTIH JADI HITAM */
+        }
 
         /* CONTROLS (PANEL ATAS) */
         .no-print { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #1e293b; padding: 10px; border-radius: 8px; color: white; display: flex; gap: 10px; z-index: 9999; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
@@ -259,6 +266,7 @@
 
         async function loadData() {
             const m = document.getElementById('f-mesin').value;
+            // Parsing Integer
             const b = parseInt(document.getElementById('f-bulan').value);
             const t = parseInt(document.getElementById('f-tahun').value);
 
@@ -270,7 +278,7 @@
             const { data: mData } = await _sb.from('chslr_mesin').select('tonage').eq('nama_mesin', m).single();
             document.getElementById('txt-ton').innerText = mData?.tonage || '-';
 
-            // 1. AMBIL LOG (HEADER) 
+            // 1. AMBIL LOG (HEADER) - SUMBER DATA SUPERINTENDENT
             const { data: log, error: errLog } = await _sb.from('chslr_log')
                 .select('*')
                 .eq('mesin_id', m)
@@ -278,7 +286,9 @@
                 .eq('tahun', t)
                 .maybeSingle();
 
-            console.log("Log Header:", log); 
+            // DEBUGGING: Cek di Console (Tekan F12)
+            console.log("Log Data:", log);
+            console.log("TTD Superintendent:", log ? log.signature_superintendent : "Log Kosong");
 
             // 2. AMBIL RESULT (HARIAN)
             const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
@@ -326,7 +336,7 @@
                 subIdx++;
             });
 
-            // --- BAGIAN TANDA TANGAN ---
+            // --- TANDA TANGAN (BAGIAN KRUSIAL) ---
             const rPel = document.getElementById('row-pel');
             const rCek = document.getElementById('row-cek');
             
@@ -342,23 +352,24 @@
                     cellPel.innerHTML = `<img src="${dayRes[0].signature}" class="sig-img">`;
                 }
 
-                // 2. Pengecek (Koordinator)
+                // 2. Koordinator
                 const hasData = res.some(x => x.tanggal === d);
                 let cellCek = rCek.insertCell();
                 cellCek.className = "col-date";
                 
-                // Syarat: Ada data hari itu DAN di log sudah ada signature koordinator
+                // Pastikan ada data hari itu & ada TTD di database
                 if(hasData && log && log.signature_koordinator) {
                     cellCek.innerHTML = `<img src="${log.signature_koordinator}" class="sig-img">`;
                 }
             }
 
-            // 3. Superintendent (Footer) - BAGIAN YANG SAYA PERBAIKI LOGIKANYA
+            // 3. SUPERINTENDENT (FOOTER)
             const supBox = document.getElementById('super-sig-box');
             const supName = document.getElementById('super-name-txt');
             
-            // Cek apakah data LOG ada dan kolom signature_superintendent tidak kosong
+            // LOGIKA: Jika Log ada DAN kolom signature_superintendent tidak kosong/null
             if(log && log.signature_superintendent) {
+                // Tampilkan gambar dengan class super-img (yang sudah ada filter warnanya)
                 supBox.innerHTML = `<img src="${log.signature_superintendent}" class="super-img">`;
                 supName.innerText = `${log.superintendent_nama || '........................'}`;
             } else {
