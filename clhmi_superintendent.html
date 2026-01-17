@@ -137,14 +137,13 @@
         /* REPORT LIST */
         .report-list { display: flex; flex-direction: column; gap: 12px; }
         
-        /* MODIFIKASI ITEM REPORT AGAR MUAT CATATAN */
         .report-item {
             background: white; 
             border: 2px solid #dc2626; 
             border-radius: 12px; 
             padding: 16px;
             display: flex; 
-            flex-direction: column; /* Ubah jadi column supaya catatan di bawah */
+            flex-direction: column; 
             gap: 10px;
             box-shadow: 4px 4px 0 #dc2626;
             transition: all 0.2s ease;
@@ -175,7 +174,7 @@
             border: 1px solid #dc2626;
         }
 
-        /* STYLE KHUSUS CATATAN KOORDINATOR */
+        /* STYLE CATATAN KOORDINATOR */
         .coord-note {
             background: #1a1a1a;
             border-left: 4px solid #dc2626;
@@ -186,15 +185,13 @@
         .coord-note p {
             margin: 0;
             font-size: 11px;
-            color: #f87171; /* Merah terang */
+            color: #f87171;
             font-style: italic;
             font-weight: 600;
         }
-        .coord-note i {
-            margin-right: 5px;
-        }
+        .coord-note i { margin-right: 5px; }
 
-        /* APPROVAL FORM - White with red 3D */
+        /* APPROVAL FORM */
         .approval-box {
             background: white; 
             border: 2px solid #dc2626; 
@@ -204,9 +201,7 @@
             display: none;
             box-shadow: 6px 6px 0 #dc2626;
         }
-        .approval-box h3 {
-            color: #0d0d0d;
-        }
+        .approval-box h3 { color: #0d0d0d; }
 
         .canvas-area {
             border: 2px dashed #dc2626; 
@@ -222,7 +217,7 @@
             color: #dc2626 !important;
         }
 
-        /* Submit button - Green with 3D */
+        /* Submit button - Green */
         .btn-primary[style*="background:#16a34a"] {
             background: #16a34a !important;
             border-color: #14532d !important;
@@ -232,45 +227,25 @@
             background: #15803d !important;
         }
         
-        /* BOTTOM NAV - Dark with red accent */
+        /* BOTTOM NAV */
         .bottom-nav {
-            position: fixed; 
-            bottom: 0; 
-            left: 0; 
-            width: 100%; 
-            background: #1a1a1a;
-            border-top: 3px solid #dc2626; 
-            display: flex; 
-            justify-content: space-around;
-            padding: 12px 0; 
-            z-index: 50; 
-            padding-bottom: 20px;
+            position: fixed; bottom: 0; left: 0; width: 100%; 
+            background: #1a1a1a; border-top: 3px solid #dc2626; 
+            display: flex; justify-content: space-around;
+            padding: 12px 0; z-index: 50; padding-bottom: 20px;
             box-shadow: 0 -4px 20px rgba(220, 38, 38, 0.3);
         }
         .nav-item { 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            color: #6b7280; 
-            font-size: 10px; 
-            font-weight: 600; 
-            text-decoration: none;
-            transition: all 0.2s ease;
+            display: flex; flex-direction: column; align-items: center; 
+            color: #6b7280; font-size: 10px; font-weight: 600; 
+            text-decoration: none; transition: all 0.2s ease;
         }
-        .nav-item i {
-            font-size: 18px;
-            margin-bottom: 4px;
-        }
-        .nav-item:hover {
-            color: #f87171;
-        }
+        .nav-item i { font-size: 18px; margin-bottom: 4px; }
+        .nav-item:hover { color: #f87171; }
         .nav-item.active { 
-            color: #dc2626;
-            text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+            color: #dc2626; text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
         }
-        .nav-item.active i {
-            filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.8));
-        }
+        .nav-item.active i { filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.8)); }
 
         /* Empty state styling */
         #report-list > div[style*="text-align:center"] {
@@ -318,7 +293,14 @@
             
             <div id="approval-box" class="approval-box">
                 <h3 style="font-size:16px; font-weight:800; margin-bottom:15px; text-transform:uppercase;">Validasi Akhir</h3>
+                
                 <div class="form-group"><label class="form-label">Nama Superintendent</label><input type="text" id="super-name" class="form-input" placeholder="Nama Lengkap..."></div>
+                
+                <div class="form-group">
+                    <label class="form-label">Catatan Superintendent (Opsional)</label>
+                    <textarea id="super-note" class="form-input" style="height:80px; resize:none;" placeholder="Tambahkan catatan jika perlu..."></textarea>
+                </div>
+
                 <div class="form-group">
                     <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
                         <label class="form-label">Paraf Digital</label>
@@ -376,7 +358,7 @@
             const list = document.getElementById('report-list');
             list.innerHTML = `<div style="text-align:center; padding:20px; font-size:12px; color:#9ca3af;">Memuat data...</div>`;
 
-            // QUERY ke database untuk mengambil laporan (termasuk catatan_umum)
+            // QUERY ke database
             const { data, error } = await sb.from('clhmi')
                 .select('*')
                 .eq('machine_id', mId)
@@ -395,13 +377,9 @@
                 reportsToApprove.forEach(rep => {
                     const dateStr = new Date(rep.tanggal_isi).toLocaleDateString('id-ID', {day:'numeric', month:'short'});
                     
-                    // --- LOGIC MENAMPILKAN CATATAN KOORDINATOR ---
                     let noteHtml = '';
                     if (rep.catatan_umum && rep.catatan_umum.trim() !== '') {
-                        noteHtml = `
-                        <div class="coord-note">
-                            <p><i class="fa-solid fa-comment-dots"></i> Note Koordinator: "${rep.catatan_umum}"</p>
-                        </div>`;
+                        noteHtml = `<div class="coord-note"><p><i class="fa-solid fa-comment-dots"></i> Note Koordinator: "${rep.catatan_umum}"</p></div>`;
                     }
 
                     list.insertAdjacentHTML('beforeend', `
@@ -424,6 +402,8 @@
 
         async function submitFinalApproval() {
             const name = document.getElementById('super-name').value.trim();
+            const note = document.getElementById('super-note').value.trim(); // Ambil Catatan Superintendent
+
             if(!name || sigPad.isEmpty()) return alert("⚠️ Isi Nama & Paraf!");
             if(!confirm(`Sahkan ${reportsToApprove.length} Laporan Harian ini?`)) return;
 
@@ -434,6 +414,7 @@
             const { error } = await sb.from('clhmi').update({
                 status_form: 'closed',
                 verified_by: name,
+                catatan_super: note, // Simpan ke Database
                 paraf_super: sigPad.toDataURL()
             }).in('id', ids);
 
