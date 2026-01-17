@@ -147,13 +147,9 @@
         .radio-btn span { font-size: 10px; font-weight: 600; margin-top: 2px; }
 
         /* Checked States */
-        /* OK (√) */
         .radio-label input:checked + .radio-btn.btn-ok { background: var(--success); color: white; border-color: var(--success); }
-        /* NG (x) */
         .radio-label input:checked + .radio-btn.btn-ng { background: var(--danger); color: white; border-color: var(--danger); }
-        /* MN (o) */
         .radio-label input:checked + .radio-btn.btn-mn { background: var(--warning); color: white; border-color: var(--warning); }
-        /* NA (-) */
         .radio-label input:checked + .radio-btn.btn-na { background: var(--neutral); color: white; border-color: var(--neutral); }
 
         /* --- VALUE INPUT STYLE --- */
@@ -173,6 +169,7 @@
         .ng-input { width: 100%; border: 1px solid #FCA5A5; padding: 10px; border-radius: 6px; outline: none; }
 
         .signature-area { margin-top: 24px; }
+        /* CSS ini hanya untuk tampilan di HP (Background Abu-abu) */
         .signature-pad { border: 2px dashed var(--border); border-radius: var(--radius-lg); height: 160px; background: #F9FAFB; width: 100%; }
         
         .btn-submit { 
@@ -272,15 +269,12 @@
     const _sb = supabase.createClient(SB_URL, SB_KEY);
     
     let sigPad, currentMachineId, selectedDateString;
-    let machinesData = []; // Menyimpan data mesin untuk referensi
+    let machinesData = [];
 
     // 1. Inisialisasi: Load Daftar Mesin & Set Tanggal Hari Ini
     window.onload = async () => {
-        // Set tanggal default ke hari ini
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('date-select').value = today;
-
-        // Ambil data mesin untuk dropdown
         await loadMachines();
     };
 
@@ -295,12 +289,12 @@
             return;
         }
 
-        machinesData = machines; // Simpan ke variabel global
+        machinesData = machines;
         selectEl.innerHTML = '<option value="" disabled selected>-- Pilih Mesin --</option>';
         
         machines.forEach(m => {
             const option = document.createElement('option');
-            option.value = m.nama_mesin; // Value-nya nama mesin (sesuai DB ID)
+            option.value = m.nama_mesin;
             option.text = m.nama_mesin;
             selectEl.appendChild(option);
         });
@@ -320,35 +314,37 @@
             return;
         }
 
-        // Set Data Global
         currentMachineId = selectEl.value;
-        selectedDateString = dateEl.value; // Format: "YYYY-MM-DD"
+        selectedDateString = dateEl.value; 
 
-        // Ambil detail mesin dari cache
         const selectedMachine = machinesData.find(m => m.nama_mesin === currentMachineId);
 
-        // Tampilkan Detail di Header Form
         document.getElementById('machine-name').innerText = selectedMachine.nama_mesin;
         document.getElementById('machine-ton').innerText = selectedMachine.tonage || '-';
         document.getElementById('machine-sn').innerText = selectedMachine.no_seri || '-';
         document.getElementById('display-date').innerText = selectedDateString;
 
-        // Pindah Tampilan
         document.getElementById('page-selection').style.display = 'none';
         document.getElementById('page-form').style.display = 'block';
 
-        // Load Item & Init Signature
         loadItems();
         initSigPad();
     }
 
+    // === BAGIAN YANG DIPERBAIKI ===
     function initSigPad() {
         const canvas = document.getElementById('signature-pad');
         const ratio = Math.max(window.devicePixelRatio || 1, 1);
         canvas.width = canvas.offsetWidth * ratio; canvas.height = canvas.offsetHeight * ratio;
         canvas.getContext("2d").scale(ratio, ratio);
-        sigPad = new SignaturePad(canvas, { backgroundColor: '#F9FAFB' });
+        
+        // HAPUS backgroundColor AGAR TRANSPARAN SAAT DISIMPAN
+        sigPad = new SignaturePad(canvas, { 
+            minWidth: 1, 
+            maxWidth: 2.5 
+        });
     }
+    // ==============================
 
     async function loadItems() {
         const container = document.getElementById('checklist-container');
@@ -472,14 +468,12 @@
         btn.innerHTML = 'MENGIRIM...'; btn.disabled = true;
 
         // 3. PARSE TANGGAL DARI INPUT MANUAL
-        // selectedDateString format "YYYY-MM-DD"
         const [yStr, mStr, dStr] = selectedDateString.split('-');
         const y = parseInt(yStr);
         const m = parseInt(mStr);
         const d = parseInt(dStr);
 
         try {
-            // Log Header
             let { data: log } = await _sb.from('chslr_log').select('*')
                 .eq('mesin_id', currentMachineId)
                 .eq('bulan', m)
@@ -500,18 +494,16 @@
                 }).eq('id', log.id);
             }
 
-            // Payload Results
             const payload = results.map(r => ({
                 log_id: log.id,
                 item_id: r.itemId,
                 tanggal: d, // Menggunakan tanggal dari input manual
-                status: r.status,          
-                input_value: r.valData,    
+                status: r.status,           
+                input_value: r.valData,     
                 keterangan: r.note,
                 signature: sigPad.toDataURL()
             }));
 
-            // Delete existing for THAT date and Insert new
             await _sb.from('chslr_result').delete().eq('log_id', log.id).eq('tanggal', d);
             const { error } = await _sb.from('chslr_result').insert(payload);
 
