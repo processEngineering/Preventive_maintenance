@@ -3,218 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FORM PERAWATAN - ISO STANDARD</title>
+    <title>KARTU RIWAYAT MESIN - ISO LANDSCAPE</title>
     
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <style>
-        /* ==================== RESET TOTAL & ATURAN HURUF ==================== */
-        @page { size: A4 portrait; margin: 0; }
+        /* ==================== CONFIG A4 LANDSCAPE ==================== */
+        @page { size: A4 landscape; margin: 0; }
         
         * {
             box-sizing: border-box;
-            /* PAKSA SEMUA MENJADI TEGAK & NORMAL SECARA GLOBAL */
-            font-style: normal !important;
-            font-variant: normal !important;
-            letter-spacing: normal !important;
+            font-family: Arial, Helvetica, sans-serif;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
         body { 
-            margin: 0; padding: 0; 
-            background: #CCCCCC; /* Background preview */
-            font-family: Arial, Helvetica, sans-serif; 
-            font-size: 10pt;
-            color: black;
-            font-weight: normal; 
-            -webkit-print-color-adjust: exact; 
-            padding-bottom: 80px; /* Ruang untuk menu bawah */
+            background: #525659; margin: 0; padding: 0; 
+            font-size: 9pt; color: black;
+            padding-bottom: 70px; /* Space untuk Navigasi Bawah */
         }
 
-        /* HANYA KELAS INI YANG BOLEH BOLD (Sesuai Aturan ISO) */
-        .iso-bold { font-weight: bold !important; }
-
-        /* TABEL DEFAULT */
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            border-spacing: 0; 
-        }
-        
-        td, th { 
-            border: 1px solid black; 
-            padding: 4px 6px; 
-            vertical-align: middle; 
-            font-weight: normal; 
-            text-align: left;
-        }
-
-        /* CONTROL BAR ATAS (Tidak Dicetak) */
+        /* CONTROL BAR ATAS (Filter & Tombol PDF) */
         .control-bar {
-            background: #2d3748; color: white; padding: 10px; 
+            background: #333; color: white; padding: 10px; 
             position: sticky; top: 0; z-index: 9999; 
             display: flex; gap: 10px; justify-content: center; align-items: center;
-            border-bottom: 3px solid #000;
+            border-bottom: 1px solid #000;
         }
-        .control-bar select, .control-bar button, .control-bar a {
-            padding: 8px 12px; border-radius: 4px; border: none; font-size: 13px; cursor: pointer; text-decoration: none;
+        .control-bar select, .control-bar button {
+            padding: 5px 10px; border-radius: 4px; border: none; font-size: 12px; cursor: pointer;
         }
-        .btn-show { background: #28a745; color: white; font-weight: bold; }
-        .btn-pdf { background: #dc3545; color: white; font-weight: bold; }
-        .btn-back { background: #6c757d; color: white; }
+        .btn-green { background: #28a745; color: white; font-weight: bold; }
+        .btn-red { background: #dc3545; color: white; font-weight: bold; }
 
-        /* NAVIGASI BAWAH (BARU) */
+        /* NAVIGASI BAWAH (Sesuai Request) */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
-            background: white; border-top: 1px solid #ccc;
-            display: flex; justify-content: space-around; padding: 10px 0;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 10000;
+            background: white; border-top: 1px solid #ddd;
+            display: flex; justify-content: space-around; align-items: center;
+            padding: 15px 0; z-index: 10000;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
         }
         .nav-item {
-            text-decoration: none; color: #555; text-align: center;
-            font-size: 11px; font-weight: bold; display: flex; flex-direction: column; align-items: center; gap: 4px;
-            width: 25%;
+            color: #9CA3AF; /* Abu-abu */
+            font-size: 20px;
+            text-decoration: none;
+            width: 25%; text-align: center;
         }
-        .nav-item i { font-size: 18px; margin-bottom: 2px; }
-        .nav-item:hover, .nav-item.active { color: #DC2626; }
-        .nav-item.active i { color: #DC2626; }
+        .nav-item.active {
+            color: #DC2626; /* Merah Menyala */
+        }
+        .nav-item:hover { color: #DC2626; }
 
-        /* KERTAS A4 */
+        /* HALAMAN KERTAS A4 */
         .page {
-            width: 210mm; min-height: 297mm; 
+            width: 297mm;
+            height: 209mm; /* Buffer aman 1mm */
             background: white; 
             margin: 20px auto; 
-            padding: 10mm 15mm; 
-            box-shadow: 0 0 10px rgba(0,0,0,0.5); 
-            position: relative;
+            padding: 8mm 10mm; 
+            position: relative; 
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            display: flex; 
+            flex-direction: column;
+            overflow: hidden; 
         }
 
-        /* ==================== STRUKTUR FORM ==================== */
+        /* TABEL UMUM */
+        table { width: 100%; border-collapse: collapse; border-spacing: 0; }
+        td, th { border: 1px solid black; padding: 2px 4px; vertical-align: middle; }
 
-        /* 1. HEADER UTAMA */
-        .col-logo { width: 20%; text-align: center; }
-        .col-company { 
-            width: 50%; text-align: center; 
-            font-size: 14pt; 
-            font-weight: bold; 
-        }
-        .col-doc { width: 30%; padding: 0 !important; vertical-align: top; }
+        /* 1. HEADER */
+        .header-table { flex-shrink: 0; margin-bottom: 4px; }
+        .col-logo { width: 12%; text-align: center; }
+        .col-pt { width: 63%; text-align: center; font-size: 14pt; font-weight: bold; text-transform: uppercase; }
+        .col-doc { width: 25%; padding: 0 !important; vertical-align: top; }
+        .logo-img { max-width: 80px; max-height: 55px; display: block; margin: auto; }
         
-        .logo-img { max-width: 90px; max-height: 60px; display: block; margin: auto; }
-        
-        /* Sub-tabel Dokumen */
-        .tbl-doc td { border: none; border-bottom: 1px solid black; font-size: 8pt; padding: 2px 4px; }
+        .tbl-doc td { border: none; border-bottom: 1px solid black; font-size: 8pt; padding: 2px; }
         .tbl-doc tr:last-child td { border-bottom: none; }
 
-        /* 2. JUDUL FORM */
-        .box-title { 
-            border: 1px solid black; border-top: none; 
-            text-align: center; padding: 8px; margin-bottom: 10px; 
-            background: #f2f2f2;
+        /* 2. JUDUL */
+        .title-box { 
+            text-align: center; border: 1px solid black; border-top: none; 
+            padding: 4px; font-weight: bold; font-size: 12pt; 
+            background: #EFEFEF; margin-bottom: 4px; flex-shrink: 0;
         }
-        .title-main { font-size: 12pt; font-weight: bold; } 
-        .title-sub { font-size: 10pt; font-weight: normal; margin-top: 2px; }
 
         /* 3. IDENTITAS */
-        .tbl-identity { margin-bottom: 10px; }
-        .chk-large { font-size: 12pt; vertical-align: middle; }
+        .identity-area { margin-bottom: 5px; font-size: 9pt; font-weight: bold; flex-shrink: 0; }
+        .tbl-identity td { border: none; padding: 2px; }
+        .val-underline { border-bottom: 1px dotted black; display: inline-block; width: 95%; }
 
-        /* 4 & 5. GRID (DESKRIPSI & TINDAKAN) */
-        .box-section { border: 1px solid black; margin-bottom: 10px; }
-        .sec-header { 
-            border-bottom: 1px solid black; padding: 5px; 
-            background: #f2f2f2; font-size: 10pt;
-            font-weight: bold; 
+        /* 4. TABEL UTAMA (DATA) */
+        .main-table-wrapper {
+            flex-grow: 1; 
+            display: flex; flex-direction: column;
         }
-
-        /* Grid Cell Style */
-        .tbl-grid td { 
-            border: 1px dotted black; 
-            height: 24px; width: 50%; 
-            vertical-align: bottom;
-            font-family: Arial, sans-serif; 
-            font-size: 10pt; 
-            font-weight: normal;
-            padding-left: 5px;
-            white-space: nowrap; overflow: hidden;
+        .main-table { width: 100%; font-size: 8.5pt; }
+        .main-table th { 
+            background: #EFEFEF; text-align: center; font-weight: bold; 
+            height: 25px; padding: 2px;
         }
-        .tbl-grid tr:last-child td { border-bottom: none; }
-        .tbl-grid tr td:last-child { border-right: none; }
-        .tbl-grid tr td:first-child { border-left: none; }
+        .main-table td { vertical-align: top; padding: 3px; height: 22px; }
 
-        /* 6. KERUSAKAN PART */
-        .tbl-parts { margin-bottom: 10px; font-size: 9pt; }
-        .tbl-parts th { 
-            background: #f2f2f2; text-align: center; 
-            font-weight: bold; 
-        }
-        .tbl-parts td { height: 20px; font-weight: normal; }
+        /* Lebar Kolom */
+        .col-no { width: 4%; text-align: center; }
+        .col-tgl { width: 8%; text-align: center; }
+        .col-desc { width: 27%; }
+        .col-act { width: 27%; }
+        .col-part { width: 15%; }
+        .col-ket { width: 10%; }
+        .col-paraf { width: 3%; text-align: center; font-size: 7pt; }
 
-        /* 7. REKOMENDASI */
-        .tbl-rec td { border: none; border-bottom: 1px dotted black; height: 22px; font-weight: normal; }
-        .tbl-rec tr:last-child td { border-bottom: none; }
+        .sig-mini { max-width: 35px; max-height: 22px; display: block; margin: 0 auto; }
 
-        /* 8. TANDA TANGAN (ATURAN KETAT) */
-        .tbl-sig { margin-top: 10px; text-align: center; }
-        .tbl-sig td { width: 33.33%; vertical-align: top; padding: 0; }
+        /* 5. FOOTER (TANDA TANGAN) */
+        .footer-wrapper { flex-shrink: 0; margin-top: auto; padding-top: 5px; }
+        .footer-table td { width: 33.33%; text-align: center; vertical-align: top; padding: 0; }
         
-        .sig-label { 
-            border-bottom: 1px solid black; background: #f2f2f2; 
-            padding: 5px; font-size: 9pt; font-weight: normal; 
+        .sign-box { border: 1px solid black; height: 90px; position: relative; display: flex; flex-direction: column; }
+        .sign-header { 
+            border-bottom: 1px solid black; background: #EFEFEF; 
+            font-weight: bold; padding: 3px; font-size: 9pt; height: 22px;
         }
         
-        .sig-area { 
-            height: 75px; position: relative; 
-            display: flex; align-items: flex-end; justify-content: center; 
+        .sign-content { 
+            flex-grow: 1; display: flex; flex-direction: column; 
+            align-items: center; justify-content: flex-end; padding-bottom: 2px;
         }
-        /* PENTING: Class untuk gambar TTD */
-        .sig-img { position: absolute; bottom: 5px; max-height: 65px; max-width: 120px; }
         
-        .sig-role { 
-            border-top: 1px solid black; padding: 5px; font-size: 9pt; 
-            font-weight: normal !important; 
-            font-style: normal !important;
-            text-transform: none; 
+        .sign-name { 
+            border-top: 1px solid black; padding: 3px; 
+            font-weight: bold; font-size: 9pt; background: white; height: 22px;
+            display: flex; align-items: center; justify-content: center;
         }
 
-        /* PRINT MODE */
+        .sig-footer { max-height: 40px; max-width: 80px; margin-bottom: 1px; }
+        .sig-text { font-size: 8pt; font-weight: bold; text-decoration: underline; margin-top: 1px; }
+
+        /* PRINT MODE: Sembunyikan Navigasi & Control Bar */
         @media print {
-            body { background: white; padding-bottom: 0; }
+            body { background: white; }
             .control-bar, .bottom-nav { display: none !important; }
-            .page { margin: 0; box-shadow: none; width: 100%; height: auto; padding: 0; }
+            .page { margin: 0; width: 297mm; height: 210mm; box-shadow: none; }
         }
     </style>
 </head>
 <body>
 
     <div class="control-bar">
-        <a href="download_data.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Kembali</a>
         <select id="filter_mesin"><option value="">-- Pilih Mesin --</option></select>
-        <select id="filter_bulan">
-            <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
-            <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
-            <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
-            <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+        <select id="filter_tahun">
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
         </select>
-        <select id="filter_tahun"><option value="2026">2026</option><option value="2025">2025</option></select>
-        <button onclick="fetchData()" class="btn-show">Tampilkan</button>
-        <button onclick="exportPDF()" class="btn-pdf">Cetak PDF</button>
+        <button onclick="fetchData()" class="btn-green">Tampilkan</button>
+        <button onclick="exportPDF()" class="btn-red"><i class="fa-solid fa-file-pdf"></i> PDF</button>
     </div>
 
     <div class="page" id="printArea">
         
-        <table class="header-main">
+        <table class="header-table">
             <tr>
                 <td class="col-logo">
-                    <img src="https://wsrv.nl/?url=amarilyskg.co.id/bootstrap/img/logo.png" alt="LOGO PERUSAHAAN" class="logo-img" crossOrigin="anonymous" onerror="this.style.display='none'; this.parentElement.innerHTML='LOGO PERUSAHAAN'">
+                    <img src="https://wsrv.nl/?url=amarilyskg.co.id/bootstrap/img/logo.png" alt="LOGO" class="logo-img" crossOrigin="anonymous">
                 </td>
-                <td class="col-company iso-bold">
-                    PT AMARILYS KARISMA GEMILANG
-                </td>
+                <td class="col-pt">PT AMARILYS KARISMA GEMILANG</td>
                 <td class="col-doc">
                     <table class="tbl-doc">
-                        <tr><td>No Dokumen : AF.SP 05.01.Rev-00</td></tr>
+                        <tr><td>No Dokumen : AF.SP 05.18.Rev-00</td></tr>
                         <tr><td>Tanggal Terbit : 02 Agustus 2024</td></tr>
                         <tr><td>Tanggal Revisi : -</td></tr>
                         <tr><td>Halaman : 1/1</td></tr>
@@ -223,248 +184,207 @@
             </tr>
         </table>
 
-        <div class="box-title">
-            <div class="title-main iso-bold">FORM LAPORAN PERAWATAN & OVER HAUL MESIN</div>
-            <div class="title-sub">TOOLS/EQUIPMENT</div>
-        </div>
+        <div class="title-box">KARTU RIWAYAT MESIN</div>
 
-        <table class="tbl-identity">
-            <tr>
-                <td width="65%">
-                    Nama Mesin,Tools/equipment : <span id="val_mesin" style="margin-left: 5px;">-</span>
-                </td>
-                <td width="35%">
-                    <span id="chk_perawatan" class="chk-large">&#9744;</span> Perawatan &nbsp;&nbsp;
-                    <span id="chk_overhaul" class="chk-large">&#9744;</span> Over Haul
-                </td>
-            </tr>
-            <tr>
-                <td colspan="2">
-                    Tanggal,Jam Mulai &nbsp;&nbsp;&nbsp;: <span id="val_mulai" style="margin-left: 5px;">-</span>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="2">
-                    Tanggal,Jam Selesai : <span id="val_selesai" style="margin-left: 5px;">-</span>
-                </td>
-            </tr>
-        </table>
-
-        <div class="box-section">
-            <div class="sec-header iso-bold">Diskripsi Permasalahan Mesin Tools/Equipment :</div>
-            <table class="tbl-grid" id="grid_masalah">
-                <tr><td>&#9744; </td><td>&#9744; </td></tr>
-                <tr><td>&#9744; </td><td>&#9744; </td></tr>
-                <tr><td>&#9744; </td><td>&#9744; </td></tr>
-                <tr><td>&#9744; </td><td>&#9744; </td></tr>
+        <div class="identity-area">
+            <table class="tbl-identity">
+                <tr>
+                    <td width="130">NAMA MESIN</td><td width="10">:</td>
+                    <td><span id="disp_nama" class="val-underline">-</span></td>
+                    <td width="130">TAHUN PEMBUATAN</td><td width="10">:</td>
+                    <td><span id="disp_tahun" class="val-underline">-</span></td>
+                </tr>
+                <tr>
+                    <td>NO. MESIN</td><td>:</td>
+                    <td><span id="disp_nomor" class="val-underline">-</span></td>
+                    <td>LOKASI MESIN</td><td>:</td>
+                    <td><span id="disp_lokasi" class="val-underline">Production</span></td>
+                </tr>
             </table>
         </div>
 
-        <div class="box-section">
-            <div class="sec-header iso-bold">Pekerjaan Yang Dilakukan & Tindakan Yang Diambil :</div>
-            <table class="tbl-grid" id="grid_tindakan">
-                <tr><td>&#9744; </td><td>&#9744; </td></tr>
-                <tr><td>&#9744; </td><td>&#9744; </td></tr>
-                <tr><td>&#9744; </td><td>&#9744; </td></tr>
-                <tr><td>&#9744; </td><td>&#9744; </td></tr>
-            </table>
-        </div>
-
-        <div class="box-section" style="border: none;">
-            <div class="sec-header iso-bold" style="border: 1px solid black; border-bottom: none;">Kerusakan Part :</div>
-            <table class="tbl-parts">
+        <div class="main-table-wrapper">
+            <table class="main-table">
                 <thead>
                     <tr>
-                        <th width="30" class="iso-bold">NO</th>
-                        <th class="iso-bold">Nama Part</th>
-                        <th width="50" class="iso-bold">QTY</th>
-                        <th width="200" class="iso-bold">Tindak Lanjut</th>
+                        <th rowspan="2" class="col-no">NO</th>
+                        <th rowspan="2" class="col-tgl">TANGGAL</th>
+                        <th rowspan="2" class="col-desc">PERMASALAHAN</th>
+                        <th rowspan="2" class="col-act">TINDAKAN PERBAIKAN</th>
+                        <th rowspan="2" class="col-part">SPARE PART</th>
+                        <th rowspan="2" class="col-ket">KET</th>
+                        <th colspan="3" style="height: 20px;">PARAF</th>
+                    </tr>
+                    <tr>
+                        <th class="col-paraf">PIC</th>
+                        <th class="col-paraf">SPV</th>
+                        <th class="col-paraf">SUPT</th>
                     </tr>
                 </thead>
-                <tbody id="tbl_parts_body">
-                    <tr><td align="center">1</td><td></td><td></td><td>&#9744; Ganti Baru &nbsp; &#9744; Repair</td></tr>
-                    <tr><td align="center">2</td><td></td><td></td><td>&#9744; Ganti Baru &nbsp; &#9744; Repair</td></tr>
-                    <tr><td align="center">3</td><td></td><td></td><td>&#9744; Ganti Baru &nbsp; &#9744; Repair</td></tr>
-                    <tr><td align="center">4</td><td></td><td></td><td>&#9744; Ganti Baru &nbsp; &#9744; Repair</td></tr>
-                    <tr><td align="center">5</td><td></td><td></td><td>&#9744; Ganti Baru &nbsp; &#9744; Repair</td></tr>
+                <tbody id="tableBody">
+                    <tr><td colspan="9" style="text-align: center; padding: 40px; color: #999;">Silakan Pilih Mesin</td></tr>
                 </tbody>
             </table>
         </div>
 
-        <div class="box-section">
-            <div class="sec-header iso-bold">Rekomendasi & Catatan :</div>
-            <table class="tbl-rec" id="tbl_rekomendasi">
-                <tr><td></td></tr>
-                <tr><td></td></tr>
-                <tr><td></td></tr>
+        <div class="footer-wrapper">
+            <table class="footer-table">
+                <tr>
+                    <td>
+                        <div class="sign-box">
+                            <div class="sign-header">Dibuat Oleh (PIC)</div>
+                            <div class="sign-content" id="footer_pic"></div>
+                            <div class="sign-name">Engineer / PIC</div> 
+                        </div>
+                    </td>
+                    <td>
+                        <div class="sign-box">
+                            <div class="sign-header">Diketahui Oleh</div>
+                            <div class="sign-content" id="footer_spv"></div>
+                            <div class="sign-name">Supervisor</div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="sign-box">
+                            <div class="sign-header">Disetujui Oleh</div>
+                            <div class="sign-content" id="footer_supt"></div>
+                            <div class="sign-name">Superintendent</div>
+                        </div>
+                    </td>
+                </tr>
             </table>
         </div>
 
-        <table class="tbl-sig">
-            <tr>
-                <td>
-                    <div class="sig-label">Dikerjakan Oleh:</div>
-                    <div class="sig-area"><img id="img_sig_eng" src="" class="sig-img" style="display: none;" crossOrigin="anonymous"></div>
-                    <div class="sig-role">Engineer</div>
-                </td>
-                <td>
-                    <div class="sig-label">Diperiksa Oleh:</div>
-                    <div class="sig-area"><img id="img_sig_spv" src="" class="sig-img" style="display: none;" crossOrigin="anonymous"></div>
-                    <div class="sig-role">Spv / Superintendent</div>
-                </td>
-                <td>
-                    <div class="sig-label">Mengetahui:</div>
-                    <div class="sig-area"><img id="img_sig_mgr" src="" class="sig-img" style="display: none;" crossOrigin="anonymous"></div>
-                    <div class="sig-role">Manager</div>
-                </td>
-            </tr>
-        </table>
-
     </div>
 
-    <div class="bottom-nav">
-        <a href="pohm_input.html" class="nav-item">
-            <i class="fa-solid fa-pen-to-square"></i>
-            <span>Input</span>
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <i class="fa-solid fa-house"></i>
         </a>
-        <a href="pohm_spv.html" class="nav-item">
-            <i class="fa-solid fa-user-check"></i>
-            <span>SPV</span>
+        <a href="menu_utama.html" class="nav-item">
+            <i class="fa-solid fa-bars"></i>
         </a>
-        <a href="pohm_manager.html" class="nav-item">
-            <i class="fa-solid fa-user-tie"></i>
-            <span>Manager</span>
+        <a href="download_data.html" class="nav-item active">
+            <i class="fa-solid fa-download"></i>
         </a>
-        <a href="pohm_result.html" class="nav-item active">
-            <i class="fa-solid fa-print"></i>
-            <span>Cetak</span>
+        <a href="informasi_akun.html" class="nav-item">
+            <i class="fa-solid fa-circle-user"></i>
         </a>
-    </div>
+    </nav>
 
     <script>
         const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        const machineList = [
+            "INJECT BLOW LIANXIN IBM 30 H (01) / TOAD", "TM-EXPRESS 270/2250 (02) / NEBULA", "ECO POWER 240/750 (03) / SPIDERMAN",
+            "ECO POWER 210 T (04) / THOR", "TiM-EXPRESS 350/3400 (05) / IRON MAN", "ARBURG 320 T (06) / STARLORD",
+            "ECO POWER EXPRESS 500/3300 (07) / STEVE ROGERS", "ECO POWER EXPRESS 500/3300 (08) / THANOS", "FCS CT-220 SE (09) / BLACK WIDOW",
+            "NPC 260 T (10) / HAWK EYE", "ARBURG 200 (11) / GAMORA", "FCS SA 3800 H (12) / LOKI", "EMAC 220 PRO (13) / DEADPOOL",
+            "ENGEL 380 T (14) / HULK", "NPC 400 H (15) / WANDA", "ENGEL 280 (16) / DOCTOR STRANGE",
+            "MESIN NO (17) / -", "MESIN NO (18) / -", "MESIN NO (19) / -", "MESIN NO (20) / -", "MESIN NO (21) / -", "MESIN NO (22) / -",
+            "MESIN NO (23) / -", "MESIN NO (24) / -", "MESIN NO (25) / -", "MESIN NO (26) / -", "MESIN NO (27) / -", "MESIN NO (28) / -",
+            "MESIN NO (29) / -", "MESIN NO (30) / -", "FCS HT -100 SV (31) / ANT-MAN", "NPC 160 T (32) / WASP", "NPC 160 T (33) / WONG",
+            "FCS HT-150 SV (34) / ROCKET", "FCS HT-150 SV (35) / MANTIS", "NPC 160 T (36) / SHANG CHI", "NPC 260 T (37) / VISION",
+            "NPC 200 T (38) / MAGNETO", "FCS HT-100 SV (39) / NICK FURY", "FCS AF250 (40) / WOLVERINE", "NPC 260 T (41) / HAWKEYE 2"
+        ];
+
         document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('filter_tahun').value = new Date().getFullYear();
-            const { data } = await db.from('pohm_machine').select('name').order('name');
-            if(data) {
-                const s = document.getElementById('filter_mesin');
-                data.forEach(m => {
-                    let o = document.createElement('option'); o.value = m.name; o.textContent = m.name; s.appendChild(o);
-                });
-            }
+            const sel = document.getElementById('filter_mesin');
+            sel.innerHTML = '<option value="">-- Pilih Mesin --</option>';
+            machineList.forEach(m => { let o = document.createElement('option'); o.value = m; o.textContent = m; sel.appendChild(o); });
         });
 
         async function fetchData() {
             const mesin = document.getElementById('filter_mesin').value;
-            const bln = document.getElementById('filter_bulan').value;
-            const thn = document.getElementById('filter_tahun').value;
-            if(!mesin) { alert('Pilih Mesin!'); return; }
+            const tahun = document.getElementById('filter_tahun').value;
+            const tbody = document.getElementById('tableBody');
 
-            const start = new Date(thn, bln - 1, 1).toISOString();
-            const end = new Date(thn, bln, 0, 23, 59, 59).toISOString();
+            if(!mesin) { alert('Pilih mesin!'); return; }
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">Loading...</td></tr>';
+
+            const start = `${tahun}-01-01`; const end = `${tahun}-12-31`;
 
             try {
-                const { data, error } = await db.from('pohm_items')
-                    .select('*').eq('machine_name', mesin)
-                    .gte('start_time', start).lte('start_time', end)
-                    .order('start_time', {ascending: false}).limit(1).single();
-
-                if(error || !data) { alert('Data tidak ditemukan!'); resetForm(); }
-                else { renderData(data); }
-            } catch(e) { console.error(e); alert('Error ambil data.'); }
+                const { data, error } = await db.from('kartu_riwayat_items').select('*').eq('machine_name', mesin)
+                    .gte('entry_date', start).lte('entry_date', end).order('entry_date', {ascending: true});
+                if(error) throw error;
+                renderTable(mesin, data);
+            } catch(e) { console.error(e); alert('Error: ' + e.message); }
         }
 
-        function renderData(d) {
-            document.getElementById('val_mesin').textContent = d.machine_name;
-            document.getElementById('chk_perawatan').innerHTML = d.work_type === 'Perawatan' ? '&#9745;' : '&#9744;';
-            document.getElementById('chk_overhaul').innerHTML = d.work_type === 'Over Haul' ? '&#9745;' : '&#9744;';
+        function renderTable(mesinName, data) {
+            document.getElementById('disp_nama').textContent = mesinName;
             
-            const fmt = s => s ? new Date(s).toLocaleString('id-ID', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}).replace(',', '') : '-';
-            document.getElementById('val_mulai').textContent = fmt(d.start_time);
-            document.getElementById('val_selesai').textContent = fmt(d.end_time);
-
-            // GRID LOGIC: [BOX] [TEXT]
-            fillGridWithCheckbox('grid_masalah', d.problem_desc);
-            fillGridWithCheckbox('grid_tindakan', d.action_taken);
-
-            // PARTS
-            const tbody = document.getElementById('tbl_parts_body');
-            tbody.innerHTML = '';
-            for(let i=0; i<5; i++) {
-                const p = d.spare_parts && d.spare_parts[i] ? d.spare_parts[i] : {};
-                let cG = p.action === 'Ganti Baru' ? '&#9745;' : '&#9744;';
-                let cR = p.action === 'Repair' ? '&#9745;' : '&#9744;';
-                if(!p.name) { cG='&#9744;'; cR='&#9744;'; }
-                tbody.innerHTML += `<tr><td align="center">${i+1}</td><td style="padding-left:5px;">${p.name||''}</td><td align="center">${p.qty||''}</td><td style="padding-left:5px;">${cG} Ganti Baru &nbsp; ${cR} Repair</td></tr>`;
+            if(data && data.length > 0) {
+                document.getElementById('disp_nomor').textContent = data[0].no_mesin || '-';
+                document.getElementById('disp_tahun').textContent = data[0].tahun_pembuatan || '-';
+                document.getElementById('disp_lokasi').textContent = data[0].lokasi_mesin || 'Production';
+            } else {
+                document.getElementById('disp_nomor').textContent = '-'; document.getElementById('disp_tahun').textContent = '-';
             }
 
-            // REKOMENDASI
-            const recTbl = document.getElementById('tbl_rekomendasi');
-            recTbl.innerHTML = '';
-            const recLines = (d.recommendations || '').split('\n');
-            for(let i=0; i<3; i++) {
-                recTbl.innerHTML += `<tr><td>${recLines[i] || ''}</td></tr>`;
+            const tbody = document.getElementById('tableBody'); tbody.innerHTML = '';
+            document.getElementById('footer_pic').innerHTML = ''; document.getElementById('footer_spv').innerHTML = ''; document.getElementById('footer_supt').innerHTML = '';
+
+            if(!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px;">Data Kosong.</td></tr>';
+                fillEmptyRows(12); return;
             }
 
-            showSig('img_sig_eng', d.engineer_signature);
-            showSig('img_sig_spv', d.spv_signature);
-            showSig('img_sig_mgr', d.manager_signature);
+            const picSigs = new Set(); const picNames = new Set();
+            const spvSigs = new Set(); const spvNames = new Set();
+            const suptSigs = new Set(); const suptNames = new Set();
+
+            data.forEach((item, index) => {
+                const tgl = new Date(item.entry_date).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'2-digit'});
+                const showSig = (sig) => sig ? `<img src="${sig}" class="sig-mini" crossorigin="anonymous">` : '';
+
+                if(item.pic_signature) picSigs.add(item.pic_signature); if(item.pic_name) picNames.add(item.pic_name);
+                if(item.spv_signature) spvSigs.add(item.spv_signature); if(item.spv_name) spvNames.add(item.spv_name);
+                if(item.superintendent_signature) suptSigs.add(item.superintendent_signature); if(item.superintendent_name) suptNames.add(item.superintendent_name);
+
+                const row = `<tr>
+                    <td style="text-align:center;">${index + 1}</td><td style="text-align:center;">${tgl}</td>
+                    <td>${item.problem_desc || ''}</td><td>${item.action_taken || ''}</td><td>${item.spare_parts || ''}</td><td>${item.remarks || ''}</td>
+                    <td style="text-align:center;">${showSig(item.pic_signature)}</td><td style="text-align:center;">${showSig(item.spv_signature)}</td><td style="text-align:center;">${showSig(item.superintendent_signature)}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+
+            const renderFooter = (elId, sigs, names) => {
+                let html = '';
+                if (sigs.size > 0) html += `<img src="${[...sigs][0]}" class="sig-footer" crossorigin="anonymous">`;
+                if (names.size > 0) html += `<div class="sig-text">${[...names][0]}</div>`;
+                document.getElementById(elId).innerHTML = html;
+            };
+
+            renderFooter('footer_pic', picSigs, picNames); renderFooter('footer_spv', spvSigs, spvNames); renderFooter('footer_supt', suptSigs, suptNames);
+
+            if(data.length < 12) fillEmptyRows(12 - data.length);
         }
 
-        // Logic mengisi grid dengan checkbox di awal
-        function fillGridWithCheckbox(tableId, text) {
-            const table = document.getElementById(tableId);
-            const lines = (text || '').split('\n');
-            const cells = table.getElementsByTagName('td');
-            
-            for(let i=0; i < cells.length; i++) {
-                const content = lines[i] ? lines[i].trim() : '';
-                const symbol = content ? '&#9745;' : '&#9744;';
-                cells[i].innerHTML = `<span style="font-size:12pt; margin-right:5px;">${symbol}</span> ${content}`;
-            }
-        }
-
-        function showSig(imgId, sig) {
-            const img = document.getElementById(imgId);
-            if(sig) { img.src = sig; img.style.display = 'block'; } else { img.style.display = 'none'; }
-        }
-
-        function resetForm() {
-            document.getElementById('val_mesin').textContent = '-';
-            fillGridWithCheckbox('grid_masalah', '');
-            fillGridWithCheckbox('grid_tindakan', '');
+        function fillEmptyRows(count) {
+            const tbody = document.getElementById('tableBody');
+            for(let i=0; i<count; i++) tbody.innerHTML += `<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
         }
 
         function exportPDF() {
-            const el = document.getElementById('printArea');
+            const element = document.getElementById('printArea');
+            const btn = document.querySelector('.btn-red');
+            btn.innerHTML = 'Memproses...'; btn.disabled = true;
             
-            // Opsi PDF dengan CORS Enabled
             const opt = {
-                margin: 0, 
-                filename: 'Laporan_ISO.pdf',
+                margin: 0,
+                filename: `Kartu_Riwayat_Fix.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { 
-                    scale: 2,
-                    useCORS: true, // Wajib ON agar gambar proxy muncul
-                    allowTaint: true
-                },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                html2canvas: { scale: 2, useCORS: true, logging: false },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true }
             };
-            
-            // Visual Feedback
-            const btn = document.querySelector('.btn-pdf');
-            const oldText = btn.innerHTML;
-            btn.innerHTML = 'Memproses...';
-            
-            html2pdf().set(opt).from(el).save().then(() => {
-                btn.innerHTML = oldText;
-            }).catch(err => {
-                console.error(err);
-                alert('Gagal export. Cek konsol.');
-                btn.innerHTML = oldText;
+            html2pdf().set(opt).from(element).save().then(() => {
+                btn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> PDF'; btn.disabled = false;
             });
         }
     </script>
