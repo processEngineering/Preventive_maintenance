@@ -136,14 +136,16 @@
 
         /* REPORT LIST */
         .report-list { display: flex; flex-direction: column; gap: 12px; }
+        
+        /* MODIFIKASI ITEM REPORT AGAR MUAT CATATAN */
         .report-item {
             background: white; 
             border: 2px solid #dc2626; 
             border-radius: 12px; 
             padding: 16px;
             display: flex; 
-            justify-content: space-between; 
-            align-items: center;
+            flex-direction: column; /* Ubah jadi column supaya catatan di bawah */
+            gap: 10px;
             box-shadow: 4px 4px 0 #dc2626;
             transition: all 0.2s ease;
         }
@@ -151,6 +153,14 @@
             transform: translate(-2px, -2px);
             box-shadow: 6px 6px 0 #dc2626;
         }
+        
+        .report-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
         .report-info h3 { font-size: 14px; font-weight: 700; margin: 0; color: #0d0d0d; }
         .report-info p { font-size: 11px; color: #64748b; margin: 4px 0 0; }
         
@@ -163,6 +173,25 @@
             background: #fecaca; 
             color: #dc2626;
             border: 1px solid #dc2626;
+        }
+
+        /* STYLE KHUSUS CATATAN KOORDINATOR */
+        .coord-note {
+            background: #1a1a1a;
+            border-left: 4px solid #dc2626;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 5px;
+        }
+        .coord-note p {
+            margin: 0;
+            font-size: 11px;
+            color: #f87171; /* Merah terang */
+            font-style: italic;
+            font-weight: 600;
+        }
+        .coord-note i {
+            margin-right: 5px;
         }
 
         /* APPROVAL FORM - White with red 3D */
@@ -347,6 +376,7 @@
             const list = document.getElementById('report-list');
             list.innerHTML = `<div style="text-align:center; padding:20px; font-size:12px; color:#9ca3af;">Memuat data...</div>`;
 
+            // QUERY ke database untuk mengambil laporan (termasuk catatan_umum)
             const { data, error } = await sb.from('clhmi')
                 .select('*')
                 .eq('machine_id', mId)
@@ -364,7 +394,28 @@
             } else {
                 reportsToApprove.forEach(rep => {
                     const dateStr = new Date(rep.tanggal_isi).toLocaleDateString('id-ID', {day:'numeric', month:'short'});
-                    list.insertAdjacentHTML('beforeend', `<div class="report-item"><div class="report-info"><h3>Laporan Harian - ${dateStr}</h3><p>Teknisi: ${rep.pelaksana || rep.diisi_oleh}</p></div><span class="status-badge">Ready</span></div>`);
+                    
+                    // --- LOGIC MENAMPILKAN CATATAN KOORDINATOR ---
+                    let noteHtml = '';
+                    if (rep.catatan_umum && rep.catatan_umum.trim() !== '') {
+                        noteHtml = `
+                        <div class="coord-note">
+                            <p><i class="fa-solid fa-comment-dots"></i> Note Koordinator: "${rep.catatan_umum}"</p>
+                        </div>`;
+                    }
+
+                    list.insertAdjacentHTML('beforeend', `
+                        <div class="report-item">
+                            <div class="report-header-row">
+                                <div class="report-info">
+                                    <h3>Laporan Harian - ${dateStr}</h3>
+                                    <p>Teknisi: ${rep.pelaksana || rep.diisi_oleh}</p>
+                                </div>
+                                <span class="status-badge">Ready</span>
+                            </div>
+                            ${noteHtml}
+                        </div>
+                    `);
                 });
                 document.getElementById('approval-box').style.display = 'block';
                 setTimeout(resizeCanvas, 100);
