@@ -140,22 +140,22 @@
         /* SIGNATURE STYLE */
         .sig-img { 
             max-height: 60px; max-width: 120px; margin-bottom: 2px;
-            /* REVISI: Hapus CSS Filter karena tidak terbaca oleh HTML2PDF */
-            /* Kita akan gunakan JS BlackenImage untuk hasil 100% Hitam */
+            filter: brightness(0) contrast(200%); 
         }
         .sig-text-name { font-size: 8pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; margin-top: 2px; margin-bottom: 2px; }
 
 
         /* ==================== MODE EXPORT: BODY CLASS ==================== */
+        /* Teknik baru: Saat export, kita ubah layout body langsung, bukan clone */
         body.printing {
             background: white !important;
             width: 100%;
             height: 100%;
-            overflow: hidden; 
+            overflow: hidden; /* Kunci scroll saat proses */
         }
         
         body.printing .control-bar {
-            display: none !important; 
+            display: none !important; /* Sembunyikan tombol saat proses foto */
         }
 
         body.printing .page-container {
@@ -169,10 +169,11 @@
         }
 
         body.printing .page {
+            /* Kunci ukuran pixel A4 Landscape agar presisi di semua device */
             width: 1123px !important;
             height: 794px !important;
             margin: 0 !important;
-            padding: 20px !important; 
+            padding: 20px !important; /* Margin kertas */
             box-shadow: none !important;
             border: none !important;
             transform: none !important;
@@ -360,15 +361,8 @@
             let lastSuptSig = null, lastSuptName = null;
 
             data.forEach(item => {
-                // UPDATE: Cek berbagai kemungkinan nama kolom untuk Supervisor
                 if(item.pic_signature) { lastPicSig = item.pic_signature; lastPicName = item.pic_name; }
-                
-                // Tambahan fallback check: spv_signature ATAU supervisor_signature
-                if(item.spv_signature || item.supervisor_signature) { 
-                    lastSpvSig = item.spv_signature || item.supervisor_signature; 
-                    lastSpvName = item.spv_name || item.supervisor_name; 
-                }
-                
+                if(item.spv_signature) { lastSpvSig = item.spv_signature; lastSpvName = item.spv_name; }
                 if(item.superintendent_signature) { lastSuptSig = item.superintendent_signature; lastSuptName = item.superintendent_name; }
             });
 
@@ -393,7 +387,6 @@
 
             const renderSigWithName = (elId, sig, name) => {
                 let html = '';
-                // Style .sig-img sudah diupdate untuk menangani gambar putih
                 if(sig) html += `<img src="${sig}" class="sig-img" crossorigin="anonymous">`;
                 if(name) html += `<div class="sig-text-name">${name}</div>`;
                 document.getElementById(elId).innerHTML = html;
@@ -411,78 +404,24 @@
             for(let i=0; i<count; i++) tbody.innerHTML += `<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
         }
 
-        // ==================== FUNGSI BARU: HITAMKAN GAMBAR SECARA PAKSA ====================
-        // Ini solusi paling ampuh: Membaca piksel gambar, jika ada isinya (alpha > 0), 
-        // paksa warnanya jadi RGB(0,0,0) alias Hitam.
-        function blackenImage(imgElement) {
-            return new Promise((resolve) => {
-                if (!imgElement.src) return resolve();
-                
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                const img = new Image();
-                
-                // Penting agar tidak kena blokir browser saat manipulasi gambar
-                img.crossOrigin = "Anonymous";
-                
-                img.onload = () => {
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0);
-                    
-                    // Ambil data piksel
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const data = imageData.data;
-                    
-                    // Loop setiap piksel (format: R, G, B, Alpha)
-                    for (let i = 0; i < data.length; i += 4) {
-                        // Jika piksel tidak transparan (Alpha > 0)
-                        if (data[i + 3] > 10) { 
-                            // Ubah jadi Hitam Pekat
-                            data[i] = 0;     // Red
-                            data[i + 1] = 0; // Green
-                            data[i + 2] = 0; // Blue
-                        }
-                    }
-                    
-                    // Terapkan kembali ke canvas
-                    ctx.putImageData(imageData, 0, 0);
-                    // Ganti sumber gambar asli dengan hasil manipulasi
-                    imgElement.src = canvas.toDataURL(); 
-                    resolve();
-                };
-                
-                img.onerror = () => {
-                    console.warn("Gagal memproses gambar (CORS/Error):", imgElement.src);
-                    resolve(); // Lanjut saja jangan bikin error
-                };
-                
-                img.src = imgElement.src;
-            });
-        }
-
-        // ==================== FUNGSI EXPORT ====================
+        // ==================== FUNGSI EXPORT YANG LEBIH STABIL ====================
         async function exportPDF() {
             const overlay = document.getElementById('loadingOverlay');
             overlay.style.display = 'flex';
             
-            // 1. Ubah mode tampilan
+            // 1. Tambahkan class ke body untuk mengubah tampilan menjadi mode cetak
             document.body.classList.add('printing');
+            
+            // 2. Scroll ke paling atas untuk memastikan capture dimulai dari 0
             window.scrollTo(0, 0);
 
-            // 2. PROSES HITAMKAN TANDA TANGAN (CRITICAL STEP)
-            // Kita cari semua gambar tanda tangan dan jalankan fungsi blackenImage
-            const sigImages = document.querySelectorAll('.sig-img');
-            const processingPromises = Array.from(sigImages).map(img => blackenImage(img));
-            
-            // Tunggu sampai semua gambar selesai dihitamkan
-            await Promise.all(processingPromises);
+            // 3. Tunggu sebentar agar CSS render ulang layout (terutama di HP lambat)
+            await new Promise(resolve => setTimeout(resolve, 1000));
 
-            // 3. Tambahan delay sedikit untuk rendering ulang
-            await new Promise(resolve => setTimeout(resolve, 800));
-
+            // 4. Ambil elemen asli yang sudah di-resize oleh CSS .printing
             const element = document.getElementById('printArea');
 
+            // 5. Konfigurasi html2pdf
             const opt = {
                 margin:       0,
                 filename:     `KartuRiwayat_${document.getElementById('disp_nama').innerText || 'Mesin'}.pdf`,
@@ -490,6 +429,8 @@
                 html2canvas:  { 
                     scale: 2, 
                     useCORS: true, 
+                    // WindowWidth Kunci Penting: Menipu canvas agar merender seolah layar lebar (PC)
+                    // walau dibuka di HP. Ini mencegah layout mobile ter-capture.
                     windowWidth: 1200, 
                     width: 1123,
                     scrollY: 0,
@@ -504,12 +445,9 @@
                 console.error(err);
                 alert("Gagal Export PDF: " + err.message);
             } finally {
-                // Kembalikan tampilan
+                // 6. Kembalikan tampilan seperti semula
                 document.body.classList.remove('printing');
                 overlay.style.display = 'none';
-                
-                // Opsional: Reload data agar tanda tangan kembali putih (jika di layar jadi hitam)
-                // fetchData(); 
             }
         }
     </script>
