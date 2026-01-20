@@ -10,7 +10,7 @@
     
     <style>
         /* =========================================
-           1. RESET & BASE (ULTRA COMPACT)
+           1. RESET & BASE
            ========================================= */
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         
@@ -142,7 +142,7 @@
         .st-ok { font-weight: bold; color: #000; }
         .st-ng { font-weight: bold; color: #b91c1c; }
 
-        /* TANDA TANGAN (COMPRESSED) */
+        /* TANDA TANGAN */
         .sig-container { 
             margin-top: 2px; 
             border: 0.5pt solid #000; 
@@ -151,7 +151,7 @@
         .sig-tbl { width: 100%; border: none; margin: 0; }
         .sig-tbl td { 
             width: 33.33%; padding: 0; vertical-align: top; 
-            height: 38px; /* TINGGI SANGAT MINIMAL */
+            height: 38px; 
             border-right: 0.5pt solid #000; 
         }
         .sig-tbl td:last-child { border-right: none; }
@@ -274,22 +274,10 @@
     </div>
 
     <nav class="bottom-nav">
-        <a href="index.html" class="nav-item">
-            <i class="fa-solid fa-house"></i>
-            <span>Home</span>
-        </a>
-        <a href="menu_utama.html" class="nav-item">
-            <i class="fa-solid fa-bars"></i>
-            <span>Menu</span>
-        </a>
-        <a href="download_data.html" class="nav-item active">
-            <i class="fa-solid fa-download"></i>
-            <span>Download</span>
-        </a>
-        <a href="informasi_akun.html" class="nav-item">
-            <i class="fa-solid fa-circle-user"></i>
-            <span>Akun</span>
-        </a>
+        <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i><span>Home</span></a>
+        <a href="menu_utama.html" class="nav-item"><i class="fa-solid fa-bars"></i><span>Menu</span></a>
+        <a href="download_data.html" class="nav-item active"><i class="fa-solid fa-download"></i><span>Download</span></a>
+        <a href="informasi_akun.html" class="nav-item"><i class="fa-solid fa-circle-user"></i><span>Akun</span></a>
     </nav>
 
     <script>
@@ -334,7 +322,7 @@
         async function renderReport(head) {
             document.getElementById('report-view').style.display = 'block';
 
-            // INFO MESIN
+            // INFO
             const m = head.pmi_machines || {};
             document.getElementById('v_mesin').innerText = m.nama_mesin || '-';
             document.getElementById('v_ton').innerText = m.tonage || '-';
@@ -354,7 +342,7 @@
             document.getElementById('sig_2').innerHTML = head.signature_koordinator ? `<img src="${head.signature_koordinator}" class="sig-img">` : '';
             document.getElementById('sig_3').innerHTML = head.signature_superintendent ? `<img src="${head.signature_superintendent}" class="sig-img">` : '';
 
-            // DATA ITEMS
+            // DATA
             const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
             const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
             const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', head.id);
@@ -376,7 +364,6 @@
 
             if(items) {
                 items.forEach(item => {
-                    // KATEGORI ROW
                     if(item.kategori !== lastCat) {
                         lastCat = item.kategori;
                         tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${lastCat}</td></tr>`;
@@ -384,35 +371,20 @@
                     }
 
                     const myFields = fields.filter(f => f.pmi_item_id === item.id);
-                    let hasSpecialLabels = myFields.some(f => f.label && f.label !== 'Actual');
                     let headerKey = item.kategori;
+                    let hasSpecialLabels = myFields.some(f => f.label && f.label !== 'Actual');
 
-                    // SUB-HEADER ROW (GRID HEADER)
                     if(hasSpecialLabels && !printedHeaders[headerKey]) {
-                        
                         let isValveSetting = myFields.some(f => f.label === '50' || f.label === '200');
                         let valveHeaderHtml = isValveSetting ? `<div class="valve-label">Valve Idling Sett:</div>` : '';
-
                         let subHeadHtml = `<div class="act-grid">`;
-                        myFields.forEach(f => {
-                             subHeadHtml += `<div class="sub-head-item">${f.label || ''}</div>`;
-                        });
+                        myFields.forEach(f => subHeadHtml += `<div class="sub-head-item">${f.label || ''}</div>`);
                         subHeadHtml += `</div>`;
                         
-                        tbody.innerHTML += `
-                            <tr class="sub-header-row">
-                                <td></td><td></td><td></td>
-                                <td class="col-act">
-                                    ${valveHeaderHtml}
-                                    ${subHeadHtml}
-                                </td>
-                                <td></td>
-                            </tr>
-                        `;
+                        tbody.innerHTML += `<tr class="sub-header-row"><td></td><td></td><td></td><td class="col-act">${valveHeaderHtml}${subHeadHtml}</td><td></td></tr>`;
                         printedHeaders[headerKey] = true;
                     }
 
-                    // DATA ROW
                     let actHtml = '';
                     if(myFields.length > 0) {
                         actHtml = `<div class="act-grid">`;
@@ -428,18 +400,21 @@
                         actHtml = '-';
                     }
 
-                    let indentClass = "";
+                    // ====== LOGIKA KHUSUS PRESSURE GAUGE ======
+                    // Item ini akan dikosongkan namanya dan dipindah ke kolom Standard
                     let displayNo = no;
+                    let displayName = item.nama_item;
+                    let displayStd = item.standard || '';
+                    let indentClass = "";
                     let shouldIncrement = true;
 
-                    // LOGIKA KHUSUS: Pressure Gauge Tanpa Nomor Urut & Masuk Indentasi
-                    if (item.nama_item.toLowerCase().includes("pressure gauge")) {
-                        displayNo = ""; // Hapus nomor
-                        indentClass = "indent-row"; // Tambah indentasi agar menjorok
-                        shouldIncrement = false; // Jangan tambah counter no
+                    if(item.nama_item.toLowerCase().includes("pressure gauge")) {
+                        displayNo = "";
+                        displayName = ""; // Kosongkan kolom Item
+                        displayStd = "Pressure Gauge"; // Isi kolom Standard
+                        shouldIncrement = false; 
                     }
 
-                    // LOGIKA KHUSUS: Thermocouple (a,b,c...)
                     if(lastCat.includes("Mesin (Instalasi Thermocouple)") || item.nama_item.match(/^[a-z]\.|^Zone/i)) {
                         indentClass = "indent-row";
                         if(lastCat.includes("Mesin (Instalasi Thermocouple)")) {
@@ -452,8 +427,8 @@
                     tbody.innerHTML += `
                         <tr class="data-row">
                             <td class="col-no">${displayNo}</td>
-                            <td class="col-item ${indentClass}">${item.nama_item}</td>
-                            <td class="col-std">${item.standard || ''}</td>
+                            <td class="col-item ${indentClass}">${displayName}</td>
+                            <td class="col-std">${displayStd}</td>
                             <td class="col-act">${actHtml}</td>
                             <td class="col-ket">${noteMap[item.id] || ''}</td>
                         </tr>`;
