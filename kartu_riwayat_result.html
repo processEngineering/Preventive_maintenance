@@ -11,6 +11,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 
     <style>
+        /* ==================== GLOBAL RESET ==================== */
+        * { box-sizing: border-box; }
+
         /* ==================== SCREEN UI (DARK MODE) ==================== */
         body { 
             background: #1e1e1e; 
@@ -62,15 +65,14 @@
             overflow: auto; /* Scroll horizontal di HP */
             padding: 20px; 
             width: 100%;
-            box-sizing: border-box;
-            text-align: center;
+            text-align: center; /* Center page jika layar lebar */
         }
         
         .page {
             /* Kunci Ukuran A4 Landscape */
             width: 297mm; 
             height: 209mm; 
-            min-width: 297mm;
+            min-width: 297mm; /* PENTING: Mencegah penyusutan di HP */
             min-height: 209mm;
             
             background: white; 
@@ -78,7 +80,6 @@
             margin: 0 auto; 
             box-shadow: 0 0 40px rgba(0,0,0,0.5);
             display: flex; flex-direction: column;
-            box-sizing: border-box;
             position: relative;
             text-align: left;
             overflow: hidden; /* Mencegah konten meluber */
@@ -168,10 +169,9 @@
             padding: 5px; font-size: 9pt; background: #fff; height: 25px;
         }
 
-        /* CSS FILTER (Untuk Tampilan Web) */
+        /* SIGNATURE FIX */
         .sig-img { 
             max-height: 50px; max-width: 100px; 
-            /* Filter ini kadang diabaikan html2pdf, kita akan fix pakai JS */
             filter: brightness(0) contrast(200%); 
             margin-bottom: 2px;
         }
@@ -378,7 +378,6 @@
                 fillEmptyRows(10); return;
             }
 
-            // Logic cari TTD: Cari dari data TERBARU (Data sudah sort by date asc, jadi ambil yg paling bawah yg ada)
             let lastPicSig = null, lastPicName = null;
             let lastSpvSig = null, lastSpvName = null;
             let lastSuptSig = null, lastSuptName = null;
@@ -389,7 +388,7 @@
                 if(item.superintendent_signature) { lastSuptSig = item.superintendent_signature; lastSuptName = item.superintendent_name; }
             });
 
-            // Tampilkan Data Tabel (Maks 12 Baris)
+            // LIMIT ROWS PER PAGE TO 12 to fit A4 Landscape
             const MAX_ROWS = 12;
             const displayData = data.slice(0, MAX_ROWS);
 
@@ -478,8 +477,7 @@
                 }
             }
 
-            // 2. CONFIGURASI PDF
-            const elementWidth = element.scrollWidth; 
+            // 2. CONFIGURASI PDF (FIX CUT-OFF on MOBILE)
             const opt = {
                 margin: 0,
                 filename: `KartuRiwayat_${document.getElementById('disp_nama').innerText}.pdf`,
@@ -488,10 +486,10 @@
                     scale: 2, 
                     useCORS: true, 
                     logging: false,
-                    windowWidth: Math.max(elementWidth, 1400), // Paksa lebar desktop agar tidak terpotong
-                    width: elementWidth,
-                    x: 0, 
-                    scrollY: 0
+                    scrollY: 0,
+                    scrollX: 0,
+                    windowWidth: 2000, // FORCE DESKTOP WIDTH TO PREVENT CUT-OFF
+                    // DO NOT SET 'width' manually here, let it capture the element size
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true }
             };
