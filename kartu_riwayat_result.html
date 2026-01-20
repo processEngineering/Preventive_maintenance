@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laporan Kartu Riwayat Mesin - ISO Format</title>
     
+    <!-- Library Eksternal -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -44,6 +45,14 @@
         .btn-show { background: #b91c1c; color: white; }
         .btn-pdf { background: #fff; color: #b91c1c; }
 
+        /* LOADING OVERLAY */
+        #loadingOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 20000;
+            display: none; justify-content: center; align-items: center; flex-direction: column;
+            color: white; font-size: 18px;
+        }
+
         @media screen and (max-width: 768px) {
             .control-bar { flex-direction: column; align-items: stretch; gap: 10px; }
             .bar-group { flex-direction: column; width: 100%; }
@@ -59,10 +68,10 @@
             text-align: center;
         }
         
+        /* UKURAN FISIK A4 LANDSCAPE (297mm x 210mm) */
         .page {
-            /* UKURAN PASTI A4 LANDSCAPE */
             width: 297mm; 
-            min-height: 209mm; 
+            height: 209mm; 
             background: white; 
             padding: 10mm; 
             margin: 0 auto; 
@@ -70,6 +79,7 @@
             display: flex; flex-direction: column;
             position: relative;
             text-align: left;
+            overflow: hidden; 
         }
 
         /* TABEL ISO STANDARD */
@@ -77,27 +87,33 @@
         td, th { border: 1px solid black; padding: 4px; vertical-align: middle; overflow: hidden; white-space: normal; word-wrap: break-word; }
 
         /* HEADER */
-        .iso-header { margin-bottom: 10px; }
-        .iso-header td { text-align: center; }
-        .box-logo { width: 20%; padding: 5px; }
-        .logo-img { max-width: 140px; max-height: 60px; display: block; margin: auto; }
-        .box-title { width: 55%; font-family: Arial, sans-serif; }
-        .pt-name { font-size: 14pt; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
-        .doc-name { font-size: 18pt; font-weight: 900; margin-top: 5px; text-decoration: none; } /* NO UNDERLINE */
+        .iso-header { margin-bottom: 5px; height: 75px; } 
+        .iso-header td { text-align: center; padding: 2px; }
+        .box-logo { width: 15%; }
+        .logo-img { max-width: 120px; max-height: 55px; display: block; margin: auto; }
+        .box-title { width: 60%; font-family: Arial, sans-serif; }
+        .pt-name { font-size: 14pt; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; }
+        .doc-name { font-size: 18pt; font-weight: 900; margin-top: 2px; text-decoration: none; }
         .box-meta { width: 25%; padding: 0 !important; }
-        .tbl-meta td { border: none; border-bottom: 1px solid black; text-align: left; padding: 2px 5px; font-size: 9pt; }
+        .tbl-meta td { border: none; border-bottom: 1px solid black; text-align: left; padding: 1px 5px; font-size: 8pt; height: auto; }
         .tbl-meta tr:last-child td { border-bottom: none; }
 
         /* IDENTITAS */
-        .identity-section { margin-bottom: 10px; font-size: 10pt; font-weight: bold; font-family: Arial, sans-serif; }
-        .tbl-id td { border: none; padding: 2px 5px; text-align: left; }
+        .identity-section { margin-bottom: 5px; font-size: 9pt; font-weight: bold; font-family: Arial, sans-serif; }
+        .tbl-id td { border: none; padding: 2px 5px; text-align: left; height: auto;}
         .data-line { border-bottom: 1px dotted #000; padding: 0 5px; display: inline-block; min-width: 200px; }
 
         /* DATA TABLE */
-        .data-wrapper { flex-grow: 1; border: 1px solid black; display: flex; flex-direction: column; }
+        .data-wrapper { 
+            flex-grow: 1; 
+            border: 1px solid black; 
+            display: flex; 
+            flex-direction: column; 
+            margin-bottom: 5px;
+        }
         .tbl-data { font-size: 9pt; }
-        .tbl-data th { background-color: #e0e0e0; text-align: center; font-weight: bold; border-bottom: 1px solid black; height: 30px; }
-        .tbl-data td { height: 24px; padding: 2px 4px; border-bottom: 1px solid black; border-right: 1px solid black; }
+        .tbl-data th { background-color: #e0e0e0; text-align: center; font-weight: bold; border-bottom: 1px solid black; height: 25px; padding: 2px; }
+        .tbl-data td { height: 22px; padding: 2px 4px; border-bottom: 1px solid black; border-right: 1px solid black; }
         
         .c-no { width: 4%; text-align: center; }
         .c-tgl { width: 10%; text-align: center; }
@@ -107,38 +123,81 @@
         .c-ket { width: 12%; }
         .c-pic { width: 15%; text-align: center; }
 
-        /* FOOTER */
-        .footer-section { margin-top: auto; min-height: 130px; }
-        .tbl-sign { height: 100%; border: 1px solid black; }
-        .tbl-sign td { width: 33.33%; padding: 0; vertical-align: top; border-right: 1px solid black; }
+        /* FOOTER SIGNATURE */
+        .footer-section { height: 120px; flex-shrink: 0; }
+        .tbl-sign { height: 100%; border: 1px solid black; width: 100%; }
+        .tbl-sign td { width: 33.33%; padding: 0; vertical-align: top; border-right: 1px solid black; position: relative;}
         .tbl-sign td:last-child { border-right: none; }
 
-        .sign-title { background: #e0e0e0; font-weight: bold; text-align: center; padding: 5px; border-bottom: 1px solid black; font-size: 9pt; height: 25px; }
-        .sign-box { height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 2px; }
-        .sign-name { border-top: 1px solid black; text-align: center; font-weight: bold; padding: 5px; font-size: 9pt; background: #fff; height: 25px; }
+        .sign-title { background: #e0e0e0; font-weight: bold; text-align: center; padding: 2px; border-bottom: 1px solid black; font-size: 9pt; height: 20px; }
+        .sign-box { height: 75px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 2px; }
+        .sign-name { 
+            border-top: 1px solid black; text-align: center; font-weight: bold; padding: 2px; 
+            font-size: 9pt; background: #fff; height: 25px; 
+            position: absolute; bottom: 0; width: 100%;
+        }
 
         /* SIGNATURE STYLE */
         .sig-img { 
-            max-height: 50px; max-width: 100px; margin-bottom: 2px;
-            /* Filter ini untuk preview layar, nanti di-overwrite oleh JS saat PDF */
-            filter: brightness(0) contrast(200%); 
+            max-height: 60px; max-width: 120px; margin-bottom: 2px;
+            /* REVISI: Hapus CSS Filter karena tidak terbaca oleh HTML2PDF */
+            /* Kita akan gunakan JS BlackenImage untuk hasil 100% Hitam */
         }
         .sig-text-name { font-size: 8pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; margin-top: 2px; margin-bottom: 2px; }
 
-        /* HIDE ON PRINT (Browser Default Print) */
+
+        /* ==================== MODE EXPORT: BODY CLASS ==================== */
+        body.printing {
+            background: white !important;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; 
+        }
+        
+        body.printing .control-bar {
+            display: none !important; 
+        }
+
+        body.printing .page-container {
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            width: auto !important;
+            height: auto !important;
+            display: flex;
+            justify-content: center;
+        }
+
+        body.printing .page {
+            width: 1123px !important;
+            height: 794px !important;
+            margin: 0 !important;
+            padding: 20px !important; 
+            box-shadow: none !important;
+            border: none !important;
+            transform: none !important;
+            border-radius: 0 !important;
+        }
+
         @media print {
             body { background: white; -webkit-print-color-adjust: exact; }
-            .control-bar { display: none; }
-            .page-container { padding: 0; display: block; overflow: visible; }
-            .page { margin: 0; width: 100%; height: auto; box-shadow: none; border: none; }
+            .control-bar, #loadingOverlay { display: none; }
+            .page-container { padding: 0; margin: 0; }
+            .page { margin: 0; box-shadow: none; border: none; width: 100%; page-break-after: always; }
         }
     </style>
 </head>
 <body>
 
+    <div id="loadingOverlay">
+        <i class="fa-solid fa-spinner fa-spin fa-3x"></i>
+        <p style="margin-top:15px;">Sedang membuat PDF...</p>
+        <p style="font-size:12px; color:#ccc;">Mohon tunggu sebentar...</p>
+    </div>
+
     <div class="control-bar">
         <div class="bar-group">
-            <a href="kartu_riwayat.html" class="btn btn-back"><i class="fa-solid fa-arrow-left"></i> Kembali</a>
+            <a href="#" onclick="alert('Kembali ke menu')" class="btn btn-back"><i class="fa-solid fa-arrow-left"></i> Kembali</a>
             <select id="filter_mesin"><option value="">-- Loading Mesin... --</option></select>
             <select id="filter_tahun">
                 <option value="2026">2026</option>
@@ -146,11 +205,13 @@
             </select>
             <button onclick="fetchData()" class="btn btn-show"><i class="fa-solid fa-search"></i> Tampilkan</button>
         </div>
-        <button onclick="exportPDF()" class="btn btn-pdf"><i class="fa-solid fa-file-pdf"></i> Download PDF (1 Halaman)</button>
+        <button onclick="exportPDF()" class="btn btn-pdf"><i class="fa-solid fa-file-pdf"></i> Download PDF (A4 Full)</button>
     </div>
 
     <div class="page-container">
+        <!-- Area ini yang akan dicetak -->
         <div class="page" id="printArea">
+            
             <!-- 1. HEADER ISO -->
             <table class="iso-header">
                 <tr>
@@ -291,7 +352,7 @@
 
             if(!data || data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" align="center" style="padding:20px;">Tidak ada data.</td></tr>';
-                fillEmptyRows(10); return;
+                fillEmptyRows(12); return;
             }
 
             let lastPicSig = null, lastPicName = null;
@@ -299,12 +360,19 @@
             let lastSuptSig = null, lastSuptName = null;
 
             data.forEach(item => {
+                // UPDATE: Cek berbagai kemungkinan nama kolom untuk Supervisor
                 if(item.pic_signature) { lastPicSig = item.pic_signature; lastPicName = item.pic_name; }
-                if(item.spv_signature) { lastSpvSig = item.spv_signature; lastSpvName = item.spv_name; }
+                
+                // Tambahan fallback check: spv_signature ATAU supervisor_signature
+                if(item.spv_signature || item.supervisor_signature) { 
+                    lastSpvSig = item.spv_signature || item.supervisor_signature; 
+                    lastSpvName = item.spv_name || item.supervisor_name; 
+                }
+                
                 if(item.superintendent_signature) { lastSuptSig = item.superintendent_signature; lastSuptName = item.superintendent_name; }
             });
 
-            const MAX_ROWS = 12;
+            const MAX_ROWS = 12; 
             const displayData = data.slice(0, MAX_ROWS);
 
             displayData.forEach((item, index) => {
@@ -325,6 +393,7 @@
 
             const renderSigWithName = (elId, sig, name) => {
                 let html = '';
+                // Style .sig-img sudah diupdate untuk menangani gambar putih
                 if(sig) html += `<img src="${sig}" class="sig-img" crossorigin="anonymous">`;
                 if(name) html += `<div class="sig-text-name">${name}</div>`;
                 document.getElementById(elId).innerHTML = html;
@@ -339,90 +408,109 @@
 
         function fillEmptyRows(count) {
             const tbody = document.getElementById('tableBody');
-            for(let i=0; i<count; i++) tbody.innerHTML += `<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+            for(let i=0; i<count; i++) tbody.innerHTML += `<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
         }
 
-        // --- FUNGSI MENGHITAMKAN GAMBAR (WAJIB UNTUK PDF) ---
-        function blackenImage(img) {
+        // ==================== FUNGSI BARU: HITAMKAN GAMBAR SECARA PAKSA ====================
+        // Ini solusi paling ampuh: Membaca piksel gambar, jika ada isinya (alpha > 0), 
+        // paksa warnanya jadi RGB(0,0,0) alias Hitam.
+        function blackenImage(imgElement) {
             return new Promise((resolve) => {
-                if (!img.src || img.src.length < 100) return resolve(); 
+                if (!imgElement.src) return resolve();
                 
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-                const tempImg = new Image();
-                tempImg.crossOrigin = "Anonymous";
-                tempImg.onload = function() {
-                    canvas.width = tempImg.width;
-                    canvas.height = tempImg.height;
-                    ctx.drawImage(tempImg, 0, 0);
-                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const data = imgData.data;
+                const img = new Image();
+                
+                // Penting agar tidak kena blokir browser saat manipulasi gambar
+                img.crossOrigin = "Anonymous";
+                
+                img.onload = () => {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // Ambil data piksel
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+                    
+                    // Loop setiap piksel (format: R, G, B, Alpha)
                     for (let i = 0; i < data.length; i += 4) {
-                        const alpha = data[i + 3];
-                        if (alpha > 20) { 
-                            data[i] = 0; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 255; 
+                        // Jika piksel tidak transparan (Alpha > 0)
+                        if (data[i + 3] > 10) { 
+                            // Ubah jadi Hitam Pekat
+                            data[i] = 0;     // Red
+                            data[i + 1] = 0; // Green
+                            data[i + 2] = 0; // Blue
                         }
                     }
-                    ctx.putImageData(imgData, 0, 0);
-                    img.src = canvas.toDataURL(); 
+                    
+                    // Terapkan kembali ke canvas
+                    ctx.putImageData(imageData, 0, 0);
+                    // Ganti sumber gambar asli dengan hasil manipulasi
+                    imgElement.src = canvas.toDataURL(); 
                     resolve();
                 };
-                tempImg.onerror = resolve; 
-                tempImg.src = img.src;
+                
+                img.onerror = () => {
+                    console.warn("Gagal memproses gambar (CORS/Error):", imgElement.src);
+                    resolve(); // Lanjut saja jangan bikin error
+                };
+                
+                img.src = imgElement.src;
             });
         }
 
+        // ==================== FUNGSI EXPORT ====================
         async function exportPDF() {
-            const btn = document.querySelector('.btn-pdf');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...'; btn.disabled = true;
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.style.display = 'flex';
             
-            // 1. CLONE ELEMEN ASLI
-            const originalElement = document.getElementById('printArea');
-            const clone = originalElement.cloneNode(true);
+            // 1. Ubah mode tampilan
+            document.body.classList.add('printing');
+            window.scrollTo(0, 0);
+
+            // 2. PROSES HITAMKAN TANDA TANGAN (CRITICAL STEP)
+            // Kita cari semua gambar tanda tangan dan jalankan fungsi blackenImage
+            const sigImages = document.querySelectorAll('.sig-img');
+            const processingPromises = Array.from(sigImages).map(img => blackenImage(img));
             
-            // 2. SETUP CLONE AGAR UKURANNYA FIX A4 (1123px = 297mm @96dpi)
-            // PENTING: Pake z-index -1 agar tidak menutupi UI tapi tetap dirender oleh browser
-            clone.style.width = '1123px'; 
-            clone.style.height = 'auto';
-            clone.style.position = 'absolute';
-            clone.style.top = '0';
-            clone.style.left = '0';
-            clone.style.zIndex = '-9999'; 
-            clone.style.background = 'white';
-            clone.style.color = 'black'; 
-            document.body.appendChild(clone);
+            // Tunggu sampai semua gambar selesai dihitamkan
+            await Promise.all(processingPromises);
 
-            // 3. HITAMKAN GAMBAR DI DALAM CLONE
-            const sigImages = clone.querySelectorAll('.sig-img');
-            for (let img of sigImages) {
-                await blackenImage(img);
-            }
+            // 3. Tambahan delay sedikit untuk rendering ulang
+            await new Promise(resolve => setTimeout(resolve, 800));
 
-            // 4. GENERATE PDF DARI CLONE (Settingan ANTI POTONG)
+            const element = document.getElementById('printArea');
+
             const opt = {
-                margin: 0, // Margin 0 karena page sudah punya padding
-                filename: `KartuRiwayat_${document.getElementById('disp_nama').innerText}.pdf`,
-                image: { type: 'jpeg', quality: 1 },
-                html2canvas: { 
+                margin:       0,
+                filename:     `KartuRiwayat_${document.getElementById('disp_nama').innerText || 'Mesin'}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { 
                     scale: 2, 
                     useCORS: true, 
-                    logging: false,
+                    windowWidth: 1200, 
+                    width: 1123,
                     scrollY: 0,
-                    width: 1123, // Paksa Lebar Desktop A4
-                    windowWidth: 1123 
+                    scrollX: 0
                 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true }
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true }
             };
 
-            html2pdf().set(opt).from(clone).save().then(() => {
-                document.body.removeChild(clone); 
-                btn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download PDF (1 Halaman)'; btn.disabled = false;
-            }).catch(err => {
+            try {
+                await html2pdf().set(opt).from(element).save();
+            } catch (err) {
                 console.error(err);
-                if(document.body.contains(clone)) document.body.removeChild(clone);
-                btn.innerHTML = 'Error!';
-                alert('Gagal Export: ' + err.message);
-            });
+                alert("Gagal Export PDF: " + err.message);
+            } finally {
+                // Kembalikan tampilan
+                document.body.classList.remove('printing');
+                overlay.style.display = 'none';
+                
+                // Opsional: Reload data agar tanda tangan kembali putih (jika di layar jadi hitam)
+                // fetchData(); 
+            }
         }
     </script>
 </body>
