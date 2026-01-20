@@ -140,44 +140,47 @@
         /* SIGNATURE STYLE */
         .sig-img { 
             max-height: 60px; max-width: 120px; margin-bottom: 2px;
-            filter: brightness(0) contrast(200%); 
         }
         .sig-text-name { font-size: 8pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; margin-top: 2px; margin-bottom: 2px; }
 
 
-        /* ==================== MODE EXPORT: BODY CLASS ==================== */
-        /* Teknik baru: Saat export, kita ubah layout body langsung, bukan clone */
+        /* ==================== MODE EXPORT: BODY CLASS (FIX TERPOTONG) ==================== */
         body.printing {
             background: white !important;
-            width: 100%;
-            height: 100%;
-            overflow: hidden; /* Kunci scroll saat proses */
+            /* REVISI PENTING: Jangan kunci height di 100%, biarkan auto agar konten full terlihat */
+            width: 100% !important;
+            height: auto !important; 
+            min-height: 100vh !important;
+            overflow: visible !important; /* Biarkan scrollbar muncul jika perlu saat proses render */
+            position: relative !important;
         }
         
         body.printing .control-bar {
-            display: none !important; /* Sembunyikan tombol saat proses foto */
+            display: none !important; 
         }
 
         body.printing .page-container {
             padding: 0 !important;
             margin: 0 !important;
+            /* REVISI PENTING: Pastikan container tidak memotong konten anak */
             overflow: visible !important;
-            width: auto !important;
+            width: 100% !important;
             height: auto !important;
-            display: flex;
-            justify-content: center;
+            display: block !important; /* Ubah flex jadi block agar layout stabil */
         }
 
         body.printing .page {
-            /* Kunci ukuran pixel A4 Landscape agar presisi di semua device */
+            /* Pastikan ukuran pixel konsisten dengan konfigurasi html2canvas */
             width: 1123px !important;
             height: 794px !important;
-            margin: 0 !important;
-            padding: 20px !important; /* Margin kertas */
+            margin: 0 auto !important; /* Center alignment */
+            padding: 20px !important; 
             box-shadow: none !important;
             border: none !important;
             transform: none !important;
             border-radius: 0 !important;
+            /* Pastikan background putih pekat */
+            background-color: white !important;
         }
 
         @media print {
@@ -362,7 +365,10 @@
 
             data.forEach(item => {
                 if(item.pic_signature) { lastPicSig = item.pic_signature; lastPicName = item.pic_name; }
-                if(item.spv_signature) { lastSpvSig = item.spv_signature; lastSpvName = item.spv_name; }
+                if(item.spv_signature || item.supervisor_signature) { 
+                    lastSpvSig = item.spv_signature || item.supervisor_signature; 
+                    lastSpvName = item.spv_name || item.supervisor_name; 
+                }
                 if(item.superintendent_signature) { lastSuptSig = item.superintendent_signature; lastSuptName = item.superintendent_name; }
             });
 
@@ -404,24 +410,57 @@
             for(let i=0; i<count; i++) tbody.innerHTML += `<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
         }
 
-        // ==================== FUNGSI EXPORT YANG LEBIH STABIL ====================
+        // FUNGSI HITAMKAN GAMBAR (Membaca piksel gambar)
+        function blackenImage(imgElement) {
+            return new Promise((resolve) => {
+                if (!imgElement.src) return resolve();
+                
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                
+                img.onload = () => {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+                    
+                    for (let i = 0; i < data.length; i += 4) {
+                        if (data[i + 3] > 10) { // Jika tidak transparan
+                            data[i] = 0; data[i + 1] = 0; data[i + 2] = 0; // Jadi Hitam
+                        }
+                    }
+                    ctx.putImageData(imageData, 0, 0);
+                    imgElement.src = canvas.toDataURL(); 
+                    resolve();
+                };
+                img.onerror = () => resolve();
+                img.src = imgElement.src;
+            });
+        }
+
+        // ==================== FUNGSI EXPORT UPDATE ====================
         async function exportPDF() {
             const overlay = document.getElementById('loadingOverlay');
             overlay.style.display = 'flex';
             
-            // 1. Tambahkan class ke body untuk mengubah tampilan menjadi mode cetak
             document.body.classList.add('printing');
-            
-            // 2. Scroll ke paling atas untuk memastikan capture dimulai dari 0
             window.scrollTo(0, 0);
 
-            // 3. Tunggu sebentar agar CSS render ulang layout (terutama di HP lambat)
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Hitamkan Tanda Tangan
+            const sigImages = document.querySelectorAll('.sig-img');
+            const processingPromises = Array.from(sigImages).map(img => blackenImage(img));
+            await Promise.all(processingPromises);
 
-            // 4. Ambil elemen asli yang sudah di-resize oleh CSS .printing
+            await new Promise(resolve => setTimeout(resolve, 800));
+
             const element = document.getElementById('printArea');
 
-            // 5. Konfigurasi html2pdf
+            // REVISI CONFIG HTML2CANVAS:
+            // windowHeight sangat penting agar capture tidak terpotong viewport
             const opt = {
                 margin:       0,
                 filename:     `KartuRiwayat_${document.getElementById('disp_nama').innerText || 'Mesin'}.pdf`,
@@ -429,10 +468,10 @@
                 html2canvas:  { 
                     scale: 2, 
                     useCORS: true, 
-                    // WindowWidth Kunci Penting: Menipu canvas agar merender seolah layar lebar (PC)
-                    // walau dibuka di HP. Ini mencegah layout mobile ter-capture.
-                    windowWidth: 1200, 
-                    width: 1123,
+                    windowWidth: 1123,  // Paksa lebar jendela seukuran A4
+                    width: 1123,        // Lebar canvas hasil capture
+                    windowHeight: 900,  // Paksa tinggi jendela minimal 900px (diatas 794px A4) agar tidak terpotong
+                    height: 794,        // Tinggi canvas hasil capture (A4 Landscape)
                     scrollY: 0,
                     scrollX: 0
                 },
@@ -445,7 +484,6 @@
                 console.error(err);
                 alert("Gagal Export PDF: " + err.message);
             } finally {
-                // 6. Kembalikan tampilan seperti semula
                 document.body.classList.remove('printing');
                 overlay.style.display = 'none';
             }
