@@ -69,7 +69,7 @@
         .page {
             /* Kunci Ukuran A4 Landscape */
             width: 297mm; 
-            height: 209mm; /* 209mm agar aman tidak trigger page break */
+            height: 209mm; 
             min-width: 297mm;
             min-height: 209mm;
             
@@ -81,7 +81,7 @@
             box-sizing: border-box;
             position: relative;
             text-align: left;
-            overflow: hidden; /* Mencegah konten meluber keluar kertas */
+            overflow: hidden; /* Mencegah konten meluber */
         }
 
         /* --- ISO TABLE STYLING --- */
@@ -114,7 +114,7 @@
             border: 1px solid black; 
             display: flex; 
             flex-direction: column;
-            overflow: hidden; /* Pastikan tabel tidak bocor */
+            overflow: hidden; 
         }
         .tbl-data { font-size: 9pt; }
         .tbl-data th { 
@@ -136,7 +136,7 @@
         /* Kolom */
         .c-no { width: 4%; text-align: center; }
         .c-tgl { width: 10%; text-align: center; }
-        .c-masalah { width: 22%; white-space: normal !important; line-height: 1.1; } /* Allow wrap for text */
+        .c-masalah { width: 22%; white-space: normal !important; line-height: 1.1; } 
         .c-tindakan { width: 22%; white-space: normal !important; line-height: 1.1; }
         .c-part { width: 15%; white-space: normal !important; line-height: 1.1; }
         .c-ket { width: 12%; }
@@ -355,6 +355,7 @@
         function renderTable(mesinName, data) {
             document.getElementById('disp_nama').textContent = mesinName;
             
+            // Header Info
             if(data && data.length > 0) {
                 document.getElementById('disp_nomor').textContent = data[0].no_mesin || '-';
                 document.getElementById('disp_tahun').textContent = data[0].tahun_pembuatan || '-';
@@ -366,13 +367,14 @@
             const tbody = document.getElementById('tableBody'); 
             tbody.innerHTML = '';
             
+            // Reset Signatures
             document.getElementById('sign_pic').innerHTML = ''; 
             document.getElementById('sign_spv').innerHTML = ''; 
             document.getElementById('sign_supt').innerHTML = '';
 
             if(!data || data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" align="center" style="padding:20px;">Tidak ada data.</td></tr>';
-                fillEmptyRows(12); return;
+                fillEmptyRows(10); return;
             }
 
             let lastPicSig = null, lastPicName = null;
@@ -431,17 +433,25 @@
             const btn = document.querySelector('.btn-pdf');
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...'; btn.disabled = true;
             
-            // Konfigurasi PDF agar PAS 1 HALAMAN A4 LANDSCAPE
+            // Hitung lebar elemen aktual untuk menangkap seluruh kertas A4 Landscape
+            // Jika di HP, scrollWidth akan jauh lebih besar dari layar, ini yg kita butuhkan
+            const elementWidth = element.scrollWidth; 
+
             const opt = {
                 margin: 0,
                 filename: `KartuRiwayat_${document.getElementById('disp_nama').innerText}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
+                image: { type: 'jpeg', quality: 1 },
                 html2canvas: { 
                     scale: 2, 
                     useCORS: true, 
                     logging: false,
-                    width: element.offsetWidth, // Paksa lebar sesuai elemen
-                    windowWidth: element.offsetWidth
+                    // FIX UTAMA MOBILE:
+                    // Paksa windowWidth agar canvas tidak merender versi "mobile" yang sempit
+                    // 1200px cukup untuk cover A4 Landscape (sekitar 1123px)
+                    windowWidth: Math.max(elementWidth, 1200),
+                    width: elementWidth,
+                    x: 0,
+                    scrollY: 0
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true }
             };
@@ -450,6 +460,7 @@
             }).catch(err => {
                 console.error(err);
                 btn.innerHTML = 'Error!';
+                alert('Gagal Export: ' + err.message);
             });
         }
     </script>
