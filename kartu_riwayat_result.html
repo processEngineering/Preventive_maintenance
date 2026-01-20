@@ -98,7 +98,7 @@
         .box-title { width: 55%; font-family: Arial, sans-serif; }
         .pt-name { font-size: 14pt; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; white-space: normal; }
         
-        /* HAPUS GARIS BAWAH (UNDERLINE) DI SINI */
+        /* HAPUS GARIS BAWAH */
         .doc-name { font-size: 18pt; font-weight: 900; margin-top: 5px; white-space: normal; text-decoration: none; }
 
         .box-meta { width: 25%; padding: 0 !important; }
@@ -126,7 +126,7 @@
             height: 30px;
         }
         .tbl-data td { 
-            height: 24px; /* Tinggi baris fixed agar muat */
+            height: 24px; 
             padding: 2px 4px; 
             border-bottom: 1px solid black; 
             border-right: 1px solid black; 
@@ -168,9 +168,10 @@
             padding: 5px; font-size: 9pt; background: #fff; height: 25px;
         }
 
-        /* SIGNATURE FIX */
+        /* CSS FILTER (Untuk Tampilan Web) */
         .sig-img { 
             max-height: 50px; max-width: 100px; 
+            /* Filter ini kadang diabaikan html2pdf, kita akan fix pakai JS */
             filter: brightness(0) contrast(200%); 
             margin-bottom: 2px;
         }
@@ -184,7 +185,7 @@
             margin-bottom: 2px;
         }
 
-        /* PRINT MODE FIX */
+        /* PRINT MODE */
         @media print {
             body { background: white; -webkit-print-color-adjust: exact; }
             .control-bar { display: none; }
@@ -357,7 +358,6 @@
         function renderTable(mesinName, data) {
             document.getElementById('disp_nama').textContent = mesinName;
             
-            // Header Info
             if(data && data.length > 0) {
                 document.getElementById('disp_nomor').textContent = data[0].no_mesin || '-';
                 document.getElementById('disp_tahun').textContent = data[0].tahun_pembuatan || '-';
@@ -369,7 +369,6 @@
             const tbody = document.getElementById('tableBody'); 
             tbody.innerHTML = '';
             
-            // Reset Signatures
             document.getElementById('sign_pic').innerHTML = ''; 
             document.getElementById('sign_spv').innerHTML = ''; 
             document.getElementById('sign_supt').innerHTML = '';
@@ -379,9 +378,7 @@
                 fillEmptyRows(10); return;
             }
 
-            // --- PERBAIKAN PENTING ---
-            // Loop SELURUH data untuk mencari tanda tangan terakhir yang valid
-            // (Tidak hanya data yang dipotong untuk tampilan tabel)
+            // Logic cari TTD: Cari dari data TERBARU (Data sudah sort by date asc, jadi ambil yg paling bawah yg ada)
             let lastPicSig = null, lastPicName = null;
             let lastSpvSig = null, lastSpvName = null;
             let lastSuptSig = null, lastSuptName = null;
@@ -392,7 +389,7 @@
                 if(item.superintendent_signature) { lastSuptSig = item.superintendent_signature; lastSuptName = item.superintendent_name; }
             });
 
-            // BARU POTONG DATA UNTUK TAMPILAN TABEL (Max 12 Baris)
+            // Tampilkan Data Tabel (Maks 12 Baris)
             const MAX_ROWS = 12;
             const displayData = data.slice(0, MAX_ROWS);
 
@@ -420,12 +417,10 @@
                 document.getElementById(elId).innerHTML = html;
             };
 
-            // Tampilkan Tanda Tangan (Hasil scan seluruh data)
             renderSigWithName('sign_pic', lastPicSig, lastPicName);
             renderSigWithName('sign_spv', lastSpvSig, lastSpvName);
             renderSigWithName('sign_supt', lastSuptSig, lastSuptName);
 
-            // Fill remaining rows to maintain grid structure
             if(displayData.length < MAX_ROWS) fillEmptyRows(MAX_ROWS - displayData.length);
         }
 
@@ -436,15 +431,55 @@
             }
         }
 
-        function exportPDF() {
+        // --- FUNGSI MENGHITAMKAN GAMBAR AGAR MUNCUL DI PDF ---
+        function blackenImage(img) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const tempImg = new Image();
+                tempImg.crossOrigin = "Anonymous";
+                tempImg.onload = function() {
+                    canvas.width = tempImg.width;
+                    canvas.height = tempImg.height;
+                    ctx.drawImage(tempImg, 0, 0);
+                    
+                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imgData.data;
+                    
+                    // Loop semua pixel: jika ada isinya (alpha > 0), jadikan hitam pekat (0,0,0)
+                    for (let i = 0; i < data.length; i += 4) {
+                        const alpha = data[i + 3];
+                        if (alpha > 20) { // Toleransi transparansi
+                            data[i] = 0;     // R
+                            data[i + 1] = 0; // G
+                            data[i + 2] = 0; // B
+                            data[i + 3] = 255; // Force Alpha penuh
+                        }
+                    }
+                    ctx.putImageData(imgData, 0, 0);
+                    img.src = canvas.toDataURL(); // Update src gambar asli
+                    resolve();
+                };
+                tempImg.onerror = resolve; // Skip jika error
+                tempImg.src = img.src;
+            });
+        }
+
+        async function exportPDF() {
             const element = document.getElementById('printArea');
             const btn = document.querySelector('.btn-pdf');
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...'; btn.disabled = true;
             
-            // Hitung lebar elemen aktual untuk menangkap seluruh kertas A4 Landscape
-            // Jika di HP, scrollWidth akan jauh lebih besar dari layar, ini yg kita butuhkan
-            const elementWidth = element.scrollWidth; 
+            // 1. PROSES SEMUA GAMBAR TTD AGAR JADI HITAM (Pixel Manipulation)
+            const sigImages = element.querySelectorAll('.sig-img');
+            for (let img of sigImages) {
+                if (img.src && img.src.startsWith('data:image')) {
+                    await blackenImage(img);
+                }
+            }
 
+            // 2. CONFIGURASI PDF
+            const elementWidth = element.scrollWidth; 
             const opt = {
                 margin: 0,
                 filename: `KartuRiwayat_${document.getElementById('disp_nama').innerText}.pdf`,
@@ -453,16 +488,15 @@
                     scale: 2, 
                     useCORS: true, 
                     logging: false,
-                    // FIX UTAMA MOBILE:
-                    // Paksa windowWidth agar canvas tidak merender versi "mobile" yang sempit
-                    // 1200px cukup untuk cover A4 Landscape (sekitar 1123px)
-                    windowWidth: Math.max(elementWidth, 1200),
+                    windowWidth: Math.max(elementWidth, 1400), // Paksa lebar desktop agar tidak terpotong
                     width: elementWidth,
-                    x: 0,
+                    x: 0, 
                     scrollY: 0
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true }
             };
+
+            // 3. GENERATE
             html2pdf().set(opt).from(element).save().then(() => {
                 btn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download PDF (1 Halaman)'; btn.disabled = false;
             }).catch(err => {
