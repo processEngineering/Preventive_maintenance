@@ -81,9 +81,7 @@
             text-align: center;
         }
         
-        /* UKURAN FISIK A4 LANDSCAPE (297mm x 210mm) 
-           Menggunakan pixel fix (1123px x 794px) agar konsisten di html2canvas 
-        */
+        /* UKURAN FISIK A4 LANDSCAPE (297mm x 210mm) */
         .page {
             width: 1123px;
             height: 794px;
@@ -193,7 +191,7 @@
     <div id="loadingOverlay">
         <i class="fa-solid fa-spinner fa-spin fa-3x"></i>
         <p style="margin-top:15px;">Sedang memproses PDF...</p>
-        <p style="font-size:12px; color:#ccc;">Mohon tunggu, sedang menyesuaikan format...</p>
+        <p style="font-size:12px; color:#ccc;">Mohon tunggu, sedang menyesuaikan format A4...</p>
     </div>
 
     <div class="control-bar">
@@ -225,6 +223,7 @@
     </div>
 
     <div class="page-container">
+        <!-- Area ini yang akan dicetak - BACKGROUND TETAP PUTIH -->
         <div class="page" id="printArea">
             
             <!-- HEADER -->
@@ -470,47 +469,62 @@
             });
         }
 
+        // ==================== REVISI TOTAL: METODE KLONING ISOLASI ====================
         async function exportPDF() {
-            // SCROLL KE ATAS AGAR RENDERING BERSIH
+            // Scroll ke paling atas untuk rendering yang bersih
             window.scrollTo(0, 0);
             
             const overlay = document.getElementById('loadingOverlay');
             overlay.style.display = 'flex';
             
-            // 1. Hitamkan Tanda Tangan TERLEBIH DAHULU di halaman asli
-            // Ini untuk memastikan source yang akan diclone sudah hitam
+            // 1. Hitamkan Tanda Tangan (di elemen asli dulu agar clone kebagian)
             const sigImages = document.querySelectorAll('.sig-img');
             const processingPromises = Array.from(sigImages).map(img => blackenImage(img));
             await Promise.all(processingPromises);
 
-            // 2. BUAT CLONE UNTUK DIPOTRET (METODE FOTO / SNAPSHOT)
+            // 2. CLONE ELEMEN HALAMAN (Isolasi Area Kertas)
             const originalElement = document.getElementById('printArea');
             const clonedElement = originalElement.cloneNode(true);
 
-            // 3. SIAPKAN CONTAINER KHUSUS (OFF-SCREEN TAPI FIX SIZE A4)
-            // Ini memaksa browser HP merender elemen ini seolah-olah dia adalah Desktop lebar 1123px
+            // Reset Style Kritis pada Clone agar pas di container
+            // Ini penting agar tampilan di Laptop/Tablet tidak berantakan
+            clonedElement.style.margin = '0 auto'; 
+            clonedElement.style.padding = '15mm'; 
+            clonedElement.style.boxShadow = 'none';
+            clonedElement.style.transform = 'none';
+            clonedElement.style.width = '1123px'; // Lebar FIX A4 Landscape Desktop
+            clonedElement.style.minHeight = '794px'; 
+            clonedElement.style.boxSizing = 'border-box';
+
+            // 3. BUAT CONTAINER ISOLASI
+            // Container ini memaksa browser merender layout dengan lebar desktop (1123px)
+            // meskipun dibuka di HP, Tablet, atau Laptop
             const container = document.createElement('div');
             container.style.position = 'fixed';
             container.style.top = '0';
             container.style.left = '0';
-            container.style.width = '1123px';  // Kunci lebar 1123px (A4 Landscape Desktop)
+            container.style.width = '1123px';  // Kunci lebar viewport virtual
             container.style.minHeight = '794px';
             container.style.zIndex = '-9999'; // Sembunyikan di belakang
             container.style.background = 'white';
+            container.style.overflow = 'visible'; // Pastikan konten tidak terpotong
+            
             container.appendChild(clonedElement);
             document.body.appendChild(container);
 
-            await new Promise(resolve => setTimeout(resolve, 800)); // Tunggu rendering clone stabil
+            // Tunggu sebentar agar render layout clone stabil
+            await new Promise(resolve => setTimeout(resolve, 800));
 
-            // 4. KONFIGURASI HTML2PDF
+            // 4. KONFIGURASI HTML2CANVAS KHUSUS A4 LANDSCAPE
             const opt = {
-                margin:       0,
+                margin:       0, // Margin PDF 0 karena margin kertas sudah di CSS
                 filename:     `KartuRiwayat_${document.getElementById('disp_nama').innerText || 'Mesin'}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { 
-                    scale: 2, 
+                    scale: 2, // Scale tinggi untuk kualitas tajam
                     useCORS: true,
-                    // PENTING: Paksa windowWidth agar html2canvas "berpikir" dia ada di layar desktop
+                    // KUNCI UTAMA: Paksa windowWidth agar html2canvas "berpikir" dia ada di layar desktop selebar 1123px
+                    // Ini mengatasi masalah terpotong di HP/Tablet
                     windowWidth: 1123, 
                     width: 1123,
                     scrollY: 0,
@@ -520,7 +534,7 @@
             };
 
             try {
-                // Generate PDF dari CONTAINER CLONE, bukan dari body asli
+                // Render dari CLONE CONTAINER
                 await html2pdf().set(opt).from(clonedElement).save();
             } catch (err) {
                 console.error(err);
