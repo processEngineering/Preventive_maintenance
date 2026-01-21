@@ -4,7 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Laporan Final Preventif - PT AKG</title>
+    
+    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- PDF Generation Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
     <style>
         /* ====================== BASE & LAYOUT (RED/BLACK THEME) ====================== */
         body { 
@@ -46,6 +53,7 @@
 
         /* Tombol Print tetap Hijau (Standar) atau bisa diubah */
         .btn-print { background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
+        .btn-print:disabled { background: #555; cursor: not-allowed; }
         
         .company-footer { font-size: 7px; font-weight: bold; text-align: center; margin-top: 2px; color: #000; }
 
@@ -198,7 +206,7 @@
             </div>
             <div style="display:flex; gap:8px;">
                 <button class="btn-view" onclick="searchReport()">TAMPILKAN</button>
-                <button class="btn-print" onclick="window.print()">CETAK PDF</button>
+                <button class="btn-print" onclick="downloadPDF()">CETAK PDF</button>
             </div>
         </div>
     </div>
@@ -316,7 +324,6 @@
                     <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
                 </svg>
             </div>
-            <!-- TEXT LABEL REMOVED -->
         </a>
         <a href="menu_utama.html" class="nav-btn">
             <div class="nav-icon">
@@ -324,7 +331,6 @@
                     <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
                 </svg>
             </div>
-            <!-- TEXT LABEL REMOVED -->
         </a>
         <a href="download_data.html" class="nav-btn">
             <div class="nav-icon">
@@ -332,7 +338,6 @@
                     <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
                 </svg>
             </div>
-            <!-- TEXT LABEL REMOVED -->
         </a>
         <a href="informasi_akun.html" class="nav-btn">
             <div class="nav-icon">
@@ -340,7 +345,6 @@
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                 </svg>
             </div>
-            <!-- TEXT LABEL REMOVED -->
         </a>
     </nav>
 
@@ -402,13 +406,26 @@
                     currentCat = r.prslb_items.kategori;
                     body.innerHTML += `<tr class="cat-bg"><td colspan="6">${currentCat}</td></tr>`;
                 }
+                
+                // Mengambil keterangan dari Koordinator (r.keterangan_koordinator).
+                // Jika kosong (misal item OK), ambil dari Pelaksana (r.keterangan).
+                const finalNote = r.keterangan_koordinator ? r.keterangan_koordinator : (r.keterangan || "");
+                
+                // Menentukan Status di P2 (Koordinator)
+                let statusP2 = '';
+                if (r.status_koordinator) {
+                    statusP2 = r.status_koordinator; // 'OK' atau 'NG'
+                } else if (log.status_verifikasi) {
+                    statusP2 = 'OK';
+                }
+
                 body.innerHTML += `<tr>
                     <td class="center">${no++}</td>
                     <td>${r.prslb_items.item_name}</td>
                     <td>${r.prslb_items.standard || ""}</td>
-                    <td class="center">${r.status === 'OK' ? '✓' : 'X'}</td>
-                    <td class="center">${log.status_verifikasi ? '✓' : ''}</td>
-                    <td>${r.keterangan || ""}</td>
+                    <td class="center">${r.status === 'OK' ? 'OK' : 'NG'}</td>
+                    <td class="center">${statusP2}</td>
+                    <td>${finalNote}</td>
                 </tr>`;
             });
 
@@ -425,6 +442,49 @@
 
             document.getElementById('empty-state').style.display = 'none';
             document.getElementById('report-view').style.display = 'block';
+        }
+
+        // FUNGSI BARU: GENERATE PDF DARI "SCREENSHOT" DIV
+        async function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const element = document.getElementById('report-view');
+            const btn = document.querySelector('.btn-print');
+            const originalText = btn.innerText;
+
+            btn.innerText = "MEMPROSES...";
+            btn.disabled = true;
+
+            try {
+                // Render elemen HTML menjadi Canvas (Foto)
+                const canvas = await html2canvas(element, {
+                    scale: 2, // Kualitas tinggi
+                    useCORS: true, // Izinkan gambar dari luar (misal logo)
+                    logging: false
+                });
+
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                
+                // Buat PDF Landscape A4
+                const pdf = new jsPDF('l', 'mm', 'a4');
+                const pdfWidth = 297;
+                const pdfHeight = 210;
+                
+                // Masukkan gambar ke PDF full page
+                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                
+                // Nama File
+                const mesin = document.getElementById('m-nama').innerText || 'Laporan';
+                const tgl = document.getElementById('m-tgl').innerText || 'Preventif';
+                
+                pdf.save(`Laporan_${mesin}_${tgl}.pdf`);
+                
+            } catch (error) {
+                console.error("Gagal cetak PDF:", error);
+                alert("Gagal membuat PDF. Pastikan koneksi lancar.");
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
         }
 
         window.onload = loadFilter;
