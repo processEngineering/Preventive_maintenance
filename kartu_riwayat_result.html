@@ -469,79 +469,82 @@
             });
         }
 
-        // ==================== FUNGSI EKSPOR PDF (UPDATED FOR LAPTOP VIEWPORT) ====================
+        // ==================== FUNGSI EKSPOR PDF (WYSIWYG - FIXED WIDTH) ====================
         async function exportPDF() {
-            // 1. Scroll ke paling atas agar viewport netral
             window.scrollTo(0, 0);
-
             const overlay = document.getElementById('loadingOverlay');
             overlay.style.display = 'flex';
 
             try {
-                // 2. Hitamkan Tanda Tangan (Optimasi Kontras)
+                // 1. Proses Gambar
                 const sigImages = document.querySelectorAll('.sig-img');
-                const processingPromises = Array.from(sigImages).map(img => blackenImage(img));
-                await Promise.all(processingPromises);
+                await Promise.all(Array.from(sigImages).map(img => blackenImage(img)));
 
-                // 3. CLONE ELEMEN (Isolasi Area Kertas)
+                // 2. Clone & Isolasi
                 const originalElement = document.getElementById('printArea');
                 const clonedElement = originalElement.cloneNode(true);
 
-                // --- RESET STYLE KHUSUS KLONING ---
-                // Hapus margin auto, paksa menempel ke kiri atas (0,0)
-                clonedElement.style.margin = '0'; 
+                // 3. HARDCORE STYLING UNTUK CLONE
+                // Paksa clone memiliki lebar fix 1123px (A4 Landscape)
+                // Ini membuat html2canvas "berpikir" dia memotret layar selebar 1123px
+                // Tidak peduli layar laptop/HP anda sebenarnya berapa.
+                const A4_WIDTH_PX = 1123;
+                const A4_HEIGHT_PX = 794;
+
+                clonedElement.style.margin = '0';
                 clonedElement.style.padding = '15mm'; 
-                clonedElement.style.boxShadow = 'none';
-                clonedElement.style.transform = 'none';
-                
-                // Set lebar sedikit dibawah 1123px untuk safety margin rendering browser (1120px)
-                clonedElement.style.width = '1122px'; 
-                clonedElement.style.minHeight = '794px';
+                clonedElement.style.width = `${A4_WIDTH_PX}px`;
+                clonedElement.style.minHeight = `${A4_HEIGHT_PX}px`;
+                clonedElement.style.height = 'auto'; // Biarkan tumbuh jika konten panjang
                 clonedElement.style.boxSizing = 'border-box';
                 clonedElement.style.background = 'white';
+                clonedElement.style.position = 'relative';
+                clonedElement.style.transform = 'none';
+                clonedElement.style.left = 'auto';
+                clonedElement.style.top = 'auto';
 
-                // 4. BUAT CONTAINER ISOLASI (OFF-SCREEN)
-                // Ini menipu browser agar merender layout seolah-olah di layar lebar
+                // 4. Container Tersembunyi dengan Ukuran Pasti
                 const container = document.createElement('div');
+                container.id = 'pdf-export-container';
                 container.style.position = 'fixed';
                 container.style.top = '0';
-                container.style.left = '0';
-                container.style.width = '1130px'; 
+                container.style.left = '-10000px'; // Sembunyikan jauh di kiri
+                container.style.width = `${A4_WIDTH_PX}px`; // Lebar Container Fix
                 container.style.zIndex = '-9999';
-                container.style.background = 'white';
-                container.style.overflow = 'hidden'; 
                 
                 container.appendChild(clonedElement);
                 document.body.appendChild(container);
 
-                // Tunggu render browser stabil
+                // Tunggu render
                 await new Promise(resolve => setTimeout(resolve, 500));
 
-                // 5. KONFIGURASI PRESISI HTML2PDF
+                // 5. Konfigurasi html2pdf
                 const namaMesin = document.getElementById('disp_nama').innerText || 'Mesin';
                 const namaFile = `KartuRiwayat_${namaMesin.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
 
                 const opt = {
-                    margin:       0, 
-                    filename:     namaFile,
-                    image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  { 
-                        scale: 2, 
+                    margin: 0,
+                    filename: namaFile,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { 
+                        scale: 2, // Kualitas
                         useCORS: true,
-                        // KUNCI: Paksa windowWidth selebar desktop (1123px)
-                        windowWidth: 1123, 
-                        // windowHeight dinamis berdasarkan konten clone
-                        windowHeight: container.scrollHeight + 50, 
+                        // PAKSA LEBAR CANVAS = LEBAR A4
+                        width: A4_WIDTH_PX,
+                        windowWidth: A4_WIDTH_PX, 
+                        // Pastikan koordinat mulai dari 0
                         scrollX: 0,
                         scrollY: 0,
+                        x: 0,
+                        y: 0
                     },
-                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true }
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true }
                 };
 
-                // Render dari container isolasi
+                // Render Elemen Clone
                 await html2pdf().set(opt).from(clonedElement).save();
 
-                // Bersihkan Container
+                // Bersih-bersih
                 document.body.removeChild(container);
 
             } catch (err) {
