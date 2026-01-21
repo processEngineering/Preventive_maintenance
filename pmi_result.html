@@ -2,197 +2,192 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan Maintenance - FINAL EXPORT 1 PAGE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Laporan Maintenance - AUTO FIT A4</title>
     
+    <!-- Supabase & HTML2PDF -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <style>
         /* =========================================
-           1. RESET & VARIABLES
+           1. RESET & UI (App Interface)
            ========================================= */
         :root {
-            --primary: #DC2626;       
-            --bg-body: #050505;       
-            --text-app: #FFFFFF;      
-            
-            --paper-bg: #FFFFFF;
-            --paper-text: #000000;
+            --primary: #DC2626;        
+            --bg-body: #111;        
+            --text-app: #FFF;      
+            --paper-width: 210mm;
+            /* Tinggi A4 dalam pixel (96dpi) sekitar 1123px. 
+               Kita tidak set fixed height agar web view tidak memotong data. */
         }
 
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         body { 
-            font-family: "Arial Narrow", "Helvetica Condensed", Arial, sans-serif; 
+            font-family: "Arial Narrow", Arial, sans-serif; 
             background: var(--bg-body);
-            background-image: radial-gradient(circle at 50% 0%, rgba(220, 38, 38, 0.2), transparent 70%);
-            margin: 0; 
-            padding: 20px; 
-            padding-bottom: 90px;
+            margin: 0; padding: 0;
+            padding-bottom: 90px; /* Space for navbar */
             color: var(--text-app);
-            display: flex; 
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
+            display: flex; flex-direction: column; align-items: center;
         }
 
-        /* =========================================
-           2. FILTER BOX (HITAM MERAH & FLEKSIBEL)
-           ========================================= */
+        /* UI: Filter Box */
         .filter-container {
-            width: 100%;
-            position: sticky; top: 0; z-index: 999;
-            padding: 10px;
-            background: rgba(5, 5, 5, 0.95); 
+            width: 100%; position: sticky; top: 0; z-index: 999;
+            background: rgba(17, 17, 17, 0.95); border-bottom: 1px solid #333;
+            padding: 10px; display: flex; justify-content: center;
             backdrop-filter: blur(5px);
-            border-bottom: 1px solid #333;
-            display: flex; justify-content: center;
         }
-
         .filter-box {
-            display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
-            width: 100%; max-width: 800px;
+            display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 600px;
         }
-        
         select, button { 
-            padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 8px; 
-            border: 1px solid #444; background: #222; color: white; outline: none;
-            font-size: 12px; flex: 1 1 auto; min-width: 100px;
+            padding: 10px; font-weight: bold; border-radius: 6px; 
+            border: 1px solid #444; background: #222; color: white; 
+            font-size: 13px; flex: 1;
         }
-        
-        .btn-search { background: var(--primary); color: #fff; border: none; }
-        .btn-download { background: #fff; color: #000; border: none; }
-        .btn-download:hover { background: #ddd; }
+        .btn-search { background: var(--primary); color: white; border: none; flex: 0 0 auto; width: 80px;}
+        .btn-download { background: #fff; color: black; border: none; flex: 0 0 auto; width: 80px;}
 
-        /* =========================================
-           3. RESPONSIVE WRAPPER
-           ========================================= */
-        .responsive-wrapper {
+        /* UI: Info Text */
+        .info-status {
+            margin: 10px 0; font-size: 12px; color: #aaa; text-align: center;
+        }
+
+        /* UI: Responsive Wrapper for Paper */
+        .paper-wrapper {
             width: 100%;
-            overflow-x: auto;
-            display: flex; justify-content: center;
-            padding: 20px;
+            overflow: auto; /* Agar bisa digeser di HP */
+            display: flex;
+            justify-content: center;
+            padding: 10px;
+            background: #222;
         }
 
         /* =========================================
-           4. KERTAS LAPORAN (SUPER COMPACT A4)
+           2. KERTAS LAPORAN (FLEXIBLE HEIGHT)
            ========================================= */
         .paper {
-            background: var(--paper-bg); 
-            width: 210mm; 
-            min-width: 210mm;
-            /* Tinggi A4 = 297mm. Kita set auto agar fleksibel saat render */
-            min-height: 297mm; 
-            padding: 5mm 8mm; /* Margin Kertas Tipis */
-            box-shadow: 0 0 40px rgba(220, 38, 38, 0.2); 
+            background: #FFF;
+            color: #000;
+            width: var(--paper-width);
+            min-height: 297mm; /* Minimal setinggi A4, tapi bisa memanjang */
+            min-width: var(--paper-width);
+            
+            /* Padding agar tidak mepet tepi kertas saat diprint */
+            padding: 10mm 10mm; 
+            
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            margin: auto;
             position: relative;
-            color: var(--paper-text);
+            
+            /* PENTING: Jangan hidden, biar user bisa baca semua data di HP */
+            overflow: visible; 
+            
+            font-size: 8pt; 
+            line-height: 1.1;
+            transform-origin: top center; /* Titik pusat untuk scaling PDF */
         }
 
-        /* TABEL SUPER RAPAT (AGAR MUAT 1 HALAMAN) */
-        table { width: 100%; border-collapse: collapse; margin-bottom: 1px; font-size: 6pt; }
+        /* TABEL LOGIC */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 2px; }
+        /* Border dipertegas jadi 1px agar tidak "bocor" (hilang) saat dirender */
+        td, th { border: 1px solid #000; padding: 1px 3px; vertical-align: middle; }
         
-        td, th { 
-            border: 0.5pt solid #000; 
-            padding: 0.5px 2px; /* Padding sangat tipis */
-            vertical-align: middle; 
-            line-height: 1.0; /* Line height 1.0 agar sangat rapat */
-        }
-
-        /* HEADER */
-        .header-tbl td { padding: 1px; text-align: center; }
-        .logo-img { height: 25px; width: auto; }
-        .company-name { font-size: 7pt; font-weight: bold; text-align: left; text-transform: uppercase; }
-        .doc-title { font-size: 9pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; }
-        .doc-ctrl-tbl { width: 100%; border: none; font-size: 5.5pt; }
-        .doc-ctrl-tbl td { border: none; padding: 0; text-align: left; }
+        /* HEADER SECTION */
+        .header-tbl { margin-bottom: 5px; }
+        .header-tbl td { text-align: center; padding: 4px; }
+        .logo-img { height: 35px; width: auto; display: block; margin: 0 auto; }
+        .company-name { font-size: 9pt; font-weight: bold; margin-top: 2px; display: block;}
+        .doc-title { font-size: 12pt; font-weight: bold; text-decoration: underline; }
+        
+        .doc-ctrl { width: 100%; font-size: 7pt; text-align: left; border: none; }
+        .doc-ctrl td { border: none; padding: 0; }
 
         /* INFO MESIN */
-        .info-tbl { margin-bottom: 2px; font-size: 6.5pt; }
-        .info-tbl td { padding: 0.5px 2px; }
-        .lbl-col { width: 18%; font-weight: bold; }
-        .val-col { width: 32%; text-transform: uppercase; }
-
-        /* DATA CHECKLIST */
+        .info-tbl { font-size: 8pt; margin-bottom: 8px; }
+        .info-tbl td { border: none; border-bottom: 1px solid #ccc; padding: 2px 0; }
+        .lbl { font-weight: bold; width: 15%; }
+        .val { width: 35%; padding-left: 5px; }
+        
+        /* DATA TABLE CHECKLIST */
         .main-tbl th { 
-            background: #f0f0f0; font-weight: bold; text-transform: uppercase; 
-            text-align: center; padding: 1px; height: 12px; font-size: 6.5pt;
+            background: #ddd; font-weight: bold; font-size: 7.5pt; height: 18px; 
+            border: 1px solid #000;
         }
-        .col-no { width: 18px; text-align: center; }
+        .main-tbl td { font-size: 7.5pt; height: 13px; } /* Sedikit lebih lega agar terbaca */
+        
+        .col-no { width: 25px; text-align: center; }
         .col-item { text-align: left; }
-        .col-std { width: 23%; font-weight: bold; }
-        .col-act { width: 27%; padding: 0 !important; }
-        .col-ket { width: 14%; text-align: center; font-size: 6pt; }
-        
-        /* Indentasi Pressure Gauge */
-        .indent-row { padding-left: 12px !important; }
+        .col-std { width: 20%; font-weight: bold; text-align: center; }
+        .col-act { width: 25%; padding: 0 !important; }
+        .col-ket { width: 15%; text-align: center; font-size: 6.5pt; }
 
-        /* KATEGORI */
-        .cat-row td { 
-            background: #d9d9d9; font-weight: bold; text-transform: uppercase; 
-            padding: 1px 4px; font-size: 6.5pt; height: 10px;
-        }
+        /* ROW STYLES */
+        .cat-row td { background: #eee; font-weight: bold; font-size: 7.5pt; padding-left: 5px; }
+        .indent-row { padding-left: 15px !important; }
 
-        /* VALVE & GRID */
-        .sub-header-row td { background: #f9f9f9; padding: 0 !important; }
-        .valve-label { 
-            display: block; width: 100%; border-bottom: 0.5pt solid #000; 
-            background: #f0f0f0; font-size: 6pt; padding: 0.5px 0; font-weight: bold; text-align: center;
+        /* VALVE / SUB-GRID SYSTEM */
+        .act-grid { display: flex; width: 100%; height: 100%; min-height: 13px; }
+        .act-item { 
+            flex: 1; border-right: 1px solid #000; 
+            display: flex; align-items: center; justify-content: center; 
         }
-        .act-grid { display: flex; width: 100%; height: 100%; }
-        .sub-head-item, .act-item { 
-            flex: 1; display: flex; align-items: center; justify-content: center; 
-            border-right: 0.5pt solid #000; padding: 0; height: 10px; /* Tinggi baris data minimal */
-        }
-        .sub-head-item { font-size: 6pt; font-weight: bold; background: #f9f9f9; }
-        .act-item span { font-size: 6.5pt; font-weight: bold; }
-        .sub-head-item:last-child, .act-item:last-child { border-right: none; }
-        
-        .st-ok { font-weight: bold; color: #000; }
-        .st-ng { font-weight: bold; color: #b91c1c; }
+        .act-item:last-child { border-right: none; }
+        .st-ok { color: black; font-weight: bold; }
+        .st-ng { color: red; font-weight: bold; }
 
-        /* TANDA TANGAN (SUPER COMPRESSED) */
-        .sig-container { margin-top: 2px; border: 0.5pt solid #000; }
-        .sig-tbl { width: 100%; border: none; margin: 0; }
-        .sig-tbl td { width: 33.33%; padding: 0; vertical-align: top; height: 35px; border-right: 0.5pt solid #000; }
+        .valve-header { background: #f9f9f9; font-size: 6.5pt; font-weight: bold; text-align: center; border-bottom: 1px solid #000; }
+        .sub-header-row td { background: #fafafa; padding: 0 !important; }
+
+        /* SIGNATURE */
+        .sig-container { margin-top: 15px; border: 1px solid #000; page-break-inside: avoid; }
+        .sig-tbl { width: 100%; border: none; }
+        .sig-tbl td { width: 33.33%; text-align: center; vertical-align: top; padding: 0; border-right: 1px solid #000; }
         .sig-tbl td:last-child { border-right: none; }
         
-        .sig-box { display: flex; flex-direction: column; justify-content: space-between; height: 100%; }
-        .sig-head { background: #f0f0f0; font-weight: bold; text-align: center; border-bottom: 0.5pt solid #000; font-size: 6pt; padding: 1px 0; }
-        .sig-area { flex-grow: 1; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 1px; }
-        .sig-img { max-height: 20px; max-width: 80%; object-fit: contain; }
-        .sig-footer { text-align: center; padding-bottom: 1px; }
-        .sig-name { display: block; width: 90%; margin: 0 auto; border-top: 0.5pt solid #000; padding-top: 1px; font-weight: bold; font-size: 6.5pt; }
-        .sig-role { font-size: 6pt; }
+        .sig-head { background: #eee; font-size: 7.5pt; font-weight: bold; border-bottom: 1px solid #000; padding: 3px 0; }
+        .sig-box { height: 50px; display: flex; align-items: flex-end; justify-content: center; }
+        .sig-img { max-height: 40px; max-width: 80%; }
+        .sig-name { border-top: 1px solid #000; display: block; width: 90%; margin: 0 auto 3px auto; font-size: 7.5pt; font-weight: bold; padding-top: 2px;}
+        .sig-role { font-size: 7pt; margin-bottom: 3px;}
 
         /* =========================================
-           5. NAVIGATION BAR
+           3. NAVIGATION
            ========================================= */
         .bottom-nav {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: #0a0a0a; border-top: 1px solid #222;
-            display: flex; justify-content: space-around;
-            padding: 10px 0; z-index: 1000;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+            position: fixed; bottom: 0; width: 100%; background: #000;
+            display: flex; justify-content: space-around; padding: 10px 0;
+            border-top: 1px solid #333; z-index: 1000;
         }
-        .nav-item {
-            text-decoration: none; color: #666;
-            display: flex; flex-direction: column; align-items: center;
-            font-size: 10px; font-family: 'Inter', sans-serif;
-            transition: color 0.3s;
+        .nav-item { color: #666; text-decoration: none; font-size: 10px; display: flex; flex-direction: column; align-items: center; }
+        .nav-item.active { color: var(--primary); }
+        .nav-item i { font-size: 18px; margin-bottom: 4px; }
+
+        /* LOADING OVERLAY */
+        #loading-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.8); z-index: 2000;
+            display: none; justify-content: center; align-items: center;
+            flex-direction: column; color: white;
         }
-        .nav-item i { font-size: 20px; margin-bottom: 4px; }
-        .nav-item.active { color: var(--primary); font-weight: bold; }
 
     </style>
 </head>
 <body>
 
+    <div id="loading-overlay">
+        <i class="fa fa-spinner fa-spin fa-2x"></i>
+        <p style="margin-top:10px;">Memproses PDF...</p>
+    </div>
+
+    <!-- 1. FILTER SECTION -->
     <div class="filter-container">
         <div class="filter-box">
-            <select id="sel-mesin"><option value="">Loading...</option></select>
+            <select id="sel-mesin"><option>Loading...</option></select>
             <select id="sel-bulan">
                 <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
                 <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
@@ -200,54 +195,56 @@
                 <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
             </select>
             <select id="sel-tahun"><option value="2025">2025</option><option value="2026" selected>2026</option></select>
-            <button class="btn-search" onclick="cariLaporan()"><i class="fa-solid fa-magnifying-glass"></i> CARI</button>
-            <button class="btn-download" onclick="downloadPDF()"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+            <button class="btn-search" onclick="cariLaporan()"><i class="fa fa-search"></i></button>
+            <button class="btn-download" onclick="downloadPDF()"><i class="fa fa-file-pdf"></i> PDF</button>
         </div>
     </div>
 
-    <div class="responsive-wrapper">
+    <!-- 2. REPORT PREVIEW (SCROLLABLE ON MOBILE) -->
+    <div class="info-status" id="status-text">Silahkan Pilih Mesin & Cari Data</div>
+    
+    <div class="paper-wrapper">
         <div class="paper" id="report-view" style="display:none;">
+            
+            <!-- HEADER -->
             <table class="header-tbl">
                 <tr>
-                    <td width="35%">
-                        <div class="logo-container" style="display:flex; align-items:center; justify-content:center; gap:8px;">
-                            <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img">
-                            <span class="company-name">PT. AMARILYS<br>KARISMA GEMILANG</span>
-                        </div>
-                    </td>
-                    <td width="35%">
-                        <div class="doc-title">FORM PREVENTIF MESIN INJECTION (CLAMPING UNIT)</div>
+                    <td width="20%"><img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img"></td>
+                    <td width="50%">
+                        <div class="company-name">PT. AMARILYS KARISMA GEMILANG</div>
+                        <div class="doc-title">FORM PREVENTIF MESIN INJECTION</div>
                     </td>
                     <td width="30%">
-                        <table class="doc-ctrl-tbl">
-                            <tr><td style="width:70px;">No. Dokumen</td><td>: AF.SP 05.07.Rev-00</td></tr>
-                            <tr><td>Tanggal Terbit</td><td>: 02 Agustus 2024</td></tr>
-                            <tr><td>Halaman</td><td>: 1/1</td></tr>
-                            <tr><td>Tanggal Revisi</td><td>: -</td></tr>
+                        <table class="doc-ctrl">
+                            <tr><td>No. Dok</td><td>: AF.SP 05.07.Rev-00</td></tr>
+                            <tr><td>Tgl Terbit</td><td>: 02 Agustus 2024</td></tr>
+                            <tr><td>Halaman</td><td>: 1 dari 1</td></tr>
                         </table>
                     </td>
                 </tr>
             </table>
 
+            <!-- INFO MESIN -->
             <table class="info-tbl">
                 <tr>
-                    <td class="lbl-col">MERK MESIN <span style="float:right">:</span></td><td class="val-col" id="v_mesin">-</td>
-                    <td class="lbl-col">TARGET SELESAI <span style="float:right">:</span></td><td class="val-col" id="v_target">-</td>
+                    <td class="lbl">MERK MESIN</td><td class="val">: <span id="v_mesin">-</span></td>
+                    <td class="lbl">TANGGAL</td><td class="val">: <span id="v_tgl">-</span></td>
                 </tr>
                 <tr>
-                    <td class="lbl-col">TONAGE <span style="float:right">:</span></td><td class="val-col" id="v_ton">-</td>
-                    <td class="lbl-col">START JAM <span style="float:right">:</span></td><td class="val-col" id="v_start">-</td>
+                    <td class="lbl">TONAGE</td><td class="val">: <span id="v_ton">-</span></td>
+                    <td class="lbl">JAM START</td><td class="val">: <span id="v_start">-</span></td>
                 </tr>
                 <tr>
-                    <td class="lbl-col">TANGGAL <span style="float:right">:</span></td><td class="val-col" id="v_tgl">-</td>
-                    <td class="lbl-col">FINISH JAM <span style="float:right">:</span></td><td class="val-col" id="v_finish">-</td>
+                    <td class="lbl">RUNNING HOURS</td><td class="val">: <span id="v_hm">-</span></td>
+                    <td class="lbl">JAM FINISH</td><td class="val">: <span id="v_finish">-</span></td>
                 </tr>
                 <tr>
-                    <td class="lbl-col">TAHUN <span style="float:right">:</span></td><td class="val-col" id="v_thn">-</td>
-                    <td class="lbl-col">RUNNING HOURS <span style="float:right">:</span></td><td class="val-col" id="v_hm">-</td>
+                    <td class="lbl">TARGET</td><td class="val">: <span id="v_target">-</span></td>
+                    <td class="lbl">PELAKSANA</td><td class="val">: <span id="v_pic">-</span></td>
                 </tr>
             </table>
 
+            <!-- TABEL DATA -->
             <table class="main-tbl">
                 <thead>
                     <tr>
@@ -255,51 +252,44 @@
                         <th class="col-item">ITEM PENGECEKAN</th>
                         <th class="col-std">STANDARD</th>
                         <th class="col-act">ACTUAL</th>
-                        <th class="col-ket">KETERANGAN</th>
+                        <th class="col-ket">KET</th>
                     </tr>
                 </thead>
-                <tbody id="tbl-body"></tbody>
+                <tbody id="tbl-body">
+                    <!-- Data injeksi via JS -->
+                </tbody>
             </table>
 
+            <!-- SIGNATURE -->
             <div class="sig-container">
                 <table class="sig-tbl">
                     <tr>
                         <td>
-                            <div class="sig-box">
-                                <div class="sig-head">DIKERJAKAN</div>
-                                <div class="sig-area" id="sig_1"></div>
-                                <div class="sig-footer">
-                                    <span class="sig-name" id="nm_1">.......</span>
-                                    <div class="sig-role">OPRT. MEKANIK</div>
-                                </div>
-                            </div>
+                            <div class="sig-head">DIKERJAKAN</div>
+                            <div class="sig-box" id="sig_1"></div>
+                            <span class="sig-name" id="nm_1">...</span>
+                            <div class="sig-role">OPRT. MEKANIK</div>
                         </td>
                         <td>
-                            <div class="sig-box">
-                                <div class="sig-head">DIPERIKSA</div>
-                                <div class="sig-area" id="sig_2"></div>
-                                <div class="sig-footer">
-                                    <span class="sig-name" id="nm_2">.......</span>
-                                    <div class="sig-role">SPV. MEKANIK</div>
-                                </div>
-                            </div>
+                            <div class="sig-head">DIPERIKSA</div>
+                            <div class="sig-box" id="sig_2"></div>
+                            <span class="sig-name" id="nm_2">...</span>
+                            <div class="sig-role">SPV. MEKANIK</div>
                         </td>
                         <td>
-                            <div class="sig-box">
-                                <div class="sig-head">DISETUJUI</div>
-                                <div class="sig-area" id="sig_3"></div>
-                                <div class="sig-footer">
-                                    <span class="sig-name" id="nm_3">.......</span>
-                                    <div class="sig-role">SPTD. MEKANIK</div>
-                                </div>
-                            </div>
+                            <div class="sig-head">DISETUJUI</div>
+                            <div class="sig-box" id="sig_3"></div>
+                            <span class="sig-name" id="nm_3">...</span>
+                            <div class="sig-role">SPTD. MEKANIK</div>
                         </td>
                     </tr>
                 </table>
             </div>
-        </div>
-    </div>
 
+        </div> <!-- End Paper -->
+    </div> <!-- End Wrapper -->
+
+    <!-- 3. NAVIGATION -->
     <nav class="bottom-nav">
         <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i><span>Home</span></a>
         <a href="menu_utama.html" class="nav-item"><i class="fa-solid fa-bars"></i><span>Menu</span></a>
@@ -307,6 +297,7 @@
         <a href="informasi_akun.html" class="nav-item"><i class="fa-solid fa-circle-user"></i><span>Akun</span></a>
     </nav>
 
+    <!-- SCRIPT -->
     <script>
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
@@ -325,6 +316,8 @@
             const thn = document.getElementById('sel-tahun').value;
             if(!mid) return alert("Pilih Mesin dahulu!");
 
+            document.getElementById('status-text').innerText = "Sedang mencari data...";
+            
             const mm = bln.toString().padStart(2, '0');
             const startDate = `${thn}-${mm}-01`;
             const lastDay = new Date(thn, bln, 0).getDate();
@@ -338,7 +331,7 @@
                 .order('created_at', {ascending:false}).limit(1);
 
             if(error || !headers || headers.length === 0) {
-                alert("Laporan tidak ditemukan.");
+                document.getElementById('status-text').innerText = "Data Laporan Tidak Ditemukan.";
                 document.getElementById('report-view').style.display = 'none';
                 return;
             }
@@ -346,25 +339,28 @@
         }
 
         async function renderReport(head) {
+            document.getElementById('status-text').innerText = "Geser layar untuk melihat seluruh laporan.";
             document.getElementById('report-view').style.display = 'block';
 
             const m = head.pmi_machines || {};
             document.getElementById('v_mesin').innerText = m.nama_mesin || '-';
             document.getElementById('v_ton').innerText = m.tonage || '-';
             document.getElementById('v_tgl').innerText = head.tanggal;
-            document.getElementById('v_thn').innerText = head.tahun;
-            document.getElementById('v_target').innerText = (head.target_selesai||'').substring(0,5);
+            
             document.getElementById('v_start').innerText = (head.start_jam||'').substring(0,5);
             document.getElementById('v_finish').innerText = (head.finish_jam||'').substring(0,5);
+            document.getElementById('v_target').innerText = (head.target_selesai||'').substring(0,5);
             document.getElementById('v_hm').innerText = head.running_hours;
+            document.getElementById('v_pic').innerText = head.nama_pelaksana || '-';
 
             document.getElementById('nm_1').innerText = head.nama_pelaksana || '.......';
             document.getElementById('nm_2').innerText = head.nama_koordinator || '.......';
             document.getElementById('nm_3').innerText = head.nama_superintendent || '.......';
             
-            document.getElementById('sig_1').innerHTML = head.signature_pelaksana ? `<img src="${head.signature_pelaksana}" class="sig-img">` : '';
-            document.getElementById('sig_2').innerHTML = head.signature_koordinator ? `<img src="${head.signature_koordinator}" class="sig-img">` : '';
-            document.getElementById('sig_3').innerHTML = head.signature_superintendent ? `<img src="${head.signature_superintendent}" class="sig-img">` : '';
+            const renderSig = (url) => url ? `<img src="${url}" class="sig-img">` : '';
+            document.getElementById('sig_1').innerHTML = renderSig(head.signature_pelaksana);
+            document.getElementById('sig_2').innerHTML = renderSig(head.signature_koordinator);
+            document.getElementById('sig_3').innerHTML = renderSig(head.signature_superintendent);
 
             const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
             const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
@@ -390,95 +386,122 @@
                     if(item.kategori !== lastCat) {
                         lastCat = item.kategori;
                         tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${lastCat}</td></tr>`;
-                        if(lastCat.includes("INJECTION UNIT") || lastCat.includes("PUMP & ELEKTRIKAL")) no = 1;
+                        if(lastCat.includes("INJECTION") || lastCat.includes("PUMP")) no = 1;
                     }
 
                     const myFields = fields.filter(f => f.pmi_item_id === item.id);
-                    let hasSpecialLabels = myFields.some(f => f.label && f.label !== 'Actual');
                     let headerKey = item.kategori;
 
+                    let hasSpecialLabels = myFields.some(f => f.label && f.label !== 'Actual');
                     if(hasSpecialLabels && !printedHeaders[headerKey]) {
-                        let isValveSetting = myFields.some(f => f.label === '50' || f.label === '200');
-                        let valveHeaderHtml = isValveSetting ? `<div class="valve-label">Valve Idling Sett:</div>` : '';
-                        let subHeadHtml = `<div class="act-grid">`;
-                        myFields.forEach(f => subHeadHtml += `<div class="sub-head-item">${f.label || ''}</div>`);
-                        subHeadHtml += `</div>`;
+                        let isValve = myFields.some(f => f.label === '50' || f.label === '200');
+                        let valveLbl = isValve ? `<div class="valve-header">Valve Idling Sett</div>` : '';
                         
-                        tbody.innerHTML += `<tr class="sub-header-row"><td></td><td></td><td></td><td class="col-act">${valveHeaderHtml}${subHeadHtml}</td><td></td></tr>`;
+                        let subHtml = `<div class="act-grid">`;
+                        myFields.forEach(f => subHtml += `<div class="act-item" style="background:#fafafa; font-weight:bold; font-size:6pt;">${f.label||''}</div>`);
+                        subHtml += `</div>`;
+                        
+                        tbody.innerHTML += `<tr class="sub-header-row"><td></td><td></td><td></td><td class="col-act">${valveLbl}${subHtml}</td><td></td></tr>`;
                         printedHeaders[headerKey] = true;
                     }
 
-                    let actHtml = '';
+                    let actHtml = '-';
                     if(myFields.length > 0) {
                         actHtml = `<div class="act-grid">`;
                         myFields.forEach(f => {
-                            let key = `${item.id}_${f.id}`;
-                            let res = resMap[key];
-                            let val = res ? (res.status || res.nilai_aktual || '-') : '-';
+                            let r = resMap[`${item.id}_${f.id}`];
+                            let val = r ? (r.status || r.nilai_aktual || '-') : '-';
                             let cls = val === 'OK' ? 'st-ok' : (val === 'NG' ? 'st-ng' : '');
-                            actHtml += `<div class="act-item"><span class="act-val ${cls}">${val}</span></div>`;
+                            actHtml += `<div class="act-item"><span class="${cls}">${val}</span></div>`;
                         });
                         actHtml += `</div>`;
-                    } else {
-                        actHtml = '-';
                     }
 
-                    // PRESSURE GAUGE LOGIC: Masuk Indentasi, Hapus Nomor
                     let displayNo = no;
                     let displayName = item.nama_item;
-                    let indentClass = "";
-                    let shouldIncrement = true;
+                    let clsRow = "";
+                    let incNo = true;
 
-                    if (item.nama_item.toLowerCase().includes("pressure gauge")) {
-                        displayNo = "";
-                        indentClass = "indent-row"; 
-                        shouldIncrement = false; 
-                    }
-
-                    if(lastCat.includes("Mesin (Instalasi Thermocouple)") || item.nama_item.match(/^[a-z]\.|^Zone/i)) {
-                        indentClass = "indent-row";
-                        if(lastCat.includes("Mesin (Instalasi Thermocouple)")) {
-                            let match = item.nama_item.match(/^([a-z])\./i);
-                            displayNo = match ? match[1] : ''; 
-                            shouldIncrement = false; 
-                        }
+                    if(displayName.toLowerCase().includes("pressure gauge") || displayName.match(/^[a-z]\./) || displayName.startsWith("Zone")) {
+                        clsRow = "indent-row";
+                        incNo = false;
+                        if(displayName.toLowerCase().includes("pressure gauge")) displayNo = "";
+                        else if(displayName.match(/^[a-z]\./)) displayNo = displayName.match(/^([a-z])\./)[1];
+                        else displayNo = "";
                     }
 
                     tbody.innerHTML += `
-                        <tr class="data-row">
+                        <tr>
                             <td class="col-no">${displayNo}</td>
-                            <td class="col-item ${indentClass}">${displayName}</td>
+                            <td class="col-item ${clsRow}">${displayName}</td>
                             <td class="col-std">${item.standard || ''}</td>
                             <td class="col-act">${actHtml}</td>
                             <td class="col-ket">${noteMap[item.id] || ''}</td>
                         </tr>`;
 
-                    if(shouldIncrement) no++;
+                    if(incNo) no++;
                 });
             }
         }
 
-        // --- FUNGSI EXPORT PDF (1 HALAMAN) ---
+        // --- FUNGSI EXPORT PDF PINTAR (AUTO FIT 1 HALAMAN) ---
         function downloadPDF() {
             const element = document.getElementById('report-view');
+            const overlay = document.getElementById('loading-overlay');
             
-            // Generate Nama File
-            const mesin = document.getElementById('v_mesin').innerText;
+            // Tampilkan loading screen
+            overlay.style.display = 'flex';
+
+            // Nama File
+            const mesin = document.getElementById('v_mesin').innerText.replace(/[^a-zA-Z0-9]/g, '_');
             const tgl = document.getElementById('v_tgl').innerText;
-            const filename = `PMI_${mesin.replace(/[^a-zA-Z0-9]/g, '_')}_${tgl}.pdf`;
+            const filename = `MAINT_${mesin}_${tgl}.pdf`;
+
+            // 1. HITUNG SKALA AGAR MUAT 1 HALAMAN
+            // Tinggi kertas A4 (potrait) dalam pixel @ 96 DPI kira-kira 1123px.
+            // Kita beri sedikit margin (misal max height 1080px untuk konten).
+            const maxPageHeight = 1090; 
+            const currentHeight = element.scrollHeight;
+            
+            let scaleFactor = 1;
+            
+            // Jika konten lebih panjang dari kertas A4, kita kecilkan (zoom out)
+            if (currentHeight > maxPageHeight) {
+                scaleFactor = maxPageHeight / currentHeight;
+            }
+
+            // Terapkan scaling SEMENTARA ke elemen
+            const originalTransform = element.style.transform;
+            if(scaleFactor < 1) {
+                element.style.transform = `scale(${scaleFactor})`;
+                // Penting: transform origin tetap di atas tengah agar tidak geser
+                element.style.transformOrigin = 'top center'; 
+            }
 
             const opt = {
-                margin:       [0, 0, 0, 0], // Margin Nol
+                margin:       0, // Margin 0 karena kita sudah atur padding di .paper
                 filename:     filename,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 }, // Kualitas Tinggi
+                // html2canvas config
+                html2canvas:  { 
+                    scale: 2, // Scale tinggi agar teks tajam
+                    useCORS: true, 
+                    scrollY: 0 
+                }, 
+                // jsPDF config
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            // Tampilkan, Cetak, Sembunyikan
-            element.style.display = 'block';
+            // Proses Generate
             html2pdf().set(opt).from(element).save().then(() => {
-                 // Opsional: Sembunyikan lagi setelah download (atau biarkan tampil)
+                // Kembalikan ke ukuran normal setelah selesai
+                element.style.transform = originalTransform;
+                overlay.style.display = 'none';
+            }).catch(err => {
+                console.error(err);
+                alert("Gagal membuat PDF. Coba lagi.");
+                element.style.transform = originalTransform;
+                overlay.style.display = 'none';
             });
         }
     </script>
