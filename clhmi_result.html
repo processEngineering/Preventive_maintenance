@@ -3,37 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <title>AF.SP 05.13 Rev-00 – CHECKLIST HARIAN MESIN INJECTION</title>
+    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- html2canvas: Untuk memotret layar -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- jsPDF: Untuk membuat file PDF dari hasil potret -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
     <style>
-        /* --- SETTING KERTAS UTAMA --- */
-        @page { 
-            size: A4 landscape; 
-            margin: 0; 
-        }
-        
+        /* --- SETTING HALAMAN --- */
         body { 
             font-family: 'Arial Narrow', 'Helvetica Narrow', Arial, sans-serif; 
             font-size: 7pt; 
             margin: 0; 
-            padding: 10px; 
-            background: #525659; 
-            -webkit-print-color-adjust: exact; 
+            padding: 20px; 
+            background: #222222; 
+            color: #eeeeee; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             padding-bottom: 80px; 
         }
 
-        /* CONTAINER KERTAS DI LAYAR */
+        /* CONTAINER KERTAS (YANG AKAN DI-FOTO) */
         .sheet { 
             background: white; 
-            padding: 4mm 6mm; 
-            margin: auto; 
+            color: black; 
+            padding: 5mm 8mm; 
             width: 297mm; 
-            min-height: 210mm;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2); 
+            min-height: 210mm; /* A4 Landscape size */
+            box-shadow: 0 0 20px rgba(0,0,0,0.5); 
             box-sizing: border-box;
             position: relative;
+            margin-bottom: 20px;
         }
 
-        /* TABEL GLOBAL - LEBIH RAPAT */
+        /* TABEL GLOBAL */
         table { 
             border-collapse: collapse; 
             width: 100%; 
@@ -46,11 +51,13 @@
             padding: 1px 2px; 
             vertical-align: middle; 
             line-height: 1.05;
+            color: black; 
         }
 
         /* --- HEADER SECTION --- */
         .header-table { border: 2px solid black !important; }
         .header-table td { height: 35px; } 
+        /* Logo perlu crossOrigin agar bisa di-canvas */
         .logo-img { height: 35px; display: block; margin: 0 auto; }
         .main-title { font-size: 12pt; font-weight: bold; text-align: center; text-transform: uppercase; }
         .doc-info { font-size: 6pt; line-height: 1.15; padding: 2px 4px; }
@@ -71,7 +78,7 @@
             height: 18px; 
         }
 
-        /* LEBAR KOLOM - LEBIH COMPACT */
+        /* LEBAR KOLOM */
         .col-no { width: 18px; text-align: center; }
         .col-item { width: 180px; text-align: left; }
         .col-spacer { width: 6px; border-left: none; border-right: none; background: #f4f4f4; } 
@@ -94,79 +101,116 @@
 
         /* STATUS VISUAL */
         .st-ok { color: #000; font-weight: 900; font-family: 'DejaVu Sans', sans-serif; font-size: 9pt; } 
-        .st-ng { color: red; font-weight: 900; font-size: 8pt; }
-        .st-mt { color: blue; font-weight: 900; font-size: 8pt; } 
-        .st-na { color: #666; font-weight: 900; font-size: 8pt; }
-        /* Style khusus untuk Running Hour (angka) */
+        .st-ng { color: red !important; font-weight: 900; font-size: 8pt; }
+        .st-mt { color: blue !important; font-weight: 900; font-size: 8pt; } 
+        .st-na { color: #666 !important; font-weight: 900; font-size: 8pt; }
         .st-val { color: #000; font-weight: bold; font-size: 7pt; }
 
         /* SIGNATURE AREA */
-        .sig-row td { background-color: #f2f2f2; font-weight: bold; text-align: right; padding-right: 4px; font-size: 6pt; }
-        .sig-cell { height: 28px; background: white; padding: 0 !important; text-align: center; vertical-align: middle; }
-        .sig-img { width: 100%; height: 100%; max-height: 26px; object-fit: contain; mix-blend-mode: multiply; }
+        .sig-row td { background-color: #f2f2f2 !important; font-weight: bold; text-align: right; padding-right: 4px; font-size: 6pt; }
+        .sig-cell { height: 28px; background: white !important; padding: 0 !important; text-align: center; vertical-align: middle; }
+        .sig-img { width: 100%; height: 100%; max-height: 24px; object-fit: contain; mix-blend-mode: multiply; }
 
         /* --- FOOTER SECTION --- */
         .footer-wrapper { display: flex; border: 2px solid black; margin-top: 3px; height: 75px; }
         .footer-left { flex: 2.2; border-right: 1px solid black; padding: 3px; font-size: 6pt; line-height: 1.3; }
-        .footer-right { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 3px; }
+        
+        .footer-right { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 3px; 
+            overflow: hidden; 
+        }
         
         .super-title { font-weight: bold; text-align: center; text-decoration: underline; margin-bottom: 2px; font-size: 6.5pt; }
         .super-sig { flex-grow: 1; display: flex; align-items: center; justify-content: center; width: 100%; }
-        .super-name { font-weight: bold; text-decoration: underline; text-transform: uppercase; font-size: 7pt; }
-        .super-img { max-height: 45px; max-width: 85px; mix-blend-mode: multiply; }
+        
+        .super-name { 
+            font-weight: bold; 
+            text-decoration: underline; 
+            text-transform: uppercase; 
+            font-size: 7pt; 
+            text-align: center;
+            width: 100%;
+            word-wrap: break-word; 
+            line-height: 1.1;     
+            max-height: 25px;      
+            overflow: hidden;
+        }
+
+        .super-img { 
+            max-height: 35px; 
+            max-width: 75px;  
+            width: auto;
+            mix-blend-mode: multiply; 
+        }
 
         /* UI PANEL (NON PRINT) */
         .no-print { 
-            background: #1e293b; color: white; padding: 12px; margin-bottom: 15px; 
-            display: flex; gap: 10px; justify-content: center; align-items: center; 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border-radius: 8px;
+            background: #000; color: white; padding: 12px; margin-bottom: 15px; width: 100%; max-width: 297mm;
+            display: flex; flex-direction: column; gap: 10px; justify-content: center; align-items: center; 
+            box-shadow: 0 4px 6px -1px rgba(255, 0, 0, 0.2); border-radius: 8px;
+            border: 1px solid #333;
         }
+        .controls-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
         select, button { padding: 8px 12px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; }
-        button.print-btn { background: #22c55e; color: white; }
-        button.load-btn { background: #3b82f6; color: white; }
+        button.print-btn { background: #b91c1c; color: white; }
+        button.print-btn:hover { background: #dc2626; }
+        button.load-btn { background: #333; color: white; border: 1px solid #555; }
+        button.load-btn:hover { background: #555; }
+        #status-msg { color: #fbbf24; font-weight: bold; font-size: 14px; min-height: 20px; }
 
-        /* --- NAVIGASI BAWAH --- */
+        /* NAVIGASI BAWAH */
         .nav-bar {
-            position: fixed; bottom: 0; left: 0; right: 0; background: #fff;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            position: fixed; bottom: 0; left: 0; right: 0; 
+            background: #000000;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.8);
+            border-top: 1px solid #333;
             display: flex; justify-content: space-around; align-items: center;
             padding: 12px 0; z-index: 1000; height: 60px;
         }
         .nav-btn {
             flex: 1; display: flex; align-items: center; justify-content: center;
-            text-decoration: none; color: #000; padding: 0; border: none; background: none; cursor: pointer;
+            text-decoration: none; 
+            color: #550000;
+            padding: 0; border: none; background: none; cursor: pointer;
+            transition: all 0.3s ease;
         }
         .nav-icon { width: 24px; height: 24px; }
         .nav-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-        .nav-btn.active { color: #000; } 
-
-        @media print { 
-            .no-print, .nav-bar { display: none !important; }
-            body { background: white; margin: 0; padding: 0; zoom: 88%; } 
-            .sheet { box-shadow: none; border: none; margin: 0; width: 100%; padding: 4mm; page-break-inside: avoid; }
-            .grid-table th { background-color: #fff !important; -webkit-print-color-adjust: exact; }
-            .cat-row { background-color: #ddd !important; -webkit-print-color-adjust: exact; }
-            .sig-row td { background-color: #eee !important; -webkit-print-color-adjust: exact; }
+        .nav-btn.active, .nav-btn:hover { 
+            color: #ff0000;
+            filter: drop-shadow(0 0 6px rgba(255, 0, 0, 0.7));
+            transform: scale(1.1);
         }
+
     </style>
 </head>
 <body>
 
 <div class="no-print">
-    <span>🖨️ PANEL KONTROL:</span>
-    <select id="machine-select"><option value="">-- Pilih Mesin --</option></select>
-    <select id="month-select"></select>
-    <select id="year-select"></select>
-    <button class="load-btn" onclick="loadData()">TAMPILKAN DATA</button>
-    <button class="print-btn" onclick="window.print()">CETAK PDF</button>
+    <div class="controls-row">
+        <span>🖨️ PANEL KONTROL:</span>
+        <select id="machine-select"><option value="">-- Pilih Mesin --</option></select>
+        <select id="month-select"></select>
+        <select id="year-select"></select>
+        <button class="load-btn" onclick="loadData()">TAMPILKAN DATA</button>
+        <!-- Ganti Fungsi Print jadi Fungsi Capture -->
+        <button class="print-btn" onclick="captureAndExportPDF()">EKSPOR PDF (GAMBAR)</button>
+    </div>
+    <div id="status-msg"></div>
 </div>
 
-<div class="sheet">
+<div class="sheet" id="sheet-content">
     
     <table class="header-table">
         <tr>
             <td width="15%" style="text-align:center;">
-                <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img" alt="Logo">
+                <!-- Crossorigin anonymous penting untuk html2canvas -->
+                <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img" alt="Logo" crossorigin="anonymous">
             </td>
             <td width="60%" class="main-title">CHECK LIST HARIAN MESIN INJECTION</td>
             <td width="25%" class="doc-info">
@@ -205,7 +249,7 @@
             <tr id="date-row"></tr>
         </thead>
         <tbody id="main-body">
-            <tr><td colspan="38" style="text-align:center; padding:20px;">Silahkan Pilih Filter Data...</td></tr>
+            <tr><td colspan="38" style="text-align:center; padding:20px; color:black;">Silahkan Pilih Filter Data...</td></tr>
         </tbody>
         
         <tbody id="sig-body" style="display:none;">
@@ -282,24 +326,96 @@
         {kode:"b", nama:"Kelengkapan selang angin sprial & air gun", std:"Terpasang rapih,lengkap dan berfungsi", met:"Visual"}
     ];
 
+    function showStatus(msg, isError=false) {
+        const el = document.getElementById('status-msg');
+        el.innerText = msg;
+        el.style.color = isError ? '#ef4444' : '#fbbf24';
+        setTimeout(() => { el.innerText = ''; }, 5000);
+    }
+
     async function initFilter() {
-        const { data: m } = await sb.from('clhmi_machine').select('*').order('merk_mesin');
-        m?.forEach(x => document.getElementById('machine-select').add(new Option(`${x.merk_mesin}`, x.id)));
-        const mo = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-        mo.forEach((v, i) => document.getElementById('month-select').add(new Option(v, i+1)));
-        const y = new Date().getFullYear();
-        for(let i=y; i>=y-2; i--) document.getElementById('year-select').add(new Option(i, i));
+        try {
+            const { data: m } = await sb.from('clhmi_machine').select('*').order('merk_mesin');
+            m?.forEach(x => document.getElementById('machine-select').add(new Option(`${x.merk_mesin}`, x.id)));
+            const mo = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+            mo.forEach((v, i) => document.getElementById('month-select').add(new Option(v, i+1)));
+            const y = new Date().getFullYear();
+            for(let i=y; i>=y-2; i--) document.getElementById('year-select').add(new Option(i, i));
+            
+            let h = "";
+            for(let i=1; i<=31; i++) h += `<th class="col-date">${i}</th>`;
+            document.getElementById('date-row').innerHTML = h;
+        } catch(e) { console.error(e); }
+    }
+
+    // --- FUNGSI EKSPOR PDF BARU (IMAGE BASED) ---
+    async function captureAndExportPDF() {
+        const btn = document.querySelector('.print-btn');
+        const originalText = btn.innerText;
         
-        let h = "";
-        for(let i=1; i<=31; i++) h += `<th class="col-date">${i}</th>`;
-        document.getElementById('date-row').innerHTML = h;
+        // 1. Cek apakah data sudah dipilih
+        if(document.getElementById('machine-select').value === "") {
+            showStatus("Mohon pilih data dulu sebelum ekspor!", true);
+            return;
+        }
+
+        try {
+            btn.innerText = "⏳ Memproses Gambar...";
+            showStatus("Sedang mengambil gambar tabel...");
+
+            // 2. Setup elemen yang mau difoto
+            const element = document.getElementById('sheet-content');
+            
+            // 3. Gunakan html2canvas untuk 'memotret' elemen
+            // scale: 2 bikin gambar jadi high-res (biar ga pecah saat di zoom)
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                useCORS: true, // Penting buat gambar logo eksternal
+                allowTaint: true,
+                backgroundColor: "#ffffff" // Pastikan background putih
+            });
+
+            btn.innerText = "⏳ Membuat PDF...";
+
+            // 4. Setup jsPDF (Landscape, mm, A4)
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('l', 'mm', 'a4');
+
+            // 5. Hitung dimensi agar pas di A4
+            const imgData = canvas.toDataURL('image/png');
+            const pdfWidth = 297; // Lebar A4 Landscape
+            const pdfHeight = 210; // Tinggi A4 Landscape
+            
+            // Masukkan gambar ke PDF full page
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+            // 6. Simpan File
+            const machineName = document.getElementById('machine-select').selectedOptions[0].text;
+            const bln = document.getElementById('month-select').selectedOptions[0].text;
+            const filename = `Laporan_${machineName}_${bln}.pdf`;
+            
+            pdf.save(filename);
+            
+            showStatus("PDF berhasil diunduh!");
+        } catch (err) {
+            console.error(err);
+            showStatus("Gagal ekspor PDF. Cek console.", true);
+            alert("Gagal: " + err.message);
+        } finally {
+            btn.innerText = originalText;
+        }
     }
 
     async function loadData() {
         const mId = document.getElementById('machine-select').value;
         const bln = document.getElementById('month-select').value;
         const thn = document.getElementById('year-select').value;
-        if(!mId || !bln || !thn) return alert("Pilih Filter dulu!");
+        if(!mId || !bln || !thn) {
+            showStatus("Mohon pilih Mesin, Bulan, dan Tahun dulu!", true);
+            return;
+        }
+
+        showStatus("Sedang memuat data...");
 
         for(let i=1; i<=31; i++) {
             document.getElementById(`p-sig-${i}`).innerHTML = "";
@@ -312,8 +428,8 @@
             .eq('machine_id', mId).eq('bulan', parseInt(bln)).eq('tahun', parseInt(thn)).order('tanggal_isi');
 
         if(hErr || !headers || headers.length === 0) { 
-            alert("Data laporan tidak ditemukan."); 
-            document.getElementById('main-body').innerHTML = `<tr><td colspan="38" style="text-align:center; padding:20px; color:red;">DATA TIDAK DITEMUKAN</td></tr>`;
+            showStatus("Data laporan tidak ditemukan.", true); 
+            document.getElementById('main-body').innerHTML = `<tr><td colspan="38" style="text-align:center; padding:20px; color:black;">DATA TIDAK DITEMUKAN</td></tr>`;
             return; 
         }
 
@@ -358,11 +474,9 @@
                 let sym = '', cls = '';
                 if(f) {
                     if (item.nama === "Running hour (jam)(**)") {
-                        // Jika item adalah Running hour, tampilkan nilai dari kolom 'value'
                         sym = f.value || '-';
                         cls = 'st-val';
                     } else {
-                        // Jika item lain, gunakan simbol status
                         if(f.status === 'OK') { sym = '✓'; cls = 'st-ok'; }
                         else if(f.status === 'NG') { sym = 'X'; cls = 'st-ng'; }
                         else if(f.status === 'MT') { sym = 'O'; cls = 'st-mt'; } 
@@ -390,6 +504,7 @@
             sigBox.innerHTML = `<span style="color:#ccc; font-size:6pt;">(Menunggu Pengesahan)</span>`;
             nameBox.innerText = "";
         }
+        showStatus("Data berhasil dimuat!");
     }
 
     window.onload = initFilter;
