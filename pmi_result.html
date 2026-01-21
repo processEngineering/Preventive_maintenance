@@ -19,8 +19,6 @@
             --bg-body: #111;        
             --text-app: #FFF;      
             --paper-width: 210mm;
-            /* Tinggi A4 dalam pixel (96dpi) sekitar 1123px. 
-               Kita tidak set fixed height agar web view tidak memotong data. */
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -444,12 +442,11 @@
             }
         }
 
-        // --- FUNGSI EXPORT PDF PINTAR (AUTO FIT 1 HALAMAN) ---
+        // --- FUNGSI EXPORT PDF 1 HALAMAN STRICT ---
         function downloadPDF() {
             const element = document.getElementById('report-view');
             const overlay = document.getElementById('loading-overlay');
             
-            // Tampilkan loading screen
             overlay.style.display = 'flex';
 
             // Nama File
@@ -457,50 +454,70 @@
             const tgl = document.getElementById('v_tgl').innerText;
             const filename = `MAINT_${mesin}_${tgl}.pdf`;
 
-            // 1. HITUNG SKALA AGAR MUAT 1 HALAMAN
-            // Tinggi kertas A4 (potrait) dalam pixel @ 96 DPI kira-kira 1123px.
-            // Kita beri sedikit margin (misal max height 1080px untuk konten).
-            const maxPageHeight = 1090; 
+            // 1. Trik Hapus Min-Height Sementara
+            // Ini mencegah kertas "memaksa" setinggi A4 jika datanya sedikit
+            const originalMinHeight = element.style.minHeight;
+            const originalShadow = element.style.boxShadow;
+            element.style.minHeight = '0px'; 
+            element.style.boxShadow = 'none';
+
+            // 2. Hitung Skala
+            // Batas aman A4 (kurangi margin error browser)
+            const maxPageHeight = 1100; 
             const currentHeight = element.scrollHeight;
             
             let scaleFactor = 1;
             
-            // Jika konten lebih panjang dari kertas A4, kita kecilkan (zoom out)
             if (currentHeight > maxPageHeight) {
+                // Scale down jika terlalu panjang
                 scaleFactor = maxPageHeight / currentHeight;
             }
 
-            // Terapkan scaling SEMENTARA ke elemen
+            // Terapkan scaling
             const originalTransform = element.style.transform;
+            const originalTransformOrigin = element.style.transformOrigin;
+            
             if(scaleFactor < 1) {
                 element.style.transform = `scale(${scaleFactor})`;
-                // Penting: transform origin tetap di atas tengah agar tidak geser
                 element.style.transformOrigin = 'top center'; 
+                // Paksa tinggi elemen agar html2pdf tidak melihat whitespace sisa
+                element.style.height = `${currentHeight * scaleFactor}px`; 
             }
 
             const opt = {
-                margin:       0, // Margin 0 karena kita sudah atur padding di .paper
+                margin:       0, 
                 filename:     filename,
                 image:        { type: 'jpeg', quality: 0.98 },
-                // html2canvas config
                 html2canvas:  { 
-                    scale: 2, // Scale tinggi agar teks tajam
+                    scale: 2, 
                     useCORS: true, 
-                    scrollY: 0 
+                    scrollY: 0,
+                    // Pastikan canvas tidak lebih tinggi dari yang kita mau
+                    height: element.scrollHeight * scaleFactor 
                 }, 
-                // jsPDF config
+                // Page-break avoidance settings
+                pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            // Proses Generate
             html2pdf().set(opt).from(element).save().then(() => {
-                // Kembalikan ke ukuran normal setelah selesai
+                // RESET STYLE SETELAH SELESAI
                 element.style.transform = originalTransform;
+                element.style.transformOrigin = originalTransformOrigin;
+                element.style.minHeight = originalMinHeight;
+                element.style.boxShadow = originalShadow;
+                element.style.height = 'auto'; // Reset height paksa
+                
                 overlay.style.display = 'none';
             }).catch(err => {
                 console.error(err);
-                alert("Gagal membuat PDF. Coba lagi.");
+                alert("Gagal export. Coba lagi.");
+                
+                // RESET STYLE ON ERROR
                 element.style.transform = originalTransform;
+                element.style.minHeight = originalMinHeight;
+                element.style.boxShadow = originalShadow;
+                element.style.height = 'auto';
                 overlay.style.display = 'none';
             });
         }
