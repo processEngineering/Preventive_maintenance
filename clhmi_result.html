@@ -2,83 +2,87 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
+    <!-- VIEWPORT WAJIB AGAR RESPONSIF DI HP -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AF.SP 05.13 Rev-00 – CHECKLIST HARIAN MESIN INJECTION</title>
-    <!-- Supabase -->
+    
+    <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- html2canvas: Untuk memotret layar -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- jsPDF: Untuk membuat file PDF dari hasil potret -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
-        /* --- SETTING HALAMAN --- */
+        /* --- GLOBAL LAYOUT --- */
         body { 
             font-family: 'Arial Narrow', 'Helvetica Narrow', Arial, sans-serif; 
             font-size: 7pt; 
             margin: 0; 
-            padding: 20px; 
-            background: #222222; 
+            padding: 0;
+            background: #1a1a1a; /* Background lebih gelap */
             color: #eeeeee; 
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding-bottom: 80px; 
+            padding-bottom: 90px; /* Ruang lebih luas untuk navbar */
+            min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* CONTAINER KERTAS (YANG AKAN DI-FOTO) */
+        /* --- CONTAINER SCROLLING (FITUR UTAMA HP) --- */
+        .sheet-container {
+            width: 100%;
+            overflow-x: auto; /* Memicu scroll samping di HP */
+            display: flex;
+            justify-content: flex-start; /* Default kiri (HP) */
+            padding: 10px;
+            box-sizing: border-box;
+            -webkit-overflow-scrolling: touch; /* Smooth scroll iOS */
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Tampilan Laptop/Tablet Landscape: Kertas di tengah */
+        @media (min-width: 1140px) {
+            .sheet-container {
+                justify-content: center;
+                padding-top: 20px;
+            }
+        }
+
+        /* --- KERTAS A4 LANDSCAPE (TETAP UKURAN FIX) --- */
+        /* Kita tidak mengecilkan kertas di HP agar tulisan terbaca */
         .sheet { 
             background: white; 
             color: black; 
             padding: 5mm 8mm; 
-            width: 297mm; 
-            min-height: 210mm; /* A4 Landscape size */
-            box-shadow: 0 0 20px rgba(0,0,0,0.5); 
+            width: 297mm; /* Lebar Fix */
+            min-width: 297mm; 
+            min-height: 210mm; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
             box-sizing: border-box;
             position: relative;
             margin-bottom: 20px;
+            border-radius: 2px;
         }
 
-        /* TABEL GLOBAL */
-        table { 
-            border-collapse: collapse; 
-            width: 100%; 
-            table-layout: fixed; 
-            margin-bottom: 2px; 
-        }
+        /* --- TABEL STYLING --- */
+        table { border-collapse: collapse; width: 100%; table-layout: fixed; margin-bottom: 2px; }
+        td, th { border: 1px solid black; padding: 1px 2px; vertical-align: middle; line-height: 1.05; color: black; }
         
-        td, th { 
-            border: 1px solid black; 
-            padding: 1px 2px; 
-            vertical-align: middle; 
-            line-height: 1.05;
-            color: black; 
-        }
-
-        /* --- HEADER SECTION --- */
         .header-table { border: 2px solid black !important; }
         .header-table td { height: 35px; } 
-        /* Logo perlu crossOrigin agar bisa di-canvas */
         .logo-img { height: 35px; display: block; margin: 0 auto; }
         .main-title { font-size: 12pt; font-weight: bold; text-align: center; text-transform: uppercase; }
         .doc-info { font-size: 6pt; line-height: 1.15; padding: 2px 4px; }
 
-        /* --- INFO MESIN SECTION --- */
         .info-table { border: 2px solid black; }
         .info-table td { font-weight: bold; font-size: 7pt; padding: 1px 3px; border: none; }
         .dot-line { border-bottom: 1px dotted #000; display: inline-block; width: 95%; font-weight: normal; padding-left: 5px; }
 
-        /* --- MAIN GRID TABLE --- */
         .grid-table { border: 2px solid black; }
-        .grid-table th { 
-            background-color: #ffffff; 
-            text-align: center; 
-            font-weight: bold; 
-            border: 1px solid black; 
-            font-size: 6.5pt; 
-            height: 18px; 
-        }
+        .grid-table th { background-color: #ffffff; text-align: center; font-weight: bold; border: 1px solid black; font-size: 6.5pt; height: 18px; }
 
-        /* LEBAR KOLOM */
+        /* Ukuran Kolom */
         .col-no { width: 18px; text-align: center; }
         .col-item { width: 180px; text-align: left; }
         .col-spacer { width: 6px; border-left: none; border-right: none; background: #f4f4f4; } 
@@ -86,211 +90,258 @@
         .col-met { width: 50px; text-align: center; font-size: 6pt; }
         .col-note { width: 40px; text-align: center; }
         .col-date { width: 17px; text-align: center; font-size: 7pt; padding: 0; }
+        
+        .cat-row { background-color: #d9d9d9 !important; font-weight: bold; text-align: left; padding-left: 5px; border: 1px solid black; text-transform: uppercase; font-size: 7pt; height: 16px; }
 
-        /* BARIS KATEGORI */
-        .cat-row { 
-            background-color: #d9d9d9 !important; 
-            font-weight: bold; 
-            text-align: left; 
-            padding-left: 5px; 
-            border: 1px solid black; 
-            text-transform: uppercase; 
-            font-size: 7pt; 
-            height: 16px; 
-        }
-
-        /* STATUS VISUAL */
+        /* Simbol Status */
         .st-ok { color: #000; font-weight: 900; font-family: 'DejaVu Sans', sans-serif; font-size: 9pt; } 
         .st-ng { color: red !important; font-weight: 900; font-size: 8pt; }
         .st-mt { color: blue !important; font-weight: 900; font-size: 8pt; } 
         .st-na { color: #666 !important; font-weight: 900; font-size: 8pt; }
         .st-val { color: #000; font-weight: bold; font-size: 7pt; }
 
-        /* SIGNATURE AREA */
+        /* Signature & Footer */
         .sig-row td { background-color: #f2f2f2 !important; font-weight: bold; text-align: right; padding-right: 4px; font-size: 6pt; }
         .sig-cell { height: 28px; background: white !important; padding: 0 !important; text-align: center; vertical-align: middle; }
         .sig-img { width: 100%; height: 100%; max-height: 24px; object-fit: contain; mix-blend-mode: multiply; }
-
-        /* --- FOOTER SECTION --- */
+        
         .footer-wrapper { display: flex; border: 2px solid black; margin-top: 3px; height: 75px; }
         .footer-left { flex: 2.2; border-right: 1px solid black; padding: 3px; font-size: 6pt; line-height: 1.3; }
-        
-        .footer-right { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: space-between; 
-            padding: 3px; 
-            overflow: hidden; 
-        }
-        
+        .footer-right { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 3px; overflow: hidden; }
         .super-title { font-weight: bold; text-align: center; text-decoration: underline; margin-bottom: 2px; font-size: 6.5pt; }
         .super-sig { flex-grow: 1; display: flex; align-items: center; justify-content: center; width: 100%; }
-        
-        .super-name { 
-            font-weight: bold; 
-            text-decoration: underline; 
-            text-transform: uppercase; 
-            font-size: 7pt; 
-            text-align: center;
-            width: 100%;
-            word-wrap: break-word; 
-            line-height: 1.1;     
-            max-height: 25px;      
-            overflow: hidden;
-        }
+        .super-name { font-weight: bold; text-decoration: underline; text-transform: uppercase; font-size: 7pt; text-align: center; width: 100%; word-wrap: break-word; line-height: 1.1; max-height: 25px; overflow: hidden; }
+        .super-img { max-height: 35px; max-width: 75px; width: auto; mix-blend-mode: multiply; }
 
-        .super-img { 
-            max-height: 35px; 
-            max-width: 75px;  
-            width: auto;
-            mix-blend-mode: multiply; 
-        }
-
-        /* UI PANEL (NON PRINT) */
+        /* --- PANEL KONTROL (RESPONSIF) --- */
         .no-print { 
-            background: #000; color: white; padding: 12px; margin-bottom: 15px; width: 100%; max-width: 297mm;
-            display: flex; flex-direction: column; gap: 10px; justify-content: center; align-items: center; 
-            box-shadow: 0 4px 6px -1px rgba(255, 0, 0, 0.2); border-radius: 8px;
-            border: 1px solid #333;
+            background: #2d2d2d; 
+            color: white; 
+            padding: 15px; 
+            margin: 15px 10px 0 10px; /* Margin agar tidak mepet di HP */
+            width: calc(100% - 20px); 
+            max-width: 800px;
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+            justify-content: center; 
+            align-items: center; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); 
+            border-radius: 12px;
+            border: 1px solid #444;
+            z-index: 10;
         }
-        .controls-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
-        select, button { padding: 8px 12px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; }
-        button.print-btn { background: #b91c1c; color: white; }
-        button.print-btn:hover { background: #dc2626; }
-        button.load-btn { background: #333; color: white; border: 1px solid #555; }
-        button.load-btn:hover { background: #555; }
-        #status-msg { color: #fbbf24; font-weight: bold; font-size: 14px; min-height: 20px; }
 
-        /* NAVIGASI BAWAH */
+        .controls-title {
+            font-size: 14px; font-weight: bold; color: #fbbf24; margin-bottom: 5px;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .controls-row { 
+            display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; width: 100%;
+        }
+
+        /* Styling Input untuk HP (Touch Friendly) */
+        select, button { 
+            padding: 12px 16px; /* Padding besar untuk jari */
+            border-radius: 6px; 
+            border: 1px solid #555; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-size: 14px; /* Font size min 16px di iOS mencegah zoom otomatis, tapi 14px ok untuk tombol */
+            background: #333;
+            color: white;
+            outline: none;
+        }
+        select:focus { border-color: #fbbf24; }
+
+        button.print-btn { background: #b91c1c; color: white; border: none; box-shadow: 0 2px 5px rgba(185, 28, 28, 0.4); }
+        button.print-btn:active { transform: scale(0.98); background: #991b1b; }
+        
+        button.load-btn { background: #2563eb; color: white; border: none; box-shadow: 0 2px 5px rgba(37, 99, 235, 0.4); }
+        button.load-btn:active { transform: scale(0.98); background: #1d4ed8; }
+
+        /* Hint Scroll untuk HP */
+        .scroll-hint {
+            display: none; /* Sembunyi di Laptop */
+            font-size: 12px; color: #888; margin-top: 5px; font-style: italic;
+        }
+
+        /* --- MEDIA QUERY KHUSUS LAYAR KECIL (HP/TABLET PORTRAIT) --- */
+        @media (max-width: 768px) {
+            .controls-row { 
+                flex-direction: column; /* Tombol tumpuk ke bawah */
+                gap: 10px;
+            }
+            select, button { 
+                width: 100%; /* Tombol lebar penuh */
+                text-align: center;
+            }
+            .scroll-hint {
+                display: block; /* Tampilkan hint scroll */
+                animation: pulse 2s infinite;
+            }
+            .no-print {
+                margin: 10px;
+                width: calc(100% - 20px);
+            }
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; }
+        }
+
+        #status-msg { color: #fbbf24; font-weight: bold; font-size: 13px; min-height: 20px; text-align: center; margin-top: 5px;}
+
+        /* --- NAVIGASI BAWAH MODERN --- */
         .nav-bar {
             position: fixed; bottom: 0; left: 0; right: 0; 
-            background: #000000;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.8);
+            background: rgba(0, 0, 0, 0.95); /* Sedikit transparan */
+            backdrop-filter: blur(10px);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
             border-top: 1px solid #333;
             display: flex; justify-content: space-around; align-items: center;
-            padding: 12px 0; z-index: 1000; height: 60px;
+            padding: 8px 0; z-index: 1000; height: 60px;
+            padding-bottom: env(safe-area-inset-bottom); /* Support iPhone Notch */
         }
         .nav-btn {
-            flex: 1; display: flex; align-items: center; justify-content: center;
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
             text-decoration: none; 
-            color: #550000;
-            padding: 0; border: none; background: none; cursor: pointer;
-            transition: all 0.3s ease;
+            color: #666;
+            padding: 5px;
+            border: none; background: none; cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .nav-icon { width: 24px; height: 24px; }
+        .nav-icon { width: 24px; height: 24px; margin-bottom: 2px; }
         .nav-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-        .nav-btn.active, .nav-btn:hover { 
-            color: #ff0000;
-            filter: drop-shadow(0 0 6px rgba(255, 0, 0, 0.7));
-            transform: scale(1.1);
+        
+        .nav-btn.active { color: #ef4444; }
+        .nav-btn.active .nav-icon { 
+            filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6)); 
+            transform: translateY(-2px);
         }
+        .nav-label { font-size: 9px; font-weight: bold; letter-spacing: 0.5px; }
 
     </style>
 </head>
 <body>
 
+<!-- PANEL KONTROL -->
 <div class="no-print">
+    <div class="controls-title">🖨️ PANEL KONTROL</div>
     <div class="controls-row">
-        <span>🖨️ PANEL KONTROL:</span>
         <select id="machine-select"><option value="">-- Pilih Mesin --</option></select>
-        <select id="month-select"></select>
-        <select id="year-select"></select>
+        <select id="month-select"><option value="">-- Bulan --</option></select>
+        <select id="year-select"><option value="">-- Tahun --</option></select>
         <button class="load-btn" onclick="loadData()">TAMPILKAN DATA</button>
-        <!-- Ganti Fungsi Print jadi Fungsi Capture -->
-        <button class="print-btn" onclick="captureAndExportPDF()">EKSPOR PDF (GAMBAR)</button>
+        <button class="print-btn" onclick="captureAndExportPDF()">📥 DOWNLOAD PDF</button>
     </div>
     <div id="status-msg"></div>
+    <div class="scroll-hint">👈 Geser tabel ke samping untuk melihat detail 👉</div>
 </div>
 
-<div class="sheet" id="sheet-content">
-    
-    <table class="header-table">
-        <tr>
-            <td width="15%" style="text-align:center;">
-                <!-- Crossorigin anonymous penting untuk html2canvas -->
-                <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img" alt="Logo" crossorigin="anonymous">
-            </td>
-            <td width="60%" class="main-title">CHECK LIST HARIAN MESIN INJECTION</td>
-            <td width="25%" class="doc-info">
-                No Dokumen &nbsp;&nbsp;&nbsp;: AF.SP 05.13.Rev-00<br>
-                Tanggal Terbit : 02 Agustus 2024<br>
-                Halaman &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 1/1<br>
-                Tanggal Revisi : -
-            </td>
-        </tr>
-    </table>
-
-    <table class="info-table">
-        <tr>
-            <td width="12%">MERK MESIN</td><td width="1%">:</td><td width="30%"><span id="out-merk" class="dot-line"></span></td>
-            <td width="10%">SERIAL NO</td><td width="1%">:</td><td width="25%"><span id="out-sn" class="dot-line"></span></td>
-            <td width="8%">BULAN</td><td width="1%">:</td><td><span id="out-bln" class="dot-line"></span></td>
-        </tr>
-        <tr>
-            <td>TONAGE</td><td>:</td><td><span id="out-ton" class="dot-line"></span></td>
-            <td></td><td></td><td></td>
-            <td>TAHUN</td><td>:</td><td><span id="out-thn" class="dot-line"></span></td>
-        </tr>
-    </table>
-
-    <table class="grid-table">
-        <thead>
-            <tr>
-                <th rowspan="2" class="col-no">No</th>
-                <th rowspan="2" class="col-item">Jenis pengecekan</th>
-                <th rowspan="2" class="col-spacer"></th>
-                <th rowspan="2" class="col-std">Standard</th>
-                <th rowspan="2" class="col-met">METODE</th>
-                <th rowspan="2" class="col-note">CATATAN</th>
-                <th colspan="31" style="height:14px;">Tanggal</th>
-            </tr>
-            <tr id="date-row"></tr>
-        </thead>
-        <tbody id="main-body">
-            <tr><td colspan="38" style="text-align:center; padding:20px; color:black;">Silahkan Pilih Filter Data...</td></tr>
-        </tbody>
+<!-- CONTAINER SCROLL -->
+<div class="sheet-container">
+    <div class="sheet" id="sheet-content">
         
-        <tbody id="sig-body" style="display:none;">
-            <tr class="sig-row">
-                <td colspan="6">Paraf Pelaksana</td>
-                <script>for(let i=1;i<=31;i++) document.write(`<td class="sig-cell" id="p-sig-${i}"></td>`);</script>
+        <table class="header-table">
+            <tr>
+                <td width="15%" style="text-align:center;">
+                    <!-- REVISI: Hapus crossorigin="anonymous" agar gambar muncul di browser -->
+                    <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img" alt="Logo">
+                </td>
+                <td width="60%" class="main-title">CHECK LIST HARIAN MESIN INJECTION</td>
+                <td width="25%" class="doc-info">
+                    No Dokumen &nbsp;&nbsp;&nbsp;: AF.SP 05.13.Rev-00<br>
+                    Tanggal Terbit : 02 Agustus 2024<br>
+                    Halaman &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 1/1<br>
+                    Tanggal Revisi : -
+                </td>
             </tr>
-            <tr class="sig-row">
-                <td colspan="6">Paraf Koordinator</td>
-                <script>for(let i=1;i<=31;i++) document.write(`<td class="sig-cell" id="k-sig-${i}"></td>`);</script>
-            </tr>
-        </tbody>
-    </table>
+        </table>
 
-    <div class="footer-wrapper">
-        <div class="footer-left">
-            <b>Catatan :</b><br>
-            (*) : Isi kolom laporan ceklist jika unit ini ada dimesin ini<br>
-            (**) : Diisi angka jam kerja mesin / running hour yang ada dimesin<br><br>
-            <b>Beri tanda :</b><br>
-            <span style="font-weight:bold;">✓</span> OK (Sesuai Standar) &nbsp;&nbsp;
-            <span style="font-weight:bold; color:red;">X</span> NG (Rusak/Penyimpangan) &nbsp;&nbsp;
-            <span style="font-weight:bold; color:blue;">O</span> Perbaikan (Maintenance) &nbsp;&nbsp;
-            <span style="font-weight:bold; color:#666;">-</span> Tidak Ada (NA)
-        </div>
-        <div class="footer-right">
-            <div class="super-title">DIKETAHUI<br>MECHANIC SUPERINTENDENT</div>
-            <div class="super-sig" id="out-sig-super">
-                <span style="color:#ccc; font-size:6pt;">(Menunggu Pengesahan)</span>
+        <table class="info-table">
+            <tr>
+                <td width="12%">MERK MESIN</td><td width="1%">:</td><td width="30%"><span id="out-merk" class="dot-line"></span></td>
+                <td width="10%">SERIAL NO</td><td width="1%">:</td><td width="25%"><span id="out-sn" class="dot-line"></span></td>
+                <td width="8%">BULAN</td><td width="1%">:</td><td><span id="out-bln" class="dot-line"></span></td>
+            </tr>
+            <tr>
+                <td>TONAGE</td><td>:</td><td><span id="out-ton" class="dot-line"></span></td>
+                <td></td><td></td><td></td>
+                <td>TAHUN</td><td>:</td><td><span id="out-thn" class="dot-line"></span></td>
+            </tr>
+        </table>
+
+        <table class="grid-table">
+            <thead>
+                <tr>
+                    <th rowspan="2" class="col-no">No</th>
+                    <th rowspan="2" class="col-item">Jenis pengecekan</th>
+                    <th rowspan="2" class="col-spacer"></th>
+                    <th rowspan="2" class="col-std">Standard</th>
+                    <th rowspan="2" class="col-met">METODE</th>
+                    <th rowspan="2" class="col-note">CATATAN</th>
+                    <th colspan="31" style="height:14px;">Tanggal</th>
+                </tr>
+                <tr id="date-row"></tr>
+            </thead>
+            <tbody id="main-body">
+                <tr><td colspan="38" style="text-align:center; padding:20px; color:black;">Silahkan Pilih Filter Data...</td></tr>
+            </tbody>
+            
+            <tbody id="sig-body" style="display:none;">
+                <tr class="sig-row">
+                    <td colspan="6">Paraf Pelaksana</td>
+                    <script>for(let i=1;i<=31;i++) document.write(`<td class="sig-cell" id="p-sig-${i}"></td>`);</script>
+                </tr>
+                <tr class="sig-row">
+                    <td colspan="6">Paraf Koordinator</td>
+                    <script>for(let i=1;i<=31;i++) document.write(`<td class="sig-cell" id="k-sig-${i}"></td>`);</script>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="footer-wrapper">
+            <div class="footer-left">
+                <b>Catatan :</b><br>
+                (*) : Isi kolom laporan ceklist jika unit ini ada dimesin ini<br>
+                (**) : Diisi angka jam kerja mesin / running hour yang ada dimesin<br><br>
+                <b>Beri tanda :</b><br>
+                <span style="font-weight:bold;">✓</span> OK (Sesuai Standar) &nbsp;&nbsp;
+                <span style="font-weight:bold; color:red;">X</span> NG (Rusak/Penyimpangan) &nbsp;&nbsp;
+                <span style="font-weight:bold; color:blue;">O</span> Perbaikan (Maintenance) &nbsp;&nbsp;
+                <span style="font-weight:bold; color:#666;">-</span> Tidak Ada (NA)
             </div>
-            <div class="super-name" id="out-name-super"></div>
+            <div class="footer-right">
+                <div class="super-title">DIKETAHUI<br>MECHANIC SUPERINTENDENT</div>
+                <div class="super-sig" id="out-sig-super">
+                    <span style="color:#ccc; font-size:6pt;">(Menunggu Pengesahan)</span>
+                </div>
+                <div class="super-name" id="out-name-super"></div>
+            </div>
         </div>
-    </div>
 
+    </div>
 </div>
 
 <nav class="nav-bar">
-    <a href="index.html" class="nav-btn"><div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div></a>
-    <a href="menu_utama.html" class="nav-btn"><div class="nav-icon"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></div></a>
-    <a href="download_data.html" class="nav-btn active"><div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div></a>
-    <a href="informasi_akun.html" class="nav-btn"><div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div></a>
+    <a href="index.html" class="nav-btn">
+        <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div>
+        <span class="nav-label">Home</span>
+    </a>
+    <a href="menu_utama.html" class="nav-btn">
+        <div class="nav-icon"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></div>
+        <span class="nav-label">Menu</span>
+    </a>
+    <a href="download_data.html" class="nav-btn active">
+        <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+        <span class="nav-label">Data</span>
+    </a>
+    <a href="informasi_akun.html" class="nav-btn">
+        <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
+        <span class="nav-label">Akun</span>
+    </a>
 </nav>
 
 <script>
@@ -353,7 +404,6 @@
         const btn = document.querySelector('.print-btn');
         const originalText = btn.innerText;
         
-        // 1. Cek apakah data sudah dipilih
         if(document.getElementById('machine-select').value === "") {
             showStatus("Mohon pilih data dulu sebelum ekspor!", true);
             return;
@@ -363,39 +413,35 @@
             btn.innerText = "⏳ Memproses Gambar...";
             showStatus("Sedang mengambil gambar tabel...");
 
-            // 2. Setup elemen yang mau difoto
             const element = document.getElementById('sheet-content');
             
-            // 3. Gunakan html2canvas untuk 'memotret' elemen
-            // scale: 2 bikin gambar jadi high-res (biar ga pecah saat di zoom)
+            // Konfigurasi khusus untuk html2canvas agar presisi
             const canvas = await html2canvas(element, {
-                scale: 2,
-                useCORS: true, // Penting buat gambar logo eksternal
+                scale: 2, // High resolution
+                useCORS: true, 
                 allowTaint: true,
-                backgroundColor: "#ffffff" // Pastikan background putih
+                backgroundColor: "#ffffff",
+                scrollX: 0,
+                scrollY: 0,
+                windowWidth: element.scrollWidth, // Pastikan capture full width meskipun discroll
+                windowHeight: element.scrollHeight
             });
 
             btn.innerText = "⏳ Membuat PDF...";
 
-            // 4. Setup jsPDF (Landscape, mm, A4)
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF('l', 'mm', 'a4');
-
-            // 5. Hitung dimensi agar pas di A4
             const imgData = canvas.toDataURL('image/png');
-            const pdfWidth = 297; // Lebar A4 Landscape
-            const pdfHeight = 210; // Tinggi A4 Landscape
+            const pdfWidth = 297; 
+            const pdfHeight = 210; 
             
-            // Masukkan gambar ke PDF full page
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
 
-            // 6. Simpan File
             const machineName = document.getElementById('machine-select').selectedOptions[0].text;
             const bln = document.getElementById('month-select').selectedOptions[0].text;
             const filename = `Laporan_${machineName}_${bln}.pdf`;
             
             pdf.save(filename);
-            
             showStatus("PDF berhasil diunduh!");
         } catch (err) {
             console.error(err);
