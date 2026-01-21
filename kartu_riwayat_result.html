@@ -2,8 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <!-- Viewport standar, nanti akan dimanipulasi saat ekspor -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" id="viewportMeta">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laporan Kartu Riwayat Mesin - ISO Format</title>
     
     <!-- Library Eksternal -->
@@ -132,7 +131,7 @@
             flex-direction: column; 
             margin-bottom: 10px;
         }
-        .tbl-data { font-size: 8.5pt; /* Sedikit diperkecil agar muat */ }
+        .tbl-data { font-size: 8.5pt; }
         .tbl-data th { background-color: #e0e0e0; text-align: center; font-weight: bold; border-bottom: 1px solid black; height: 25px; padding: 2px; color: black; }
         .tbl-data td { height: 20px; padding: 1px 4px; border-bottom: 1px solid black; border-right: 1px solid black; color: black; }
         
@@ -161,38 +160,6 @@
 
         .sig-img { max-height: 55px; max-width: 120px; margin-bottom: 2px; }
         .sig-text-name { font-size: 8pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; margin-top: 2px; margin-bottom: 2px; color: black; }
-
-        /* ==================== MODE EXPORT: FORCING DESKTOP LAYOUT ==================== */
-        body.printing {
-            background: white !important;
-            /* Paksa lebar body agar html2canvas tidak bingung di mobile */
-            width: 1150px !important; 
-            min-width: 1150px !important;
-            height: auto !important; 
-            overflow: visible !important; 
-            position: absolute !important;
-            top: 0 !important; left: 0 !important;
-        }
-        
-        body.printing .control-bar, 
-        body.printing .bottom-nav { display: none !important; } 
-
-        body.printing .page-container {
-            padding: 0 !important;
-            margin: 0 !important;
-            width: 1123px !important; /* Pas dengan lebar A4 Landscape */
-            height: auto !important;
-            display: block !important; 
-            transform: none !important;
-        }
-
-        body.printing .page {
-            margin: 0 !important; 
-            padding: 15mm !important; 
-            box-shadow: none !important;
-            border: none !important;
-            transform: none !important;
-        }
 
         /* BOTTOM NAV (FLOATING) */
         .bottom-nav {
@@ -510,37 +477,42 @@
             const overlay = document.getElementById('loadingOverlay');
             overlay.style.display = 'flex';
             
-            // 1. SIMPAN VIEWPORT LAMA
-            const viewportMeta = document.getElementById('viewportMeta');
-            const originalContent = viewportMeta.content;
-
-            // 2. PAKSA VIEWPORT DESKTOP (Agar tabel tidak responsive/mengecil)
-            viewportMeta.content = "width=1200";
-
-            // 3. TAMBAHKAN KELAS PRINTING
-            document.body.classList.add('printing');
-
-            // Hitamkan Tanda Tangan
+            // 1. Hitamkan Tanda Tangan TERLEBIH DAHULU di halaman asli
+            // Ini untuk memastikan source yang akan diclone sudah hitam
             const sigImages = document.querySelectorAll('.sig-img');
             const processingPromises = Array.from(sigImages).map(img => blackenImage(img));
             await Promise.all(processingPromises);
 
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Tunggu layout stabil
+            // 2. BUAT CLONE UNTUK DIPOTRET (METODE FOTO / SNAPSHOT)
+            const originalElement = document.getElementById('printArea');
+            const clonedElement = originalElement.cloneNode(true);
 
-            const element = document.getElementById('printArea');
+            // 3. SIAPKAN CONTAINER KHUSUS (OFF-SCREEN TAPI FIX SIZE A4)
+            // Ini memaksa browser HP merender elemen ini seolah-olah dia adalah Desktop lebar 1123px
+            const container = document.createElement('div');
+            container.style.position = 'fixed';
+            container.style.top = '0';
+            container.style.left = '0';
+            container.style.width = '1123px';  // Kunci lebar 1123px (A4 Landscape Desktop)
+            container.style.minHeight = '794px';
+            container.style.zIndex = '-9999'; // Sembunyikan di belakang
+            container.style.background = 'white';
+            container.appendChild(clonedElement);
+            document.body.appendChild(container);
 
-            // KONFIGURASI A4 LANDSCAPE HTML2CANVAS
+            await new Promise(resolve => setTimeout(resolve, 800)); // Tunggu rendering clone stabil
+
+            // 4. KONFIGURASI HTML2PDF
             const opt = {
                 margin:       0,
                 filename:     `KartuRiwayat_${document.getElementById('disp_nama').innerText || 'Mesin'}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { 
                     scale: 2, 
-                    useCORS: true, 
-                    windowWidth: 1123,  
-                    width: 1123,        
-                    windowHeight: 794,  
-                    height: 794,        
+                    useCORS: true,
+                    // PENTING: Paksa windowWidth agar html2canvas "berpikir" dia ada di layar desktop
+                    windowWidth: 1123, 
+                    width: 1123,
                     scrollY: 0,
                     scrollX: 0
                 },
@@ -548,14 +520,14 @@
             };
 
             try {
-                await html2pdf().set(opt).from(element).save();
+                // Generate PDF dari CONTAINER CLONE, bukan dari body asli
+                await html2pdf().set(opt).from(clonedElement).save();
             } catch (err) {
                 console.error(err);
                 alert("Gagal Export PDF: " + err.message);
             } finally {
-                // KEMBALIKAN KE TAMPILAN NORMAL
-                document.body.classList.remove('printing');
-                viewportMeta.content = originalContent; // Kembalikan viewport mobile
+                // Bersihkan sampah clone
+                document.body.removeChild(container);
                 overlay.style.display = 'none';
             }
         }
