@@ -171,11 +171,12 @@
             border: 2px dashed var(--primary); border-radius: 12px; 
             height: 200px; /* Lebih tinggi agar mudah tanda tangan di Tablet */
             background: #fff; margin-bottom: 16px; position: relative; 
-            touch-action: none; /* KRUSIAL UNTUK HP */
+            touch-action: none; /* KRUSIAL UNTUK HP: mencegah scroll saat disentuh */
+            overflow: hidden;
         }
         canvas { 
             width: 100%; height: 100%; display: block; 
-            touch-action: none; /* Mencegah scroll saat tanda tangan */
+            touch-action: none; /* Mencegah browser melakukan scroll/zoom saat canvas disentuh */
         }
         
         .btn-submit {
@@ -258,7 +259,7 @@
     function resizeCanvas() {
         const c = document.getElementById('signature-pad');
         if(!c) return;
-        // Gunakan offsetWidth untuk lebar container saat ini
+        // PENTING: Gunakan offsetWidth canvas untuk set width internal
         const ratio = Math.max(window.devicePixelRatio || 1, 1);
         c.width = c.offsetWidth * ratio; 
         c.height = c.offsetHeight * ratio;
@@ -316,25 +317,9 @@
         document.getElementById('disp-mesin').innerText = data.mesin_id;
         document.getElementById('disp-pelaksana').innerText = data.pelaksana_nama;
 
-        // --- INISIALISASI SIGNATURE PAD DISINI ---
-        // (Setelah elemen terlihat, agar ukurannya tidak 0)
-        const canvas = document.getElementById('signature-pad');
-        // Pastikan ukuran canvas pas
-        resizeCanvas();
-        
-        // Hapus instance lama jika ada
-        if(signaturePad) signaturePad.off();
-        
-        // Buat instance baru
-        signaturePad = new SignaturePad(canvas, { 
-            penColor: 'black',
-            backgroundColor: 'rgb(255, 255, 255)' 
-        });
-
         const c = document.getElementById('detail-items');
         c.innerHTML = '';
 
-        // SORT: NG items first, then by ID
         const results = data.prslb_result.sort((a,b) => (a.status === 'NG' ? -1 : 1));
 
         results.forEach((res, index) => {
@@ -374,6 +359,20 @@
                     </div>`;
             }
         });
+
+        // --- FIXED SIGNATURE PAD INITIALIZATION ---
+        // Kita beri sedikit delay agar layout render selesai sepenuhnya sebelum canvas dihitung
+        setTimeout(() => {
+            const canvas = document.getElementById('signature-pad');
+            resizeCanvas(); 
+            
+            // Re-init pad jika perlu
+            if(signaturePad) signaturePad.off();
+            signaturePad = new SignaturePad(canvas, { 
+                penColor: 'black',
+                backgroundColor: 'rgb(255, 255, 255)' 
+            });
+        }, 300); // Delay 300ms cukup untuk transisi layar HP
     }
 
     window.toggleReason = (idx) => {
