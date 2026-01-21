@@ -2,263 +2,409 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FORM PERAWATAN - ISO STANDARD</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Laporan POHM - ISO Format</title>
     
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
-        /* ==================== RESET & CONFIG ==================== */
-        @page { size: A4 portrait; margin: 0; }
+        /* ==================== GLOBAL & UI (DARK MODE) ==================== */
+        * { box-sizing: border-box; }
         
-        * {
-            box-sizing: border-box;
-            font-style: normal !important;
-            font-variant: normal !important;
-            letter-spacing: normal !important;
-        }
-
         body { 
+            background: #000000; 
             margin: 0; padding: 0; 
-            background: #CCCCCC; 
-            font-family: Arial, Helvetica, sans-serif; 
-            font-size: 10pt;
-            color: black;
-            font-weight: normal; 
-            -webkit-print-color-adjust: exact; 
-            padding-bottom: 80px; 
+            font-family: 'Inter', sans-serif;
+            color: #E5E7EB;
+            padding-bottom: 80px; /* Space for Bottom Nav */
+            min-height: 100vh;
         }
 
-        .iso-bold { font-weight: bold !important; }
-
-        /* TABEL */
-        table { width: 100%; border-collapse: collapse; border-spacing: 0; }
-        td, th { border: 1px solid black; padding: 4px 6px; vertical-align: middle; font-weight: normal; text-align: left; }
-
-        /* NAVIGASI BAWAH (Sticky) */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: white; border-top: 1px solid #ccc;
-            display: flex; justify-content: space-around; align-items: center;
-            padding: 15px 0; z-index: 10000;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-        }
-        .nav-item {
-            text-decoration: none; color: #9CA3AF;
-            font-size: 20px; text-align: center; width: 25%;
-            transition: color 0.2s;
-        }
-        .nav-item:hover, .nav-item.active { color: #DC2626; }
-
-        /* CONTROL BAR (Tidak Dicetak) */
+        /* CONTROL BAR (Sticky Header) */
         .control-bar {
-            background: #2d3748; color: white; padding: 10px; 
-            position: sticky; top: 0; z-index: 9999; 
-            display: flex; gap: 10px; justify-content: center; align-items: center;
-            border-bottom: 3px solid #000;
+            background: rgba(15, 15, 15, 0.95);
+            border-bottom: 2px solid #DC2626;
+            padding: 16px; 
+            position: sticky; top: 0; z-index: 100; 
+            display: flex; flex-direction: column; gap: 12px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
         }
-        .control-bar select, .control-bar button { padding: 8px 12px; border-radius: 4px; border: none; font-size: 13px; cursor: pointer; }
-        .btn-show { background: #28a745; color: white; font-weight: bold; }
-        .btn-pdf { background: #dc3545; color: white; font-weight: bold; }
 
-        /* KERTAS A4 */
+        .filter-group {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+        }
+        
+        .control-bar select {
+            background: #111; color: white; border: 1px solid #333;
+            padding: 10px; border-radius: 8px; font-size: 14px;
+            width: 100%; outline: none;
+        }
+        .control-bar select:focus { border-color: #DC2626; }
+
+        .btn-group { display: flex; gap: 10px; }
+        
+        .btn {
+            flex: 1;
+            padding: 12px; border-radius: 8px; border: none; font-size: 14px; font-weight: 700;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; 
+            transition: 0.2s; text-decoration: none;
+        }
+        .btn-show { background: #DC2626; color: white; }
+        .btn-show:hover { background: #b91c1c; box-shadow: 0 0 15px rgba(220, 38, 38, 0.4); }
+        .btn-pdf { background: white; color: #DC2626; border: 1px solid #DC2626; }
+        .btn-pdf:hover { background: #f0f0f0; }
+
+        /* LOADING OVERLAY */
+        #loadingOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 20000;
+            display: none; justify-content: center; align-items: center; flex-direction: column;
+            color: white; font-size: 16px; text-align: center;
+        }
+
+        /* ==================== PREVIEW CONTAINER (SCROLLABLE) ==================== */
+        .preview-wrapper {
+            width: 100%;
+            overflow: auto; /* Bisa digeser horizontal di HP */
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            background: #111; /* Latar belakang area preview */
+            min-height: calc(100vh - 150px);
+        }
+
+        /* ==================== KERTAS A4 (TETAP PUTIH - JANGAN UBAH) ==================== */
         .page {
-            width: 210mm; min-height: 297mm; 
+            /* Ukuran Pasti A4 Portrait */
+            width: 210mm; 
+            min-height: 297mm; 
             background: white; 
-            margin: 20px auto; 
-            padding: 10mm 15mm; 
-            box-shadow: 0 0 10px rgba(0,0,0,0.5); 
+            padding: 10mm; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column;
             position: relative;
+            color: black; /* Tinta Hitam */
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            /* Agar tidak mengecil di HP */
+            min-width: 210mm; 
+            box-sizing: border-box;
         }
 
-        /* HEADER */
-        .col-logo { width: 20%; text-align: center; }
-        .col-company { width: 50%; text-align: center; font-size: 14pt; font-weight: bold; }
+        /* --- STYLING DALAM KERTAS (ISO STANDARD) --- */
+        .iso-bold { font-weight: bold !important; }
+        
+        table { width: 100%; border-collapse: collapse; border-spacing: 0; }
+        td, th { border: 1px solid black; padding: 4px 6px; vertical-align: middle; text-align: left; }
+
+        /* HEADER LAPORAN */
+        .header-main td { border: 1px solid black; }
+        .col-logo { width: 20%; text-align: center; padding: 5px; }
+        .col-company { width: 50%; text-align: center; font-size: 14pt; }
         .col-doc { width: 30%; padding: 0 !important; vertical-align: top; }
         .logo-img { max-width: 90px; max-height: 60px; display: block; margin: auto; }
+        
         .tbl-doc td { border: none; border-bottom: 1px solid black; font-size: 8pt; padding: 2px 4px; }
         .tbl-doc tr:last-child td { border-bottom: none; }
 
-        /* BODY FORM */
-        .box-title { border: 1px solid black; border-top: none; text-align: center; padding: 8px; margin-bottom: 10px; background: #f2f2f2; }
-        .title-main { font-size: 12pt; font-weight: bold; } 
-        .title-sub { font-size: 10pt; font-weight: normal; margin-top: 2px; }
+        .box-title { 
+            border: 1px solid black; border-top: none; text-align: center; 
+            padding: 8px; margin-bottom: 10px; background: #f2f2f2; 
+        }
+        .title-main { font-size: 12pt; } 
+        .title-sub { font-size: 10pt; margin-top: 2px; }
 
-        .tbl-identity { margin-bottom: 10px; }
+        .tbl-identity td { border: none; padding: 2px; }
         .chk-large { font-size: 12pt; vertical-align: middle; }
 
         .box-section { border: 1px solid black; margin-bottom: 10px; }
-        .sec-header { border-bottom: 1px solid black; padding: 5px; background: #f2f2f2; font-size: 10pt; font-weight: bold; }
+        .sec-header { border-bottom: 1px solid black; padding: 5px; background: #f2f2f2; font-size: 10pt; }
 
-        .tbl-grid td { border: 1px dotted black; height: 24px; width: 50%; vertical-align: bottom; font-family: Arial, sans-serif; font-size: 10pt; padding-left: 5px; white-space: nowrap; overflow: hidden; }
+        /* GRID CHECKBOX */
+        .tbl-grid td { 
+            border: 1px dotted black; height: 24px; width: 50%; 
+            vertical-align: bottom; font-size: 10pt; padding-left: 5px; 
+        }
         .tbl-grid tr:last-child td { border-bottom: none; }
         .tbl-grid tr td:last-child { border-right: none; }
         .tbl-grid tr td:first-child { border-left: none; }
 
-        .tbl-parts { margin-bottom: 10px; font-size: 9pt; }
-        .tbl-parts th { background: #f2f2f2; text-align: center; font-weight: bold; }
-        .tbl-parts td { height: 20px; }
+        /* TABLE PARTS */
+        .tbl-parts th { background: #f2f2f2; text-align: center; font-weight: bold; font-size: 9pt; }
+        .tbl-parts td { height: 20px; font-size: 9pt; }
 
         .tbl-rec td { border: none; border-bottom: 1px dotted black; height: 22px; }
         .tbl-rec tr:last-child td { border-bottom: none; }
 
-        /* --- TANDA TANGAN (UPDATED) --- */
-        .tbl-sig { margin-top: 10px; text-align: center; }
-        .tbl-sig td { width: 33.33%; vertical-align: top; padding: 0; }
+        /* FOOTER TTD - PROPORTIONAL & CENTERED */
+        .tbl-sig { 
+            margin-top: 10px; 
+            text-align: center; 
+            border: 1px solid black; 
+            width: 100%; 
+            table-layout: fixed; /* Kunci: Membagi kolom sama rata */
+        }
+        .tbl-sig td { 
+            width: 33.33%; 
+            vertical-align: top; 
+            padding: 0; 
+            border-right: 1px solid black; 
+        }
+        .tbl-sig td:last-child { border-right: none; }
         
-        .sig-label { border-bottom: 1px solid black; background: #f2f2f2; padding: 5px; font-size: 9pt; }
+        .sig-label { 
+            border-bottom: 1px solid black; 
+            background: #f2f2f2; 
+            padding: 5px; 
+            font-size: 9pt; 
+            font-weight: bold; 
+            text-align: center; 
+        }
         
         .sig-area { 
-            height: 90px; /* Dipertinggi sedikit */
+            height: 90px; 
             position: relative; 
             display: flex; 
             flex-direction: column; 
-            justify-content: flex-end; /* Konten nempel bawah */
-            align-items: center;
-            padding-bottom: 5px;
+            justify-content: flex-end; 
+            align-items: center; 
+            padding-bottom: 5px; 
         }
         
-        .sig-img { max-height: 55px; max-width: 100px; margin-bottom: 2px; }
+        /* IMAGE FILTER: Agar Tinta Putih jadi Hitam di Kertas Putih (Preview Only) */
+        .sig-img { 
+            max-height: 55px; 
+            max-width: 100px; 
+            margin-bottom: 2px; 
+            filter: brightness(0); /* Force Black for Preview */
+        }
         
-        /* Style Nama Terang */
         .sig-name-text { 
             font-size: 9pt; 
             font-weight: bold; 
             text-decoration: underline; 
-            margin-top: 2px;
-            min-height: 15px; /* Jaga tinggi minimal walau kosong */
+            margin-top: 2px; 
+            min-height: 15px;
+            text-align: center;
+            width: 100%;
         }
         
-        .sig-role { border-top: 1px solid black; padding: 5px; font-size: 9pt; }
+        .sig-role { 
+            border-top: 1px solid black; 
+            padding: 5px; 
+            font-size: 9pt; 
+            text-align: center; 
+        }
+
+        /* ==================== BOTTOM NAV (Mobile App Style) ==================== */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 600px;
+            height: 70px; background-color: #000000; border-top: 1px solid #333;
+            display: flex; justify-content: space-around; align-items: center; z-index: 1000;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.8); 
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #444; text-decoration: none; font-size: 20px; width: 25%; height: 100%; transition: 0.3s;
+        }
+        .nav-item.active { color: #DC2626; text-shadow: 0 0 10px rgba(220, 38, 38, 0.6); }
+        .nav-item:hover { color: #DC2626; }
+
+        /* ==================== EXPORT CONTAINER (FINAL PERFECT FIX) ==================== */
+        #export-container {
+            /* Gunakan FIXED agar tidak terpengaruh scroll parent */
+            position: fixed; 
+            top: 0; 
+            left: 0;
+            z-index: 99999;
+            background: white; 
+            
+            /* HARDCODE ukuran A4 agar mobile browser tidak bingung */
+            width: 794px; 
+            height: 100vh;
+            
+            /* Penting: Izinkan overflow agar konten panjang tetap ter-render */
+            overflow: auto; 
+            
+            display: none; /* Default hidden */
+            
+            /* Pastikan alignment ke kiri atas */
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+
+        /* Kelas untuk clone di dalam export container */
+        .print-clone {
+            margin: 0 !important;
+            box-shadow: none !important;
+            transform: none !important;
+            
+            /* KUNCI: Paksa lebar 794px (A4 width @ 96dpi) */
+            width: 794px !important;
+            min-width: 794px !important;
+            max-width: 794px !important;
+            
+            /* Tinggi auto agar bisa memanjang sesuai konten */
+            height: auto !important; 
+            min-height: 1123px !important; /* A4 height */
+            
+            padding: 20px !important;
+            background: white !important;
+        }
 
         @media print {
-            body { background: white; padding-bottom: 0; }
-            .control-bar, .bottom-nav { display: none !important; }
-            .page { margin: 0; box-shadow: none; width: 100%; height: auto; padding: 0; }
+            body { background: white; -webkit-print-color-adjust: exact; }
+            .control-bar, .bottom-nav, #loadingOverlay { display: none !important; }
+            .preview-wrapper { display: none; } 
         }
     </style>
 </head>
 <body>
 
+    <div id="loadingOverlay">
+        <i class="fa-solid fa-spinner fa-spin fa-3x"></i>
+        <p style="margin-top:15px;">Menyiapkan Dokumen PDF...</p>
+    </div>
+
+    <!-- WADAH KHUSUS UNTUK PROSES EXPORT -->
+    <div id="export-container"></div>
+
+    <!-- UI CONTROL (Sticky Top) -->
     <div class="control-bar">
         <select id="filter_mesin"><option value="">-- Pilih Mesin --</option></select>
-        <select id="filter_bulan">
-            <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
-            <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
-            <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
-            <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
-        </select>
-        <select id="filter_tahun"><option value="2026">2026</option><option value="2025">2025</option></select>
-        <button onclick="fetchData()" class="btn-show">Tampilkan</button>
-        <button onclick="exportPDF()" class="btn-pdf">Cetak PDF</button>
+        <div class="filter-group">
+            <select id="filter_bulan">
+                <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+                <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+                <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+                <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+            </select>
+            <select id="filter_tahun">
+                <option value="2026">2026</option><option value="2025">2025</option>
+            </select>
+        </div>
+        <div class="btn-group">
+            <button onclick="fetchData()" class="btn btn-show"><i class="fa-solid fa-search"></i> Cari</button>
+            <button onclick="exportPDF()" class="btn btn-pdf"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+        </div>
     </div>
 
-    <div class="page" id="printArea">
-        
-        <table class="header-main">
-            <tr>
-                <td class="col-logo"><img src="https://wsrv.nl/?url=amarilyskg.co.id/bootstrap/img/logo.png" alt="LOGO" class="logo-img" crossOrigin="anonymous"></td>
-                <td class="col-company iso-bold">PT AMARILYS KARISMA GEMILANG</td>
-                <td class="col-doc">
-                    <table class="tbl-doc">
-                        <tr><td>No Dokumen : AF.SP 05.01.Rev-00</td></tr>
-                        <tr><td>Tanggal Terbit : 02 Agustus 2024</td></tr>
-                        <tr><td>Tanggal Revisi : -</td></tr>
-                        <tr><td>Halaman : 1/1</td></tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
+    <!-- PREVIEW AREA (Scrollable) -->
+    <div class="preview-wrapper">
+        <div class="page" id="printArea">
+            <!-- 1. HEADER -->
+            <table class="header-main">
+                <tr>
+                    <td class="col-logo"><img src="https://wsrv.nl/?url=amarilyskg.co.id/bootstrap/img/logo.png" alt="LOGO" class="logo-img" crossOrigin="anonymous"></td>
+                    <td class="col-company iso-bold">PT AMARILYS KARISMA GEMILANG</td>
+                    <td class="col-doc">
+                        <table class="tbl-doc">
+                            <tr><td>No Dokumen : AF.SP 05.01.Rev-00</td></tr>
+                            <tr><td>Tanggal Terbit : 02 Agustus 2024</td></tr>
+                            <tr><td>Halaman : 1/1</td></tr>
+                            <tr><td>Revisi : 00</td></tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
 
-        <div class="box-title">
-            <div class="title-main iso-bold">FORM LAPORAN PERAWATAN & OVER HAUL MESIN</div>
-            <div class="title-sub">TOOLS/EQUIPMENT</div>
-        </div>
+            <div class="box-title">
+                <div class="title-main iso-bold">FORM LAPORAN PERAWATAN & OVER HAUL MESIN</div>
+                <div class="title-sub">TOOLS/EQUIPMENT</div>
+            </div>
 
-        <table class="tbl-identity">
-            <tr>
-                <td width="65%">Nama Mesin,Tools/equipment : <span id="val_mesin" style="margin-left: 5px;">-</span></td>
-                <td width="35%"><span id="chk_perawatan" class="chk-large">&#9744;</span> Perawatan &nbsp;&nbsp; <span id="chk_overhaul" class="chk-large">&#9744;</span> Over Haul</td>
-            </tr>
-            <tr><td colspan="2">Tanggal,Jam Mulai &nbsp;&nbsp;&nbsp;: <span id="val_mulai" style="margin-left: 5px;">-</span></td></tr>
-            <tr><td colspan="2">Tanggal,Jam Selesai : <span id="val_selesai" style="margin-left: 5px;">-</span></td></tr>
-        </table>
+            <!-- 2. IDENTITAS -->
+            <table class="tbl-identity">
+                <tr>
+                    <td width="65%">Nama Mesin,Tools/equipment : <span id="val_mesin" class="iso-bold" style="margin-left: 5px;">-</span></td>
+                    <td width="35%"><span id="chk_perawatan" class="chk-large">&#9744;</span> Perawatan &nbsp;&nbsp; <span id="chk_overhaul" class="chk-large">&#9744;</span> Over Haul</td>
+                </tr>
+                <tr><td colspan="2">Tanggal,Jam Mulai &nbsp;&nbsp;&nbsp;: <span id="val_mulai" style="margin-left: 5px;">-</span></td></tr>
+                <tr><td colspan="2">Tanggal,Jam Selesai : <span id="val_selesai" style="margin-left: 5px;">-</span></td></tr>
+            </table>
 
-        <div class="box-section">
-            <div class="sec-header iso-bold">Diskripsi Permasalahan Mesin Tools/Equipment :</div>
-            <table class="tbl-grid" id="grid_masalah">
-                <tr><td>&#9744; </td><td>&#9744; </td></tr><tr><td>&#9744; </td><td>&#9744; </td></tr>
-                <tr><td>&#9744; </td><td>&#9744; </td></tr><tr><td>&#9744; </td><td>&#9744; </td></tr>
+            <!-- 3. ISI LAPORAN -->
+            <div class="box-section">
+                <div class="sec-header iso-bold">Diskripsi Permasalahan Mesin Tools/Equipment :</div>
+                <table class="tbl-grid" id="grid_masalah">
+                    <tr><td>&#9744; </td><td>&#9744; </td></tr><tr><td>&#9744; </td><td>&#9744; </td></tr>
+                    <tr><td>&#9744; </td><td>&#9744; </td></tr><tr><td>&#9744; </td><td>&#9744; </td></tr>
+                </table>
+            </div>
+
+            <div class="box-section">
+                <div class="sec-header iso-bold">Pekerjaan Yang Dilakukan & Tindakan Yang Diambil :</div>
+                <table class="tbl-grid" id="grid_tindakan">
+                    <tr><td>&#9744; </td><td>&#9744; </td></tr><tr><td>&#9744; </td><td>&#9744; </td></tr>
+                    <tr><td>&#9744; </td><td>&#9744; </td></tr><tr><td>&#9744; </td><td>&#9744; </td></tr>
+                </table>
+            </div>
+
+            <div class="box-section" style="border: none;">
+                <div class="sec-header iso-bold" style="border: 1px solid black; border-bottom: none;">Kerusakan Part :</div>
+                <table class="tbl-parts">
+                    <thead><tr><th width="30" class="iso-bold">NO</th><th class="iso-bold">Nama Part</th><th width="50" class="iso-bold">QTY</th><th width="200" class="iso-bold">Tindak Lanjut</th></tr></thead>
+                    <tbody id="tbl_parts_body">
+                        <tr><td align="center">1</td><td></td><td></td><td>&#9744; Ganti Baru &nbsp; &#9744; Repair</td></tr>
+                        <tr><td align="center">2</td><td></td><td></td><td>&#9744; Ganti Baru &nbsp; &#9744; Repair</td></tr>
+                        <tr><td align="center">3</td><td></td><td></td><td>&#9744; Ganti Baru &nbsp; &#9744; Repair</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="box-section">
+                <div class="sec-header iso-bold">Rekomendasi & Catatan :</div>
+                <table class="tbl-rec" id="tbl_rekomendasi">
+                    <tr><td></td></tr><tr><td></td></tr><tr><td></td></tr>
+                </table>
+            </div>
+
+            <!-- 4. TANDA TANGAN -->
+            <table class="tbl-sig">
+                <tr>
+                    <td>
+                        <div class="sig-label">Dikerjakan Oleh:</div>
+                        <div class="sig-area">
+                            <img id="img_sig_eng" src="" class="sig-img" style="display: none;" crossOrigin="anonymous">
+                            <div id="name_eng" class="sig-name-text"></div> 
+                        </div>
+                        <div class="sig-role">Engineer</div>
+                    </td>
+                    <td>
+                        <div class="sig-label">Diperiksa Oleh:</div>
+                        <div class="sig-area">
+                            <img id="img_sig_spv" src="" class="sig-img" style="display: none;" crossOrigin="anonymous">
+                            <div id="name_spv" class="sig-name-text"></div> 
+                        </div>
+                        <div class="sig-role">Spv / Superintendent</div>
+                    </td>
+                    <td>
+                        <div class="sig-label">Mengetahui:</div>
+                        <div class="sig-area">
+                            <img id="img_sig_mgr" src="" class="sig-img" style="display: none;" crossOrigin="anonymous">
+                            <div id="name_mgr" class="sig-name-text"></div> 
+                        </div>
+                        <div class="sig-role">Manager</div>
+                    </td>
+                </tr>
             </table>
         </div>
-
-        <div class="box-section">
-            <div class="sec-header iso-bold">Pekerjaan Yang Dilakukan & Tindakan Yang Diambil :</div>
-            <table class="tbl-grid" id="grid_tindakan">
-                <tr><td>&#9744; </td><td>&#9744; </td></tr><tr><td>&#9744; </td><td>&#9744; </td></tr>
-                <tr><td>&#9744; </td><td>&#9744; </td></tr><tr><td>&#9744; </td><td>&#9744; </td></tr>
-            </table>
-        </div>
-
-        <div class="box-section" style="border: none;">
-            <div class="sec-header iso-bold" style="border: 1px solid black; border-bottom: none;">Kerusakan Part :</div>
-            <table class="tbl-parts">
-                <thead><tr><th width="30" class="iso-bold">NO</th><th class="iso-bold">Nama Part</th><th width="50" class="iso-bold">QTY</th><th width="200" class="iso-bold">Tindak Lanjut</th></tr></thead>
-                <tbody id="tbl_parts_body">
-                    <tr><td align="center">1</td><td></td><td></td><td>&#9744; Ganti Baru &nbsp; &#9744; Repair</td></tr>
-                    <tr><td align="center">2</td><td></td><td></td><td>&#9744; Ganti Baru &nbsp; &#9744; Repair</td></tr>
-                    <tr><td align="center">3</td><td></td><td></td><td>&#9744; Ganti Baru &nbsp; &#9744; Repair</td></tr>
-                    <tr><td align="center">4</td><td></td><td></td><td>&#9744; Ganti Baru &nbsp; &#9744; Repair</td></tr>
-                    <tr><td align="center">5</td><td></td><td></td><td>&#9744; Ganti Baru &nbsp; &#9744; Repair</td></tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="box-section">
-            <div class="sec-header iso-bold">Rekomendasi & Catatan :</div>
-            <table class="tbl-rec" id="tbl_rekomendasi">
-                <tr><td></td></tr><tr><td></td></tr><tr><td></td></tr>
-            </table>
-        </div>
-
-        <table class="tbl-sig">
-            <tr>
-                <td>
-                    <div class="sig-label">Dikerjakan Oleh:</div>
-                    <div class="sig-area">
-                        <img id="img_sig_eng" src="" class="sig-img" style="display: none;" crossOrigin="anonymous">
-                        <div id="name_eng" class="sig-name-text"></div> </div>
-                    <div class="sig-role">Engineer</div>
-                </td>
-                <td>
-                    <div class="sig-label">Diperiksa Oleh:</div>
-                    <div class="sig-area">
-                        <img id="img_sig_spv" src="" class="sig-img" style="display: none;" crossOrigin="anonymous">
-                        <div id="name_spv" class="sig-name-text"></div> </div>
-                    <div class="sig-role">Spv / Superintendent</div>
-                </td>
-                <td>
-                    <div class="sig-label">Mengetahui:</div>
-                    <div class="sig-area">
-                        <img id="img_sig_mgr" src="" class="sig-img" style="display: none;" crossOrigin="anonymous">
-                        <div id="name_mgr" class="sig-name-text"></div> </div>
-                    <div class="sig-role">Manager</div>
-                </td>
-            </tr>
-        </table>
-
     </div>
 
+    <!-- BOTTOM NAV -->
     <nav class="bottom-nav">
         <a href="index.html" class="nav-item">
             <i class="fa-solid fa-house"></i>
         </a>
-        <a href="menu_utama.html" class="nav-item">
+        <a href="menu_utama.html" class="nav-item active">
             <i class="fa-solid fa-bars"></i>
         </a>
-        <a href="download_data.html" class="nav-item active">
+        <a href="download_data.html" class="nav-item">
             <i class="fa-solid fa-download"></i>
         </a>
         <a href="informasi_akun.html" class="nav-item">
@@ -331,14 +477,10 @@
                 recTbl.innerHTML += `<tr><td>${recLines[i] || ''}</td></tr>`;
             }
 
-            // TAMPILKAN GAMBAR TANDA TANGAN
             showSig('img_sig_eng', d.engineer_signature);
             showSig('img_sig_spv', d.spv_signature);
             showSig('img_sig_mgr', d.manager_signature);
 
-            // TAMPILKAN NAMA TERANG
-            // Pastikan kolom ini ada di database Anda (engineer_name, spv_name, manager_name)
-            // Jika belum ada di tabel, kode ini akan menampilkan kosong (aman, tidak error)
             document.getElementById('name_eng').textContent = d.engineer_name || '';
             document.getElementById('name_spv').textContent = d.spv_name || '';
             document.getElementById('name_mgr').textContent = d.manager_name || '';
@@ -364,30 +506,104 @@
             document.getElementById('val_mesin').textContent = '-';
             fillGridWithCheckbox('grid_masalah', '');
             fillGridWithCheckbox('grid_tindakan', '');
-            // Reset nama juga saat reset form
             document.getElementById('name_eng').textContent = '';
             document.getElementById('name_spv').textContent = '';
             document.getElementById('name_mgr').textContent = '';
         }
 
-        function exportPDF() {
-            const el = document.getElementById('printArea');
-            const btn = document.querySelector('.btn-pdf');
-            const oldText = btn.innerHTML;
-            btn.innerHTML = 'Memproses...';
+        // --- FUNGSI MENGHITAMKAN PIKSEL GAMBAR ---
+        function blackenImage(img) {
+            return new Promise((resolve) => {
+                if (!img.src || img.src.length < 100 || img.style.display === 'none') return resolve();
+                
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const tempImg = new Image();
+                tempImg.crossOrigin = "Anonymous";
+                
+                tempImg.onload = function() {
+                    canvas.width = tempImg.width; canvas.height = tempImg.height;
+                    ctx.drawImage(tempImg, 0, 0);
+                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imgData.data;
+                    for (let i = 0; i < data.length; i += 4) {
+                        const alpha = data[i + 3];
+                        if (alpha > 50) { 
+                            data[i] = 0; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 255; 
+                        }
+                    }
+                    ctx.putImageData(imgData, 0, 0);
+                    img.src = canvas.toDataURL(); 
+                    resolve();
+                };
+                
+                tempImg.onerror = resolve; 
+                tempImg.src = img.src;
+            });
+        }
+
+        // --- EXPORT PDF FINAL VERSION (MOBILE/TABLET SAFE) ---
+        async function exportPDF() {
+            const overlay = document.getElementById('loadingOverlay');
+            const exportContainer = document.getElementById('export-container');
             
+            overlay.style.display = 'flex';
+            window.scrollTo(0,0);
+
+            // 1. CLONE KE CONTAINER 'FIXED WIDTH'
+            const originalElement = document.getElementById('printArea');
+            const clone = originalElement.cloneNode(true);
+            
+            clone.classList.add('print-clone');
+            
+            // Container tampil sebagai layer di atas UI
+            exportContainer.style.display = 'block';
+            exportContainer.innerHTML = '';
+            exportContainer.appendChild(clone);
+
+            // 2. HITAMKAN TANDA TANGAN
+            const sigImages = clone.querySelectorAll('.sig-img');
+            const promises = [];
+            for (let img of sigImages) {
+                promises.push(blackenImage(img));
+            }
+            await Promise.all(promises);
+
+            // 3. JEDA RENDERING
+            await new Promise(r => setTimeout(r, 800));
+
+            // 4. KONFIGURASI ABSOLUT A4
             const opt = {
-                margin: 0, 
-                filename: 'Laporan_ISO.pdf',
+                margin: 0,
+                filename: `POHM_${document.getElementById('val_mesin').innerText}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, allowTaint: true },
+                html2canvas: { 
+                    scale: 2, 
+                    useCORS: true,
+                    // PENTING: Reset scroll saat capture
+                    scrollX: 0,
+                    scrollY: 0,
+                    x: 0, 
+                    y: 0,
+                    // PAKSA WIDTH ke 794px (A4 @ 96dpi)
+                    width: 794,
+                    // WINDOW WIDTH 800px agar layout dianggap Desktop, bukan Mobile
+                    windowWidth: 800, 
+                },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
-            
-            html2pdf().set(opt).from(el).save().then(() => {
-                btn.innerHTML = oldText;
+
+            // 5. EKSEKUSI
+            html2pdf().set(opt).from(clone).save().then(() => {
+                exportContainer.innerHTML = '';
+                exportContainer.style.display = 'none';
+                overlay.style.display = 'none';
             }).catch(err => {
-                console.error(err); alert('Gagal export.'); btn.innerHTML = oldText;
+                console.error(err);
+                exportContainer.innerHTML = '';
+                exportContainer.style.display = 'none';
+                overlay.style.display = 'none';
+                alert('Gagal export PDF. Silakan coba lagi.');
             });
         }
     </script>
