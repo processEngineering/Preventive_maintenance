@@ -199,9 +199,6 @@
             <label style="font-size:11px; font-weight:700; color:#888; display:block; margin-bottom:6px;">NAMA KOORDINATOR</label>
             <input type="text" id="koor-nama" class="form-input" placeholder="Isi nama anda">
 
-            <!-- Hidden Note field, will be generated automatically -->
-            <input type="hidden" id="koor-note-compiled">
-
             <label style="font-size:11px; font-weight:700; color:#888; display:block; margin-bottom:6px;">PARAF</label>
             <div class="sig-box">
                 <canvas id="signature-pad"></canvas>
@@ -304,9 +301,9 @@
                     </div>`;
             } else {
                 // TAMPILAN INTERAKTIF UNTUK YANG NG (Rusak)
-                // Kita tambahkan ID unik untuk input agar mudah diambil valuenya nanti
+                // PENTING: data-resultid="${res.id}" digunakan untuk update per item nanti
                 c.innerHTML += `
-                    <div class="item-row is-ng" id="ng-row-${index}" data-itemname="${res.prslb_items.item_name}">
+                    <div class="item-row is-ng" id="ng-row-${index}" data-resultid="${res.id}" data-itemname="${res.prslb_items.item_name}">
                         <div class="item-header">
                             <span class="item-name">${res.prslb_items.item_name}</span>
                             <span class="status-badge status-ng">NG</span>
@@ -351,16 +348,15 @@
         
         if (!nama || signaturePad.isEmpty()) return alert("Isi Nama & Tanda Tangan!");
 
-        // 1. COLLECT DATA DARI SEMUA ITEM NG
-        // Kita loop semua elemen yang punya class 'is-ng'
+        // 1. VALIDASI & PERSIAPAN DATA PER ITEM NG
         const ngRows = document.querySelectorAll('.item-row.is-ng');
-        let compiledNotes = [];
+        const updatePromises = [];
         let hasEmptyReason = false;
 
+        // Loop setiap item NG untuk validasi dan prepare update promise
         ngRows.forEach(row => {
-            // Ambil ID index dari attribut id row (contoh: ng-row-0 -> ambil 0)
             const idx = row.id.split('-')[2]; 
-            const itemName = row.dataset.itemname;
+            const resultId = row.dataset.resultid; // ID unik dari prslb_result
             const status = document.querySelector(`input[name="verif_${idx}"]:checked`).value;
             const reason = document.getElementById(`reason_${idx}`).value.trim();
 
@@ -369,25 +365,34 @@
                 document.getElementById(`reason_${idx}`).style.border = "1px solid red";
             } else {
                 document.getElementById(`reason_${idx}`).style.border = "1px solid #444";
+                
+                // Tambahkan request update ke array promise
+                // Update kolom status_koordinator & keterangan_koordinator di tabel prslb_result
+                updatePromises.push(
+                    _sb.from('prslb_result')
+                        .update({ 
+                            status_koordinator: status, 
+                            keterangan_koordinator: reason 
+                        })
+                        .eq('id', resultId)
+                );
             }
-
-            // Format string: "Nama Item: [OK/NG] - Alasan"
-            compiledNotes.push(`${itemName}: [${status}] - ${reason}`);
         });
 
         if (hasEmptyReason) return alert("Harap isi semua keterangan pada item NG!");
-
-        // Jika tidak ada item NG, compiledNotes kosong. Beri dash.
-        const finalNoteString = compiledNotes.length > 0 ? compiledNotes.join(' | ') : "Semua item OK, tidak ada catatan khusus.";
 
         const btn = document.getElementById('btn-submit-approve');
         btn.disabled = true; btn.innerText = "MENYIMPAN...";
 
         try {
-            // UPDATE KOORDINATOR_NOTE DENGAN HASIL KUMPULAN DI ATAS
+            // 2. EKSEKUSI UPDATE PER ITEM RESULT
+            if (updatePromises.length > 0) {
+                await Promise.all(updatePromises);
+            }
+
+            // 3. UPDATE HEADER LOG (NAMA & TTD KOORDINATOR)
             const { error } = await _sb.from('prslb_log').update({
                 koordinator_nama: nama,
-                koordinator_note: finalNoteString, // INI YANG AKAN MUNCUL DI LAPORAN PDF
                 status_verifikasi: true,
                 signature_koordinator: signaturePad.toDataURL()
             }).eq('id', activeLog.id);
@@ -397,6 +402,7 @@
             alert("✅ Berhasil! Data verifikasi tersimpan.");
             location.reload();
         } catch (e) {
+            console.error(e);
             alert("Error: " + e.message);
             btn.disabled = false; btn.innerText = "APPROVE SEKARANG";
         }
