@@ -217,8 +217,9 @@
             <table>
                 <tr>
                     <td rowspan="4" class="logo-box">
-                        <!-- PERBAIKAN LOGO: Menggunakan Proxy 'allorigins' dan crossorigin -->
-                        <img src="https://api.allorigins.win/raw?url=https://amarilyskg.co.id/bootstrap/img/logo.png" 
+                        <!-- PERBAIKAN: Gunakan URL asli sebagai default agar langsung tampil di Canvas -->
+                        <img id="company-logo"
+                             src="https://amarilyskg.co.id/bootstrap/img/logo.png" 
                              width="50" 
                              alt="Logo" 
                              crossorigin="anonymous"
@@ -324,7 +325,7 @@
         <p>Pilih Mesin dan Periode untuk melihat data.</p>
     </div>
 
-    <!-- NAVIGATION BAR (POLOS TANPA TEKS) -->
+    <!-- NAVIGATION BAR -->
     <nav class="nav-bar">
         <a href="index.html" class="nav-btn">
             <div class="nav-icon">
@@ -361,7 +362,35 @@
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
+        // --- NEW: AUTO CONVERT LOGO TO BASE64 ON LOAD ---
+        async function convertLogoToBase64() {
+            const img = document.getElementById('company-logo');
+            const originalUrl = "https://amarilyskg.co.id/bootstrap/img/logo.png";
+            // Using a CORS proxy to fetch the image data safely
+            const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(originalUrl);
+            
+            try {
+                // Background fetch untuk PDF
+                const response = await fetch(proxyUrl);
+                if(!response.ok) throw new Error("Fetch failed");
+                const blob = await response.blob();
+                
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    // Update SRC menjadi Base64 agar html2canvas bisa membacanya sebagai data lokal
+                    img.src = reader.result;
+                };
+                reader.readAsDataURL(blob);
+            } catch (e) {
+                console.warn("Gagal konversi logo ke Base64 (Mungkin CORS), membiarkan URL asli.", e);
+                // Jika fetch gagal, biarkan URL asli (tampil di web, mungkin gagal di PDF)
+            }
+        }
+
         async function loadFilter() {
+            // Immediately start converting logo for PDF preparation
+            convertLogoToBase64();
+
             const { data } = await _sb.from('prslb_mesin').select('nama_mesin').order('nama_mesin');
             const select = document.getElementById('f-mesin');
             select.innerHTML = '<option value="">-- Pilih Mesin --</option>';
@@ -415,14 +444,11 @@
                     body.innerHTML += `<tr class="cat-bg"><td colspan="6">${currentCat}</td></tr>`;
                 }
                 
-                // Mengambil keterangan dari Koordinator (r.keterangan_koordinator).
-                // Jika kosong (misal item OK), ambil dari Pelaksana (r.keterangan).
                 const finalNote = r.keterangan_koordinator ? r.keterangan_koordinator : (r.keterangan || "");
                 
-                // Menentukan Status di P2 (Koordinator)
                 let statusP2 = '';
                 if (r.status_koordinator) {
-                    statusP2 = r.status_koordinator; // 'OK' atau 'NG'
+                    statusP2 = r.status_koordinator; 
                 } else if (log.status_verifikasi) {
                     statusP2 = 'OK';
                 }
@@ -452,7 +478,6 @@
             document.getElementById('report-view').style.display = 'block';
         }
 
-        // FUNGSI BARU: GENERATE PDF DARI "SCREENSHOT" DIV
         async function downloadPDF() {
             const { jsPDF } = window.jspdf;
             const element = document.getElementById('report-view');
@@ -465,23 +490,19 @@
             try {
                 // Render elemen HTML menjadi Canvas (Foto) dengan setting CORS yang diperbaiki
                 const canvas = await html2canvas(element, {
-                    scale: 2, // Kualitas tinggi
-                    useCORS: true, // PENTING: Izinkan gambar dari luar (via Proxy)
-                    allowTaint: true, // PENTING: Izinkan kanvas "kotor"
+                    scale: 2, 
+                    useCORS: true, 
+                    allowTaint: true, // Allow tainted canvas if proxy fails
                     logging: false
                 });
 
                 const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                
-                // Buat PDF Landscape A4
                 const pdf = new jsPDF('l', 'mm', 'a4');
                 const pdfWidth = 297;
                 const pdfHeight = 210;
                 
-                // Masukkan gambar ke PDF full page
                 pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
                 
-                // Nama File
                 const mesin = document.getElementById('m-nama').innerText || 'Laporan';
                 const tgl = document.getElementById('m-tgl').innerText || 'Preventif';
                 
