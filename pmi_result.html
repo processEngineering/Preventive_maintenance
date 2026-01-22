@@ -3,11 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Laporan Maintenance - AUTO FIT A4</title>
+    <title>Laporan Maintenance - AUTO FIT A4 PORTRAIT</title>
     
-    <!-- Supabase & HTML2PDF -->
+    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- LIBRARY WAJIB: html2canvas & jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <style>
@@ -18,7 +22,9 @@
             --primary: #DC2626;        
             --bg-body: #1a1a1a;        
             --text-app: #FFF;       
-            --paper-width: 210mm;
+            /* UKURAN KERTAS: A4 PORTRAIT */
+            --paper-width: 210mm; 
+            --paper-height: 297mm;
             --navbar-height: 60px;
         }
 
@@ -81,26 +87,26 @@
             background: #111;
             padding: 20px;
             display: flex;
-            justify-content: flex-start;
+            justify-content: flex-start; /* Align left agar rapi saat scroll */
             align-items: flex-start;
             -webkit-overflow-scrolling: touch;
         }
 
         /* =========================================
-           2. KERTAS LAPORAN
+           2. KERTAS LAPORAN (PORTRAIT STYLE)
            ========================================= */
         .paper {
             background: #FFF;
             color: #000;
             width: var(--paper-width);
-            min-height: 297mm; 
-            min-width: var(--paper-width);
+            min-height: var(--paper-height); 
+            min-width: var(--paper-width); 
             padding: 10mm 10mm; 
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
             margin: 0 auto; 
             position: relative;
             overflow: visible; 
-            font-size: 8pt; 
+            font-size: 7.5pt; 
             line-height: 1.1;
             transform-origin: top center; 
         }
@@ -108,197 +114,130 @@
         table { width: 100%; border-collapse: collapse; margin-bottom: 2px; }
         td, th { border: 1px solid #000; padding: 1px 3px; vertical-align: middle; }
         
-        /* HEADER */
+        /* HEADER - REVISI TOTAL */
         .header-tbl { margin-bottom: 5px; }
-        .header-tbl td { text-align: center; padding: 4px; }
-        .logo-img { height: 35px; width: auto; display: block; margin: 0 auto; }
-        .company-name { font-size: 9pt; font-weight: bold; margin-top: 2px; display: block;}
-        .doc-title { font-size: 12pt; font-weight: bold; text-decoration: underline; }
+        .header-tbl td { text-align: center; padding: 2px; }
         
-        .doc-ctrl { width: 100%; font-size: 7pt; text-align: left; border: none; }
-        .doc-ctrl td { border: none; padding: 0; }
+        /* LOGO CONTAINER */
+        .logo-container {
+            width: 100%;
+            display: flex;
+            justify-content: center; /* Pastikan center secara horizontal */
+            align-items: center;     /* Pastikan center secara vertikal */
+            height: 45px; 
+            margin-bottom: 2px;
+            position: relative;
+        }
+        
+        /* Logo Image Normal */
+        .logo-img { 
+            height: 100%; 
+            width: auto; 
+            display: block; 
+            object-fit: contain; 
+            margin: 0 auto; /* Force Center */
+        }
+        
+        /* FIX LOGO GESER: Logo Canvas (Saat Export) */
+        /* Kita paksa canvas untuk block dan margin auto agar tidak geser */
+        .logo-canvas { 
+            height: 45px !important; 
+            width: auto !important; 
+            max-width: 100%;
+            display: block !important; 
+            margin: 0 auto !important; /* KUNCI AGAR TIDAK GESER */
+        }
+        
+        .company-name { font-size: 8pt; font-weight: bold; display: block; text-align: center; line-height: 1.2; }
+        .doc-title { font-size: 11pt; font-weight: bold; text-decoration: underline; margin-top: 2px; }
+        
+        /* Doc Control */
+        .doc-ctrl { width: 100%; font-size: 6.5pt; text-align: left; border: none; }
+        .doc-ctrl td { border: none; padding: 0 2px; }
+        .doc-ctrl tr td:first-child { width: 40%; font-weight: bold; } 
 
         /* INFO MESIN */
-        .info-tbl { font-size: 8pt; margin-bottom: 8px; }
+        .info-tbl { font-size: 7.5pt; margin-bottom: 5px; }
         .info-tbl td { border: none; border-bottom: 1px solid #ccc; padding: 2px 0; }
-        .lbl { font-weight: bold; width: 15%; }
-        .val { width: 35%; padding-left: 5px; }
+        .lbl { font-weight: bold; width: 18%; }
+        .val { width: 32%; padding-left: 5px; }
         
         /* DATA TABLE */
         .main-tbl th { 
-            background: #ddd; font-weight: bold; font-size: 7.5pt; height: 18px; 
+            background: #ddd; font-weight: bold; font-size: 7pt; height: 16px; 
             border: 1px solid #000;
+            text-align: center;
         }
-        .main-tbl td { font-size: 7.5pt; height: 13px; } 
+        .main-tbl td { font-size: 7pt; height: 12px; } 
         
-        .col-no { width: 25px; text-align: center; }
+        .col-no { width: 20px; text-align: center; }
         .col-item { text-align: left; }
-        .col-std { width: 20%; font-weight: bold; text-align: center; }
-        
-        /* Actual Column Specifics */
-        .col-act { 
-            width: 25%; 
-            padding: 0 !important; /* PENTING: Supaya grid/stack menempel border */
-            vertical-align: top;
-            height: 100%;
-        }
-        
+        .col-std { width: 22%; font-weight: bold; text-align: center; }
+        .col-act { width: 20%; padding: 0 !important; vertical-align: top; height: 100%; }
         .col-ket { width: 15%; text-align: center; font-size: 6.5pt; }
 
         .cat-row td { background: #eee; font-weight: bold; font-size: 7.5pt; padding-left: 5px; }
-        .indent-row { padding-left: 15px !important; }
+        .indent-row { padding-left: 10px !important; }
 
-        /* --- CSS FIX: LAYOUT ACTUAL COLUMN --- */
-        
-        /* 1. HORIZONTAL GRID (Default / Valve Values) */
-        .act-grid { 
-            display: flex; 
-            width: 100%; 
-            height: 100%; 
-            min-height: 16px; /* Tinggi minimum biar rapi */
-            align-items: stretch;
-        }
-        .act-grid .act-item {
-            flex: 1;
-            border-right: 1px solid #000;
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-        }
+        /* LAYOUT ACTUAL COLUMN */
+        .act-grid { display: flex; width: 100%; height: 100%; min-height: 14px; align-items: stretch; }
+        .act-grid .act-item { flex: 1; border-right: 1px solid #000; display: flex; align-items: center; justify-content: center; }
         .act-grid .act-item:last-child { border-right: none; }
 
-        /* 2. VERTICAL STACK (Display atas, Gauge bawah) */
-        .act-stack {
-            display: flex !important; /* Force flex */
-            flex-direction: column !important; /* Force vertical */
-            width: 100%;
-            height: 100%;
-            min-height: 32px; /* Space cukup untuk 2 tumpuk agar tidak gepeng */
-        }
-        .act-stack .act-item {
-            flex: 1 1 auto; /* Allow grow equaly */
-            width: 100%;
-            border-bottom: 1px solid #000; /* Garis pemisah horizontal */
-            display: flex; 
-            flex-direction: column;
-            align-items: center; 
-            justify-content: center;
-            padding: 2px 0;
-            background: #fff;
-        }
-        .act-stack .act-item:last-child { 
-            border-bottom: none; 
-        }
+        .act-stack { display: flex !important; flex-direction: column !important; width: 100%; height: 100%; min-height: 28px; }
+        .act-stack .act-item { flex: 1 1 auto; width: 100%; border-bottom: 1px solid #000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1px 0; background: #fff; }
+        .act-stack .act-item:last-child { border-bottom: none; }
 
-        /* Label Kecil di dalam Stack */
-        .mini-lbl {
-            font-size: 5pt; 
-            color: #444; 
-            font-weight: bold;
-            line-height: 1.2; 
-            margin-bottom: 1px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* Common Item Style */
+        .mini-lbl { font-size: 5pt; color: #444; font-weight: bold; line-height: 1; margin-bottom: 1px; text-transform: uppercase; }
         .act-item { font-size: 7pt; }
-        
-        /* Status Colors */
         .st-ok { color: black; font-weight: bold; }
         .st-ng { color: red; font-weight: bold; }
 
-        /* --- HEADER KHUSUS VALVE IDLING (VISUAL GROUPING) --- */
-        .valve-wrapper {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            height: 100%;
-        }
-        .valve-title {
-            background: #e8e8e8; /* Warna beda dikit biar jelas header */
-            font-size: 6.5pt;
-            font-weight: bold;
-            text-align: center;
-            border-bottom: 1px solid #000;
-            padding: 3px 0;
-            width: 100%;
-            display: block;
-        }
-        .valve-values {
-            display: flex;
-            flex: 1;
-            width: 100%;
-            background: #fafafa;
-        }
-        .valve-val-item {
-            flex: 1;
-            text-align: center;
-            font-size: 6.5pt;
-            font-weight: bold;
-            border-right: 1px solid #000;
-            padding: 2px 0;
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-        }
+        /* HEADER VALVE */
+        .valve-wrapper { display: flex; flex-direction: column; width: 100%; height: 100%; }
+        .valve-title { background: #e8e8e8; font-size: 6pt; font-weight: bold; text-align: center; border-bottom: 1px solid #000; padding: 2px 0; width: 100%; display: block; }
+        .valve-values { display: flex; flex: 1; width: 100%; background: #fafafa; }
+        .valve-val-item { flex: 1; text-align: center; font-size: 6pt; font-weight: bold; border-right: 1px solid #000; padding: 1px 0; display: flex; align-items: center; justify-content: center; }
         .valve-val-item:last-child { border-right: none; }
-
         .sub-header-row td { padding: 0 !important; height: auto; border-top: 1px solid #000; }
 
         /* SIGNATURE */
-        .sig-container { margin-top: 15px; border: 1px solid #000; page-break-inside: avoid; }
+        .sig-container { margin-top: 10px; border: 1px solid #000; page-break-inside: avoid; }
         .sig-tbl { width: 100%; border: none; }
         .sig-tbl td { width: 33.33%; text-align: center; vertical-align: top; padding: 0; border-right: 1px solid #000; }
         .sig-tbl td:last-child { border-right: none; }
-        
-        .sig-head { background: #eee; font-size: 7.5pt; font-weight: bold; border-bottom: 1px solid #000; padding: 3px 0; }
-        .sig-box { height: 50px; display: flex; align-items: flex-end; justify-content: center; }
+        .sig-head { background: #eee; font-size: 7pt; font-weight: bold; border-bottom: 1px solid #000; padding: 2px 0; }
+        .sig-box { height: 45px; display: flex; align-items: flex-end; justify-content: center; }
         .sig-img { max-height: 40px; max-width: 80%; }
         .sig-name { border-top: 1px solid #000; display: block; width: 90%; margin: 0 auto 3px auto; font-size: 7.5pt; font-weight: bold; padding-top: 2px;}
         .sig-role { font-size: 7pt; margin-bottom: 3px;}
 
         /* BOTTOM NAV */
-        .bottom-nav {
-            flex: 0 0 auto;
-            background: #000;
-            display: flex; justify-content: space-around; padding: 10px 0;
-            border-top: 1px solid #333; z-index: 1000;
-            height: var(--navbar-height);
-        }
+        .bottom-nav { flex: 0 0 auto; background: #000; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #333; z-index: 1000; height: var(--navbar-height); }
         .nav-item { color: #666; text-decoration: none; font-size: 10px; display: flex; flex-direction: column; align-items: center; }
         .nav-item.active { color: var(--primary); }
         .nav-item i { font-size: 18px; margin-bottom: 4px; }
+        #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); z-index: 2000; display: none; justify-content: center; align-items: center; flex-direction: column; color: white; }
 
-        /* LOADING */
-        #loading-overlay {
-            position: fixed; top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.8); z-index: 2000;
-            display: none; justify-content: center; align-items: center;
-            flex-direction: column; color: white;
-        }
-
-        /* MEDIA QUERIES */
         @media (max-width: 600px) {
             .filter-box { grid-template-columns: 1fr 1fr; gap: 5px; }
             #sel-mesin { grid-column: 1 / -1; }
             .btn-search { grid-column: 1; width: 100%; }
             .btn-download { grid-column: 2; width: 100%; }
             .paper-wrapper { padding: 10px; display: block; text-align: center; }
-            .paper { display: inline-block; text-align: left; transform-origin: top left; }
+            .paper { display: inline-block; text-align: left; transform-origin: top left; transform: scale(0.5); }
         }
         @media (min-width: 601px) and (max-width: 900px) {
             .filter-box { grid-template-columns: 2fr 1fr 1fr 80px 80px; }
             #sel-mesin { grid-column: span 1; }
         }
-
     </style>
 </head>
 <body>
 
     <div id="loading-overlay">
         <i class="fa fa-spinner fa-spin fa-2x"></i>
-        <p style="margin-top:10px;">Memproses PDF...</p>
+        <p style="margin-top:10px;" id="loading-text">Memproses PDF...</p>
     </div>
 
     <!-- FILTER SECTION -->
@@ -322,20 +261,24 @@
     <!-- REPORT PREVIEW -->
     <div class="paper-wrapper">
         <div class="paper" id="report-view" style="display:none;">
-            
-            <!-- HEADER -->
+            <!-- HEADER REVISI -->
             <table class="header-tbl">
                 <tr>
-                    <td width="20%"><img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img"></td>
-                    <td width="50%">
+                    <td width="25%" style="vertical-align: middle;"> <!-- KOLOM 1: LOGO + PT -->
+                        <div class="logo-container" id="logo-container">
+                            <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img" id="logo-header" alt="Logo">
+                        </div>
                         <div class="company-name">PT. AMARILYS KARISMA GEMILANG</div>
-                        <div class="doc-title">FORM PREVENTIF MESIN INJECTION</div>
                     </td>
-                    <td width="30%">
+                    <td width="45%"> <!-- KOLOM 2: JUDUL -->
+                        <div class="doc-title">FORM PREVENTIF MESIN INJECTION (CLAMPING UNIT)</div>
+                    </td>
+                    <td width="30%"> <!-- KOLOM 3: DOC CONTROL -->
                         <table class="doc-ctrl">
                             <tr><td>No. Dok</td><td>: AF.SP 05.07.Rev-00</td></tr>
                             <tr><td>Tgl Terbit</td><td>: 02 Agustus 2024</td></tr>
                             <tr><td>Halaman</td><td>: 1 dari 1</td></tr>
+                            <tr><td>Tgl Revisi</td><td>: -</td></tr>
                         </table>
                     </td>
                 </tr>
@@ -345,19 +288,19 @@
             <table class="info-tbl">
                 <tr>
                     <td class="lbl">MERK MESIN</td><td class="val">: <span id="v_mesin">-</span></td>
-                    <td class="lbl">TANGGAL</td><td class="val">: <span id="v_tgl">-</span></td>
+                    <td class="lbl">TARGET SELESAI</td><td class="val">: <span id="v_target">-</span></td>
                 </tr>
                 <tr>
                     <td class="lbl">TONAGE</td><td class="val">: <span id="v_ton">-</span></td>
-                    <td class="lbl">JAM START</td><td class="val">: <span id="v_start">-</span></td>
+                    <td class="lbl">START JAM</td><td class="val">: <span id="v_start">-</span></td>
                 </tr>
                 <tr>
+                    <td class="lbl">TANGGAL</td><td class="val">: <span id="v_tgl">-</span></td>
+                    <td class="lbl">FINISH JAM</td><td class="val">: <span id="v_finish">-</span></td>
+                </tr>
+                <tr>
+                    <td class="lbl">TAHUN</td><td class="val">: <span id="v_tahun">-</span></td>
                     <td class="lbl">RUNNING HOURS</td><td class="val">: <span id="v_hm">-</span></td>
-                    <td class="lbl">JAM FINISH</td><td class="val">: <span id="v_finish">-</span></td>
-                </tr>
-                <tr>
-                    <td class="lbl">TARGET</td><td class="val">: <span id="v_target">-</span></td>
-                    <td></td><td></td>
                 </tr>
             </table>
 
@@ -402,7 +345,6 @@
                     </tr>
                 </table>
             </div>
-
         </div> 
     </div>
 
@@ -420,12 +362,46 @@
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
+        const LOGO_URL_ASLI = "https://amarilyskg.co.id/bootstrap/img/logo.png";
+        let GLOBAL_BASE64_LOGO = "";
+
         window.onload = async () => {
             const { data } = await _sb.from('pmi_machines').select('id, nama_mesin').order('nama_mesin');
             const sel = document.getElementById('sel-mesin');
             sel.innerHTML = '<option value="">-- PILIH MESIN --</option>';
             if(data) data.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.nama_mesin}</option>`);
+
+            await preloadLogo();
         };
+
+        // Proxy yang lebih reliable
+        async function fetchImageAsBase64(url) {
+            const proxies = [
+                'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url), 
+                'https://corsproxy.io/?' + encodeURIComponent(url),
+                'https://api.allorigins.win/raw?url=' + encodeURIComponent(url)
+            ];
+            
+            for (let proxyUrl of proxies) {
+                try {
+                    const response = await fetch(proxyUrl);
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        return new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result);
+                            reader.readAsDataURL(blob);
+                        });
+                    }
+                } catch (e) { console.warn("Proxy error:", e); }
+            }
+            return null;
+        }
+
+        async function preloadLogo() {
+            const base64 = await fetchImageAsBase64(LOGO_URL_ASLI);
+            if(base64) GLOBAL_BASE64_LOGO = base64;
+        }
 
         async function cariLaporan() {
             const mid = document.getElementById('sel-mesin').value;
@@ -434,18 +410,12 @@
             if(!mid) return alert("Pilih Mesin dahulu!");
 
             document.getElementById('status-text').innerText = "Sedang mencari data...";
-            
             const mm = bln.toString().padStart(2, '0');
             const startDate = `${thn}-${mm}-01`;
             const lastDay = new Date(thn, bln, 0).getDate();
             const endDate = `${thn}-${mm}-${lastDay}`;
 
-            const { data: headers, error } = await _sb.from('pmi_header')
-                .select('*, pmi_machines(nama_mesin, tonage)')
-                .eq('machine_id', mid)
-                .gte('tanggal', startDate)
-                .lte('tanggal', endDate)
-                .order('created_at', {ascending:false}).limit(1);
+            const { data: headers, error } = await _sb.from('pmi_header').select('*, pmi_machines(nama_mesin, tonage)').eq('machine_id', mid).gte('tanggal', startDate).lte('tanggal', endDate).order('created_at', {ascending:false}).limit(1);
 
             if(error || !headers || headers.length === 0) {
                 document.getElementById('status-text').innerText = "Data Laporan Tidak Ditemukan.";
@@ -456,19 +426,27 @@
         }
 
         async function renderReport(head) {
-            document.getElementById('status-text').innerText = "Geser layar untuk melihat seluruh laporan.";
+            document.getElementById('status-text').innerText = "Data dimuat. Siap Export.";
             document.getElementById('report-view').style.display = 'block';
+            
+            const imgLogo = document.getElementById('logo-header');
+            imgLogo.src = GLOBAL_BASE64_LOGO || LOGO_URL_ASLI;
 
             const m = head.pmi_machines || {};
             document.getElementById('v_mesin').innerText = m.nama_mesin || '-';
             document.getElementById('v_ton').innerText = m.tonage || '-';
             document.getElementById('v_tgl').innerText = head.tanggal;
             
+            if(head.tanggal) {
+                document.getElementById('v_tahun').innerText = head.tanggal.split('-')[0];
+            } else {
+                document.getElementById('v_tahun').innerText = '-';
+            }
+            
             document.getElementById('v_start').innerText = (head.start_jam||'').substring(0,5);
             document.getElementById('v_finish').innerText = (head.finish_jam||'').substring(0,5);
             document.getElementById('v_target').innerText = (head.target_selesai||'').substring(0,5);
             document.getElementById('v_hm').innerText = head.running_hours;
-            // Pelaksana removed from header display
             
             document.getElementById('nm_1').innerText = head.nama_pelaksana || '.......';
             document.getElementById('nm_2').innerText = head.nama_koordinator || '.......';
@@ -484,185 +462,197 @@
             const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', head.id);
 
             let resMap = {}; let noteMap = {};
-            if(results) {
-                results.forEach(r => {
-                    resMap[`${r.pmi_item_id}_${r.pmi_item_field_id}`] = r;
-                    if(r.keterangan) noteMap[r.pmi_item_id] = r.keterangan;
-                });
-            }
+            if(results) { results.forEach(r => { resMap[`${r.pmi_item_id}_${r.pmi_item_field_id}`] = r; if(r.keterangan) noteMap[r.pmi_item_id] = r.keterangan; }); }
 
-            const tbody = document.getElementById('tbl-body');
-            tbody.innerHTML = '';
-            
-            let lastCat = '';
-            let no = 1;
-            let printedHeaders = {}; 
+            const tbody = document.getElementById('tbl-body'); tbody.innerHTML = '';
+            let lastCat = ''; let no = 1; let printedHeaders = {}; 
 
             if(items) {
                 items.forEach(item => {
                     if(item.kategori !== lastCat) {
-                        lastCat = item.kategori;
-                        tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${lastCat}</td></tr>`;
+                        lastCat = item.kategori; tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${lastCat}</td></tr>`;
                         if(lastCat.includes("INJECTION") || lastCat.includes("PUMP")) no = 1;
                     }
-
-                    // Ambil fields untuk item ini dan copy array agar bisa disort tanpa merusak master
                     let myFields = fields.filter(f => f.pmi_item_id === item.id).map(a => ({...a}));
                     let headerKey = item.kategori;
-
-                    // --- LOGIC 1: HEADER VALVE IDLING MERGED ---
                     let hasSpecialLabels = myFields.some(f => f.label && f.label !== 'Actual');
+                    
                     if(hasSpecialLabels && !printedHeaders[headerKey]) {
-                        // Cek apakah ini Valve Idling (ada 50 atau 200)
                         let isValve = myFields.some(f => f.label === '50' || f.label === '200');
-                        
                         if(isValve) {
-                            // Tampilan HEADER KHUSUS VALVE (MERGED)
-                            let subHtml = `
-                                <div class="valve-wrapper">
-                                    <div class="valve-title">VALVE IDLING SETT</div>
-                                    <div class="valve-values">
-                            `;
-                            myFields.forEach(f => {
-                                subHtml += `<div class="valve-val-item">${f.label||''}</div>`;
-                            });
+                            let subHtml = `<div class="valve-wrapper"><div class="valve-title">VALVE IDLING SETT</div><div class="valve-values">`;
+                            myFields.forEach(f => { subHtml += `<div class="valve-val-item">${f.label||''}</div>`; });
                             subHtml += `</div></div>`;
-                            
                             tbody.innerHTML += `<tr class="sub-header-row"><td></td><td></td><td></td><td class="col-act">${subHtml}</td><td></td></tr>`;
                         } else {
-                            // Header Biasa (Jika ada special label lain)
                             let subHtml = `<div class="act-grid">`;
-                            myFields.forEach(f => {
-                                subHtml += `<div class="act-item" style="background:#fafafa; font-weight:bold; font-size:6pt;">${f.label||''}</div>`;
-                            });
+                            myFields.forEach(f => { subHtml += `<div class="act-item" style="background:#fafafa; font-weight:bold; font-size:6pt;">${f.label||''}</div>`; });
                             subHtml += `</div>`;
                             tbody.innerHTML += `<tr class="sub-header-row"><td></td><td></td><td></td><td class="col-act">${subHtml}</td><td></td></tr>`;
                         }
                         printedHeaders[headerKey] = true;
                     }
 
-                    // --- LOGIC 2: ACTUAL DISPLAY & GAUGE (VERTICAL SORTING) ---
                     let actHtml = '-';
                     if(myFields.length > 0) {
-                        // Cek apakah harus vertikal (Display & Gauge)
-                        let isVertical =
-                            item.nama_item.toLowerCase().includes('pressure gauge') &&
-                            myFields.length === 2;
-
-                        if(isVertical) {
-                            // URUTKAN PASTI: Display di ATAS, Gauge di BAWAH
-                            myFields.sort((a, b) => {
-                                let la = (a.label || '').toLowerCase();
-                                let lb = (b.label || '').toLowerCase();
-                                if (la.includes('display')) return -1; // a (Display) ditaruh sebelum b
-                                if (lb.includes('display')) return 1;
-                                return 0;
-                            });
-                        }
-                        
+                        let isVertical = item.nama_item.toLowerCase().includes('pressure gauge') && myFields.length === 2;
+                        if(isVertical) { myFields.sort((a, b) => (a.label || '').toLowerCase().includes('display') ? -1 : 1); }
                         let gridClass = isVertical ? 'act-stack' : 'act-grid';
-
                         actHtml = `<div class="${gridClass}">`;
                         myFields.forEach(f => {
-                            let r = resMap[`${item.id}_${f.id}`];
-                            let val = r ? (r.status || r.nilai_aktual || '-') : '-';
+                            let r = resMap[`${item.id}_${f.id}`]; let val = r ? (r.status || r.nilai_aktual || '-') : '-';
                             let cls = val === 'OK' ? 'st-ok' : (val === 'NG' ? 'st-ng' : '');
-                            
-                            // MODIFIKASI: Tambahkan label kecil jika mode tumpuk (agar tidak bingung)
-                            let labelHtml = '';
-                            if(isVertical) {
-                                let shortLbl = f.label.toLowerCase().includes('display') ? 'DISPLAY' : 'GAUGE';
-                                labelHtml = `<div class="mini-lbl">${shortLbl}</div>`;
-                            }
-
-                            actHtml += `<div class="act-item">
-                                            ${labelHtml}
-                                            <span class="${cls}">${val}</span>
-                                        </div>`;
+                            let labelHtml = isVertical ? `<div class="mini-lbl">${f.label.toLowerCase().includes('display') ? 'DISPLAY' : 'GAUGE'}</div>` : '';
+                            actHtml += `<div class="act-item">${labelHtml}<span class="${cls}">${val}</span></div>`;
                         });
                         actHtml += `</div>`;
                     }
 
-                    let displayNo = no;
-                    let displayName = item.nama_item || ''; 
-                    let clsRow = "";
-                    let incNo = true;
-
+                    let displayNo = no; let displayName = item.nama_item || ''; let clsRow = ""; let incNo = true;
                     if(displayName && (displayName.toLowerCase().includes("pressure gauge") || displayName.match(/^[a-z]\./) || displayName.startsWith("Zone"))) {
-                        clsRow = "indent-row";
-                        incNo = false;
-                        if(displayName.toLowerCase().includes("pressure gauge")) displayNo = "";
-                        else if(displayName.match(/^[a-z]\./)) displayNo = displayName.match(/^([a-z])\./)[1];
-                        else displayNo = "";
+                        clsRow = "indent-row"; incNo = false; displayNo = displayName.match(/^[a-z]\./) ? displayName.match(/^([a-z])\./)[1] : "";
                     }
-
-                    tbody.innerHTML += `
-                        <tr>
-                            <td class="col-no">${displayNo}</td>
-                            <td class="col-item ${clsRow}">${displayName}</td>
-                            <td class="col-std">${item.standard || ''}</td>
-                            <td class="col-act">${actHtml}</td>
-                            <td class="col-ket">${noteMap[item.id] || ''}</td>
-                        </tr>`;
-
+                    tbody.innerHTML += `<tr><td class="col-no">${displayNo}</td><td class="col-item ${clsRow}">${displayName}</td><td class="col-std">${item.standard || ''}</td><td class="col-act">${actHtml}</td><td class="col-ket">${noteMap[item.id] || ''}</td></tr>`;
                     if(incNo) no++;
                 });
             }
         }
 
-        // --- EXPORT PDF ---
-        function downloadPDF() {
-            const element = document.getElementById('report-view');
-            const overlay = document.getElementById('loading-overlay');
-            overlay.style.display = 'flex';
-
-            const mesin = document.getElementById('v_mesin').innerText.replace(/[^a-zA-Z0-9]/g, '_');
-            const tgl = document.getElementById('v_tgl').innerText;
-            const filename = `MAINT_${mesin}_${tgl}.pdf`;
-
-            const originalMinHeight = element.style.minHeight;
-            const originalShadow = element.style.boxShadow;
-            element.style.minHeight = '0px'; 
-            element.style.boxShadow = 'none';
-
-            const maxPageHeight = 1100; 
-            const currentHeight = element.scrollHeight;
-            let scaleFactor = 1;
-            if (currentHeight > maxPageHeight) scaleFactor = maxPageHeight / currentHeight;
-
-            const originalTransform = element.style.transform;
-            const originalTransformOrigin = element.style.transformOrigin;
-            
-            if(scaleFactor < 1) {
-                element.style.transform = `scale(${scaleFactor})`;
-                element.style.transformOrigin = 'top center'; 
-                element.style.height = `${currentHeight * scaleFactor}px`; 
-            }
-
-            const opt = {
-                margin: 0, filename: filename,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, scrollY: 0, height: element.scrollHeight * scaleFactor }, 
-                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            html2pdf().set(opt).from(element).save().then(() => {
-                element.style.transform = originalTransform;
-                element.style.transformOrigin = originalTransformOrigin;
-                element.style.minHeight = originalMinHeight;
-                element.style.boxShadow = originalShadow;
-                element.style.height = 'auto'; 
-                overlay.style.display = 'none';
-            }).catch(err => {
-                console.error(err);
-                alert("Gagal export. Coba lagi.");
-                element.style.transform = originalTransform;
-                element.style.minHeight = originalMinHeight;
-                element.style.boxShadow = originalShadow;
-                element.style.height = 'auto';
-                overlay.style.display = 'none';
+        // =========================================================
+        // SWAP IMG -> CANVAS (DOM METHOD)
+        // INI KUNCINYA: Replace IMG dengan CANVAS di DOM agar tidak geser
+        // =========================================================
+        async function replaceImgWithCanvas(imgElement, base64Data) {
+            return new Promise((resolve) => {
+                const image = new Image();
+                image.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    
+                    // Set ukuran canvas sama dengan ukuran asli gambar
+                    canvas.width = image.naturalWidth || image.width;
+                    canvas.height = image.naturalHeight || image.height;
+                    
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(image, 0, 0);
+                    
+                    // Copy ID dan Class agar styling CSS tetap jalan (PENTING!)
+                    canvas.id = imgElement.id;
+                    canvas.className = imgElement.className; 
+                    
+                    // Tambah class helper untuk styling spesifik
+                    canvas.classList.add('logo-canvas');
+                    
+                    // Swap di DOM
+                    imgElement.parentNode.replaceChild(canvas, imgElement);
+                    resolve(canvas);
+                };
+                image.src = base64Data;
             });
+        }
+
+        async function downloadPDF() {
+            const overlay = document.getElementById('loading-overlay');
+            const loadingText = document.getElementById('loading-text');
+            const element = document.getElementById('report-view');
+            const logoContainer = document.getElementById('logo-container');
+            const imgLogo = document.getElementById('logo-header');
+            
+            overlay.style.display = 'flex';
+            loadingText.innerText = "Mengamankan Logo...";
+            
+            let originalImgClone = null;
+
+            // 1. GANTI IMG MENJADI CANVAS SEBELUM EXPORT
+            // Ini membuat logo menjadi "bagian dari halaman" (bukan gambar eksternal)
+            // sehingga posisinya DIJAMIN tidak akan geser karena dikontrol CSS yang sama.
+            try {
+                if (imgLogo && imgLogo.tagName === 'IMG') {
+                    originalImgClone = imgLogo.cloneNode(true);
+                    
+                    let dataToUse = GLOBAL_BASE64_LOGO;
+                    if (!dataToUse) dataToUse = await fetchImageAsBase64(LOGO_URL_ASLI);
+                    
+                    if (dataToUse) {
+                        await replaceImgWithCanvas(imgLogo, dataToUse);
+                    } else {
+                        // Fallback jika gagal fetch: Tetap pakai IMG (mungkin hilang di PDF tapi layout aman)
+                        console.warn("Gagal swap logo ke canvas");
+                    }
+                }
+            } catch (e) { console.error("Swap error:", e); }
+
+            // Tunggu sebentar agar render ulang browser selesai
+            await new Promise(r => setTimeout(r, 200));
+
+            window.scrollTo(0, 0);
+            const originalShadow = element.style.boxShadow;
+            const originalMargin = element.style.margin;
+            element.style.boxShadow = 'none';
+            element.style.margin = '0'; 
+
+            try {
+                loadingText.innerText = "Mengambil Gambar...";
+
+                // 2. FOTO HALAMAN (Logo sudah jadi Canvas, aman!)
+                const canvas = await html2canvas(element, {
+                    scale: 2,                   
+                    useCORS: true,              
+                    allowTaint: false, // Wajib false karena kita sudah swap ke canvas bersih
+                    backgroundColor: "#ffffff", 
+                    windowWidth: element.scrollWidth,
+                    windowHeight: element.scrollHeight,
+                    scrollY: 0,
+                    logging: false
+                });
+
+                const imgData = canvas.toDataURL('image/jpeg', 0.98);
+
+                loadingText.innerText = "Membuat PDF Portrait...";
+                const { jsPDF } = window.jspdf;
+                
+                // 3. SET PORTRAIT A4
+                const pdf = new jsPDF('p', 'mm', 'a4'); // 'p' = Portrait
+                const pdfWidth = 210; 
+                const pdfHeight = 297; 
+                
+                const imgProps = pdf.getImageProperties(imgData);
+                
+                // 4. HITUNG SKALA (FIT 1 PAGE)
+                const pdfRatio = pdfWidth / pdfHeight;
+                const imgRatio = imgProps.width / imgProps.height;
+
+                let finalWidth, finalHeight;
+
+                if (imgRatio > pdfRatio) {
+                    finalWidth = pdfWidth;
+                    finalHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                } else {
+                    finalHeight = pdfHeight;
+                    finalWidth = (imgProps.width * pdfHeight) / imgProps.height;
+                }
+                
+                const xPos = (pdfWidth - finalWidth) / 2;
+                const yPos = 0; 
+
+                pdf.addImage(imgData, 'JPEG', xPos, yPos, finalWidth, finalHeight);
+
+                const mesin = document.getElementById('v_mesin').innerText.replace(/[^a-zA-Z0-9]/g, '_');
+                const tgl = document.getElementById('v_tgl').innerText;
+                pdf.save(`MAINT_P_${mesin}_${tgl}.pdf`);
+
+            } catch (err) {
+                console.error(err);
+                alert("Gagal Export PDF: " + err.message);
+            } finally {
+                // 5. KEMBALIKAN IMG ASLI
+                if (originalImgClone && logoContainer) {
+                    logoContainer.innerHTML = '';
+                    logoContainer.appendChild(originalImgClone);
+                }
+                element.style.boxShadow = originalShadow;
+                element.style.margin = originalMargin;
+                overlay.style.display = 'none';
+            }
         }
     </script>
 </body>
