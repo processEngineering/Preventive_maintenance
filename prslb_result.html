@@ -13,148 +13,144 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
-        /* ====================== BASE & LAYOUT (RED/BLACK THEME) ====================== */
+        /* ====================== BASE & LAYOUT ====================== */
         body { 
             font-family: 'Calibri', 'Arial', sans-serif; 
-            background: #121212; /* Background Hitam */
+            background: #121212; 
             margin: 0; 
             padding: 20px; 
-            padding-bottom: 70px; /* Extra space for nav bar on mobile */
-            color: #ffffff; /* Text default Putih untuk UI */
+            padding-bottom: 70px; 
+            color: #ffffff; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         
-        /* Filter Box (UI Controls) */
+        /* Filter Box */
         .no-print { 
             max-width: 1200px; 
+            width: 100%;
             margin: 0 auto 20px; 
-            background: #1e1e1e; /* Dark Grey card */
+            background: #1e1e1e; 
             padding: 20px; 
             border-radius: 8px; 
             border: 1px solid #333;
             box-shadow: 0 4px 12px rgba(0,0,0,0.5); 
+            box-sizing: border-box;
         }
         
-        .filter-group { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: end; }
-        .filter-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #ff3333; /* Label Merah */ }
+        .filter-group { display: grid; grid-template-columns: 2fr 1fr 1fr auto auto; gap: 12px; align-items: end; }
+        .filter-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #ff3333; }
         
         select, button { padding: 8px 10px; border-radius: 4px; font-size: 14px; }
         select { width: 100%; border: 1px solid #444; background: #fff; color: #000; }
         
-        /* Tombol Tampilkan jadi Merah */
-        .btn-view { 
-            background: #cc0000; 
-            color: white; 
-            border: none; 
-            cursor: pointer; 
-            font-weight: bold; 
-            transition: background 0.3s;
-        }
+        .btn-view { background: #cc0000; color: white; border: none; cursor: pointer; font-weight: bold; transition: background 0.3s; }
         .btn-view:hover { background: #ff0000; }
 
-        /* Tombol Print tetap Hijau (Standar) atau bisa diubah */
         .btn-print { background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
         .btn-print:disabled { background: #555; cursor: not-allowed; }
         
         .company-footer { font-size: 7px; font-weight: bold; text-align: center; margin-top: 2px; color: #000; }
 
-        /* ====================== NAVIGATION BAR (SMALLER RED BUTTONS) ====================== */
-        .nav-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: #000000; /* Nav Bar Hitam */
-            border-top: 2px solid #cc0000; /* Aksen Garis Merah di atas (lebih tipis) */
-            box-shadow: 0 -2px 10px rgba(255, 0, 0, 0.15);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding: 8px 0; /* Padding bar dikurangi */
-            z-index: 1000;
-            height: 50px; /* Tinggi fix agar ramping */
-        }
-        .nav-btn {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            color: #cc0000; /* TOMBOL MERAH DEFAULT */
-            padding: 8px; /* Padding tombol dikurangi */
-            transition: all 0.3s;
-            border: none;
-            background: none;
-            cursor: pointer;
-        }
-        /* Saat Hover atau Aktif */
-        .nav-btn:hover {
-            color: #ff0000; 
-            transform: scale(1.1);
-            background-color: rgba(255, 0, 0, 0.1); 
-            border-radius: 8px;
-        }
-        .nav-icon {
-            width: 24px; /* Ukuran diperkecil (sebelumnya 36px) */
-            height: 24px;
-        }
-        .nav-icon svg {
-            width: 100%;
-            height: 100%;
-            fill: currentColor;
-        }
-        /* SEMBUNYIKAN LABEL TEKS */
-        .nav-label {
-            display: none; 
-        }
-
-        /* ====================== MOBILE RESPONSIVE TWEAKS ====================== */
-        /* Container agar kertas bisa digeser (scroll) horizontal di HP */
+        /* ====================== SCROLL CONTAINER ====================== */
         .report-scroll-container {
             width: 100%;
-            overflow-x: auto; /* Mengaktifkan scroll horizontal */
-            -webkit-overflow-scrolling: touch; /* Scroll smooth di iOS */
-            padding-bottom: 20px; /* Ruang untuk scrollbar */
+            overflow-x: auto; 
+            -webkit-overflow-scrolling: touch; 
+            padding-bottom: 20px; 
+            display: flex;
+            justify-content: center;
         }
 
         @media screen and (max-width: 768px) {
             body { padding: 10px; padding-bottom: 70px; }
             .no-print { padding: 15px; }
-            /* Filter menumpuk ke bawah di layar kecil agar tombol mudah ditekan */
             .filter-group { grid-template-columns: 1fr; gap: 10px; }
             .filter-group > div { width: 100%; }
-            .btn-view, .btn-print { width: 100%; margin-top: 5px; padding: 12px; } /* Tombol lebih besar di HP */
-            .page { margin: 0; } /* Reset margin di dalam scroll container */
+            .btn-view, .btn-print { width: 100%; margin-top: 5px; padding: 12px; }
+            .page { margin: 0; transform: scale(0.6); transform-origin: top left; }
+            .report-scroll-container { justify-content: flex-start; }
         }
 
-        /* ====================== REPORT PAGE (A4 LANDSCAPE) - TETAP PUTIH ====================== */
+        /* ====================== REPORT PAGE (A4 LANDSCAPE) ====================== */
         .page {
-            width: 297mm; /* Lebar tetap A4 Landscape */
-            min-width: 1000px; /* Fallback pixel agar tidak gepeng */
+            width: 297mm; 
+            min-width: 297mm;
             min-height: 210mm;
-            padding: 6mm 8mm;
-            margin: 20px auto;
-            background: white; /* Kertas Tetap Putih */
-            color: black; /* Tulisan Tetap Hitam */
+            padding: 5mm 8mm; 
+            margin: 0 auto;
+            background: white; 
+            color: black; 
             box-shadow: 0 0 20px rgba(0,0,0,0.8);
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
         
-        /* Table Styles di dalam kertas tetap standar hitam putih */
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         td, th { border: 1px solid black; padding: 2px 4px; font-size: 7px; line-height: 1.1; vertical-align: middle; word-wrap: break-word; color: black; }
-        .logo-box { width: 60px; text-align: center; }
-        .title-box { text-align: center; font-size: 9px; font-weight: bold; }
-        .meta-text { font-size: 7px; padding: 1px 3px; }
+        
+        /* === HEADER ISO STYLE (BARU) === */
+        .header-tbl { 
+            width: 100%; 
+            border: 2px solid black !important; 
+            border-collapse: collapse; 
+            margin-bottom: 5px;
+        }
+        .header-tbl td {
+            border: 1px solid black;
+            vertical-align: middle;
+            padding: 5px;
+        }
+
+        /* LOGO & PT (Kolom Kiri) */
+        .logo-cell { width: 25%; text-align: center; }
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 50px; 
+            margin-bottom: 4px;
+        }
+        .logo-img { height: 100%; width: auto; object-fit: contain; }
+        .logo-canvas { height: 50px !important; width: auto !important; margin: 0 auto; display: block; }
+        .company-name { font-size: 9pt; font-weight: bold; text-transform: uppercase; line-height: 1.2; }
+
+        /* JUDUL (Kolom Tengah) */
+        .title-cell { width: 45%; text-align: center; }
+        .doc-title { 
+            font-size: 16pt; 
+            font-weight: bold; 
+            text-decoration: underline; 
+            text-transform: uppercase;
+        }
+
+        /* INFO DOKUMEN (Kolom Kanan - Nested Table) */
+        .info-cell { width: 30%; padding: 0 !important; vertical-align: top; }
+        
+        .doc-info-tbl { width: 100%; border-collapse: collapse; border: none; margin: 0; }
+        .doc-info-tbl td { 
+            border: none; 
+            border-bottom: 1px solid black; 
+            padding: 3px 5px; 
+            font-size: 7pt; 
+            text-align: left; 
+            line-height: 1.3;
+        }
+        .doc-info-tbl tr:last-child td { border-bottom: none; } /* Hapus border bawah baris terakhir */
+        
+        .info-label { width: 40%; font-weight: bold; border-right: 1px solid black !important; }
+        .info-val { width: 60%; }
+
+        /* Content Styles */
         .label-bg { background-color: #f0f0f0; font-weight: bold; width: 12%; text-align: left; padding-left: 8px; }
         .value-center { text-align: left; padding-left: 6px; }
         .th-bg { background-color: #d9d9d9; text-align: center; font-weight: bold; font-size: 7px; }
         .cat-bg { background-color: #ececec; font-weight: bold; font-size: 7px; text-align: left; padding-left: 8px; }
         .center { text-align: center; }
 
-        /* Kolom Lebar untuk Landscape - Lebih Compact */
         .col-no { width: 3%; }
         .col-item { width: 26%; }
         .col-std { width: 21%; }
@@ -165,22 +161,21 @@
         .sig-img { max-height: 35px; max-width: 100px; object-fit: contain; mix-blend-mode: multiply; }
         .name-under { font-weight: bold; text-decoration: underline; display: block; margin-top: 2px; font-size: 7px; }
 
-        /* Note Section - Compact */
         .note-section { font-size: 7px; margin-top: 3px; border: 1px solid #000; padding: 3px; }
         .note-row { display: flex; justify-content: space-between; }
         .note-col { width: 48%; }
+        
+        #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); z-index: 2000; display: none; justify-content: center; align-items: center; flex-direction: column; color: white; }
+        #status-msg { color: #fbbf24; font-weight: bold; font-size: 13px; min-height: 20px; text-align: center; margin-top: 5px;}
 
-        @media print {
-            @page { size: A4 landscape; margin: 0; }
-            body { background: none; padding: 0; margin: 0; color: #000; }
-            .no-print, #empty-state, .nav-bar { display: none !important; }
-            /* Hapus batasan scroll saat print agar tercetak penuh */
-            .report-scroll-container { width: auto; overflow: visible; padding-bottom: 0; }
-            .page { margin: 0; box-shadow: none; width: 100%; height: 100%; min-width: 0; }
-        }
     </style>
 </head>
 <body>
+
+    <div id="loading-overlay">
+        <i class="fa fa-spinner fa-spin fa-2x"></i>
+        <p style="margin-top:10px;" id="loading-text">Memproses PDF...</p>
+    </div>
 
     <div class="no-print">
         <div class="filter-group">
@@ -209,28 +204,54 @@
                 <button class="btn-print" onclick="downloadPDF()">CETAK PDF</button>
             </div>
         </div>
+        <div id="status-msg"></div>
     </div>
 
     <!-- WRAPPER BARU: Agar bisa digeser/scroll horizontal di HP -->
     <div class="report-scroll-container">
         <div class="page" id="report-view" style="display:none;">
-            <table>
+            
+            <!-- HEADER ISO DESIGN -->
+            <table class="header-tbl">
                 <tr>
-                    <td rowspan="4" class="logo-box">
-                        <!-- PERBAIKAN: Gunakan URL asli sebagai default agar langsung tampil di Canvas -->
-                        <img id="company-logo"
-                             src="https://amarilyskg.co.id/bootstrap/img/logo.png" 
-                             width="50" 
-                             alt="Logo" 
-                             crossorigin="anonymous"
-                             style="display:block; margin: 0 auto;">
+                    <!-- KOLOM 1: LOGO & PT -->
+                    <td class="logo-cell">
+                        <div class="logo-container" id="logo-container">
+                            <img id="logo-header"
+                                 src="https://amarilyskg.co.id/bootstrap/img/logo.png" 
+                                 class="logo-img" 
+                                 alt="Logo">
+                        </div>
+                        <div class="company-name">PT. AMARILYS KARISMA GEMILANG</div>
                     </td>
-                    <td rowspan="4" class="title-box">PREVENTIF ROBOT & STAND LABEL BULANAN</td>
-                    <td class="meta-text" style="width:15%;">No. Dokumen</td><td class="meta-text" style="width:20%;">: AF.SP 05.08.Rev-00</td>
+
+                    <!-- KOLOM 2: JUDUL -->
+                    <td class="title-cell">
+                        <div class="doc-title">PREVENTIF ROBOT & STAND LABEL BULANAN</div>
+                    </td>
+
+                    <!-- KOLOM 3: INFO DOKUMEN (NESTED TABLE) -->
+                    <td class="info-cell">
+                        <table class="doc-info-tbl">
+                            <tr>
+                                <td class="info-label">No. Dokumen</td>
+                                <td class="info-val">: AF.SP 05.08.Rev-00</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Tanggal Terbit</td>
+                                <td class="info-val">: 02 Agustus 2024</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Halaman</td>
+                                <td class="info-val">: 1 dari 1</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Tanggal Revisi</td>
+                                <td class="info-val">: -</td>
+                            </tr>
+                        </table>
+                    </td>
                 </tr>
-                <tr><td class="meta-text">Tanggal Terbit</td><td class="meta-text">: 02 Agustus 2024</td></tr>
-                <tr><td class="meta-text">Halaman</td><td class="meta-text">: 1/1</td></tr>
-                <tr><td class="meta-text">Tanggal Revisi</td><td class="meta-text">: -</td></tr>
             </table>
 
             <div style="height:4px;"></div>
@@ -298,7 +319,6 @@
 
             <table style="margin-top:4px;">
                 <tr>
-                    <!-- Ukuran font judul diperkecil jadi 6px dan lebar kolom disesuaikan (34%, 33%, 33%) -->
                     <td style="width:34%; text-align:center; padding:4px;">
                         <b style="font-size:6px;">PENANGGUNG JAWAB<br>MEKANIK NON SHIFT</b><br>
                         <div class="sig-container"><img id="s1" class="sig-img"></div>
@@ -316,7 +336,6 @@
                     </td>
                 </tr>
             </table>
-            <div class="company-footer"></div>
         </div>
     </div>
 
@@ -325,80 +344,76 @@
         <p>Pilih Mesin dan Periode untuk melihat data.</p>
     </div>
 
-    <!-- NAVIGATION BAR -->
-    <nav class="nav-bar">
-        <a href="index.html" class="nav-btn">
-            <div class="nav-icon">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-                </svg>
-            </div>
-        </a>
-        <a href="menu_utama.html" class="nav-btn">
-            <div class="nav-icon">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-                </svg>
-            </div>
-        </a>
-        <a href="download_data.html" class="nav-btn">
-            <div class="nav-icon">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-                </svg>
-            </div>
-        </a>
-        <a href="informasi_akun.html" class="nav-btn">
-            <div class="nav-icon">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-                </svg>
-            </div>
-        </a>
-    </nav>
-
     <script>
         const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-        // --- NEW: AUTO CONVERT LOGO TO BASE64 ON LOAD ---
-        async function convertLogoToBase64() {
-            const img = document.getElementById('company-logo');
-            const originalUrl = "https://amarilyskg.co.id/bootstrap/img/logo.png";
-            // Using a CORS proxy to fetch the image data safely
-            const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(originalUrl);
+        const LOGO_URL_ASLI = "https://amarilyskg.co.id/bootstrap/img/logo.png";
+        let GLOBAL_BASE64_LOGO = "";
+
+        // --- 1. PRELOAD LOGO & MESIN ---
+        window.onload = async () => {
+            await preloadLogo(); 
             
-            try {
-                // Background fetch untuk PDF
-                const response = await fetch(proxyUrl);
-                if(!response.ok) throw new Error("Fetch failed");
-                const blob = await response.blob();
-                
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    // Update SRC menjadi Base64 agar html2canvas bisa membacanya sebagai data lokal
-                    img.src = reader.result;
-                };
-                reader.readAsDataURL(blob);
-            } catch (e) {
-                console.warn("Gagal konversi logo ke Base64 (Mungkin CORS), membiarkan URL asli.", e);
-                // Jika fetch gagal, biarkan URL asli (tampil di web, mungkin gagal di PDF)
-            }
-        }
-
-        async function loadFilter() {
-            // Immediately start converting logo for PDF preparation
-            convertLogoToBase64();
-
             const { data } = await _sb.from('prslb_mesin').select('nama_mesin').order('nama_mesin');
             const select = document.getElementById('f-mesin');
             select.innerHTML = '<option value="">-- Pilih Mesin --</option>';
             data?.forEach(m => {
                 select.innerHTML += `<option value="${m.nama_mesin}">${m.nama_mesin}</option>`;
             });
+        };
+
+        // --- 2. LOGO HELPERS ---
+        async function fetchImageAsBase64(url) {
+            const proxies = [
+                'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url),
+                'https://corsproxy.io/?' + encodeURIComponent(url),
+                'https://api.allorigins.win/raw?url=' + encodeURIComponent(url)
+            ];
+            for (let proxyUrl of proxies) {
+                try {
+                    const response = await fetch(proxyUrl);
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        return new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result);
+                            reader.readAsDataURL(blob);
+                        });
+                    }
+                } catch (e) { console.warn("Proxy error:", e); }
+            }
+            return null;
         }
 
+        async function preloadLogo() {
+            const base64 = await fetchImageAsBase64(LOGO_URL_ASLI);
+            if(base64) GLOBAL_BASE64_LOGO = base64;
+        }
+
+        async function replaceImgWithCanvas(imgElement, base64Data) {
+            return new Promise((resolve) => {
+                const image = new Image();
+                image.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = image.naturalWidth || image.width;
+                    canvas.height = image.naturalHeight || image.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(image, 0, 0);
+                    
+                    canvas.className = imgElement.className; 
+                    canvas.id = imgElement.id;
+                    canvas.classList.add('logo-canvas'); 
+                    
+                    imgElement.parentNode.replaceChild(canvas, imgElement);
+                    resolve(canvas);
+                };
+                image.src = base64Data;
+            });
+        }
+
+        // --- 3. FETCH DATA ---
         async function searchReport() {
             const m_name = document.getElementById('f-mesin').value;
             const bln = document.getElementById('f-bulan').value;
@@ -418,11 +433,19 @@
                 .order('created_at', { ascending: false })
                 .limit(1);
 
-            if (error || !logs || logs.length === 0) return alert("Laporan tidak ditemukan.");
+            if (error || !logs || logs.length === 0) {
+                 showStatus("Data tidak ditemukan.", true);
+                 return;
+            }
             renderReport(logs[0]);
         }
 
         function renderReport(log) {
+            document.getElementById('status-msg').innerText = "Data ditemukan.";
+            
+            const imgLogo = document.getElementById('logo-header');
+            if(GLOBAL_BASE64_LOGO) imgLogo.src = GLOBAL_BASE64_LOGO;
+            
             const d = new Date(log.created_at);
             document.getElementById('m-nama').innerText = log.mesin_id;
             document.getElementById('m-tonage').innerText = log.prslb_mesin?.tonage || "-";
@@ -445,13 +468,7 @@
                 }
                 
                 const finalNote = r.keterangan_koordinator ? r.keterangan_koordinator : (r.keterangan || "");
-                
-                let statusP2 = '';
-                if (r.status_koordinator) {
-                    statusP2 = r.status_koordinator; 
-                } else if (log.status_verifikasi) {
-                    statusP2 = 'OK';
-                }
+                let statusP2 = r.status_koordinator ? r.status_koordinator : (log.status_verifikasi ? 'OK' : '');
 
                 body.innerHTML += `<tr>
                     <td class="center">${no++}</td>
@@ -475,49 +492,108 @@
             setSig('s3', log.signature_superintendent, log.superintendent_nama);
 
             document.getElementById('empty-state').style.display = 'none';
-            document.getElementById('report-view').style.display = 'block';
+            document.getElementById('report-view').style.display = 'flex';
         }
 
+        // --- 4. EXPORT PDF: LANDSCAPE + CENTER + LOGO SWAP ---
         async function downloadPDF() {
-            const { jsPDF } = window.jspdf;
-            const element = document.getElementById('report-view');
             const btn = document.querySelector('.btn-print');
             const originalText = btn.innerText;
-
-            btn.innerText = "MEMPROSES...";
-            btn.disabled = true;
+            const element = document.getElementById('report-view');
+            const imgLogo = document.getElementById('logo-header');
+            
+            btn.innerText = "⏳ Proses Logo...";
+            
+            let originalImgClone = null;
 
             try {
-                // Render elemen HTML menjadi Canvas (Foto) dengan setting CORS yang diperbaiki
+                // A. Swap IMG -> CANVAS
+                if (imgLogo && imgLogo.tagName === 'IMG') {
+                    originalImgClone = imgLogo.cloneNode(true);
+                    let dataToUse = GLOBAL_BASE64_LOGO;
+                    if (!dataToUse) dataToUse = await fetchImageAsBase64(LOGO_URL_ASLI);
+                    
+                    if (dataToUse) {
+                        await replaceImgWithCanvas(imgLogo, dataToUse);
+                    } else {
+                        alert("Gagal memproses logo. PDF mungkin tanpa logo.");
+                    }
+                }
+            } catch (e) { console.error("Swap error:", e); }
+
+            await new Promise(r => setTimeout(r, 200));
+
+            // Reset style container agar capture full
+            const originalShadow = element.style.boxShadow;
+            element.style.boxShadow = 'none';
+            element.style.margin = '0'; 
+
+            try {
+                btn.innerText = "⏳ Mengambil Gambar...";
+
+                // B. Capture
                 const canvas = await html2canvas(element, {
-                    scale: 2, 
-                    useCORS: true, 
-                    allowTaint: true, // Allow tainted canvas if proxy fails
+                    scale: 2,                   
+                    useCORS: true,              
+                    allowTaint: false,
+                    backgroundColor: "#ffffff", 
+                    windowWidth: element.scrollWidth,
+                    scrollY: 0,
                     logging: false
                 });
 
-                const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                const pdf = new jsPDF('l', 'mm', 'a4');
-                const pdfWidth = 297;
-                const pdfHeight = 210;
+                const imgData = canvas.toDataURL('image/jpeg', 0.98);
+
+                btn.innerText = "⏳ Buat PDF...";
+                const { jsPDF } = window.jspdf;
                 
-                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                // C. Setup PDF Landscape (297 x 210 mm)
+                const pdf = new jsPDF('l', 'mm', 'a4'); 
+                const pdfWidth = 297; 
+                const pdfHeight = 210; 
                 
-                const mesin = document.getElementById('m-nama').innerText || 'Laporan';
-                const tgl = document.getElementById('m-tgl').innerText || 'Preventif';
+                const imgProps = pdf.getImageProperties(imgData);
+                const imgRatio = imgProps.width / imgProps.height;
+                const pdfRatio = pdfWidth / pdfHeight;
+
+                let finalWidth, finalHeight;
+
+                // D. Scale Calculation (Fit 1 Page)
+                if (imgRatio > pdfRatio) {
+                    finalWidth = pdfWidth;
+                    finalHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                } else {
+                    finalHeight = pdfHeight;
+                    finalWidth = (imgProps.width * pdfHeight) / imgProps.height;
+                }
                 
-                pdf.save(`Laporan_${mesin}_${tgl}.pdf`);
+                // E. Center Position
+                const xPos = (pdfWidth - finalWidth) / 2;
+                const yPos = (pdfHeight - finalHeight) / 2; 
+
+                pdf.addImage(imgData, 'JPEG', xPos, yPos, finalWidth, finalHeight);
+
+                const mName = document.getElementById('f-mesin').value || 'Report';
+                pdf.save(`Laporan_${mName}.pdf`);
                 
-            } catch (error) {
-                console.error("Gagal cetak PDF:", error);
-                alert("Gagal membuat PDF. Pastikan koneksi lancar.");
+                showStatus("PDF Berhasil diunduh!");
+
+            } catch (err) {
+                console.error(err);
+                alert("Gagal Export PDF: " + err.message);
             } finally {
+                // Restore IMG & Style
+                if (originalImgClone) {
+                    const canvasLogo = document.getElementById('logo-header');
+                    if (canvasLogo && canvasLogo.tagName === 'CANVAS') {
+                        canvasLogo.parentNode.replaceChild(originalImgClone, canvasLogo);
+                    }
+                }
+                element.style.boxShadow = originalShadow;
+                element.style.margin = '0 auto'; 
                 btn.innerText = originalText;
-                btn.disabled = false;
             }
         }
-
-        window.onload = loadFilter;
     </script>
 </body>
 </html>
