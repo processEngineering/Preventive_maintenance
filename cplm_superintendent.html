@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Superintendent Checklist Mold - AKG</title>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        :root {
+            --primary: #DC2626;
+            --primary-dark: #991B1B;
+            --bg-dark: #050505;
+            --bg-card: #121212; 
+            --text-white: #FFFFFF;
+            --text-gray: #A3A3A3;
+            --border-light: rgba(255,255,255,0.1);
+            --radius: 16px;
+            --nav-height: 70px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text-white);
+            padding-bottom: calc(var(--nav-height) + 30px);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(20,0,0,0.8) 100%);
+            padding: 24px 20px;
+            border-bottom: 1px solid var(--border-light);
+            margin-bottom: 24px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            color: var(--primary);
+            font-size: 20px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .header p {
+            color: var(--text-gray);
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        /* Container */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        /* List Cards */
+        .report-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .report-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .report-card:hover {
+            background: #1a1a1a;
+            border-color: var(--primary);
+        }
+        
+        /* Status Indicator Strip - Red for Superintendent attention */
+        .report-card::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+            background: var(--primary); 
+        }
+
+        .card-info h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: white;
+        }
+
+        .card-info p {
+            font-size: 12px;
+            color: var(--text-gray);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .card-arrow {
+            color: var(--text-gray);
+        }
+
+        /* MODAL DETAIL (Full Screen Overlay) */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 1000;
+            display: none;
+            overflow-y: auto;
+            animation: fadeIn 0.3s;
+        }
+
+        .modal-content {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--bg-dark);
+            min-height: 100vh;
+            position: relative;
+            padding-bottom: 120px; 
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky; top: 0;
+            background: rgba(10,10,10,0.95);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        .close-btn {
+            background: none; border: none; color: white; font-size: 24px; cursor: pointer;
+        }
+
+        .detail-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .detail-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;
+        }
+        
+        .detail-item label { color: var(--text-gray); font-size: 11px; display: block; margin-bottom: 2px; }
+        .detail-item span { color: white; font-size: 14px; font-weight: 500; }
+
+        /* Detail Table */
+        .detail-table {
+            width: 100%; border-collapse: collapse; margin-top: 10px;
+        }
+        .detail-table th {
+            text-align: left; color: var(--text-gray); font-size: 11px; padding: 8px; border-bottom: 1px solid #333;
+        }
+        .detail-table td {
+            padding: 10px 8px; border-bottom: 1px solid #222; font-size: 13px; color: #eee;
+        }
+        .status-badge {
+            padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; display: inline-block;
+        }
+        
+        /* SPV Review Box (Red Theme) */
+        .spv-review-box {
+            background: rgba(220, 38, 38, 0.1); /* Red tint */
+            border: 1px solid var(--primary);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .spv-review-title {
+            color: var(--primary); font-size: 12px; font-weight: 700; margin-bottom: 10px; text-transform: uppercase;
+            display: flex; align-items: center; gap: 6px;
+        }
+
+        /* Form Inputs for Superintendent */
+        .input-group {
+            margin-bottom: 15px;
+        }
+        .input-group label {
+            display: block; color: var(--text-gray); font-size: 12px; margin-bottom: 6px;
+        }
+        .input-field {
+            width: 100%; background: #1a1a1a; border: 1px solid var(--border-light);
+            color: white; padding: 10px; border-radius: 8px; font-size: 13px; outline: none;
+        }
+        .input-field:focus { border-color: var(--primary); }
+        
+        /* Signature Area */
+        .sig-box {
+            border: 1px dashed #444; border-radius: 8px; padding: 10px; text-align: center; margin-top: 5px; background: #fff;
+        }
+        .sig-img { max-height: 80px; max-width: 100%; }
+
+        /* Approval Box */
+        .approval-box {
+            margin: 20px; padding: 20px; background: #111; border: 1px solid var(--primary); border-radius: 12px;
+        }
+
+        .btn-validate {
+            width: 100%; padding: 16px; background: var(--primary); color: white; border: none;
+            border-radius: 12px; font-weight: 700; font-size: 16px; margin-top: 0; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed; 
+            bottom: 0; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            width: 100%; 
+            max-width: 800px;
+            background: rgba(10, 10, 10, 0.95); 
+            backdrop-filter: blur(20px); 
+            border-top: 1px solid var(--border-light);
+            display: flex; 
+            justify-content: space-around; 
+            align-items: center;
+            padding: 10px 0; 
+            height: var(--nav-height); 
+            z-index: 2000; 
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+        }
+        
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #666; width: 60px; height: 50px; }
+        .nav-item.active { color: var(--primary); }
+        .nav-item svg { width: 24px; height: 24px; margin-bottom: 4px; transition: transform 0.3s; }
+        .nav-item.active svg { transform: translateY(-2px); }
+        .nav-item.active::after {
+            content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px; background: var(--primary); border-radius: 50%; box-shadow: 0 0 8px var(--primary);
+        }
+
+        /* Signature Pad Wrapper */
+        .signature-wrapper {
+            background: white; 
+            border-radius: 10px; 
+            width: 100%; 
+            height: 200px; 
+            overflow: hidden; 
+            position: relative;
+            border: 2px dashed #444;
+        }
+
+        canvas#suptSignaturePad {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: crosshair;
+            touch-action: none;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="container">
+            <h1>Superintendent</h1>
+            <!-- Hilangkan tulisan "Final Approval Laporan Mold" -->
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- List Reports -->
+        <div id="reportList" class="report-list">
+            <div style="text-align:center; padding: 40px; color: var(--text-gray);">
+                <i class="fa-solid fa-circle-notch fa-spin"></i> Memuat Laporan...
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETAIL -->
+    <div id="detailModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <!-- Ganti jadi "Detail" saja -->
+                <h2 style="font-size: 18px; color:white;">Detail</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+
+            <!-- Header Info -->
+            <div class="detail-section">
+                <div class="section-title" style="color:var(--primary); font-size:14px; font-weight:700; margin-bottom:10px;">INFORMASI MOLD</div>
+                <div class="detail-grid">
+                    <div class="detail-item"><label>Kode Mold</label><span id="d_kode">...</span></div>
+                    <div class="detail-item"><label>Tanggal Perawatan</label><span id="d_tgl">...</span></div>
+                    <div class="detail-item"><label>PIC Operator</label><span id="d_pic">...</span></div>
+                    <div class="detail-item"><label>Produk</label><span id="d_produk">...</span></div>
+                    <div class="detail-item"><label>Material</label><span id="d_material">...</span></div>
+                    <div class="detail-item"><label>Type</label><span id="d_type">...</span></div>
+                </div>
+            </div>
+
+            <!-- Checklist Items -->
+            <div class="detail-section">
+                <div class="section-title" style="color:var(--primary); font-size:14px; font-weight:700; margin-bottom:10px;">HASIL CHECKLIST</div>
+                <div style="overflow-x:auto;">
+                    <table class="detail-table">
+                        <thead>
+                            <tr>
+                                <th width="5%">NO</th> <!-- Ganti # jadi NO -->
+                                <th width="35%">Item</th>
+                                <th width="30%">Kondisi</th>
+                                <th width="30%">Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="d_items_body">
+                            <!-- Items here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Review SPV (READ ONLY) - REVISED -->
+            <div class="detail-section">
+                <div class="spv-review-box">
+                    <!-- Ganti Title jadi LAPORAN SUPERVISOR, Hapus Icon -->
+                    <div class="spv-review-title">LAPORAN SUPERVISOR</div>
+                    <div class="detail-grid">
+                        <div class="detail-item"><label>Nama SPV</label><span id="d_spv_name">...</span></div>
+                        <div class="detail-item"><label>Tanggal Validasi</label><span id="d_spv_date">...</span></div>
+                    </div>
+                    <div style="margin-top:10px;">
+                        <!-- Warna merah untuk label -->
+                        <label style="color:var(--primary); font-size:11px; display:block;">Catatan SPV</label>
+                        <p id="d_spv_note" style="color:#eee; font-size:13px;">...</p>
+                    </div>
+                    <!-- Tanda Tangan SPV dihapus -->
+                </div>
+            </div>
+
+            <!-- Superintendent Validation -->
+            <div class="detail-section">
+                <div style="width: 100%;">
+                    <div class="section-title" style="color:var(--primary); font-size:14px; font-weight:700; margin-bottom:15px;">FINAL APPROVAL SUPERINTENDENT</div>
+
+                    <!-- 1. INPUT MODE (Belum Validasi) -->
+                    <div id="inputModeArea">
+                        <div class="input-group">
+                            <label>Nama Superintendent</label>
+                            <input type="text" id="inputSuptName" class="input-field" placeholder="Masukkan nama Anda">
+                        </div>
+                        <div class="input-group">
+                            <label>Catatan Akhir / Instruksi</label>
+                            <textarea id="inputSuptNote" class="input-field" rows="3" placeholder="Catatan final untuk tim workshop..."></textarea>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Tanda Tangan</label>
+                            <div class="signature-wrapper">
+                                <canvas id="suptSignaturePad"></canvas>
+                            </div>
+                            <button onclick="clearSuptSig()" style="background:#333; color:white; border:none; padding:8px; font-size:12px; border-radius:6px; margin-top:8px; width:100%;">
+                                <i class="fa-solid fa-eraser"></i> Hapus Tanda Tangan
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 2. READ ONLY MODE (Sudah Validasi) -->
+                    <div id="readModeArea" style="display:none;">
+                        <div style="text-align:center; padding:20px; color:#666;">
+                            <i class="fa-solid fa-award" style="color:var(--primary); font-size:40px; margin-bottom:10px;"></i>
+                            <p style="color:white; font-weight:600;">Laporan Selesai & Disetujui</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <div id="actionArea" class="approval-box" style="display:none;">
+                <button class="btn-validate" onclick="submitValidation()">
+                    FINAL LAPORAN <!-- Ganti Text Button -->
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- NAVIGATION BAR -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+        </a>
+        <a href="menu_utama.html" class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+        </a>
+    </nav>
+
+    <script>
+        // --- CONFIG ---
+        const APP_SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const APP_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const supabaseClient = window.supabase.createClient(APP_SUPABASE_URL, APP_SUPABASE_KEY);
+
+        let reportData = [];
+        let currentReportId = null;
+
+        // --- FETCH LIST ---
+        async function fetchReports() {
+            const listContainer = document.getElementById('reportList');
+            try {
+                const { data, error } = await supabaseClient
+                    .from('clpm_log')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                
+                // FILTER: 
+                // 1. Sudah divalidasi SPV (paraf_spv IS NOT NULL)
+                // 2. BELUM divalidasi Superintendent (paraf_superintendent IS NULL)
+                reportData = data.filter(item => item.paraf_spv && !item.paraf_superintendent);
+                
+                renderList(reportData);
+
+            } catch (err) {
+                console.error(err);
+                listContainer.innerHTML = '<div style="text-align:center; padding:20px; color:red;">Gagal memuat data.</div>';
+            }
+        }
+
+        // --- RENDER LIST ---
+        function renderList(data) {
+            const listContainer = document.getElementById('reportList');
+            listContainer.innerHTML = '';
+
+            if (data.length === 0) {
+                listContainer.innerHTML = `
+                    <div style="text-align:center; padding:60px 20px; color:#666;">
+                        <i class="fa-solid fa-check-double" style="font-size:40px; margin-bottom:15px; color:#333;"></i>
+                        <p>Tidak ada laporan menunggu approval.<br>Semua aman!</p>
+                    </div>`;
+                return;
+            }
+
+            data.forEach(item => {
+                const dateObj = new Date(item.tanggal_perawatan);
+                const dateStr = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+                
+                const html = `
+                    <div class="report-card" onclick="openDetail('${item.id}')">
+                        <div class="card-info">
+                            <h3>${item.kode_mold}</h3>
+                            <p><i class="fa-regular fa-calendar"></i> ${dateStr} &nbsp;|&nbsp; <i class="fa-regular fa-user"></i> ${item.pic_perawatan}</p>
+                            <!-- Badge "Approved by SPV" dihapus sesuai revisi -->
+                        </div>
+                        <div class="card-arrow">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </div>
+                    </div>
+                `;
+                listContainer.innerHTML += html;
+            });
+        }
+
+        // --- OPEN DETAIL ---
+        async function openDetail(id) {
+            currentReportId = id;
+            const item = reportData.find(d => d.id === id);
+            
+            // Populate Header
+            document.getElementById('d_kode').innerText = item.kode_mold;
+            document.getElementById('d_tgl').innerText = item.tanggal_perawatan;
+            document.getElementById('d_pic').innerText = item.pic_perawatan;
+            document.getElementById('d_produk').innerText = item.produk;
+            document.getElementById('d_material').innerText = item.material_mold;
+            document.getElementById('d_type').innerText = item.type_mold;
+            
+            // Populate SPV Review (Data dari DB)
+            document.getElementById('d_spv_name').innerText = item.nama_spv || '-';
+            
+            let spvDateStr = '-';
+            if (item.tanggal_validasi_spv) {
+                const spvDate = new Date(item.tanggal_validasi_spv);
+                spvDateStr = spvDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour:'2-digit', minute:'2-digit' });
+            }
+            document.getElementById('d_spv_date').innerText = spvDateStr;
+            
+            document.getElementById('d_spv_note').innerText = item.catatan_spv || 'Tidak ada catatan.';
+            // document.getElementById('d_spv_sig').src = item.paraf_spv || ''; // Hapus signature display
+
+            // Populate Items Table
+            const tbody = document.getElementById('d_items_body');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">Memuat detail...</td></tr>';
+            
+            document.getElementById('detailModal').style.display = 'block';
+
+            // Fetch Detail Items
+            const { data: details, error } = await supabaseClient
+                .from('clpm_result')
+                .select('*')
+                .eq('log_id', id)
+                .order('no_item', { ascending: true });
+            
+            if (!error) {
+                let html = '';
+                details.forEach(d => {
+                    let color = '#333';
+                    if(d.kondisi === 'OK') color = '#059669';
+                    else if(d.kondisi === 'NOT OK') color = '#DC2626';
+                    else if(d.kondisi === 'GANTI BARU') color = '#7C3AED';
+                    else if(d.kondisi.includes('BERSIH')) color = '#2563EB';
+
+                    html += `
+                        <tr>
+                            <td style="color:#666;">${d.no_item}</td>
+                            <td>${d.item_check}</td>
+                            <td><span class="status-badge" style="background:${color}; color:white;">${d.kondisi}</span></td>
+                            <td style="color:#aaa;">${d.catatan || '-'}</td> <!-- Hapus italic -->
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            }
+
+            // Setup Validation Area
+            const inputMode = document.getElementById('inputModeArea');
+            const readMode = document.getElementById('readModeArea');
+            const actionArea = document.getElementById('actionArea');
+
+            // Reset Inputs
+            document.getElementById('inputSuptName').value = '';
+            document.getElementById('inputSuptNote').value = '';
+            
+            // PENTING: Inisialisasi ulang canvas agar ukurannya pas
+            setTimeout(() => {
+                initSuptCanvas();
+            }, 100);
+
+            if (item.paraf_superintendent) {
+                inputMode.style.display = 'none';
+                actionArea.style.display = 'none';
+                readMode.style.display = 'block';
+            } else {
+                inputMode.style.display = 'block';
+                actionArea.style.display = 'block';
+                readMode.style.display = 'none';
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').style.display = 'none';
+        }
+
+        // --- SIGNATURE PAD SUPERINTENDENT ---
+        const canvas = document.getElementById('suptSignaturePad');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+
+        function initSuptCanvas() {
+            const wrapper = document.querySelector('.signature-wrapper');
+            if(!wrapper) return;
+
+            // Resolusi tinggi
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = wrapper.offsetWidth * ratio;
+            canvas.height = wrapper.offsetHeight * ratio;
+            ctx.scale(ratio, ratio);
+            
+            canvas.style.width = "100%";
+            canvas.style.height = "100%";
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.lineWidth = 3; 
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = '#000';
+        }
+        
+        window.addEventListener('resize', initSuptCanvas);
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            let cx = e.clientX, cy = e.clientY;
+            if(e.touches && e.touches.length > 0) {
+                cx = e.touches[0].clientX; cy = e.touches[0].clientY;
+            }
+            return { x: cx - rect.left, y: cy - rect.top };
+        }
+        
+        canvas.addEventListener('mousedown', (e) => { isDrawing = true; ctx.beginPath(); ctx.moveTo(getPos(e).x, getPos(e).y); });
+        canvas.addEventListener('mousemove', (e) => { if(isDrawing) { ctx.lineTo(getPos(e).x, getPos(e).y); ctx.stroke(); } });
+        canvas.addEventListener('mouseup', () => { isDrawing = false; ctx.beginPath(); });
+        
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); isDrawing = true; ctx.beginPath(); ctx.moveTo(getPos(e).x, getPos(e).y); }, {passive:false});
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); if(isDrawing) { ctx.lineTo(getPos(e).x, getPos(e).y); ctx.stroke(); } }, {passive:false});
+        canvas.addEventListener('touchend', () => { isDrawing = false; ctx.beginPath(); });
+
+        function clearSuptSig() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
+        }
+
+        function isCanvasBlank() {
+            const pixelBuffer = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
+            return !pixelBuffer.some(color => color !== 0);
+        }
+
+        // --- SUBMIT VALIDATION ---
+        async function submitValidation() {
+            const suptName = document.getElementById('inputSuptName').value;
+            const suptNote = document.getElementById('inputSuptNote').value;
+
+            if (!suptName) {
+                Swal.fire({ icon: 'warning', text: 'Mohon isi Nama Superintendent.' });
+                return;
+            }
+
+            if (isCanvasBlank()) {
+                Swal.fire({ icon: 'warning', text: 'Mohon tanda tangan terlebih dahulu.' });
+                return;
+            }
+
+            const result = await Swal.fire({
+                title: 'Finalisasi Laporan?',
+                text: "Laporan akan ditandai selesai (closed).",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#DC2626', // Red
+                cancelButtonColor: '#333',
+                confirmButtonText: 'Ya, Finalkan!'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    const sigData = canvas.toDataURL();
+                    const now = new Date().toISOString();
+
+                    const { error } = await supabaseClient
+                        .from('clpm_log')
+                        .update({ 
+                            nama_superintendent: suptName,
+                            catatan_superintendent: suptNote,
+                            paraf_superintendent: sigData,
+                            tanggal_validasi_superintendent: now
+                        })
+                        .eq('id', currentReportId);
+
+                    if (error) throw error;
+
+                    Swal.fire('Selesai!', 'Laporan telah disetujui sepenuhnya.', 'success');
+                    closeModal();
+                    fetchReports(); // Refresh list
+
+                } catch (err) {
+                    console.error(err);
+                    Swal.fire({
+                        title: 'Gagal Validasi',
+                        text: 'Pastikan koneksi aman.',
+                        icon: 'error'
+                    });
+                }
+            }
+        }
+
+        // --- INIT ---
+        fetchReports();
+
+    </script>
+</body>
+</html>
