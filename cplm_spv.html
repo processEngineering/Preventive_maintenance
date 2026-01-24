@@ -261,9 +261,23 @@
             content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px; background: var(--primary); border-radius: 50%; box-shadow: 0 0 8px var(--primary);
         }
 
-        /* Signature Pad for SPV */
+        /* Signature Pad Wrapper */
+        .signature-wrapper {
+            background: white; 
+            border-radius: 10px; 
+            width: 100%; 
+            height: 200px; 
+            overflow: hidden; 
+            position: relative;
+            border: 2px dashed #444;
+        }
+
         canvas#spvSignaturePad {
-            background: white; width: 100%; height: 150px; border-radius: 8px; cursor: crosshair;
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: crosshair;
+            touch-action: none; /* Penting agar tidak scroll saat sign */
         }
     </style>
 </head>
@@ -345,31 +359,21 @@
                         
                         <div class="spv-input-group">
                             <label>Tanda Tangan</label>
-                            <canvas id="spvSignaturePad" width="300" height="150"></canvas>
+                            <!-- Wrapper untuk memastikan ukuran canvas pas -->
+                            <div class="signature-wrapper">
+                                <canvas id="spvSignaturePad"></canvas>
+                            </div>
                             <button onclick="clearSpvSig()" style="background:#333; color:white; border:none; padding:8px; font-size:12px; border-radius:6px; margin-top:8px; width:100%;">
                                 <i class="fa-solid fa-eraser"></i> Hapus Tanda Tangan
                             </button>
                         </div>
                     </div>
 
-                    <!-- 2. READ ONLY MODE (Sudah Validasi) -->
+                    <!-- 2. READ ONLY MODE (Sudah Validasi) - Ini hanya fallback jika data tidak terfilter -->
                     <div id="readModeArea" style="display:none;">
-                        <div class="spv-input-group">
-                            <label>Nama Supervisor</label>
-                            <div id="staticSpvName" class="spv-static-value"></div>
-                        </div>
-                        <div class="spv-input-group">
-                            <label>Catatan</label>
-                            <div id="staticSpvNote" class="spv-static-value" style="font-style: italic; color: #ccc;"></div>
-                        </div>
-                        <div class="spv-input-group">
-                            <label>Paraf Validasi</label>
-                            <div class="sig-box">
-                                <img id="d_sig_spv" class="sig-img" src="" alt="">
-                                <div style="font-size:12px; color:#059669; margin-top:4px; font-weight:bold;">
-                                    <i class="fa-solid fa-check-circle"></i> Terverifikasi
-                                </div>
-                            </div>
+                        <div style="text-align:center; padding:20px; color:#666;">
+                            <i class="fa-solid fa-check-circle" style="color:#059669; font-size:30px; margin-bottom:10px;"></i>
+                            <p>Laporan ini sudah divalidasi.</p>
                         </div>
                     </div>
 
@@ -422,18 +426,6 @@
         const APP_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         const supabaseClient = window.supabase.createClient(APP_SUPABASE_URL, APP_SUPABASE_KEY);
 
-        /* ===== PENTING: JALANKAN SQL INI DI SUPABASE AGAR TOMBOL VALIDASI BERFUNGSI =====
-           
-           -- 1. Izinkan Update Data untuk Publik (Row Level Security)
-           CREATE POLICY "Public Update Log" ON clpm_log FOR UPDATE USING (true);
-
-           -- 2. Pastikan Kolom SPV Tersedia
-           ALTER TABLE clpm_log ADD COLUMN IF NOT EXISTS nama_spv TEXT;
-           ALTER TABLE clpm_log ADD COLUMN IF NOT EXISTS catatan_spv TEXT;
-           ALTER TABLE clpm_log ADD COLUMN IF NOT EXISTS paraf_spv TEXT;
-           ALTER TABLE clpm_log ADD COLUMN IF NOT EXISTS tanggal_validasi_spv TIMESTAMPTZ;
-        */
-
         let reportData = [];
         let currentReportId = null;
 
@@ -447,7 +439,11 @@
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
-                reportData = data;
+                
+                // FILTER: Hanya ambil yang paraf_spv-nya KOSONG (Belum divalidasi)
+                // Jadi jika sudah divalidasi (paraf_spv ada isinya), tidak akan muncul di list.
+                reportData = data.filter(item => !item.paraf_spv);
+                
                 renderList(reportData);
 
             } catch (err) {
@@ -462,7 +458,11 @@
             listContainer.innerHTML = '';
 
             if (data.length === 0) {
-                listContainer.innerHTML = '<div style="text-align:center; padding:40px; color:#666;">Belum ada laporan masuk.</div>';
+                listContainer.innerHTML = `
+                    <div style="text-align:center; padding:60px 20px; color:#666;">
+                        <i class="fa-solid fa-clipboard-check" style="font-size:40px; margin-bottom:15px; color:#333;"></i>
+                        <p>Tidak ada laporan pending.<br>Semua pekerjaan aman!</p>
+                    </div>`;
                 return;
             }
 
@@ -470,18 +470,12 @@
                 const dateObj = new Date(item.tanggal_perawatan);
                 const dateStr = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
                 
-                const isValidated = item.paraf_spv ? true : false;
-                const statusClass = isValidated ? 'validated' : '';
-                const badgeHtml = isValidated 
-                    ? '<span class="badge" style="background:#059669; color:white;">Validated</span>' 
-                    : '<span class="badge">Pending</span>';
-
                 const html = `
-                    <div class="report-card ${statusClass}" onclick="openDetail('${item.id}')">
+                    <div class="report-card" onclick="openDetail('${item.id}')">
                         <div class="card-info">
                             <h3>${item.kode_mold}</h3>
                             <p><i class="fa-regular fa-calendar"></i> ${dateStr} &nbsp;|&nbsp; <i class="fa-regular fa-user"></i> ${item.pic_perawatan}</p>
-                            <div style="margin-top:6px;">${badgeHtml}</div>
+                            <div style="margin-top:6px;"><span class="badge" style="background:#333; color:#aaa;">Pending Review</span></div>
                         </div>
                         <div class="card-arrow">
                             <i class="fa-solid fa-chevron-right"></i>
@@ -547,19 +541,20 @@
             // Reset Inputs
             document.getElementById('inputSpvName').value = '';
             document.getElementById('inputSpvNote').value = '';
-            initSpvCanvas(); // Reset canvas
+            
+            // PENTING: Inisialisasi ulang canvas agar ukurannya pas
+            // Kita gunakan setTimeout sedikit agar element sudah visible (display: block)
+            setTimeout(() => {
+                initSpvCanvas();
+            }, 100);
 
+            // Karena kita sudah memfilter di fetchReports, secara teori kita hanya akan membuka item yang belum divalidasi.
+            // Namun, tetap kita handle logikanya.
             if (item.paraf_spv) {
-                // Sudah Divalidasi -> Tampilkan Data Read Only
                 inputMode.style.display = 'none';
                 actionArea.style.display = 'none';
                 readMode.style.display = 'block';
-                
-                document.getElementById('staticSpvName').innerText = item.nama_spv || '-';
-                document.getElementById('staticSpvNote').innerText = item.catatan_spv || 'Tidak ada catatan.';
-                document.getElementById('d_sig_spv').src = item.paraf_spv;
             } else {
-                // Belum Divalidasi -> Tampilkan Form Input
                 inputMode.style.display = 'block';
                 actionArea.style.display = 'block';
                 readMode.style.display = 'none';
@@ -576,31 +571,76 @@
         let isDrawing = false;
 
         function initSpvCanvas() {
+            const wrapper = document.querySelector('.signature-wrapper');
+            if(!wrapper) return;
+
+            // Rasio pixel tinggi untuk layar HP (Retina display)
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            
+            // Set ukuran internal canvas sesuai ukuran tampilan wrapper
+            canvas.width = wrapper.offsetWidth * ratio;
+            canvas.height = wrapper.offsetHeight * ratio;
+            
+            // Scaling context agar gambar tidak pecah
+            ctx.scale(ratio, ratio);
+            
+            // Style lebar canvas agar pas di container (tampilan)
+            canvas.style.width = "100%";
+            canvas.style.height = "100%";
+            
+            // Reset state
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 3; // Garis lebih tebal
             ctx.lineCap = 'round';
+            ctx.lineJoin = 'round'; // Sudut lebih halus
             ctx.strokeStyle = '#000';
         }
         
+        // Panggil init saat resize layar (rotasi HP)
+        window.addEventListener('resize', initSpvCanvas);
+
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
             let cx = e.clientX, cy = e.clientY;
+            
+            // Handle touch
             if(e.touches && e.touches.length > 0) {
-                cx = e.touches[0].clientX; cy = e.touches[0].clientY;
+                cx = e.touches[0].clientX; 
+                cy = e.touches[0].clientY;
             }
+            
             return { x: cx - rect.left, y: cy - rect.top };
         }
         
+        // Mouse Events
         canvas.addEventListener('mousedown', (e) => { isDrawing = true; ctx.beginPath(); ctx.moveTo(getPos(e).x, getPos(e).y); });
         canvas.addEventListener('mousemove', (e) => { if(isDrawing) { ctx.lineTo(getPos(e).x, getPos(e).y); ctx.stroke(); } });
-        canvas.addEventListener('mouseup', () => { isDrawing = false; });
+        canvas.addEventListener('mouseup', () => { isDrawing = false; ctx.beginPath(); });
         
-        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); isDrawing = true; ctx.beginPath(); ctx.moveTo(getPos(e).x, getPos(e).y); }, {passive:false});
-        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); if(isDrawing) { ctx.lineTo(getPos(e).x, getPos(e).y); ctx.stroke(); } }, {passive:false});
-        canvas.addEventListener('touchend', () => { isDrawing = false; });
+        // Touch Events
+        canvas.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            isDrawing = true; 
+            ctx.beginPath(); 
+            ctx.moveTo(getPos(e).x, getPos(e).y); 
+        }, {passive:false});
+        
+        canvas.addEventListener('touchmove', (e) => { 
+            e.preventDefault(); 
+            if(isDrawing) { 
+                ctx.lineTo(getPos(e).x, getPos(e).y); 
+                ctx.stroke(); 
+            } 
+        }, {passive:false});
+        
+        canvas.addEventListener('touchend', () => { 
+            isDrawing = false; 
+            ctx.beginPath(); 
+        });
 
         function clearSpvSig() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
         }
 
         function isCanvasBlank() {
@@ -657,7 +697,6 @@
 
                 } catch (err) {
                     console.error(err);
-                    // Menampilkan pesan error spesifik dari Supabase jika ada
                     const errorMsg = err.message || err.error_description || JSON.stringify(err);
                     Swal.fire({
                         title: 'Gagal Validasi',
