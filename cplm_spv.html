@@ -340,6 +340,14 @@
                 </div>
             </div>
 
+            <!-- NEW SECTION: KESIMPULAN KONDISI MOULD -->
+            <div class="detail-section">
+                <div class="section-title" style="color:var(--primary); font-size:14px; font-weight:700; margin-bottom:10px;">KESIMPULAN KONDISI MOULD</div>
+                <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid var(--border-light);">
+                    <p id="d_kondisi_mould" style="color: white; font-size: 14px;">-</p>
+                </div>
+            </div>
+
             <!-- Validation Section -->
             <div class="detail-section">
                 <div style="width: 100%;">
@@ -499,6 +507,9 @@
             document.getElementById('d_material').innerText = item.material_mold;
             document.getElementById('d_type').innerText = item.type_mold;
             
+            // Reset Kondisi Mould Text
+            document.getElementById('d_kondisi_mould').innerText = '-';
+
             // Populate Items Table
             const tbody = document.getElementById('d_items_body');
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">Memuat detail...</td></tr>';
@@ -514,12 +525,19 @@
             
             if (!error) {
                 let html = '';
+                let kondisiMouldText = '-';
+
                 details.forEach(d => {
                     let color = '#333';
                     if(d.kondisi === 'OK') color = '#059669';
                     else if(d.kondisi === 'NOT OK') color = '#DC2626';
                     else if(d.kondisi === 'GANTI BARU') color = '#7C3AED';
                     else if(d.kondisi.includes('BERSIH')) color = '#2563EB';
+
+                    // Cek jika ada catatan kondisi mould (biasanya di item 26)
+                    if (d.catatan_kondisi_mould) {
+                        kondisiMouldText = d.catatan_kondisi_mould;
+                    }
 
                     html += `
                         <tr>
@@ -531,6 +549,9 @@
                     `;
                 });
                 tbody.innerHTML = html;
+                
+                // Update tampilan Kondisi Mould
+                document.getElementById('d_kondisi_mould').innerText = kondisiMouldText;
             }
 
             // Setup Validation Area
@@ -653,25 +674,44 @@
             const spvName = document.getElementById('inputSpvName').value;
             const spvNote = document.getElementById('inputSpvNote').value;
 
+            // Helper style untuk popup Merah Hitam
+            const swalRedStyle = {
+                background: '#991B1B', // Background Merah Gelap
+                color: '#ffffff',      // Teks Putih
+                iconColor: '#ffffff',  // Ikon Putih
+                confirmButtonColor: '#000000', // Tombol Hitam
+                cancelButtonColor: '#444444'   // Tombol Cancel Abu
+            };
+
             if (!spvName) {
-                Swal.fire({ icon: 'warning', text: 'Mohon isi Nama Supervisor.' });
+                Swal.fire({ 
+                    ...swalRedStyle,
+                    icon: 'warning', 
+                    title: 'Data Kurang',
+                    text: 'Mohon isi Nama Supervisor.' 
+                });
                 return;
             }
 
             if (isCanvasBlank()) {
-                Swal.fire({ icon: 'warning', text: 'Mohon tanda tangan terlebih dahulu.' });
+                Swal.fire({ 
+                    ...swalRedStyle,
+                    icon: 'warning', 
+                    title: 'Tanda Tangan',
+                    text: 'Mohon tanda tangan terlebih dahulu.' 
+                });
                 return;
             }
 
             // Konfirmasi
             const result = await Swal.fire({
+                ...swalRedStyle,
                 title: 'Validasi Laporan?',
-                text: "", 
+                text: "Data akan disimpan sebagai tervalidasi.", 
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonColor: '#059669',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Ya, Validasi!'
+                confirmButtonText: 'Ya, Validasi!',
+                cancelButtonText: 'Batal'
             });
 
             if (result.isConfirmed) {
@@ -691,7 +731,13 @@
 
                     if (error) throw error;
 
-                    Swal.fire('Berhasil!', 'Laporan telah divalidasi.', 'success');
+                    Swal.fire({
+                        ...swalRedStyle,
+                        title: 'Berhasil!',
+                        text: 'Laporan telah divalidasi.',
+                        icon: 'success'
+                    });
+                    
                     closeModal();
                     fetchReports(); // Refresh list
 
@@ -699,10 +745,11 @@
                     console.error(err);
                     const errorMsg = err.message || err.error_description || JSON.stringify(err);
                     Swal.fire({
+                        ...swalRedStyle,
                         title: 'Gagal Validasi',
                         text: 'Detail: ' + errorMsg,
                         icon: 'error',
-                        footer: 'Tips: Pastikan SQL Policy UPDATE sudah dijalankan di Supabase.'
+                        footer: '<span style="color:white">Tips: Pastikan SQL Policy UPDATE sudah dijalankan.</span>'
                     });
                 }
             }
