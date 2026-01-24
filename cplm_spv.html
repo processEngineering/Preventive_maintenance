@@ -422,6 +422,18 @@
         const APP_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         const supabaseClient = window.supabase.createClient(APP_SUPABASE_URL, APP_SUPABASE_KEY);
 
+        /* ===== PENTING: JALANKAN SQL INI DI SUPABASE AGAR TOMBOL VALIDASI BERFUNGSI =====
+           
+           -- 1. Izinkan Update Data untuk Publik (Row Level Security)
+           CREATE POLICY "Public Update Log" ON clpm_log FOR UPDATE USING (true);
+
+           -- 2. Pastikan Kolom SPV Tersedia
+           ALTER TABLE clpm_log ADD COLUMN IF NOT EXISTS nama_spv TEXT;
+           ALTER TABLE clpm_log ADD COLUMN IF NOT EXISTS catatan_spv TEXT;
+           ALTER TABLE clpm_log ADD COLUMN IF NOT EXISTS paraf_spv TEXT;
+           ALTER TABLE clpm_log ADD COLUMN IF NOT EXISTS tanggal_validasi_spv TIMESTAMPTZ;
+        */
+
         let reportData = [];
         let currentReportId = null;
 
@@ -645,7 +657,14 @@
 
                 } catch (err) {
                     console.error(err);
-                    Swal.fire('Error', 'Gagal memvalidasi laporan.', 'error');
+                    // Menampilkan pesan error spesifik dari Supabase jika ada
+                    const errorMsg = err.message || err.error_description || JSON.stringify(err);
+                    Swal.fire({
+                        title: 'Gagal Validasi',
+                        text: 'Detail: ' + errorMsg,
+                        icon: 'error',
+                        footer: 'Tips: Pastikan SQL Policy UPDATE sudah dijalankan di Supabase.'
+                    });
                 }
             }
         }
