@@ -118,6 +118,14 @@
             gap: 6px;
         }
         
+        .card-info .badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #333;
+            color: #aaa;
+        }
+
         .card-arrow {
             color: var(--text-gray);
         }
@@ -334,6 +342,14 @@
                 </div>
             </div>
 
+            <!-- NEW SECTION: KESIMPULAN KONDISI MOULD -->
+            <div class="detail-section">
+                <div class="section-title" style="color:var(--primary); font-size:14px; font-weight:700; margin-bottom:10px;">KESIMPULAN KONDISI MOULD</div>
+                <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid var(--border-light);">
+                    <p id="d_kondisi_mould" style="color: white; font-size: 14px;">-</p>
+                </div>
+            </div>
+
             <!-- Review SPV (READ ONLY) -->
             <div class="detail-section">
                 <div class="spv-review-box">
@@ -506,6 +522,9 @@
             document.getElementById('d_material').innerText = item.material_mold;
             document.getElementById('d_type').innerText = item.type_mold;
             
+            // Reset Kondisi Mould Text
+            document.getElementById('d_kondisi_mould').innerText = '-';
+
             // Populate SPV Review (Data dari DB)
             document.getElementById('d_spv_name').innerText = item.nama_spv || '-';
             
@@ -533,12 +552,19 @@
             
             if (!error) {
                 let html = '';
+                let kondisiMouldText = '-';
+
                 details.forEach(d => {
                     let color = '#333';
                     if(d.kondisi === 'OK') color = '#059669';
                     else if(d.kondisi === 'NOT OK') color = '#DC2626';
                     else if(d.kondisi === 'GANTI BARU') color = '#7C3AED';
                     else if(d.kondisi.includes('BERSIH')) color = '#2563EB';
+
+                    // Cek jika ada catatan kondisi mould (biasanya di item 26)
+                    if (d.catatan_kondisi_mould) {
+                        kondisiMouldText = d.catatan_kondisi_mould;
+                    }
 
                     html += `
                         <tr>
@@ -550,6 +576,9 @@
                     `;
                 });
                 tbody.innerHTML = html;
+                
+                // Update tampilan Kondisi Mould
+                document.getElementById('d_kondisi_mould').innerText = kondisiMouldText;
             }
 
             // Setup Validation Area
@@ -639,25 +668,44 @@
         async function submitValidation() {
             const suptName = document.getElementById('inputSuptName').value;
             const suptNote = document.getElementById('inputSuptNote').value;
+            
+            // Helper style untuk popup Merah Hitam
+            const swalRedStyle = {
+                background: '#991B1B', // Background Merah Gelap
+                color: '#ffffff',      // Teks Putih
+                iconColor: '#ffffff',  // Ikon Putih
+                confirmButtonColor: '#000000', // Tombol Hitam
+                cancelButtonColor: '#444444'   // Tombol Cancel Abu
+            };
 
             if (!suptName) {
-                Swal.fire({ icon: 'warning', text: 'Mohon isi Nama Superintendent.' });
+                Swal.fire({
+                    ...swalRedStyle,
+                    icon: 'warning', 
+                    title: 'Data Kurang',
+                    text: 'Mohon isi Nama Superintendent.' 
+                });
                 return;
             }
 
             if (isCanvasBlank()) {
-                Swal.fire({ icon: 'warning', text: 'Mohon tanda tangan terlebih dahulu.' });
+                Swal.fire({ 
+                    ...swalRedStyle,
+                    icon: 'warning', 
+                    title: 'Tanda Tangan',
+                    text: 'Mohon tanda tangan terlebih dahulu.' 
+                });
                 return;
             }
 
             const result = await Swal.fire({
+                ...swalRedStyle,
                 title: 'Finalisasi Laporan?',
                 text: "Laporan akan ditandai selesai (closed).",
-                icon: 'warning', // Warning agar sesuai dengan warna tombol merah
+                icon: 'warning', 
                 showCancelButton: true,
-                confirmButtonColor: '#DC2626', // Red
-                cancelButtonColor: '#333',
-                confirmButtonText: 'Ya, Finalkan!'
+                confirmButtonText: 'Ya, Finalkan!',
+                cancelButtonText: 'Batal'
             });
 
             if (result.isConfirmed) {
@@ -678,10 +726,10 @@
                     if (error) throw error;
 
                     Swal.fire({
+                        ...swalRedStyle,
                         title: 'Selesai!',
                         text: 'Laporan telah disetujui sepenuhnya.',
-                        icon: 'success',
-                        confirmButtonColor: '#DC2626'
+                        icon: 'success'
                     });
                     
                     closeModal();
@@ -691,10 +739,11 @@
                     console.error(err);
                     const errorMsg = err.message || err.error_description || JSON.stringify(err);
                     Swal.fire({
+                        ...swalRedStyle,
                         title: 'Gagal Validasi',
                         text: 'Detail: ' + errorMsg,
                         icon: 'error',
-                        footer: 'Tips: Pastikan kolom database superintendent sudah dibuat.'
+                        footer: '<span style="color:white">Tips: Pastikan kolom database superintendent sudah dibuat.</span>'
                     });
                 }
             }
