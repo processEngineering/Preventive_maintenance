@@ -122,7 +122,7 @@
             letter-spacing: 0.5px;
         }
 
-        input, select {
+        input, select, textarea {
             background: #0F0F0F;
             border: 1px solid var(--border-light);
             color: white;
@@ -134,7 +134,13 @@
             width: 100%;
         }
 
-        input:focus, select:focus {
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+            line-height: 1.5;
+        }
+
+        input:focus, select:focus, textarea:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
             background: #1a0505;
@@ -465,6 +471,15 @@
             </div>
         </div>
 
+        <!-- BAGIAN 2.5: KONDISI MOULD (KHUSUS) -->
+        <div class="form-section">
+            <div class="section-title"><i class="fa-solid fa-clipboard-question"></i> Kondisi Mould</div>
+            <div class="form-group">
+                <label>Kesimpulan Kondisi Mould (Isi di sini)</label>
+                <textarea id="kondisi_mould_final" placeholder="Contoh: Mold dalam kondisi baik, ada sedikit goresan di cavity 2 namun tidak mempengaruhi produk..." rows="3"></textarea>
+            </div>
+        </div>
+
         <!-- BAGIAN 3: TANDA TANGAN -->
         <div class="form-section">
             <div class="section-title"><i class="fa-solid fa-signature"></i> Paraf Operator</div>
@@ -585,13 +600,16 @@
                     html += `<tr style="background:#1a0505; border-left: 2px solid var(--primary);"><td colspan="5" style="font-weight:800; color:var(--primary); text-align:left; padding: 15px;">FUNGSIONAL TEST</td></tr>`;
                 }
 
+                // Normal Row
                 html += `
                     <tr>
                         <td style="text-align:center; color: var(--text-gray); font-weight: bold;">${row.no_item}</td>
                         <td style="font-weight:600; color: white;">${row.item_check}</td>
                         <td style="color:var(--text-gray); font-size: 12px;">${row.standart}</td>
                         <td>${optionsHtml}</td>
-                        <td><input type="text" id="catatan_${row.no_item}" placeholder="Tulis catatan..." style="background: rgba(255,255,255,0.05); border: none;"></td>
+                        <td>
+                            <input type="text" id="catatan_${row.no_item}" placeholder="Tulis catatan..." style="background: rgba(255,255,255,0.05); border: none;">
+                        </td>
                     </tr>
                 `;
             });
@@ -700,6 +718,9 @@
             const kode = document.getElementById('kode_mold').value;
             const pic = document.getElementById('pic_perawatan').value;
             const tgl = document.getElementById('tgl_perawatan').value;
+            
+            // AMBIL DATA KONDISI MOULD DARI TEXTAREA FINAL
+            const kondisiMouldValue = document.getElementById('kondisi_mould_final').value;
 
             if (!kode || !pic || !tgl) {
                 Swal.fire({ icon: 'warning', title: 'Data Kurang', text: 'Mohon lengkapi Kode Mold, Tanggal, dan PIC.' });
@@ -752,7 +773,16 @@
                     const radios = document.getElementsByName(`row_${row.no_item}`);
                     let selectedVal = "";
                     for (let r of radios) { if (r.checked) selectedVal = r.value; }
+                    
                     const note = document.getElementById(`catatan_${row.no_item}`).value;
+                    
+                    // LOGIKA PENYIMPANAN KONDISI MOULD:
+                    // Kita simpan value textarea besar tadi HANYA pada row item ke-26
+                    // Item 26 adalah awal Fungsional Test.
+                    let kondisiMould = null;
+                    if (row.no_item === 26) { 
+                        kondisiMould = kondisiMouldValue; 
+                    }
 
                     return {
                         log_id: logId,
@@ -760,7 +790,8 @@
                         item_check: row.item_check,
                         standart: row.standart,
                         kondisi: selectedVal,
-                        catatan: note
+                        catatan: note,
+                        catatan_kondisi_mould: kondisiMould // Tersimpan hanya di row 26, row lain null
                     };
                 });
 
