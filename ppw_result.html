@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Laporan Pelaksanaan Pekerjaan Workshop - AKG</title>
     
     <!-- Supabase JS -->
@@ -34,7 +34,9 @@
             align-items: center; 
             min-height: 100vh;
             padding: 20px;
-            padding-bottom: 100px;
+            /* Padding bawah ekstra untuk bottom nav di HP */
+            padding-bottom: 120px; 
+            overflow-x: hidden; /* Cegah scroll body global */
         }
 
         /* --- UI CONTROLS --- */
@@ -49,6 +51,7 @@
             display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;
             width: 100%; 
             max-width: 297mm; 
+            z-index: 10;
         }
         .control-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 150px; }
         .control-label { font-size: 12px; font-weight: bold; color: #ff4d4d; letter-spacing: 0.5px; }
@@ -59,37 +62,49 @@
             color: white;
             border-radius: 4px; 
             font-size: 14px; 
+            width: 100%;
         }
         .control-input:focus { outline: none; border-color: var(--accent); background: #333; }
         
         /* Tombol */
         .btn {
             padding: 10px 20px; border-radius: 4px; border: none; font-weight: bold;
-            cursor: pointer; display: flex; align-items: center; gap: 8px; height: 40px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px;
             transition: 0.3s; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+            white-space: nowrap;
         }
-        .btn-search { background: var(--primary); color: white; border: 1px solid var(--primary); }
+        .btn-search { background: var(--primary); color: white; border: 1px solid var(--primary); flex: 1; min-width: 120px; }
         .btn-search:hover { background: var(--accent); box-shadow: 0 0 10px rgba(255, 0, 0, 0.4); }
         
-        .btn-print { background: #333; color: white; border: 1px solid #555; }
+        .btn-print { background: #333; color: white; border: 1px solid #555; flex: 1; min-width: 100px; }
         .btn-print:hover { background: #555; }
         
-        .btn-export { background: #1a4d1a; color: white; border: 1px solid #2f852f; }
+        .btn-export { background: #1a4d1a; color: white; border: 1px solid #2f852f; flex: 1; min-width: 120px; }
         .btn-export:hover { background: #2f852f; }
 
-        /* --- WRAPPER LAYAR --- */
+        /* --- WRAPPER LAYAR (RESPONSIVE SCROLL AREA) --- */
         .page-wrapper {
             width: 100%;
             display: flex;
+            /* Default: Center untuk Desktop */
             justify-content: center; 
             align-items: flex-start;
             padding: 0 10px;
+            
+            /* Fitur Scroll HP */
+            overflow-x: auto; 
+            -webkit-overflow-scrolling: touch; /* Smooth scroll di iOS */
+            
+            /* Pastikan wrapper tidak memaksa width anak menjadi kecil */
+            flex-shrink: 0;
         }
 
         /* --- CONTAINER KHUSUS PDF/PRINT (THE REAL A4 SHEET) --- */
         #exportContainer {
-            /* A4 Landscape: 297mm x 210mm */
+            /* FIXED SIZE: A4 Landscape (297mm) */
+            /* Kita gunakan fixed width agar layout tabel tidak hancur di layar kecil */
             width: 297mm;
+            min-width: 297mm; /* Kunci mati lebar minimal */
             min-height: 210mm;
             
             /* Visual Kertas Putih */
@@ -97,13 +112,16 @@
             color: #000;
             box-shadow: 0 0 25px rgba(0,0,0,0.5);
             
-            /* Positioning Center */
-            margin: 0 auto;
+            /* Positioning */
+            margin-bottom: 20px;
             position: relative;
             
-            /* PENTING: Overflow hidden agar tidak ada elemen 'bocor' keluar yang bikin geser */
+            /* PENTING: Overflow hidden agar tidak ada elemen 'bocor' keluar */
             overflow: hidden; 
             box-sizing: border-box; 
+            
+            /* Transform origin untuk scaling jika diperlukan nanti */
+            transform-origin: top center;
         }
 
         /* --- KONTEN DALAM (PADDING AREA) --- */
@@ -143,7 +161,8 @@
             text-align: center;
             padding: 5px;
         }
-        .header-center h2 { font-size: 14pt; font-weight: 800; text-decoration: underline; margin: 0; color: #000; }
+        /* REVISI: text-decoration: none (hapus underline) */
+        .header-center h2 { font-size: 14pt; font-weight: 800; text-decoration: none; margin: 0; color: #000; }
 
         .header-right { width: 30%; font-size: 8pt; padding: 0; }
         .info-table { width: 100%; border-collapse: collapse; height: 100%; }
@@ -189,6 +208,41 @@
         .nav-item { color: #555; text-decoration: none; font-size: 24px; transition: 0.3s; }
         .nav-item:hover, .nav-item.active { color: var(--primary); transform: scale(1.1); text-shadow: 0 0 10px rgba(153, 0, 0, 0.5); }
 
+        /* --- MEDIA QUERIES UNTUK HP / TABLET (Tampilan Layar) --- */
+        @media screen and (max-width: 1150px) {
+            body {
+                padding: 10px;
+                padding-bottom: 100px;
+                /* Pada layar kecil, align items start agar scroll bisa dari kiri */
+                align-items: flex-start; 
+            }
+
+            .page-wrapper {
+                /* Ubah justify content agar scroll mulai dari kiri, bukan tengah */
+                justify-content: flex-start;
+                padding: 0;
+            }
+
+            #exportContainer {
+                /* Biarkan tetap fixed width 297mm agar tabel tidak hancur */
+                /* User tinggal scroll ke samping */
+                margin-left: 0;
+                transform: scale(1); /* Pastikan skala normal */
+            }
+
+            .controls {
+                width: 100%;
+                max-width: 100%; /* Controls mengikuti lebar layar HP */
+            }
+            
+            .btn {
+                flex: 1 1 100%; /* Tombol jadi full width di HP kecil */
+                margin-top: 5px;
+            }
+            .control-group {
+                min-width: 100%; /* Input jadi full width */
+            }
+        }
 
         /* --- PRINT SETTINGS --- */
         @media print {
@@ -202,18 +256,22 @@
                 padding: 0 !important;
                 width: 100%;
                 height: 100%;
+                overflow: visible;
+                display: block; /* Reset display flex pada body saat print */
             }
             .controls, .bottom-nav { display: none !important; }
             .page-wrapper { 
                 display: block; 
                 width: 100%;
                 margin: 0; padding: 0;
+                overflow: visible;
             }
             #exportContainer {
                 box-shadow: none; 
                 margin: 0 auto;
                 width: 297mm;
                 max-width: 100%;
+                transform: none !important; /* Reset transformasi HP jika ada */
             }
             .main-table thead th { 
                 background-color: #990000 !important; 
