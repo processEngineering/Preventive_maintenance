@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Approval Superintendent - AKG</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --primary: #DC2626;
+            --primary-dark: #991B1B;
+            --primary-glow: rgba(220, 38, 38, 0.6);
+            --bg-dark: #050505;
+            --bg-card: #121212; 
+            --bg-input: #1A1A1A;
+            --text-white: #FFFFFF;
+            --text-gray: #A3A3A3;
+            --border-light: rgba(255,255,255,0.1);
+            --radius: 12px;
+            --nav-height: 70px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background: var(--bg-dark);
+            min-height: 100vh;
+            color: var(--text-white);
+            /* Padding bottom disesuaikan nanti lewat JS jika form muncul/hilang */
+            padding-bottom: calc(var(--nav-height) + 20px);
+            padding-top: 20px;
+            transition: padding-bottom 0.3s;
+        }
+
+        /* --- Background Animation --- */
+        .bg-animation { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; overflow: hidden; background: #000; }
+        .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4; animation: float 20s ease-in-out infinite; }
+        .orb-1 { width: 400px; height: 400px; background: radial-gradient(circle, var(--primary) 0%, transparent 70%); top: -150px; right: -150px; }
+        .orb-2 { width: 300px; height: 300px; background: radial-gradient(circle, #7F1D1D 0%, transparent 70%); bottom: 10%; left: -100px; animation-delay: -5s; }
+        .grid-pattern { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 40px 40px; opacity: 0.3; }
+
+        /* --- Layout --- */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* --- Data Cards --- */
+        .data-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .data-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            padding: 0; 
+            position: relative;
+            animation: fadeIn 0.5s ease-out;
+            overflow: hidden;
+            transition: transform 0.2s, border-color 0.2s;
+            /* Border kiri merah sebagai penanda pending */
+            border-left: 3px solid #EF4444;
+        }
+        
+        .data-card:active {
+            transform: scale(0.99);
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Card Header */
+        .card-header {
+            padding: 14px 16px;
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid var(--border-light);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .spv-info { 
+            font-size: 13px; color: var(--text-white); font-weight: 600; 
+        }
+        .spv-date { font-size: 11px; color: var(--text-gray); margin-top: 2px; }
+
+        /* Checkbox Custom */
+        .item-checkbox {
+            width: 22px; height: 22px; accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        /* Card Body - Grid Layout */
+        .card-body { 
+            padding: 16px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 90px 1fr;
+            gap: 8px 12px;
+            font-size: 13px;
+        }
+
+        .label { 
+            color: var(--text-gray); 
+            font-size: 12px; 
+            align-self: center;
+        }
+        .val { 
+            color: var(--text-white); 
+            font-weight: 500; 
+            text-align: right; 
+        }
+
+        /* Job Desc Box */
+        .job-desc-box {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--border-light);
+        }
+        .job-desc-label {
+            font-size: 11px; color: var(--text-gray); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .job-desc-val {
+            font-size: 13px; color: #ddd; line-height: 1.5;
+        }
+
+        /* --- Approval Form (Sticky Bottom) --- */
+        .approval-section {
+            position: fixed;
+            bottom: var(--nav-height);
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 600px;
+            background: rgba(15, 15, 15, 0.98);
+            backdrop-filter: blur(15px);
+            border-top: 1px solid var(--border-light);
+            padding: 24px 20px 20px 20px;
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.6);
+            z-index: 50;
+            display: none; /* Default Hidden: Only show if pending items exist */
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { transform: translate(-50%, 100%); }
+            to { transform: translate(-50%, 0); }
+        }
+
+        .section-header-approve {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 16px;
+        }
+        .section-title {
+            color: var(--primary); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
+        .form-col { flex: 1; }
+
+        .form-input {
+            width: 100%; background: var(--bg-input);
+            border: 1px solid var(--border-light);
+            border-radius: 10px; padding: 12px;
+            color: var(--text-white); font-size: 13px; outline: none;
+            transition: border-color 0.3s;
+        }
+        .form-input:focus { border-color: var(--primary); }
+
+        /* Signature Area */
+        .sig-container {
+            background: #fff;
+            border-radius: 10px;
+            position: relative;
+            height: 100px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        canvas { width: 100%; height: 100%; cursor: crosshair; }
+        
+        .sig-label {
+            position: absolute; top: 5px; left: 8px; font-size: 10px; color: #999; pointer-events: none;
+        }
+        
+        .clear-sig {
+            position: absolute; bottom: 5px; right: 5px;
+            background: rgba(255,255,255,0.9); color: var(--primary);
+            border: 1px solid #ddd; padding: 2px 8px;
+            border-radius: 4px; font-size: 10px; cursor: pointer;
+            font-weight: 600;
+        }
+
+        .approve-btn {
+            width: 100%; background: var(--primary);
+            color: white; border: none; padding: 14px; border-radius: 12px;
+            font-size: 14px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1px; cursor: pointer;
+            box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3);
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+            transition: transform 0.2s;
+        }
+        .approve-btn:active { transform: scale(0.98); background: var(--primary-dark); }
+
+        .empty-state { 
+            text-align: center; color: var(--text-gray); font-size: 13px; 
+            padding: 60px 20px; border: 1px dashed var(--border-light); border-radius: var(--radius);
+        }
+        .empty-icon { font-size: 32px; margin-bottom: 12px; color: #333; }
+
+        /* --- Nav --- */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 100%; max-width: 600px;
+            background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-light);
+            display: flex; justify-content: space-around; align-items: center;
+            padding: 12px 0; height: var(--nav-height); z-index: 100;
+        }
+        .nav-item { color: #555; width: 56px; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .nav-item.active { color: var(--primary); background: rgba(220, 38, 38, 0.1); border-radius: 12px; }
+        .nav-item svg { width: 22px; height: 22px; }
+
+        /* --- Loading & Alert --- */
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            z-index: 999; display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        #customAlert {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: #1a1a1a; padding: 15px 20px; border-radius: 12px;
+            border: 1px solid var(--border-light); display: none; z-index: 1000;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5); align-items: center; gap: 10px; min-width: 300px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-animation">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="grid-pattern"></div>
+    </div>
+
+    <div class="container">
+        <!-- Statistik Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 4px;">
+            <div class="section-title" style="margin-bottom: 0; font-size:16px;">Pending Approval</div>
+            <!-- Hanya menampilkan count pending -->
+            <div id="pendingCount" style="background: rgba(220, 38, 38, 0.2); border: 1px solid rgba(220, 38, 38, 0.4); color: #EF4444; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;">
+                0 Item
+            </div>
+        </div>
+        
+        <div id="loadingData" style="text-align: center; padding: 40px; color: var(--text-gray);">
+            <i class="fa-solid fa-circle-notch fa-spin" style="margin-bottom: 10px; font-size: 24px;"></i><br>Memuat data...
+        </div>
+
+        <div id="dataList" class="data-list">
+            <!-- Data akan dimasukkan di sini oleh JS -->
+        </div>
+
+        <!-- Form Approval Superintendent (Sticky Bottom - Hidden by default) -->
+        <div class="approval-section" id="approvalSection">
+            <div class="section-header-approve">
+                <span class="section-title">Validasi Item Terpilih</span>
+                <span style="font-size: 11px; color: var(--text-gray);">Centang untuk Approve</span>
+            </div>
+            
+            <form id="approvalForm">
+                <div class="form-row">
+                    <div class="form-col">
+                        <input type="text" id="nama_superintendent" class="form-input" placeholder="Nama Superintendent" required>
+                    </div>
+                    <div class="form-col">
+                         <input type="text" id="catatan_superintendent" class="form-input" placeholder="Catatan (Opsional)">
+                    </div>
+                </div>
+
+                <div class="sig-container">
+                    <span class="sig-label">Tanda Tangan di sini</span>
+                    <canvas id="signaturePad"></canvas>
+                    <button type="button" class="clear-sig" onclick="clearSignature()">Hapus</button>
+                </div>
+
+                <button type="submit" class="approve-btn">
+                    Finish Report
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Navigasi Bawah -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+        </a>
+        <a href="menu_utama.html" class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+        </a>
+    </nav>
+
+    <!-- Loading & Alert -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Menyimpan Approval...</div>
+    </div>
+
+    <div id="customAlert">
+        <i id="alertIcon" class="fa-solid fa-circle-check" style="color: #059669; font-size: 20px;"></i>
+        <div style="flex:1;">
+            <h4 id="alertTitle" style="font-size: 14px; margin-bottom: 2px;">Berhasil</h4>
+            <p id="alertMsg" style="font-size: 12px; color: var(--text-gray);">Data tersimpan.</p>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        // --- 1. Supabase Config ---
+        var SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        var supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- 2. Fetch Data Logic ---
+        async function fetchPendingData() {
+            var listContainer = document.getElementById('dataList');
+            var loader = document.getElementById('loadingData');
+            var pendingBadge = document.getElementById('pendingCount');
+            var approvalSection = document.getElementById('approvalSection');
+
+            // Ambil HANYA data yang belum diapprove (ttd_superintendent kosong)
+            const { data, error } = await supabaseClient
+                .from('ppw_log')
+                .select('*')
+                .is('ttd_superintendent', null) // Filter data yang pending
+                .order('created_at', { ascending: false });
+
+            loader.style.display = 'none';
+
+            if (error) {
+                console.error(error);
+                listContainer.innerHTML = '<div class="empty-state">Gagal memuat data.</div>';
+                approvalSection.style.display = 'none'; // Hide approval form on error
+                document.body.style.paddingBottom = 'calc(var(--nav-height) + 20px)'; // Reset padding
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="fa-solid fa-check-circle"></i></div>
+                        Semua pekerjaan sudah selesai.
+                    </div>`;
+                pendingBadge.textContent = '0 Item';
+                approvalSection.style.display = 'none'; // Hide approval form if no data
+                document.body.style.paddingBottom = 'calc(var(--nav-height) + 20px)'; // Reset padding
+                return;
+            }
+
+            // Jika ada data:
+            pendingBadge.textContent = data.length + ' Item';
+            approvalSection.style.display = 'block'; // Show approval form
+            document.body.style.paddingBottom = 'calc(var(--nav-height) + 260px)'; // Increase padding
+            listContainer.innerHTML = '';
+
+            data.forEach(item => {
+                let dateStr = item.tanggal; 
+                
+                // Hasil QC Clean (Text Only - White)
+                let qcText = item.status_hasil === 'OK' ? 
+                    '<span style="color:var(--text-white); font-weight:700;">OK</span>' : 
+                    '<span style="color:var(--text-white); font-weight:700;">NOT OK</span>';
+
+                let html = `
+                    <div class="data-card">
+                        <div class="card-header">
+                            <div>
+                                <div class="spv-info">${item.nama_spv || '-'}</div>
+                                <div class="spv-date">${dateStr}</div>
+                            </div>
+                            <!-- Checkbox selalu muncul karena ini list pending -->
+                            <input type="checkbox" class="item-checkbox" value="${item.id}" checked>
+                        </div>
+                        
+                        <div class="card-body">
+                            <div class="info-grid">
+                                <span class="label">Nama Part</span>
+                                <span class="val" style="font-weight:700; color:var(--primary);">${item.nama_part}</span>
+                                
+                                <span class="label">Estimasi</span>
+                                <span class="val">${item.estimasi_waktu || '-'}</span>
+                                
+                                <span class="label">Operator</span>
+                                <span class="val">${item.nama_operator || '-'}</span>
+
+                                <span class="label">Hasil QC</span>
+                                <span style="justify-self: end;">
+                                    ${qcText}
+                                </span>
+                            </div>
+
+                            <div class="job-desc-box">
+                                <div class="job-desc-label">Deskripsi Pekerjaan</div>
+                                <div class="job-desc-val">${item.job_desc || '-'}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                listContainer.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        fetchPendingData();
+
+        // --- 3. Signature Logic ---
+        var canvas = document.getElementById('signaturePad');
+        var ctx = canvas.getContext('2d');
+        var isDrawing = false;
+
+        function resizeCanvas() {
+            var ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            ctx.scale(ratio, ratio);
+        }
+        window.addEventListener("resize", resizeCanvas);
+        // Delay slighty so display:block layout is calculated
+        setTimeout(resizeCanvas, 500); 
+
+        function startDraw(e) { isDrawing = true; ctx.beginPath(); var pos = getPos(e); ctx.moveTo(pos.x, pos.y); }
+        function draw(e) { if (!isDrawing) return; e.preventDefault(); var pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.stroke(); }
+        function endDraw() { isDrawing = false; }
+        function getPos(e) { var rect = canvas.getBoundingClientRect(); var clientX = e.touches ? e.touches[0].clientX : e.clientX; var clientY = e.touches ? e.touches[0].clientY : e.clientY; return { x: clientX - rect.left, y: clientY - rect.top }; }
+
+        canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mousemove', draw); canvas.addEventListener('mouseup', endDraw); canvas.addEventListener('mouseleave', endDraw);
+        canvas.addEventListener('touchstart', startDraw); canvas.addEventListener('touchmove', draw); canvas.addEventListener('touchend', endDraw);
+
+        window.clearSignature = function() { ctx.clearRect(0, 0, canvas.width, canvas.height); };
+
+        // --- 4. Submit Approval Logic ---
+        function showNotification(title, msg, type) {
+            type = type || 'success';
+            var alertBox = document.getElementById('customAlert');
+            var icon = document.getElementById('alertIcon');
+            var titleEl = document.getElementById('alertTitle');
+            var msgEl = document.getElementById('alertMsg');
+            titleEl.textContent = title; msgEl.textContent = msg;
+            if (type === 'success') { icon.className = 'fa-solid fa-circle-check'; icon.style.color = '#059669'; } 
+            else { icon.className = 'fa-solid fa-circle-exclamation'; icon.style.color = '#DC2626'; }
+            alertBox.style.display = 'flex';
+            setTimeout(function() { alertBox.style.display = 'none'; }, 3000);
+        }
+
+        document.getElementById('approvalForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // 1. Ambil ID item yang dicentang
+            var checkboxes = document.querySelectorAll('.item-checkbox:checked');
+            var selectedIds = Array.from(checkboxes).map(cb => cb.value);
+
+            if (selectedIds.length === 0) {
+                showNotification('Perhatian', 'Pilih minimal satu pekerjaan untuk di-approve.', 'error');
+                return;
+            }
+
+            document.getElementById('loadingOverlay').style.display = 'flex';
+
+            try {
+                // 2. Ambil data form
+                var nama = document.getElementById('nama_superintendent').value;
+                var catatan = document.getElementById('catatan_superintendent').value;
+                var signatureData = canvas.toDataURL('image/png');
+
+                // 3. Update Supabase (Bulk Update menggunakan 'in')
+                const { data, error } = await supabaseClient
+                    .from('ppw_log')
+                    .update({
+                        nama_superintendent: nama,
+                        catatan_superintendent: catatan,
+                        ttd_superintendent: signatureData,
+                        status_approval: 'Approved' 
+                    })
+                    .in('id', selectedIds);
+
+                document.getElementById('loadingOverlay').style.display = 'none';
+
+                if (error) {
+                    throw error;
+                } else {
+                    showNotification('Berhasil!', selectedIds.length + ' Pekerjaan telah di-approve.');
+                    // Refresh data list: Data yang sudah diapprove akan hilang dari list ini
+                    fetchPendingData(); 
+                    document.getElementById('approvalForm').reset();
+                    window.clearSignature();
+                }
+
+            } catch (err) {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                console.error('Error:', err);
+                showNotification('Error!', 'Gagal mengupdate data.', 'error');
+            }
+        });
+
+    })();
+    </script>
+
+</body>
+</html>
