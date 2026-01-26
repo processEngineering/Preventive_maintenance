@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Input SPV - Pekerjaan Workshop</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --primary: #DC2626;
+            --primary-dark: #991B1B;
+            --primary-glow: rgba(220, 38, 38, 0.6);
+            --bg-dark: #050505;
+            --bg-card: #121212; 
+            --bg-input: #1A1A1A;
+            --text-white: #FFFFFF;
+            --text-gray: #A3A3A3;
+            --border-light: rgba(255,255,255,0.1);
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background: var(--bg-dark);
+            min-height: 100vh;
+            color: var(--text-white);
+            padding-bottom: 40px;
+        }
+
+        /* --- Background Animation --- */
+        .bg-animation { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; overflow: hidden; background: #000; }
+        .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4; animation: float 20s ease-in-out infinite; }
+        .orb-1 { width: 400px; height: 400px; background: radial-gradient(circle, var(--primary) 0%, transparent 70%); top: -150px; right: -150px; }
+        .orb-2 { width: 300px; height: 300px; background: radial-gradient(circle, #7F1D1D 0%, transparent 70%); bottom: 10%; left: -100px; animation-delay: -5s; }
+        .grid-pattern { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 40px 40px; opacity: 0.3; }
+        @keyframes float { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-20px, 20px); } }
+
+        /* --- Layout --- */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* --- Header --- */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 30px;
+            padding-top: 10px;
+        }
+        
+        .header h1 { 
+            font-size: 20px; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+            color: var(--primary);
+            text-shadow: 0 0 15px rgba(220, 38, 38, 0.3);
+        }
+
+        /* --- Form Sections --- */
+        .form-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .section-title {
+            color: var(--primary);
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        /* --- Job Card Styles (Repeater) --- */
+        .job-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 20px;
+            position: relative;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .job-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .job-number {
+            font-size: 13px; font-weight: 700; color: var(--text-white);
+            background: var(--primary); padding: 4px 10px; border-radius: 6px;
+        }
+
+        .btn-delete-job {
+            background: transparent; color: #ef4444; border: 1px solid #ef4444;
+            padding: 4px 8px; border-radius: 6px; font-size: 12px; cursor: pointer;
+        }
+        .btn-delete-job:hover { background: #ef4444; color: white; }
+
+        /* --- Inputs --- */
+        .form-group { margin-bottom: 16px; }
+        
+        .form-label {
+            display: block; color: var(--text-gray);
+            font-size: 12px; margin-bottom: 6px; font-weight: 500;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%; background: var(--bg-input);
+            border: 1px solid var(--border-light);
+            border-radius: 8px; padding: 12px;
+            color: var(--text-white); font-size: 14px;
+            transition: 0.3s; outline: none;
+        }
+
+        .form-input:read-only {
+            background: #252525; color: var(--text-gray);
+            cursor: not-allowed; border-color: transparent;
+        }
+
+        .form-input:focus, .form-textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(220, 38, 38, 0.2);
+        }
+
+        .form-textarea { resize: vertical; min-height: 80px; }
+
+        /* --- Radio Group --- */
+        .radio-group {
+            display: flex; gap: 15px; background: var(--bg-input);
+            padding: 5px; border-radius: 8px; border: 1px solid var(--border-light);
+        }
+        .radio-option { flex: 1; position: relative; }
+        .radio-option input { position: absolute; opacity: 0; cursor: pointer; width: 100%; height: 100%; z-index: 2; }
+        .radio-label {
+            display: flex; align-items: center; justify-content: center;
+            padding: 10px; border-radius: 6px; font-size: 13px;
+            font-weight: 600; transition: 0.3s; color: var(--text-gray);
+            position: relative; z-index: 1; pointer-events: none;
+        }
+        
+        .radio-option input:checked + .radio-label { color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .radio-option input[value="OK"]:checked + .radio-label { background: #059669; }
+        .radio-option input[value="NOT OK"]:checked + .radio-label { background: #DC2626; }
+
+        /* --- Signature Pad --- */
+        .signature-wrapper {
+            width: 100%; height: 200px; background: #fff;
+            border-radius: 8px; position: relative; overflow: hidden;
+            touch-action: none; border: 2px dashed var(--text-gray);
+        }
+        canvas { width: 100%; height: 100%; cursor: crosshair; }
+        .sig-tools { display: flex; justify-content: flex-end; margin-top: 8px; }
+        .clear-sig {
+            background: transparent; color: var(--primary);
+            border: 1px solid var(--primary); padding: 4px 12px;
+            border-radius: 6px; font-size: 12px; cursor: pointer;
+        }
+
+        /* --- Buttons --- */
+        .btn-add-job {
+            width: 100%; background: transparent; color: var(--text-white);
+            border: 1px dashed var(--text-gray); padding: 14px;
+            border-radius: 12px; font-size: 14px; cursor: pointer;
+            margin-top: 10px; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-add-job:hover { border-color: var(--text-white); background: rgba(255,255,255,0.05); }
+
+        .submit-btn {
+            width: 100%; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; border: none; padding: 16px; border-radius: 12px;
+            font-size: 16px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1px; cursor: pointer; margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4); transition: 0.3s;
+        }
+        .submit-btn:active { transform: scale(0.98); }
+
+        /* --- Overlay & Alert --- */
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            z-index: 999; display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { margin-top: 15px; color: white; font-weight: 500; }
+
+        #customAlert {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: #1a1a1a; padding: 15px 20px; border-radius: 12px;
+            border: 1px solid var(--border-light); display: none; z-index: 1000;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5); align-items: center; gap: 10px; min-width: 300px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-animation">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="grid-pattern"></div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>Form SPV Workshop</h1>
+        </div>
+
+        <form id="ppwForm">
+            <!-- 1. Informasi Umum (Header) -->
+            <div class="form-section">
+                <div class="section-title">Informasi Umum</div>
+                
+                <div class="form-group">
+                    <label class="form-label">Bagian / Divisi</label>
+                    <input type="text" id="bagian" class="form-input" value="MAINTENANCE REPAIR" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tanggal Pelaksanaan</label>
+                    <input type="date" id="tanggal" class="form-input" required>
+                </div>
+            </div>
+
+            <!-- 2. Detail Pekerjaan (Repeater Container) -->
+            <div class="form-section">
+                <div class="section-title">Daftar Pekerjaan</div>
+                
+                <!-- Container untuk menampung banyak form pekerjaan -->
+                <div id="jobsContainer">
+                    <!-- Form Pertama akan digenerate oleh JS saat load -->
+                </div>
+
+                <!-- Tombol Tambah -->
+                <button type="button" class="btn-add-job" onclick="window.addJobCard()">
+                    <i class="fa-solid fa-plus-circle"></i> Tambah Pekerjaan Lain
+                </button>
+            </div>
+
+            <!-- 3. Validasi Supervisor (Footer) -->
+            <div class="form-section">
+                <div class="section-title">Validasi Supervisor</div>
+                
+                <div class="form-group">
+                    <label class="form-label">Nama Supervisor</label>
+                    <input type="text" id="nama_spv" class="form-input" placeholder="Nama SPV yang bertugas" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tanda Tangan SPV</label>
+                    <div class="signature-wrapper">
+                        <canvas id="signaturePad"></canvas>
+                    </div>
+                    <div class="sig-tools">
+                        <button type="button" class="clear-sig" onclick="clearSignature()">
+                            Hapus Tanda Tangan
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Catatan Akhir</label>
+                    <textarea id="catatan_akhir" class="form-textarea" placeholder="Catatan tambahan..."></textarea>
+                </div>
+            </div>
+
+            <button type="submit" class="submit-btn">
+                Simpan Semua Laporan
+            </button>
+        </form>
+    </div>
+
+    <!-- Loading & Alert Elements -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Menyimpan Data...</div>
+    </div>
+
+    <div id="customAlert">
+        <i id="alertIcon" class="fa-solid fa-circle-check" style="color: #059669; font-size: 20px;"></i>
+        <div style="flex:1;">
+            <h4 id="alertTitle" style="font-size: 14px; margin-bottom: 2px;">Berhasil</h4>
+            <p id="alertMsg" style="font-size: 12px; color: var(--text-gray);">Data tersimpan.</p>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        // --- 1. Supabase Config ---
+        var SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        var supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- 2. Logic Repeater Form (Add/Remove Job) ---
+        var jobCount = 0;
+        
+        window.addJobCard = function() {
+            jobCount++;
+            var container = document.getElementById('jobsContainer');
+            
+            var cardDiv = document.createElement('div');
+            cardDiv.className = 'job-card';
+            cardDiv.id = 'job-' + jobCount;
+
+            // Template HTML untuk 1 Kartu Pekerjaan
+            // Kita gunakan class (bukan id) untuk input di dalam repeater agar unik saat diambil
+            var html = `
+                <div class="job-header">
+                    <span class="job-number">Item #${jobCount}</span>
+                    ${jobCount > 1 ? `<button type="button" class="btn-delete-job" onclick="removeJob(${jobCount})"><i class="fa-solid fa-trash"></i> Hapus</button>` : ''}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Nama Part / Mould / Mesin</label>
+                    <input type="text" class="form-input inp-nama-part" placeholder="Nama item" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Job Description</label>
+                    <textarea class="form-textarea inp-job-desc" placeholder="Detail pekerjaan..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Estimasi Waktu</label>
+                    <input type="text" class="form-input inp-estimasi" placeholder="Contoh: 2 Jam">
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex:1;">
+                        <label class="form-label">Mulai</label>
+                        <input type="time" class="form-input inp-mulai" required>
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label class="form-label">Selesai</label>
+                        <input type="time" class="form-input inp-selesai" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Keterangan</label>
+                    <textarea class="form-textarea inp-ket" placeholder="Keterangan..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Operator</label>
+                    <input type="text" class="form-input inp-operator" placeholder="Nama Operator" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Status & QC</label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" name="status_hasil_${jobCount}" value="OK" checked>
+                            <label class="radio-label">OK</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="status_hasil_${jobCount}" value="NOT OK">
+                            <label class="radio-label">NOT OK</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <input type="text" class="form-input inp-qc" placeholder="Catatan QC Check">
+                </div>
+            `;
+            
+            cardDiv.innerHTML = html;
+            container.appendChild(cardDiv);
+        };
+
+        window.removeJob = function(id) {
+            var el = document.getElementById('job-' + id);
+            if (el) el.remove();
+        };
+
+        // Tambahkan 1 form default saat load
+        window.addJobCard();
+
+
+        // --- 3. Signature Logic ---
+        var canvas = document.getElementById('signaturePad');
+        var ctx = canvas.getContext('2d');
+        var isDrawing = false;
+
+        function resizeCanvas() {
+            var ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            ctx.scale(ratio, ratio);
+        }
+        window.addEventListener("resize", resizeCanvas);
+        setTimeout(resizeCanvas, 100);
+
+        function startDraw(e) { isDrawing = true; ctx.beginPath(); var pos = getPos(e); ctx.moveTo(pos.x, pos.y); }
+        function draw(e) { if (!isDrawing) return; e.preventDefault(); var pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.stroke(); }
+        function endDraw() { isDrawing = false; }
+        function getPos(e) { var rect = canvas.getBoundingClientRect(); var clientX = e.touches ? e.touches[0].clientX : e.clientX; var clientY = e.touches ? e.touches[0].clientY : e.clientY; return { x: clientX - rect.left, y: clientY - rect.top }; }
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDraw);
+        canvas.addEventListener('mouseleave', endDraw);
+        canvas.addEventListener('touchstart', startDraw);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', endDraw);
+
+        window.clearSignature = function() { ctx.clearRect(0, 0, canvas.width, canvas.height); };
+
+        // --- 4. Submit Logic (Batch Insert) ---
+        function showNotification(title, msg, type) {
+            type = type || 'success';
+            var alertBox = document.getElementById('customAlert');
+            var icon = document.getElementById('alertIcon');
+            var titleEl = document.getElementById('alertTitle');
+            var msgEl = document.getElementById('alertMsg');
+            titleEl.textContent = title; msgEl.textContent = msg;
+            if (type === 'success') { icon.className = 'fa-solid fa-circle-check'; icon.style.color = '#059669'; } 
+            else { icon.className = 'fa-solid fa-circle-exclamation'; icon.style.color = '#DC2626'; }
+            alertBox.style.display = 'flex';
+            setTimeout(function() { alertBox.style.display = 'none'; }, 3000);
+        }
+
+        document.getElementById('ppwForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            document.getElementById('loadingOverlay').style.display = 'flex';
+
+            try {
+                // 1. Ambil Data Global (Header & Footer)
+                var bagian = document.getElementById('bagian').value;
+                var tanggal = document.getElementById('tanggal').value;
+                var nama_spv = document.getElementById('nama_spv').value;
+                var catatan_akhir = document.getElementById('catatan_akhir').value;
+                var signatureData = canvas.toDataURL('image/png');
+
+                // 2. Loop semua Job Card untuk ambil data detail
+                var jobCards = document.querySelectorAll('.job-card');
+                var dataToInsert = [];
+
+                jobCards.forEach(function(card) {
+                    var nama_part = card.querySelector('.inp-nama-part').value;
+                    var job_desc = card.querySelector('.inp-job-desc').value;
+                    var estimasi_waktu = card.querySelector('.inp-estimasi').value;
+                    var waktu_mulai = card.querySelector('.inp-mulai').value;
+                    var waktu_selesai = card.querySelector('.inp-selesai').value;
+                    var keterangan = card.querySelector('.inp-ket').value;
+                    var nama_operator = card.querySelector('.inp-operator').value;
+                    
+                    // Ambil radio button checked dalam card ini
+                    var checkedRadio = card.querySelector('input[type="radio"]:checked');
+                    var status_hasil = checkedRadio ? checkedRadio.value : 'OK';
+                    
+                    var qc_check = card.querySelector('.inp-qc').value;
+
+                    // Push ke array
+                    dataToInsert.push({
+                        bagian: bagian,
+                        tanggal: tanggal,
+                        nama_part: nama_part,
+                        job_desc: job_desc,
+                        estimasi_waktu: estimasi_waktu,
+                        waktu_mulai: waktu_mulai,
+                        waktu_selesai: waktu_selesai,
+                        nama_operator: nama_operator,
+                        status_hasil: status_hasil,
+                        qc_check: qc_check,
+                        keterangan: keterangan,
+                        nama_spv: nama_spv,
+                        catatan_akhir: catatan_akhir, // Semua row dapat catatan akhir sama (atau bisa dikosongkan untuk row>1 jika mau)
+                        ttd_spv: signatureData // Semua row pakai tanda tangan sama
+                    });
+                });
+
+                if(dataToInsert.length === 0) {
+                    throw new Error("Tidak ada data pekerjaan untuk disimpan.");
+                }
+
+                // 3. Kirim ke Supabase (Bulk Insert)
+                const { data, error } = await supabaseClient
+                    .from('ppw_log')
+                    .insert(dataToInsert);
+
+                document.getElementById('loadingOverlay').style.display = 'none';
+
+                if (error) {
+                    console.error('Error:', error);
+                    showNotification('Gagal!', 'Terjadi kesalahan saat menyimpan.', 'error');
+                } else {
+                    showNotification('Berhasil!', dataToInsert.length + ' Pekerjaan tersimpan.');
+                    // Optional: Reset form or Redirect
+                    // setTimeout(() => window.location.href = 'ppw.html', 2000);
+                }
+
+            } catch (err) {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                console.error('Error:', err);
+                showNotification('Error!', err.message || 'Terjadi kesalahan sistem.', 'error');
+            }
+        });
+
+        document.getElementById('tanggal').valueAsDate = new Date();
+
+    })();
+    </script>
+
+</body>
+</html>
