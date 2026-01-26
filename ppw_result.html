@@ -105,11 +105,11 @@
 
         /* --- CONTAINER KHUSUS PDF/PRINT (THE REAL A4 SHEET) --- */
         #exportContainer {
-            /* FIXED SIZE: A4 Landscape (297mm) */
-            /* Kita gunakan fixed width agar layout tabel tidak hancur di layar kecil */
+            /* FIXED SIZE: A4 Landscape (297mm x 210mm) */
             width: 297mm;
-            min-width: 297mm; /* Kunci mati lebar minimal */
-            min-height: 210mm;
+            min-width: 297mm; 
+            /* Menggunakan height exact, bukan min-height, agar tidak spill ke page 2 */
+            height: 209.5mm; /* Sedikit kurang dari 210mm untuk safety margin browser */
             
             /* Visual Kertas Putih */
             background: white;
@@ -124,7 +124,6 @@
             overflow: hidden; 
             box-sizing: border-box; 
             
-            /* Transform origin untuk scaling jika diperlukan nanti */
             transform-origin: top center;
         }
 
@@ -132,9 +131,13 @@
         .page {
             width: 100%;
             height: 100%;
-            padding: 10mm; /* Margin dalam kertas */
+            padding: 8mm; /* Kurangi sedikit padding agar muat lebih banyak baris */
             background: transparent;
             box-sizing: border-box;
+            
+            /* FLEXBOX LAYOUT UNTUK 1 HALAMAN */
+            display: flex;
+            flex-direction: column;
         }
 
         /* --- STYLE ISIAN DOKUMEN --- */
@@ -143,6 +146,8 @@
             width: 100%;
             border: 1pt solid var(--border-print);
             margin-bottom: 2mm;
+            /* Header statis, tidak boleh shrink */
+            flex-shrink: 0;
         }
         .header-left {
             width: 25%;
@@ -176,32 +181,59 @@
         .info-label { width: 40%; font-weight: bold; border-right: 1pt solid var(--border-print); }
         .info-value { width: 60%; padding-left: 5px; }
 
-        .section-bar { margin: 5px 0 10px 0; font-size: 10pt; font-weight: bold; color: #000; text-transform: uppercase; }
+        .section-bar { 
+            margin: 5px 0 5px 0; /* Kurangi margin */
+            font-size: 10pt; 
+            font-weight: bold; 
+            color: #000; 
+            text-transform: uppercase;
+            flex-shrink: 0; 
+        }
+
+        /* Tabel bisa grow tapi tidak overflow container */
+        .table-wrapper {
+            flex-grow: 1;
+            /* overflow: hidden;  Biarkan hidden jika lebih, agar tetap 1 halaman */
+        }
 
         .main-table { width: 100%; border-collapse: collapse; font-size: 8pt; border: 1pt solid var(--border-print); }
-        .main-table th, .main-table td { border: 1pt solid var(--border-print); padding: 4px 3px; text-align: center; vertical-align: middle; color: #000; }
-        .main-table thead th { background-color: var(--primary); color: white; font-weight: bold; text-transform: uppercase; border: 1pt solid #000; }
+        .main-table th, .main-table td { border: 1pt solid var(--border-print); padding: 3px 3px; text-align: center; vertical-align: middle; color: #000; }
+        /* REVISI: Ubah background header tabel jadi putih, teks hitam */
+        .main-table thead th { 
+            background-color: white; 
+            color: black; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            border: 1pt solid #000; 
+        }
         .text-left { text-align: left !important; padding-left: 5px !important; }
 
-        /* Kolom Widths - TOTAL HARUS 100% UNTUK KESIMETRISAN */
+        /* Kolom Widths */
         .col-no { width: 3%; }
         .col-date { width: 8%; }
         .col-part { width: 14%; }
-        .col-job { width: 19%; } /* Adjusted +1% to fit 100% total */
-        .col-time { width: 6%; } /* Used 3 times = 18% */
+        .col-job { width: 19%; } 
+        .col-time { width: 6%; } 
         .col-ket { width: 12%; }
         .col-op-name { width: 10%; }
-        .col-check { width: 4%; } /* Used 2 times = 8% */
+        .col-check { width: 4%; } 
         .col-ttd { width: 8%; }
-        /* Total: 3+8+14+19+6+6+6+12+10+4+4+8 = 100% */
 
-        .footer-container { margin-top: 25px; display: flex; justify-content: space-around; page-break-inside: avoid; }
+        /* Footer dipaksa ke bawah (Margin Top Auto) */
+        .footer-container { 
+            margin-top: auto; 
+            padding-top: 10px;
+            display: flex; 
+            justify-content: space-around; 
+            page-break-inside: avoid;
+            flex-shrink: 0;
+        }
         .sign-box { width: 200px; text-align: center; font-size: 9pt; color: #000; }
-        .sign-space { height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1pt solid #000; margin-bottom: 5px; margin-top: 5px; }
-        .sign-img { max-height: 55px; max-width: 150px; }
+        .sign-space { height: 50px; display: flex; align-items: center; justify-content: center; border-bottom: 1pt solid #000; margin-bottom: 5px; margin-top: 5px; }
+        .sign-img { max-height: 45px; max-width: 150px; }
         .sign-name { font-weight: bold; text-transform: uppercase; }
 
-        /* --- BOTTOM NAVIGATION (Sama seperti download_data.html) --- */
+        /* --- BOTTOM NAVIGATION --- */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -273,40 +305,27 @@
             }
         }
 
-        /* --- MEDIA QUERIES UNTUK HP / TABLET (Tampilan Layar) --- */
+        /* --- MEDIA QUERIES UNTUK HP / TABLET --- */
         @media screen and (max-width: 1150px) {
             body {
                 padding: 10px;
                 padding-bottom: 100px;
-                /* Pada layar kecil, align items start agar scroll bisa dari kiri */
                 align-items: flex-start; 
             }
 
             .page-wrapper {
-                /* Ubah justify content agar scroll mulai dari kiri, bukan tengah */
                 justify-content: flex-start;
                 padding: 0;
             }
 
             #exportContainer {
-                /* Biarkan tetap fixed width 297mm agar tabel tidak hancur */
-                /* User tinggal scroll ke samping */
                 margin-left: 0;
-                transform: scale(1); /* Pastikan skala normal */
+                transform: scale(1);
             }
 
-            .controls {
-                width: 100%;
-                max-width: 100%; /* Controls mengikuti lebar layar HP */
-            }
-            
-            .btn {
-                flex: 1 1 100%; /* Tombol jadi full width di HP kecil */
-                margin-top: 5px;
-            }
-            .control-group {
-                min-width: 100%; /* Input jadi full width */
-            }
+            .controls { width: 100%; max-width: 100%; }
+            .btn { flex: 1 1 100%; margin-top: 5px; }
+            .control-group { min-width: 100%; }
         }
 
         /* --- PRINT SETTINGS --- */
@@ -321,26 +340,27 @@
                 padding: 0 !important;
                 width: 100%;
                 height: 100%;
-                overflow: visible;
-                display: block; /* Reset display flex pada body saat print */
+                overflow: hidden; /* Cegah scrollbar di print */
             }
             .controls, .bottom-nav { display: none !important; }
             .page-wrapper { 
                 display: block; 
                 width: 100%;
+                height: 100%;
                 margin: 0; padding: 0;
-                overflow: visible;
             }
             #exportContainer {
                 box-shadow: none; 
                 margin: 0 auto;
                 width: 297mm;
+                height: 209.5mm; /* Kunci tinggi kertas */
                 max-width: 100%;
-                transform: none !important; /* Reset transformasi HP jika ada */
+                transform: none !important;
             }
+            /* REVISI: Pastikan di print juga putih */
             .main-table thead th { 
-                background-color: #990000 !important; 
-                color: white !important; 
+                background-color: white !important; 
+                color: black !important; 
                 -webkit-print-color-adjust: exact; 
                 print-color-adjust: exact; 
             }
@@ -370,7 +390,6 @@
     </div>
 
     <div class="page-wrapper">
-        <!-- Container Khusus PDF/Print (The Sheet) -->
         <div id="exportContainer">
             <div class="page" id="documentArea">
                 <div class="doc-header">
@@ -414,37 +433,39 @@
                     Bagian : <span id="bagianLabel">MAINTENANCE REPAIR</span>
                 </div>
 
-                <table class="main-table">
-                    <thead>
-                        <tr>
-                            <th colspan="8" style="background: white; border-bottom: 1pt solid #000; border-top: none; border-left: none;"></th>
-                            <th colspan="2">Operator</th>
-                            <th>QC</th>
-                            <th>Ka.Sie</th>
-                        </tr>
-                        <tr>
-                            <th class="col-no">No</th>
-                            <th class="col-date">Tanggal</th>
-                            <th class="col-part">Nama Part / Mould</th>
-                            <th class="col-job">Job Description</th>
-                            <th class="col-time">Est. Waktu</th>
-                            <th class="col-time">Mulai</th>
-                            <th class="col-time">Selesai</th>
-                            <th class="col-ket">Keterangan</th>
-                            <th class="col-check">Ok</th>
-                            <th class="col-check">Not Ok</th>
-                            <th class="col-op-name">Nama Operator</th>
-                            <th class="col-ttd">Ttd</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                        <tr>
-                            <td colspan="12" style="height: 300px; color: #999; text-align: center;">
-                                Silakan pilih tanggal dan klik TAMPILKAN untuk memuat data.
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="table-wrapper">
+                    <table class="main-table">
+                        <thead>
+                            <tr>
+                                <th colspan="8" style="background: white; border-bottom: 1pt solid #000; border-top: none; border-left: none;"></th>
+                                <th colspan="2">Operator</th>
+                                <th>QC</th>
+                                <th>Ka.Sie</th>
+                            </tr>
+                            <tr>
+                                <th class="col-no">No</th>
+                                <th class="col-date">Tanggal</th>
+                                <th class="col-part">Nama Part / Mould</th>
+                                <th class="col-job">Job Description</th>
+                                <th class="col-time">Est. Waktu</th>
+                                <th class="col-time">Mulai</th>
+                                <th class="col-time">Selesai</th>
+                                <th class="col-ket">Keterangan</th>
+                                <th class="col-check">Ok</th>
+                                <th class="col-check">Not Ok</th>
+                                <th class="col-op-name">Nama Operator</th>
+                                <th class="col-ttd">Ttd</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <tr>
+                                <td colspan="12" style="height: 300px; color: #999; text-align: center;">
+                                    Silakan pilih tanggal dan klik TAMPILKAN untuk memuat data.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
                 <div class="footer-container">
                     <div class="sign-box">
@@ -464,7 +485,6 @@
         </div>
     </div>
 
-    <!-- UPDATE: Navigasi menggunakan style dan SVG dari download_data.html -->
     <nav class="bottom-nav">
         <a href="index.html" class="nav-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -479,7 +499,6 @@
                 <line x1="3" y1="18" x2="21" y2="18"></line>
             </svg>
         </a>
-        <!-- Tombol Download aktif karena kita berada di hasil download -->
         <a href="download_data.html" class="nav-item active">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -576,6 +595,7 @@
                 `;
             });
 
+            // Adjust minRows agar pas 1 halaman
             const minRows = 12;
             if (data.length < minRows) {
                 for (let i = 0; i < (minRows - data.length); i++) {
@@ -610,7 +630,6 @@
         window.exportPDF = async function() {
             window.scrollTo(0, 0);
             
-            // Mengambil elemen KERTAS yang sesungguhnya
             const element = document.getElementById('exportContainer');
             
             const opt = {
@@ -624,7 +643,6 @@
                     scrollY: 0,
                     x: 0, 
                     y: 0,
-                    // FIX UTAMA: Kunci lebar capture sesuai lebar elemen agar tidak ada area putih berlebih
                     windowWidth: element.scrollWidth 
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
