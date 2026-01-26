@@ -23,6 +23,7 @@
             --text-gray: #A3A3A3;
             --border-light: rgba(255,255,255,0.1);
             --radius: 12px;
+            --nav-height: 70px; /* Tinggi navigasi */
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -31,7 +32,8 @@
             background: var(--bg-dark);
             min-height: 100vh;
             color: var(--text-white);
-            padding-bottom: 40px;
+            /* Padding bawah ditambah agar konten tidak tertutup navigasi */
+            padding-bottom: calc(var(--nav-height) + 30px);
         }
 
         /* --- Background Animation --- */
@@ -105,14 +107,11 @@
         }
 
         .job-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 15px;
+            display: flex; justify-content: flex-end; align-items: center;
+            margin-bottom: 10px;
         }
 
-        .job-number {
-            font-size: 13px; font-weight: 700; color: var(--text-white);
-            background: var(--primary); padding: 4px 10px; border-radius: 6px;
-        }
+        /* Class .job-number dihapus */
 
         .btn-delete-job {
             background: transparent; color: #ef4444; border: 1px solid #ef4444;
@@ -197,6 +196,64 @@
             box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4); transition: 0.3s;
         }
         .submit-btn:active { transform: scale(0.98); }
+
+        /* --- Bottom Navigation --- */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 600px;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 12px 0;
+            height: var(--nav-height);
+            z-index: 100;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: #555;
+            width: 56px;
+            height: 44px;
+            border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .nav-item svg {
+            width: 22px;
+            height: 22px;
+            transition: transform 0.3s ease;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+            background: rgba(220, 38, 38, 0.1);
+            box-shadow: 0 0 20px rgba(220, 38, 38, 0.1);
+        }
+
+        .nav-item.active::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            width: 4px;
+            height: 4px;
+            background: var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--primary);
+        }
 
         /* --- Overlay & Alert --- */
         .loading-overlay {
@@ -297,6 +354,36 @@
         </form>
     </div>
 
+    <!-- Navigasi Bawah -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+        </a>
+        <a href="menu_utama.html" class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+        </a>
+    </nav>
+
     <!-- Loading & Alert Elements -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
@@ -329,13 +416,21 @@
             cardDiv.className = 'job-card';
             cardDiv.id = 'job-' + jobCount;
 
-            // Template HTML untuk 1 Kartu Pekerjaan
-            // Kita gunakan class (bukan id) untuk input di dalam repeater agar unik saat diambil
-            var html = `
+            // Header hanya tampil jika item lebih dari 1 (untuk tombol hapus)
+            // Label "Item #X" sudah dihapus total sesuai request
+            var headerHtml = '';
+            if (jobCount > 1) {
+                headerHtml = `
                 <div class="job-header">
-                    <span class="job-number">Item #${jobCount}</span>
-                    ${jobCount > 1 ? `<button type="button" class="btn-delete-job" onclick="removeJob(${jobCount})"><i class="fa-solid fa-trash"></i> Hapus</button>` : ''}
-                </div>
+                    <button type="button" class="btn-delete-job" onclick="removeJob(${jobCount})">
+                        <i class="fa-solid fa-trash"></i> Hapus
+                    </button>
+                </div>`;
+            }
+
+            // Template HTML untuk 1 Kartu Pekerjaan
+            var html = `
+                ${headerHtml}
 
                 <div class="form-group">
                     <label class="form-label">Nama Part / Mould / Mesin</label>
