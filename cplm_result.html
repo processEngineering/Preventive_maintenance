@@ -86,19 +86,21 @@
             border: none;
             border-collapse: collapse;
         }
-        table.h-identity td { border: none; padding: 0; }
+        table.h-identity td { border: none; padding: 0; vertical-align: middle; }
         
-        .h-logo { width: 18mm; text-align: center; padding-right: 2mm !important; }
-        .h-logo img { height: 16mm; width: auto; display: block; }
+        /* Perbaikan Logo dan Teks agar sejajar */
+        .h-logo { width: 20mm; text-align: center; padding-right: 2mm !important; }
+        .h-logo img { height: 18mm; width: auto; display: block; margin: 0 auto; }
         
         .h-text { 
             font-weight: 900; 
             color: black; 
             text-align: left; 
-            line-height: 1.1;
+            line-height: 1.2;
+            vertical-align: middle;
         }
-        .brand-akg { font-size: 14pt; display: block; margin-bottom: 1px; }
-        .company-name { font-size: 9pt; display: block; }
+        /* Hapus AKG, sisakan PT... */
+        .company-name { font-size: 11pt; display: block; font-weight: bold; }
 
         /* KOLOM 2: JUDUL (30%) */
         .h-col-2 { width: 30%; text-align: center; }
@@ -275,7 +277,7 @@
                         <table class="h-identity">
                             <tr>
                                 <td class="h-logo">
-                                    <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="Logo">
+                                    <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="Logo" id="logoImg">
                                 </td>
                                 <td class="h-text">
                                     <span class="company-name">PT. AMARILYS<br>KARISMA GEMILANG</span>
@@ -467,7 +469,10 @@
             const { data: logData } = await supabaseClient.from('clpm_log').select('*').eq('id', logId).single();
             const { data: resData } = await supabaseClient.from('clpm_result').select('*').eq('log_id', logId);
 
-            if(GLOBAL_BASE64_LOGO) document.getElementById('logoImg').src = GLOBAL_BASE64_LOGO;
+            if(GLOBAL_BASE64_LOGO) {
+                const imgEl = document.getElementById('logoImg');
+                if(imgEl) imgEl.src = GLOBAL_BASE64_LOGO;
+            }
             
             // Fill Info
             const fields = ['kode','tgl','produk','material','type','akhir','pic'];
@@ -477,21 +482,10 @@
             const tbody = document.getElementById('paperBody');
             let html = '';
             
+            // Logika Catatan Kondisi Mould
             let mouldNoteText = '';
             const mouldNoteItem = resData.find(r => r.catatan_kondisi_mould && r.catatan_kondisi_mould.trim() !== '');
             if(mouldNoteItem) mouldNoteText = mouldNoteItem.catatan_kondisi_mould;
-
-            // MAP OPSI KE SIMBOL (Fix 1)
-            const optMap = {
-                'OK': 'O',
-                'NOT OK': 'X',
-                'NG': 'X',
-                'DI BERSIHKAN': 'B',
-                'BERSIH': 'B',
-                'GANTI BARU': 'G',
-                'REPAIR': 'R',
-                'DISCALING': 'D'
-            };
 
             itemsDefinition.forEach(def => {
                 const res = resData.find(r => r.no_item === def.no_item) || {};
@@ -530,13 +524,13 @@
 
                 } else {
                     // --- ITEM STANDAR (1-25) ---
-                    // PAKE LOGIK SIMBOL (Fix 1)
+                    // CHECKBOX LANDSCAPE - FULL TEXT
                     let checkHtml = '<div class="cb-container">';
                     if(def.options && def.options.length > 0) {
                         def.options.forEach(opt => {
                             const chk = kondisi === opt;
-                            const label = optMap[opt] || opt.charAt(0); // Ambil simbol atau huruf depan
-                            checkHtml += `<div class="cb-item"><div class="sq-box">${chk?'✓':''}</div>${label}</div>`;
+                            // FULL TEXT: Menampilkan ${opt} apa adanya
+                            checkHtml += `<div class="cb-item"><div class="sq-box">${chk?'✓':''}</div>${opt}</div>`;
                         });
                     } else {
                         checkHtml += `<div class="cb-item"><div class="sq-box">${kondisi?'✓':''}</div>${kondisi||'-'}</div>`;
@@ -573,6 +567,7 @@
             const element = document.getElementById('contentToPrint');
             const imgLogo = document.getElementById('logoImg');
             
+            // Scaling Safety check
             const originalHeight = element.scrollHeight;
             const A4_HEIGHT_PX = 1123; 
             
@@ -595,6 +590,7 @@
             }
 
             try {
+                // RENDER
                 const canvas = await html2canvas(element, { 
                     scale: 2, 
                     useCORS: true, 
