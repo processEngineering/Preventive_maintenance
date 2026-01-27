@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Monitoring Superintendent - AKG</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- SweetAlert2 -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Tema Merah Hitam */
+            --primary: #DC2626;       /* Merah Utama */
+            --primary-dark: #991B1B;  /* Merah Gelap */
+            --primary-glow: rgba(220, 38, 38, 0.3);
+            
+            --success: #10B981;       /* Hijau */
+            
+            --bg-dark: #050505;       /* Hitam Pekat */
+            --bg-card: #121212;       /* Hitam Kartu */
+            --bg-input: #1A1A1A;      /* Abu Gelap Input */
+            
+            --text-white: #FFFFFF;
+            --text-gray: #A3A3A3;
+            
+            --border-light: rgba(255,255,255,0.1);
+            
+            --radius: 8px;
+            --nav-height: 70px;
+        }
+
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        body {
+            background: var(--bg-dark);
+            min-height: 100vh;
+            color: var(--text-white);
+            display: flex;
+            justify-content: center;
+            padding-bottom: var(--nav-height);
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* Header */
+        .header-monitor {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border-light);
+            margin-bottom: 30px;
+        }
+
+        .header-title h1 {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+            text-transform: uppercase;
+        }
+
+        .header-title span {
+            font-size: 12px;
+            color: var(--text-gray);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .btn-refresh {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-light);
+            color: var(--text-white);
+            padding: 10px 20px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+
+        .btn-refresh:active { 
+            background: var(--primary); 
+            border-color: var(--primary);
+        }
+
+        /* Filter Section */
+        .filter-box {
+            background: var(--bg-card);
+            padding: 25px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-light);
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .filter-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-white);
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-light);
+            padding-bottom: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        @media (min-width: 600px) {
+            .filter-grid {
+                grid-template-columns: 1fr 1fr; 
+            }
+        }
+
+        .form-control {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border-light);
+            color: var(--text-white);
+            padding: 14px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary-glow);
+        }
+
+        .filter-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn-filter {
+            flex: 1;
+            padding: 14px;
+            border-radius: var(--radius);
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-search { 
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; 
+            border: none;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+        }
+        
+        .btn-search:active {
+            transform: scale(0.98);
+        }
+
+        /* Result List */
+        .result-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .report-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 24px;
+            border: 1px solid var(--border-light);
+            transition: all 0.3s;
+            position: relative;
+            /* Default Pending Border */
+            border-left: 4px solid var(--primary);
+        }
+
+        .report-card:hover {
+            border-color: var(--primary-glow);
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px dashed rgba(255,255,255,0.1);
+        }
+
+        .card-date {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .date-day { 
+            font-weight: 700; 
+            font-size: 18px; 
+            color: white;
+            display: block;
+        }
+
+        .card-body {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .info-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .label { 
+            font-size: 11px; 
+            color: var(--text-gray); 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        
+        .value { 
+            font-size: 15px; 
+            font-weight: 400; 
+            color: var(--text-white); 
+            line-height: 1.4;
+        }
+
+        /* PIC Styling */
+        .value.pic-highlight {
+            color: #FFFFFF;
+            font-weight: 800;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+        }
+
+        .desc-box {
+            background: rgba(255,255,255,0.03);
+            padding: 15px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            color: #E5E5E5;
+            line-height: 1.6;
+            border-left: 2px solid var(--primary);
+        }
+
+        /* --- APPROVAL SECTION STYLES --- */
+        .approval-form {
+            background: rgba(0,0,0,0.4);
+            padding: 20px;
+            border-radius: var(--radius);
+            margin-top: 20px;
+            border: 1px solid rgba(220, 38, 38, 0.2);
+        }
+
+        .approval-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .form-group-inline {
+            margin-bottom: 15px;
+        }
+
+        .input-inline {
+            width: 100%;
+            background: #000;
+            border: 1px solid #333;
+            color: white;
+            padding: 12px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .input-inline:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 1px var(--primary-glow);
+        }
+
+        .btn-approve-inline {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: var(--radius);
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: background 0.3s;
+        }
+
+        .btn-approve-inline:hover {
+            background: var(--primary-dark);
+        }
+
+        .card-footer {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-gray);
+            font-family: monospace; 
+        }
+
+        .loading-state, .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-gray);
+            border: 1px dashed var(--border-light);
+            border-radius: var(--radius);
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+
+        /* Bottom Nav - Merah Hitam */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 900px;
+            background: #000000;
+            border-top: 1px solid var(--primary-dark);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 12px 0;
+            height: var(--nav-height);
+            z-index: 100;
+            box-shadow: 0 -5px 20px rgba(220, 38, 38, 0.1);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: #555;
+            width: 56px;
+            height: 44px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-item svg {
+            width: 24px;
+            height: 24px;
+            stroke-width: 2;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+        
+        .nav-item:hover {
+            color: var(--text-white);
+        }
+
+        /* Custom Swal Dark Mode */
+        div:where(.swal2-container) div:where(.swal2-popup) {
+            background: #111 !important;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff !important;
+            border-radius: 8px !important;
+        }
+        div:where(.swal2-input), div:where(.swal2-textarea) {
+            background: #000 !important;
+            color: #fff !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
+            border-radius: 6px !important;
+        }
+        div:where(.swal2-confirm) {
+            background-color: var(--primary) !important;
+            color: #fff !important;
+            border-radius: 6px !important;
+        }
+        div:where(.swal2-cancel) {
+            background-color: transparent !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
+            color: #fff !important;
+            border-radius: 6px !important;
+        }
+        .swal2-label { color: #A3A3A3; font-size: 12px; margin-bottom: 8px; display: block; text-align: left; }
+
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="header-monitor">
+            <div class="header-title">
+                <span>AKG Maintenance</span>
+                <h1>Laporan Superintendent</h1>
+            </div>
+            <button class="btn-refresh" onclick="fetchReports()">
+                REFRESH
+            </button>
+        </header>
+
+        <!-- Filter Section -->
+        <div class="filter-box">
+            <div class="filter-title">
+                FILTER DATA
+            </div>
+            
+            <div class="filter-grid">
+                
+                <!-- 1. Dropdown Mesin -->
+                <div>
+                    <select id="search_machine" class="form-control">
+                        <option value="">-- PILIH MESIN / AREA --</option>
+                        <option value="MESIN EXTRUDER">MESIN EXTRUDER</option>
+                        <option value="MESIN WORKSHOP">MESIN WORKSHOP</option>
+                        <option value="MESIN SRINK">MESIN SRINK</option>
+                        <option value="HOIST CRANE">HOIST CRANE</option>
+                        <option value="ALL MESIN">ALL MESIN</option>
+                        <option value="PRINTING 1 DAN 2">PRINTING 1 DAN 2</option>
+                        <option value="PRINTING">PRINTING</option>
+                        <option value="PEMBAKAR TUTUP FRESHCARE">PEMBAKAR TUTUP FRESHCARE</option>
+                        <optgroup label="Injection Machines">
+                            <option value="INJECT BLOW LIANXIN IBM 30 H (01)/TOAD">INJECT BLOW LIANXIN IBM 30 H (01)/TOAD</option>
+                            <option value="TM-EXPRESS 270/2250 (02) /NEBULA">TM-EXPRESS 270/2250 (02) /NEBULA</option>
+                            <option value="ECO POWER 240/750 (3) /SPIDERMAN">ECO POWER 240/750 (3) /SPIDERMAN</option>
+                            <option value="ECO POWER 210 T(4)/ THOR">ECO POWER 210 T(4)/ THOR</option>
+                            <option value="TM- EXPRESS 350 /3400 (5) / IRON MAN">TM- EXPRESS 350 /3400 (5) / IRON MAN</option>
+                            <option value="ARBURG 320 T (06) /STARLORD">ARBURG 320 T (06) /STARLORD</option>
+                            <option value="ECO POWER EXPRESS 500/3300 (07) / STEVE ROGERS">ECO POWER EXPRESS 500/3300 (07) / STEVE ROGERS</option>
+                            <option value="ECO POWER EXPRESS 500/3300 (08) / THANOS">ECO POWER EXPRESS 500/3300 (08) / THANOS</option>
+                            <option value="FCS CT-220 SE (09) /BLACK WIDOW">FCS CT-220 SE (09) /BLACK WIDOW</option>
+                            <option value="NPC 260 T (10) / HAWK EYE">NPC 260 T (10) / HAWK EYE</option>
+                            <option value="ARBURG 200 (11) /GAMORA">ARBURG 200 (11) /GAMORA</option>
+                            <option value="FCS SA 3800 H (12) / LOKI">FCS SA 3800 H (12) / LOKI</option>
+                            <option value="EMAC 220 PRO (13) / DEADPOOL">EMAC 220 PRO (13) / DEADPOOL</option>
+                            <option value="ENGEL 380 T (14) /HULK">ENGEL 380 T (14) /HULK</option>
+                            <option value="NPC 400 H (15) / WANDA">NPC 400 H (15) / WANDA</option>
+                            <option value="ENGEL 280 (16) /DOCTOR STRANGE">ENGEL 280 (16) /DOCTOR STRANGE</option>
+                            <option value="FCS HT -100 SV (31) / ANT-MAN">FCS HT -100 SV (31) / ANT-MAN</option>
+                            <option value="NPC 160 T (32) /WASP">NPC 160 T (32) /WASP</option>
+                            <option value="NPC 160 T (33) /WONG">NPC 160 T (33) /WONG</option>
+                            <option value="FCS HT-150 SV (34) /ROCKET">FCS HT-150 SV (34) /ROCKET</option>
+                            <option value="FCS HT-150 SV (35) / MANTIS">FCS HT-150 SV (35) / MANTIS</option>
+                            <option value="NPC 160 T (36) / SHANG CHI">NPC 160 T (36) / SHANG CHI</option>
+                            <option value="NPC 260 T (37) / VISION">NPC 260 T (37) / VISION</option>
+                            <option value="NPC 200 T (38) / MAGNETO">NPC 200 T (38) / MAGNETO</option>
+                            <option value="FCS HT-100 SV (39) / NICK FURY">FCS HT-100 SV (39) / NICK FURY</option>
+                            <option value="FCS AF250 (40) / WOLVERINE">FCS AF250 (40) / WOLVERINE</option>
+                            <option value="NPC 260 T (41) / HAWKEYE">NPC 260 T (41) / HAWKEYE</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- 2. Dropdown PIC -->
+                <div>
+                    <select id="search_pic" class="form-control">
+                        <option value="">-- PILIH TEKNISI (PIC) --</option>
+                        <option value="DEDE ILYAS">DEDE ILYAS</option>
+                        <option value="VACANT">VACANT</option>
+                        <option value="AHMAD AINUL YAQIN">AHMAD AINUL YAQIN</option>
+                        <option value="ANGGA PRASETIANA">ANGGA PRASETIANA</option>
+                        <option value="AGUS SETIAWAN">AGUS SETIAWAN</option>
+                        <option value="RIZQI IRFAN ARIYANTO">RIZQI IRFAN ARIYANTO</option>
+                        <option value="M. TAUFIK ANDRIAN">M. TAUFIK ANDRIAN</option>
+                        <option value="ABDUL AZIZ">ABDUL AZIZ</option>
+                        <option value="AHMAD MAHMUDIN">AHMAD MAHMUDIN</option>
+                        <option value="ARBA NUR MAHBUB R.">ARBA NUR MAHBUB R.</option>
+                        <option value="MIFTAH SETIADI">MIFTAH SETIADI</option>
+                        <option value="ABDUL KARIM">ABDUL KARIM</option>
+                        <option value="ABDUL KHARIS AFRONI">ABDUL KHARIS AFRONI</option>
+                        <option value="IBNU ABI MANYU SAPUTRA">IBNU ABI MANYU SAPUTRA</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn-filter btn-search" onclick="fetchReports()">
+                    CARI DATA
+                </button>
+            </div>
+        </div>
+
+        <!-- Result Container -->
+        <div id="results_container" class="result-list">
+            <div class="empty-state">
+                SILAKAN PILIH FILTER (MESIN / PIC) DAN KLIK "CARI DATA".
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+        </a>
+        <a href="menu_utama.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+        </a>
+    </nav>
+
+    <!-- Supabase & SweetAlert -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        // 1. Setup Supabase
+        const supabaseUrl = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        
+        const client = window.supabase 
+            ? window.supabase.createClient(supabaseUrl, supabaseKey) 
+            : null;
+
+        // 2. Fetch Data Logic (Hanya menampilkan yang BELUM Approved)
+        async function fetchReports() {
+            const container = document.getElementById('results_container');
+            const picVal = document.getElementById('search_pic').value;
+            const machineVal = document.getElementById('search_machine').value; 
+
+            // Validasi: Minimal pilih satu filter
+            if (!picVal && !machineVal) {
+                Swal.fire({
+                    title: 'PILIH FILTER',
+                    text: 'Silakan pilih Nama Mesin atau Nama Teknisi terlebih dahulu.',
+                    background: '#111',
+                    color: '#fff',
+                    confirmButtonColor: '#DC2626',
+                    confirmButtonText: 'OK, MENGERTI',
+                    customClass: { confirmButton: 'swal2-confirm' }
+                });
+                return;
+            }
+
+            container.innerHTML = '<div class="loading-state">MEMUAT DATA...</div>';
+
+            if (!client) {
+                container.innerHTML = '<div class="empty-state">Database Error.</div>';
+                return;
+            }
+
+            try {
+                // Build Query
+                let query = client
+                    .from('Lkmr_result')
+                    .select('*')
+                    .order('tanggal', { ascending: false }) 
+                    .order('waktu_mulai', { ascending: false });
+
+                // Apply Filters
+                if (picVal) {
+                    query = query.eq('pic', picVal);
+                }
+                if (machineVal) {
+                    query = query.eq('nama_mesin', machineVal);
+                }
+
+                const { data, error } = await query;
+
+                if (error) throw error;
+
+                // FILTER CLIENT SIDE: Sembunyikan yang sudah APPROVED
+                // Menganggap daftar ini adalah "Pending Queue"
+                const pendingData = data.filter(item => item.status !== 'APPROVED');
+
+                renderCards(pendingData);
+
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = `<div class="empty-state">Error: ${err.message}</div>`;
+            }
+        }
+
+        // 3. Render Cards
+        function renderCards(data) {
+            const container = document.getElementById('results_container');
+            container.innerHTML = '';
+
+            if (data.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        TIDAK ADA ANTRIAN LAPORAN (PENDING).
+                    </div>
+                `;
+                return;
+            }
+
+            data.forEach(item => {
+                // Format Tanggal
+                const dateObj = new Date(item.tanggal);
+                const day = dateObj.getDate();
+                const year = dateObj.getFullYear();
+                const monthDisplay = item.bulan || dateObj.toLocaleString('id-ID', { month: 'long' });
+
+                const card = document.createElement('div');
+                card.id = `card-${item.id}`; 
+                card.className = `report-card`;
+                
+                // Form Inline
+                const approvalSection = `
+                    <div class="approval-form">
+                        <div class="approval-title">VALIDASI SUPERINTENDENT</div>
+                        
+                        <div class="form-group-inline">
+                            <input type="text" id="sup-name-${item.id}" class="input-inline" placeholder="NAMA SUPERINTENDENT" autocomplete="off">
+                        </div>
+                        
+                        <div class="form-group-inline">
+                            <textarea id="sup-note-${item.id}" class="input-inline" style="min-height:60px;" placeholder="CATATAN / FEEDBACK"></textarea>
+                        </div>
+                        
+                        <button class="btn-approve-inline" onclick="submitApprovalInline('${item.id}')">
+                            FEEDBACK LAPORAN
+                        </button>
+                    </div>
+                `;
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div class="card-date">
+                            <span class="date-day">${day} ${monthDisplay} ${year}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <!-- POSISI PIC BARU: Paling Atas, Warna Putih -->
+                        <div class="info-row">
+                            <span class="label">PIC</span>
+                            <span class="value pic-highlight">${item.pic || '-'}</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="label">MESIN / AREA</span>
+                            <span class="value">${item.nama_mesin || '-'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">JENIS PROBLEM</span>
+                            <span class="value">${item.jenis_problem || '-'}</span>
+                        </div>
+                        
+                        <div class="info-row">
+                            <span class="label">TARGET</span>
+                            <span class="value">${item.target_waktu_pm || '-'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">WAKTU</span>
+                            <span class="value">${item.waktu_mulai || '--:--'} - ${item.waktu_selesai || '--:--'}</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="label">DESKRIPSI</span>
+                            <div class="desc-box">
+                                ${item.deskripsi_masalah || '-'}
+                            </div>
+                        </div>
+
+                        <!-- Form Validasi -->
+                        ${approvalSection}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 4. Function Submit Approval (HAPUS DARI LAYAR SETELAH SUKSES)
+        async function submitApprovalInline(id) {
+            const nameInput = document.getElementById(`sup-name-${id}`);
+            const noteInput = document.getElementById(`sup-note-${id}`);
+            
+            const name = nameInput.value.trim();
+            const note = noteInput.value.trim();
+
+            if (!name) {
+                Swal.fire({
+                    title: 'NAMA KOSONG',
+                    text: 'Harap isi Nama Superintendent.',
+                    background: '#111',
+                    color: '#fff',
+                    confirmButtonColor: '#DC2626',
+                    customClass: { confirmButton: 'swal2-confirm' }
+                });
+                return;
+            }
+
+            try {
+                // Loading UI kecil
+                const btn = document.querySelector(`button[onclick="submitApprovalInline('${id}')"]`);
+                btn.innerHTML = 'MENYIMPAN...';
+                btn.disabled = true;
+
+                // Update Database
+                const { error } = await client
+                    .from('Lkmr_result')
+                    .update({ 
+                        feedback: note,
+                        superintendent_name: name,
+                        status: 'APPROVED' 
+                    })
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                // Hapus Kartu dari DOM (Visual Removal)
+                const card = document.getElementById(`card-${id}`);
+                if (card) {
+                    card.style.transition = "all 0.5s ease";
+                    card.style.opacity = "0";
+                    card.style.transform = "translateX(50px)";
+                    setTimeout(() => {
+                        card.remove();
+                        // Cek jika antrian habis
+                        const container = document.getElementById('results_container');
+                        if (container.children.length === 0) {
+                            container.innerHTML = `
+                                <div class="empty-state">
+                                    SEMUA LAPORAN TELAH DI-APPROVE.
+                                </div>
+                            `;
+                        }
+                    }, 500);
+                }
+
+                // Notifikasi Sukses Kecil
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    background: '#10B981',
+                    color: '#fff'
+                });
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Laporan Approved'
+                });
+
+            } catch (err) {
+                console.error(err);
+                Swal.fire({
+                    title: 'GAGAL',
+                    text: err.message,
+                    background: '#111',
+                    color: '#fff'
+                });
+                // Reset button if error
+                const btn = document.querySelector(`button[onclick="submitApprovalInline('${id}')"]`);
+                if(btn) {
+                    btn.innerHTML = 'FEEDBACK LAPORAN';
+                    btn.disabled = false;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
