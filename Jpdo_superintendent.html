@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Produksi - AKG Maintenance</title>
+    <title>Superintendent - AKG Maintenance</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -213,7 +213,7 @@
             <div class="empty-state">Silakan pilih bulan terlebih dahulu.</div>
         </div>
 
-        <!-- 3. Form Approval Produksi -->
+        <!-- 3. Form Approval Superintendent -->
         <div id="approval-area" class="approval-section hidden">
             
             <!-- A. TAMPILAN JIKA SUDAH APPROVE (Clean Text) -->
@@ -230,13 +230,13 @@
                 
                 <form id="approvalForm">
                     <div class="form-group">
-                        <label class="form-label">Nama Staff Produksi</label>
-                        <input type="text" id="prod-name" class="form-input" placeholder="Masukkan Nama Lengkap">
+                        <label class="form-label">Nama Superintendent</label>
+                        <input type="text" id="sp-name" class="form-input" placeholder="Masukkan Nama Lengkap">
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Catatan Produksi</label>
-                        <textarea id="prod-note" class="form-textarea" rows="2" placeholder="Catatan untuk bulan ini..."></textarea>
+                        <label class="form-label">Catatan Superintendent</label>
+                        <textarea id="sp-note" class="form-textarea" rows="2" placeholder="Catatan untuk bulan ini..."></textarea>
                     </div>
 
                     <div class="form-group">
@@ -310,16 +310,16 @@
             const startDate = `${currentMonth}-01`;
             
             try {
-                // 1. CEK STATUS APPROVAL DULU
+                // 1. CEK STATUS APPROVAL SUPERINTENDENT DULU
                 const { data: approvalData, error: approvalError } = await supabaseClient
-                    .from('jpdo_approval_produksi')
+                    .from('jpdo_approval') // Table Superintendent
                     .select('*')
                     .eq('bulan', currentMonth)
                     .maybeSingle();
 
                 if (approvalError) throw approvalError;
 
-                // 2. Fetch Data Log
+                // 2. Fetch Data Log Supervisor
                 const { data: logData, error: logError } = await supabaseClient
                     .from('jpdo_log')
                     .select('tanggal, nama_supervisor, catatan_supervisor, status_hari')
@@ -343,7 +343,7 @@
                         // SUDAH DI-APPROVE -> FORM HILANG, TAMPILKAN PESAN CLEAN
                         formWrapper.classList.add('hidden');
                         successMsg.classList.remove('hidden');
-                        approvedInfo.innerHTML = `Disetujui oleh: <b>${approvalData.nama_produksi}</b><br>Pada: ${new Date(approvalData.created_at).toLocaleString('id-ID')}`;
+                        approvedInfo.innerHTML = `Disetujui oleh: <b>${approvalData.nama_superintendent}</b><br>Pada: ${new Date(approvalData.created_at).toLocaleString('id-ID')}`;
                     } else {
                         // BELUM DI-APPROVE -> TAMPILKAN FORM
                         formWrapper.classList.remove('hidden');
@@ -443,7 +443,7 @@
             return !pixelBuffer.some(color => color !== 0);
         }
 
-        // --- 4. SUBMIT APPROVAL (PRODUKSI) ---
+        // --- 4. SUBMIT APPROVAL ---
         async function submitApproval() {
             console.log("Tombol ditekan"); 
             
@@ -453,10 +453,10 @@
             }
 
             const btn = document.getElementById('btn-approve');
-            const name = document.getElementById('prod-name').value;
-            const note = document.getElementById('prod-note').value;
+            const name = document.getElementById('sp-name').value;
+            const note = document.getElementById('sp-note').value;
 
-            if (!name) { alert("Nama Staff Produksi wajib diisi!"); return; }
+            if (!name) { alert("Nama Superintendent wajib diisi!"); return; }
             if (isCanvasBlank()) { alert("Mohon tanda tangan terlebih dahulu!"); return; }
 
             btn.innerHTML = 'Menyimpan...';
@@ -465,25 +465,24 @@
             const signatureData = canvas.toDataURL(); // Base64
 
             try {
-                // Simpan ke tabel khusus Produksi
+                // Simpan ke tabel Superintendent
                 const { error } = await supabaseClient
-                    .from('jpdo_approval_produksi')
+                    .from('jpdo_approval')
                     .insert([{
                         bulan: currentMonth,
-                        nama_produksi: name,
-                        catatan_produksi: note,
-                        tanda_tangan_produksi: signatureData
+                        nama_superintendent: name,
+                        catatan_superintendent: note,
+                        tanda_tangan_superintendent: signatureData
                     }]);
 
                 if (error) throw error;
 
-                alert("Approval Produksi Berhasil Disimpan!");
-                // Reload halaman agar tampilan berubah jadi "Sudah Disetujui"
+                alert("Approval Berhasil Disimpan!");
                 window.location.reload();
 
             } catch (err) {
                 console.error(err);
-                alert("Gagal menyimpan: " + err.message + "\n\nPastikan tabel 'jpdo_approval_produksi' sudah dibuat.");
+                alert("Gagal menyimpan: " + err.message);
                 btn.innerHTML = 'Approve Bulan Ini';
                 btn.disabled = false;
             }
