@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Input Supervisor - AKG Maintenance</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #DC2626;
+            --primary-dark: #991B1B;
+            
+            /* Palet Warna Status */
+            --color-blue: #3B82F6;  /* Biru untuk Plan YA */
+            --color-green: #10B981; /* Hijau untuk Actual YA */
+            --color-red: #DC2626;   /* Merah untuk TIDAK & Header */
+            
+            /* Background Box (Default Merah Pudar) */
+            --box-bg-red: rgba(220, 38, 38, 0.1);
+
+            --bg-dark: #050505;
+            --bg-card: #121212; 
+            --text-white: #FFFFFF;
+            --text-gray: #A3A3A3;
+            --border-light: rgba(255,255,255,0.1);
+            --radius: 16px;
+            --nav-height: 70px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background: var(--bg-dark);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            overflow-x: hidden;
+            color: var(--text-white);
+            padding-bottom: 100px; /* Space for bottom nav */
+        }
+
+        /* Background Animation */
+        .bg-animation { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; background: #000; }
+        .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4; }
+        .orb-1 { width: 300px; height: 300px; background: radial-gradient(circle, var(--primary) 0%, transparent 70%); top: -100px; right: -100px; }
+        .grid-pattern { position: absolute; width: 100%; height: 100%; background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 40px 40px; opacity: 0.3; }
+
+        .app-container {
+            width: 100%;
+            max-width: 600px;
+            padding: 24px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        .header {
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-light);
+            padding-bottom: 16px;
+        }
+        .header h1 { font-size: 20px; color: var(--primary); font-weight: 700; margin-bottom: 0; }
+
+        /* Form Elements */
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-size: 14px; color: var(--text-gray); margin-bottom: 8px; font-weight: 500; }
+        
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            background: #1a1a1a;
+            border: 1px solid var(--border-light);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+        }
+
+        /* Status Boxes Container Style */
+        .status-box {
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid transparent;
+            background: var(--box-bg-red);
+            border-color: rgba(220, 38, 38, 0.3);
+        }
+        
+        .box-title {
+            color: var(--color-red);
+            font-size: 14px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .box-actual.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            filter: grayscale(0.8);
+        }
+
+        /* Custom Toggle Radio Buttons */
+        .toggle-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .toggle-option {
+            flex: 1;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .toggle-option input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .toggle-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            border-radius: 12px;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid var(--border-light);
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            color: var(--text-gray);
+        }
+
+        /* --- LOGIKA WARNA TOMBOL --- */
+
+        /* 1. PLAN: YA -> BIRU */
+        .box-plan .toggle-option input[value="YA"]:checked + .toggle-btn {
+            background: var(--color-blue);
+            border-color: var(--color-blue);
+            color: white;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        }
+
+        /* 2. PLAN: TIDAK -> MERAH */
+        .box-plan .toggle-option input[value="TIDAK"]:checked + .toggle-btn {
+            background: var(--color-red);
+            border-color: var(--color-red);
+            color: white;
+            box-shadow: 0 0 15px rgba(220, 38, 38, 0.4);
+        }
+
+        /* 3. ACTUAL: YA -> HIJAU */
+        .box-actual .toggle-option input[value="YA"]:checked + .toggle-btn {
+            background: var(--color-green);
+            border-color: var(--color-green);
+            color: white;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        }
+
+        /* 4. ACTUAL: TIDAK -> MERAH */
+        .box-actual .toggle-option input[value="TIDAK"]:checked + .toggle-btn {
+            background: var(--color-red);
+            border-color: var(--color-red);
+            color: white;
+            box-shadow: 0 0 15px rgba(220, 38, 38, 0.4);
+        }
+        
+        /* Active State for Work/Off Day (Primary Red) */
+        .day-status-toggle .toggle-option input:checked + .toggle-btn {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            box-shadow: 0 0 15px rgba(220, 38, 38, 0.4);
+        }
+
+        /* Signature Section */
+        .signature-section {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid var(--border-light);
+            margin-top: 30px;
+        }
+
+        .signature-pad {
+            width: 100%;
+            height: 120px;
+            background: #2a2a2a;
+            border: 2px dashed var(--text-gray);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-gray);
+            font-size: 14px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4);
+            transition: transform 0.2s;
+        }
+
+        .btn-submit:active { transform: scale(0.98); }
+
+        /* Utility Class to Hide Elements */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Utility Class for Disabled Section */
+        .disabled-section {
+            opacity: 0.5;
+            pointer-events: none;
+            filter: grayscale(1);
+        }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 100%; max-width: 600px;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-light);
+            display: flex; justify-content: space-around; align-items: center;
+            padding: 12px 0; height: var(--nav-height); z-index: 100;
+        }
+        .nav-item { color: #555; display: flex; flex-direction: column; align-items: center; text-decoration: none; width: 56px; }
+        .nav-item.active { color: var(--primary); }
+        .nav-item svg { width: 22px; height: 22px; }
+
+    </style>
+</head>
+<body>
+
+    <div class="bg-animation">
+        <div class="orb orb-1"></div>
+        <div class="grid-pattern"></div>
+    </div>
+
+    <div class="app-container">
+        
+        <div class="header">
+            <h1>Input Supervisor</h1>
+        </div>
+
+        <form>
+            <!-- 1. Tanggal (Pemicu Utama) -->
+            <div class="form-group">
+                <label class="form-label">Tanggal Pelaksanaan</label>
+                <input type="date" class="form-input" id="date-input" onchange="handleDateChange(this.value)">
+            </div>
+
+            <!-- 2. Status Hari (Default Disabled) -->
+            <div class="form-group">
+                <label class="form-label">Status Hari</label>
+                <div class="toggle-group day-status-toggle disabled-section" id="day-status-container">
+                    <label class="toggle-option">
+                        <input type="radio" name="day_status" value="KERJA" onclick="handleDayStatusChange(this.value)" disabled>
+                        <span class="toggle-btn">
+                            Hari Kerja
+                        </span>
+                    </label>
+                    <label class="toggle-option">
+                        <input type="radio" name="day_status" value="LIBUR" onclick="handleDayStatusChange(this.value)" disabled>
+                        <span class="toggle-btn">
+                            Hari Libur
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Bagian ini HANYA MUNCUL jika Hari Kerja (Hidden Default) -->
+            <div id="operational-form-section" class="hidden">
+                <!-- Pilih Mesin -->
+                <div class="form-group">
+                    <label class="form-label">Nama Mesin / Tool / Equipment</label>
+                    <select class="form-select">
+                        <option value="" disabled selected>-- Pilih Mesin --</option>
+                        <option value="1">INJECT BLOW LIANXIN IBM30H</option>
+                        <option value="2">TM EXPRESS 270/2250 (+ Robot Wittman 822)</option>
+                        <option value="3">ECO POWER 240/750 (+ Robot Wittman 822)</option>
+                        <option value="4">ECO POWER 210 T (+ Robot Wittman 823 UHS)</option>
+                        <option value="5">TM EXPRESS 350/3400 (Sepro S5-25 + Robot jet)</option>
+                        <option value="6">ARBURG 320 T (STAR LORD) + (Robot Sonic)</option>
+                        <option value="7">WIBA 500 T (STEVE ROGERS) + (Robot Wittmann)</option>
+                        <option value="8">WIBA 500 T (THANOS) + (Robot Wittmann)</option>
+                        <option value="9">FCS 220 T (BLACKWIDOW) + (Sepro S5-25)</option>
+                        <option value="10">ENGEL 220 T (DEADPOOL) + (Robot Wittmann)</option>
+                        <option value="11">ARBURG 200 T (WOLVERINE) + (Robot Wittmann)</option>
+                        <option value="12">FCS 380 T (LOKI) + (Robot Sepro)</option>
+                        <option value="13">ENGEL 380 T (INHUMANS) + (Robot Wittmann)</option>
+                        <option value="14">ENGEL 380 T (HULK) + (Robot Wittmann)</option>
+                        <option value="15">NPC 400 T (WANDA) + (Robot Sepro)</option>
+                        <option value="16">ENGEL 280 T (DOCTOR STRANGE) + (Robot Wittmann)</option>
+                        <option value="31">FCS 100 T (ANTMAN)</option>
+                        <option value="32">NPC 160 T (WASP) + (Robot Wittmann)</option>
+                        <option value="33">NPC 160 T (WONG) + (Robot Wittmann)</option>
+                        <option value="34">FCS 150 T (ROCKET)</option>
+                        <option value="35">FCS 150 T (MANTIS)</option>
+                        <option value="36">NPC 160 T (SHANCHI) + (Robot Wittmann)</option>
+                        <option value="37">NPC 260 T (VISION) + (Robot Sepro)</option>
+                        <option value="38">NPC 200 T (MAGNETO) + (Robot Wittmann)</option>
+                        <option value="39">FCS 100 T (NICK FURRY)</option>
+                        <option value="40">FCS 250 T (CYCLOPS) + (Robot Wittmann)</option>
+                        <option value="41">NPC 260 T (HAWKEYE) + (Robot Wittmann)</option>
+                        <option value="42">WORKSHOP (ZSJ 328)</option>
+                        <option value="43">GRINDING</option>
+                        <option value="44">MILLING 1</option>
+                        <option value="45">MILLING 2</option>
+                        <option value="46">BUBUT</option>
+                    </select>
+                </div>
+
+                <!-- PLAN Section -->
+                <div class="status-box box-plan">
+                    <div class="box-title">
+                        PLAN
+                    </div>
+                    <!-- Logic: Jika Plan = Tidak, Actual otomatis Tidak & Disabled -->
+                    <div class="toggle-group">
+                        <label class="toggle-option">
+                            <input type="radio" name="plan_status" value="YA" onclick="handlePlanChange(this.value)">
+                            <span class="toggle-btn">
+                                YA
+                            </span>
+                        </label>
+                        <label class="toggle-option">
+                            <input type="radio" name="plan_status" value="TIDAK" onclick="handlePlanChange(this.value)">
+                            <span class="toggle-btn">
+                                TIDAK
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- ACTUAL Section -->
+                <div class="status-box box-actual" id="actual-container">
+                    <div class="box-title">
+                        ACTUAL
+                    </div>
+                    <div class="toggle-group">
+                        <label class="toggle-option">
+                            <input type="radio" name="actual_status" value="YA" id="actual_ya">
+                            <span class="toggle-btn">
+                                YA
+                            </span>
+                        </label>
+                        <label class="toggle-option">
+                            <input type="radio" name="actual_status" value="TIDAK" id="actual_tidak">
+                            <span class="toggle-btn">
+                                TIDAK
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Catatan -->
+                <div class="form-group" style="margin-top: 24px;">
+                    <label class="form-label">Catatan Tambahan (Opsional)</label>
+                    <textarea class="form-textarea" rows="3" placeholder="Jika ada keterangan tambahan..."></textarea>
+                </div>
+            </div> <!-- End of Operational Section -->
+
+            <!-- Bagian Identitas (Nama & Tanda Tangan) - Muncul setelah status dipilih -->
+            <div id="identity-section" class="signature-section hidden">
+                <!-- Nama Supervisor (Selalu Muncul baik Kerja/Libur) -->
+                <div class="form-group">
+                    <label class="form-label">Nama Supervisor <span style="color: var(--primary); font-size: 10px;">(Wajib Diisi)</span></label>
+                    <input type="text" class="form-input" placeholder="Nama Lengkap">
+                </div>
+                
+                <!-- Tanda Tangan (HANYA Muncul jika Hari Kerja) -->
+                <div class="form-group" id="signature-pad-container" style="margin-bottom: 0;">
+                    <label class="form-label">Tanda Tangan</label>
+                    <div class="signature-pad">
+                        <i class="fa-solid fa-pen-nib" style="margin-right: 8px;"></i> Ketuk untuk Tanda Tangan
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tombol Simpan (Muncul setelah status dipilih) -->
+            <button type="button" id="submit-btn" class="btn-submit hidden">
+                Simpan Laporan
+            </button>
+
+        </form>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+        </a>
+        <a href="menu_utama.html" class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+        </a>
+    </nav>
+
+    <script>
+        function handleDateChange(value) {
+            const dayStatusInputs = document.querySelectorAll('input[name="day_status"]');
+            const dayStatusContainer = document.getElementById('day-status-container');
+
+            if (value) {
+                // Enable inputs jika tanggal terisi
+                dayStatusInputs.forEach(input => input.disabled = false);
+                dayStatusContainer.classList.remove('disabled-section');
+            } else {
+                // Disable inputs jika tanggal kosong
+                dayStatusInputs.forEach(input => {
+                    input.disabled = true;
+                    input.checked = false; // Reset pilihan
+                });
+                dayStatusContainer.classList.add('disabled-section');
+                
+                // Reset tampilan form ke kondisi awal (tersembunyi)
+                handleDayStatusChange(null);
+            }
+        }
+
+        function handlePlanChange(value) {
+            const actualContainer = document.getElementById('actual-container');
+            const actualYa = document.getElementById('actual_ya');
+            const actualTidak = document.getElementById('actual_tidak');
+
+            if (value === 'TIDAK') {
+                // Jika Plan = TIDAK, Actual otomatis TIDAK dan disable
+                actualTidak.checked = true;
+                actualYa.disabled = true;
+                actualTidak.disabled = true; 
+                actualContainer.classList.add('disabled');
+            } else {
+                // Jika Plan = YA, Actual bisa dipilih
+                actualYa.disabled = false;
+                actualTidak.disabled = false;
+                actualTidak.checked = false; 
+                actualContainer.classList.remove('disabled');
+            }
+        }
+
+        function handleDayStatusChange(status) {
+            const operationalSection = document.getElementById('operational-form-section');
+            const identitySection = document.getElementById('identity-section');
+            const signatureContainer = document.getElementById('signature-pad-container');
+            const submitBtn = document.getElementById('submit-btn');
+
+            if (!status) {
+                // Jika status null (reset), sembunyikan semua
+                operationalSection.classList.add('hidden');
+                identitySection.classList.add('hidden');
+                submitBtn.classList.add('hidden');
+                return;
+            }
+
+            // Selalu tampilkan identitas dan tombol simpan setelah memilih status
+            identitySection.classList.remove('hidden');
+            submitBtn.classList.remove('hidden');
+
+            if (status === 'LIBUR') {
+                // HARI LIBUR: Sembunyikan form operasional dan tanda tangan
+                operationalSection.classList.add('hidden');
+                signatureContainer.classList.add('hidden');
+            } else {
+                // HARI KERJA: Tampilkan semua
+                operationalSection.classList.remove('hidden');
+                signatureContainer.classList.remove('hidden');
+            }
+        }
+    </script>
+
+</body>
+</html>
