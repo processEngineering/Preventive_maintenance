@@ -10,7 +10,7 @@
     
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- HTML2PDF JS (Stable Version) -->
+    <!-- HTML2PDF JS (Versi Bundle Stabil) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
@@ -19,7 +19,6 @@
             --bg-dark: #050505; 
             --bg-card: #121212; 
             --text-white: #FFFFFF;
-            --border-color: #000;
             --nav-height: 70px;
         }
 
@@ -47,7 +46,7 @@
             gap: 10px;
             align-items: center;
             width: 100%;
-            max-width: 297mm;
+            max-width: 1123px; /* Lebar A4 di Layar */
             color: white;
             position: sticky; top: 10px; z-index: 500;
         }
@@ -68,82 +67,82 @@
             color: white; padding: 8px; border-radius: 8px; color-scheme: dark;
         }
 
-        /* --- LAYOUT KERTAS PRESISI ISO (mm based) --- */
+        /* --- LAYOUT KERTAS 'HARD LOCK' --- */
+        /* Wrapper ini memaksa lebar konten tetap 1123px (A4 Landscape) meski dibuka di HP */
         #report-wrapper { 
-            width: 297mm;
-            min-width: 1123px; /* Fallback pixel width */
+            width: 1123px;
+            min-width: 1123px; /* KUNCI UTAMA: Agar HP tidak mengecilkan layout */
             margin: 0 auto;
+            background: transparent;
         }
 
+        /* Halaman Kertas */
         .page {
             background: white;
-            width: 297mm;
-            height: 209mm; /* Sedikit kurang dari 210mm agar margin aman */
-            padding: 15mm 10mm; /* Margin standar dokumen ISO */
+            width: 1123px; /* Lebar Fix Pixel (297mm @96dpi) */
+            height: 794px; /* Tinggi Fix Pixel (210mm @96dpi) */
+            padding: 15mm 20mm; /* Margin dalam: AtasBawah 15mm, KiriKanan 20mm */
             margin-bottom: 30px;
             box-shadow: 0 0 50px rgba(0,0,0,0.5);
             position: relative;
             color: black;
-            overflow: hidden;
+            overflow: hidden; /* Pastikan tidak ada yang bocor */
             display: flex;
             flex-direction: column;
-            page-break-after: always;
+            page-break-after: always; /* Paksa ganti halaman PDF */
+            box-sizing: border-box; /* Pastikan padding masuk dalam ukuran width/height */
         }
         
+        .page:last-child {
+            page-break-after: auto;
+        }
+        
+        /* Container scroll horizontal untuk HP agar bisa lihat preview */
         .preview-container {
             width: 100%;
-            overflow-x: auto; 
+            overflow-x: auto; /* Scroll jika layar kecil */
             display: flex;
             justify-content: center;
         }
 
-        /* HEADER KOMPAK */
+        /* HEADER TABEL */
         .report-header-table {
-            width: 100%; border-collapse: collapse; border: 0.8px solid #000; margin-bottom: 5px;
+            width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 5px;
         }
-        .report-header-table td { border: 0.5px solid #000; padding: 4px; vertical-align: middle; }
+        .report-header-table td { border: 0.5px solid #000; padding: 3px 5px; vertical-align: middle; }
 
         .header-brand-container { display: flex; align-items: center; gap: 10px; }
         .header-logo { width: 70px; height: auto; object-fit: contain; } 
-        .header-company-name { font-size: 10px; font-weight: 900; text-transform: uppercase; line-height: 1.2; }
-        .header-title { font-size: 16px; font-weight: 900; text-transform: uppercase; text-align: center; margin: 0; }
+        .header-company-name { font-size: 11px; font-weight: 900; text-transform: uppercase; line-height: 1.2; }
+        .header-title { font-size: 18px; font-weight: 900; text-transform: uppercase; text-align: center; margin: 0; }
 
-        .header-meta-table { width: 100%; border-collapse: collapse; font-size: 8px; }
-        .header-meta-table td { border: none; border-bottom: 0.5px solid #000; padding: 2px 4px; }
-        .meta-label { font-weight: 700; width: 35%; border-right: 0.5px solid #000 !important; }
-        .meta-value { width: 65%; padding-left: 4px; }
+        .header-meta-table { width: 100%; border-collapse: collapse; font-size: 9px; }
+        .header-meta-table td { border: none; border-bottom: 0.5px solid #000; padding: 1px 4px; }
+        .meta-label { font-weight: 700; width: 40%; border-right: 0.5px solid #000 !important; }
+        .meta-value { width: 60%; padding-left: 4px; }
 
         .period-display { 
-            text-align: center; font-weight: 700; font-size: 10px; margin: 5px 0 8px 0; 
+            text-align: center; font-weight: 700; font-size: 11px; margin: 2px 0 5px 0; 
             text-transform: uppercase; letter-spacing: 0.5px; 
         }
 
-        /* TABEL DATA ISO STYLE */
+        /* TABEL DATA */
         .schedule-table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            font-size: 7px; 
-            table-layout: fixed; 
+            width: 100%; border-collapse: collapse; font-size: 7px; table-layout: fixed; 
             margin-bottom: 0;
         }
         .schedule-table th, .schedule-table td { 
-            border: 0.5px solid #000; /* KUNCI: Border tipis */
-            padding: 0; 
-            text-align: center; 
-            vertical-align: middle; 
-            height: 12px; 
+            border: 0.4px solid #000; padding: 0; text-align: center; vertical-align: middle; 
+            height: 11px; /* Tinggi baris data diperkecil agar muat 36 mesin */
         }
-        .schedule-table th { background: #eee; font-weight: 700; height: 18px; padding: 1px; }
+        .schedule-table th { background: #eee; font-weight: 700; height: 16px; padding: 1px; }
 
-        /* Kolom */
-        .col-no { width: 15px; }
-        .col-machine { 
-            width: 180px; text-align: left !important; padding-left: 3px !important; 
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            font-weight: 600;
-        }
-        .col-type { width: 25px; font-weight: 700; font-size: 6px; }
-        .col-pic { width: 40px; font-size: 6px; padding: 0 1px !important; overflow: hidden; white-space: nowrap; }
+        /* Kolom Proporsional */
+        .col-no { width: 25px; }
+        .col-machine { width: 180px; text-align: left !important; padding-left: 4px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+        .col-type { width: 30px; font-weight: 700; font-size: 6px; }
+        .col-pic { width: 45px; font-weight: 400; font-size: 6px; padding: 0 1px !important; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        /* Sisa untuk tanggal */
 
         /* Warna Cell */
         .bg-plan { background-color: #007bff !important; }
@@ -151,17 +150,18 @@
         .bg-miss { background-color: #D30000 !important; }
         .bg-holiday { background-color: #D30000 !important; color: white; }
         .bg-grey { background-color: #ddd !important; }
-        .cell-fill { width: 100%; height: 100%; display: block; min-height: 12px; }
+        .cell-fill { width: 100%; height: 100%; display: block; min-height: 11px; }
 
-        /* TANDA TANGAN */
+        /* TANDA TANGAN (Halaman 2) */
         .signature-section { 
-            margin-top: 20px; 
+            margin-top: 20px; /* Jarak pas dari tabel */
             display: flex; justify-content: space-between; gap: 5px; 
+            /* Hapus margin-top: auto agar nempel tabel */
         }
         .sig-box { flex: 1; border: none; text-align: center; }
-        .sig-header { font-size: 8px; font-weight: 700; text-transform: uppercase; margin-bottom: 10px; }
+        .sig-header { font-size: 8px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
         .sig-body { 
-            height: 45px; 
+            height: 40px; 
             display: flex; flex-direction: column; align-items: center; justify-content: flex-end; 
         }
         .sig-img { max-height: 35px; max-width: 100%; margin-bottom: 2px; }
@@ -171,6 +171,7 @@
         }
         .sig-role { font-size: 7px; font-weight: 600; text-transform: uppercase; }
 
+        /* Loading */
         #loading {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); z-index: 9999;
@@ -192,18 +193,18 @@
         .nav-item.active { color: var(--primary); }
         .nav-item svg { width: 28px; height: 28px; }
 
-        /* PRINT MEDIA QUERY (Final Check) */
+        /* PRINT SETTINGS */
         @media print {
             body { background: white; padding: 0; margin: 0; display: block; }
             .controls, .bottom-nav { display: none !important; }
-            .preview-container { display: block; width: 100%; overflow: visible; }
-            #report-wrapper { margin: 0; width: 100%; }
+            .preview-container { display: block; overflow: visible; width: 100%; }
+            #report-wrapper { margin: 0; }
             .page { 
                 margin: 0; box-shadow: none; border: none; 
                 page-break-after: always; width: 100%; height: 100%; padding: 0;
             }
             .page:last-child { page-break-after: auto; }
-            td, th { border-width: 0.5px !important; border-color: #000 !important; }
+            td, th { border-width: 0.4px !important; border-color: #000 !important; }
         }
     </style>
 </head>
@@ -224,7 +225,9 @@
         <button onclick="downloadPDF()" class="btn-print"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
     </div>
 
+    <!-- WRAPPER SCROLLABLE UNTUK HP -->
     <div class="preview-container">
+        <!-- WADAH UTAMA LAPORAN -->
         <div id="report-wrapper"></div>
     </div>
 
@@ -241,6 +244,9 @@
         
         if (!window.supabaseClient) { window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
 
+        // --- SPLIT HALAMAN (TOTAL 2 HALAMAN PAS) ---
+        // Halaman 1: Mesin 1-36 (Total 36 Mesin x 2 baris = 72 baris data + Header)
+        // Saya pastikan index 35 (mesin ke 36) ada di sini.
         const machinesPage1 = [
             { no: 1, id: "INJECT BLOW LIANXIN IBM30H", label: "Inject Blow Lianxin IBM30H" },
             { no: 2, id: "TM EXPRESS 270/2250", label: "TM Express 270/2250 (+ Robot Wittmann 822)" },
@@ -266,6 +272,7 @@
             { no: 36, id: "NPC 160 T (SHANCHI)", label: "NPC 160 T (Shanchi) + Robot Wittmann W818 (Grimlock)" }
         ];
 
+        // Halaman 2: 37-46 + Tanda Tangan
         const machinesPage2 = [
             { no: 37, id: "NPC 260 T (VISION)", label: "NPC 260 T (Vision) + Robot Sepro Success (Rinox)" },
             { no: 38, id: "NPC 200 T (MAGNETO)", label: "NPC 200 T (Magneto) + Robot Wittmann W818 (Grimlock)" },
@@ -279,14 +286,13 @@
             { no: 46, id: "BUBUT", label: "Bubut" }
         ];
 
-        // Gabung untuk Lookup
         const allMachinesData = [...machinesPage1, ...machinesPage2];
 
         let logoBase64 = "";
 
+        // --- IMAGE LOADER (WS Proxy) ---
         async function prepareLogo() {
             const logoUrl = "https://amarilyskg.co.id/bootstrap/img/logo.png";
-            // Proxy wsrv.nl yang stabil dan CORS-friendly
             const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(logoUrl)}&output=png`;
             try {
                 const response = await fetch(proxyUrl);
@@ -313,19 +319,17 @@
             
             const element = document.getElementById('report-wrapper');
             
-            // CONFIG PDF FINAL (Scale 1.35 untuk garis tipis dan tajam)
+            // CONFIG PDF A4 LANDSCAPE, LOCKED WIDTH 1123px (Supaya HP tetap rapi)
             const opt = {
                 margin: 0, 
                 filename: 'Laporan_Perawatan_AKG.pdf',
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
-                    scale: 1.35, 
+                    scale: 1.4,        // Scale moderat agar tidak berat di HP, tapi cukup tajam
                     useCORS: true, 
                     allowTaint: true,
                     scrollY: 0,
-                    windowWidth: 1123,
-                    dpi: 96,
-                    letterRendering: true
+                    windowWidth: 1123  // KUNCI: Render seolah-olah layar 1123px (A4 Landscape)
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
                 pagebreak: { mode: ['css', 'legacy'] }
@@ -413,6 +417,7 @@
 
             html += `</tbody></table>`;
             
+            // Signature on Page 2
             if (pageNum === 2) {
                 html += `
                 <div class="signature-section">
@@ -467,9 +472,9 @@
 
                     logs.forEach(log => {
                         const day = parseInt(log.tanggal.split('-')[2]);
-                        if(log.status_hari === 'LIBUR') holidayMap[day] = true;
+                        if (log.status_hari === 'LIBUR') holidayMap[day] = true;
                         
-                        if(log.status_hari === 'KERJA' && log.nama_mesin) {
+                        if (log.status_hari === 'KERJA' && log.nama_mesin) {
                             if(!dataMap[log.nama_mesin]) dataMap[log.nama_mesin] = {};
                             if(log.nama_pic) {
                                 if(!picMap[log.nama_mesin]) picMap[log.nama_mesin] = new Set();
@@ -488,15 +493,9 @@
                 const container = document.getElementById('report-wrapper');
                 container.innerHTML = ''; 
 
-                // SPLIT MANUAL: Halaman 1 (1-22), Halaman 2 (23-32)
-                const page1Machines = allMachinesData.slice(0, 22); 
-                const page2Machines = allMachinesData.slice(22, 32); 
-
-                // Page 1
-                container.innerHTML += createTableHTML(page1Machines, daysInMonth, dataMap, holidayMap, periodText, 1);
-                
-                // Page 2
-                container.innerHTML += createTableHTML(page2Machines, daysInMonth, dataMap, holidayMap, periodText, 2);
+                // SPLIT MANUAL
+                container.innerHTML += createTableHTML(machinesPage1, daysInMonth, dataMap, holidayMap, periodText, 1);
+                container.innerHTML += createTableHTML(machinesPage2, daysInMonth, dataMap, holidayMap, periodText, 2);
 
                 // --- FILL PIC DATA ---
                 allMachinesData.forEach(m => {
