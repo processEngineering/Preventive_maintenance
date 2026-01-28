@@ -8,7 +8,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
+    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- HTML2PDF JS (Stable Version) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
@@ -17,6 +19,7 @@
             --bg-dark: #050505; 
             --bg-card: #121212; 
             --text-white: #FFFFFF;
+            --border-color: #000;
             --nav-height: 70px;
         }
 
@@ -33,7 +36,7 @@
             align-items: center;
         }
 
-        /* CONTROLS */
+        /* --- UI CONTROLS --- */
         .controls {
             background: var(--bg-card);
             padding: 10px;
@@ -57,7 +60,7 @@
         
         .btn-back, .btn-refresh {
             background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); 
-            padding: 8px; border-radius: 8px; cursor: pointer; text-decoration: none;
+            padding: 8px; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block;
         }
 
         input[type="month"] {
@@ -65,16 +68,19 @@
             color: white; padding: 8px; border-radius: 8px; color-scheme: dark;
         }
 
-        /* --- LAYOUT KERTAS PRESISI --- */
-        #report-wrapper { width: 297mm; }
+        /* --- LAYOUT KERTAS PRESISI ISO (mm based) --- */
+        #report-wrapper { 
+            width: 297mm;
+            min-width: 1123px; /* Fallback pixel width */
+            margin: 0 auto;
+        }
 
         .page {
             background: white;
             width: 297mm;
-            /* Height diset auto agar fleksibel, tapi page-break memaksa pisah */
-            min-height: 209mm; 
-            padding: 5mm 10mm; /* Margin atas/bawah tipis 5mm, kiri/kanan 10mm */
-            margin-bottom: 20px;
+            height: 209mm; /* Sedikit kurang dari 210mm agar margin aman */
+            padding: 15mm 10mm; /* Margin standar dokumen ISO */
+            margin-bottom: 30px;
             box-shadow: 0 0 50px rgba(0,0,0,0.5);
             position: relative;
             color: black;
@@ -83,48 +89,61 @@
             flex-direction: column;
             page-break-after: always;
         }
+        
+        .preview-container {
+            width: 100%;
+            overflow-x: auto; 
+            display: flex;
+            justify-content: center;
+        }
 
         /* HEADER KOMPAK */
         .report-header-table {
-            width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 2px;
+            width: 100%; border-collapse: collapse; border: 0.8px solid #000; margin-bottom: 5px;
         }
-        .report-header-table td { border: 0.5px solid #000; padding: 2px 4px; vertical-align: middle; }
+        .report-header-table td { border: 0.5px solid #000; padding: 4px; vertical-align: middle; }
 
-        .header-brand-container { display: flex; align-items: center; gap: 8px; }
-        .header-logo { width: 60px; height: auto; } 
-        .header-company-name { font-size: 10px; font-weight: 900; text-transform: uppercase; line-height: 1.1; }
-        .header-title { font-size: 14px; font-weight: 900; text-transform: uppercase; text-align: center; margin: 0; }
+        .header-brand-container { display: flex; align-items: center; gap: 10px; }
+        .header-logo { width: 70px; height: auto; object-fit: contain; } 
+        .header-company-name { font-size: 10px; font-weight: 900; text-transform: uppercase; line-height: 1.2; }
+        .header-title { font-size: 16px; font-weight: 900; text-transform: uppercase; text-align: center; margin: 0; }
 
-        .header-meta-table { width: 100%; border-collapse: collapse; font-size: 7px; }
-        .header-meta-table td { border: none; border-bottom: 0.5px solid #000; padding: 1px 2px; }
+        .header-meta-table { width: 100%; border-collapse: collapse; font-size: 8px; }
+        .header-meta-table td { border: none; border-bottom: 0.5px solid #000; padding: 2px 4px; }
         .meta-label { font-weight: 700; width: 35%; border-right: 0.5px solid #000 !important; }
         .meta-value { width: 65%; padding-left: 4px; }
 
         .period-display { 
-            text-align: center; font-weight: 700; font-size: 9px; margin: 2px 0 4px 0; 
+            text-align: center; font-weight: 700; font-size: 10px; margin: 5px 0 8px 0; 
             text-transform: uppercase; letter-spacing: 0.5px; 
         }
 
-        /* TABEL SUPER PADAT (Agar muat 36 mesin) */
+        /* TABEL DATA ISO STYLE */
         .schedule-table { 
-            width: 100%; border-collapse: collapse; font-size: 6.5px; table-layout: fixed; 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 7px; 
+            table-layout: fixed; 
             margin-bottom: 0;
         }
         .schedule-table th, .schedule-table td { 
-            border: 0.4px solid #000; padding: 0; text-align: center; vertical-align: middle; 
-            height: 10px; /* TINGGI BARIS DIKOMPRES */
-            line-height: 1;
+            border: 0.5px solid #000; /* KUNCI: Border tipis */
+            padding: 0; 
+            text-align: center; 
+            vertical-align: middle; 
+            height: 12px; 
         }
-        .schedule-table th { background: #eee; font-weight: 700; height: 16px; padding: 1px; }
+        .schedule-table th { background: #eee; font-weight: 700; height: 18px; padding: 1px; }
 
         /* Kolom */
         .col-no { width: 15px; }
         .col-machine { 
-            width: 160px; text-align: left !important; padding-left: 2px !important; 
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; /* Cegah text turun baris */
+            width: 180px; text-align: left !important; padding-left: 3px !important; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-weight: 600;
         }
-        .col-type { width: 25px; font-weight: 700; font-size: 5px; }
-        .col-pic { width: 40px; font-size: 5px; padding: 0 1px !important; overflow: hidden; }
+        .col-type { width: 25px; font-weight: 700; font-size: 6px; }
+        .col-pic { width: 40px; font-size: 6px; padding: 0 1px !important; overflow: hidden; white-space: nowrap; }
 
         /* Warna Cell */
         .bg-plan { background-color: #007bff !important; }
@@ -132,28 +151,26 @@
         .bg-miss { background-color: #D30000 !important; }
         .bg-holiday { background-color: #D30000 !important; color: white; }
         .bg-grey { background-color: #ddd !important; }
-        .cell-fill { width: 100%; height: 100%; display: block; min-height: 10px; }
+        .cell-fill { width: 100%; height: 100%; display: block; min-height: 12px; }
 
-        /* TANDA TANGAN (Rapi, Tidak Terlalu Bawah) */
+        /* TANDA TANGAN */
         .signature-section { 
-            margin-top: 15px; /* Jarak dari tabel */
+            margin-top: 20px; 
             display: flex; justify-content: space-between; gap: 5px; 
-            /* Hapus margin-top: auto agar tidak kedorong ke paling bawah */
         }
         .sig-box { flex: 1; border: none; text-align: center; }
-        .sig-header { font-size: 7px; font-weight: 700; text-transform: uppercase; margin-bottom: 10px; }
+        .sig-header { font-size: 8px; font-weight: 700; text-transform: uppercase; margin-bottom: 10px; }
         .sig-body { 
-            height: 40px; /* Tinggi area TTD */
+            height: 45px; 
             display: flex; flex-direction: column; align-items: center; justify-content: flex-end; 
         }
-        .sig-img { max-height: 35px; max-width: 100%; }
+        .sig-img { max-height: 35px; max-width: 100%; margin-bottom: 2px; }
         .sig-name { 
             font-size: 8px; font-weight: 700; text-decoration: underline; text-transform: uppercase; 
             margin-bottom: 2px;
         }
         .sig-role { font-size: 7px; font-weight: 600; text-transform: uppercase; }
 
-        /* Loading */
         #loading {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); z-index: 9999;
@@ -175,19 +192,18 @@
         .nav-item.active { color: var(--primary); }
         .nav-item svg { width: 28px; height: 28px; }
 
-        /* PRINT SETTINGS */
+        /* PRINT MEDIA QUERY (Final Check) */
         @media print {
             body { background: white; padding: 0; margin: 0; display: block; }
             .controls, .bottom-nav { display: none !important; }
-            #report-wrapper { width: 100%; }
+            .preview-container { display: block; width: 100%; overflow: visible; }
+            #report-wrapper { margin: 0; width: 100%; }
             .page { 
                 margin: 0; box-shadow: none; border: none; 
-                page-break-after: always;
-                width: 100%; height: 100%; padding: 5mm 0;
+                page-break-after: always; width: 100%; height: 100%; padding: 0;
             }
             .page:last-child { page-break-after: auto; }
-            /* Paksa border tipis saat print */
-            td, th { border-width: 0.4px !important; border-color: #000 !important; }
+            td, th { border-width: 0.5px !important; border-color: #000 !important; }
         }
     </style>
 </head>
@@ -208,10 +224,10 @@
         <button onclick="downloadPDF()" class="btn-print"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
     </div>
 
-    <!-- WADAH UTAMA LAPORAN -->
-    <div id="report-wrapper"></div>
+    <div class="preview-container">
+        <div id="report-wrapper"></div>
+    </div>
 
-    <!-- Bottom Nav -->
     <nav class="bottom-nav">
         <a href="index.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></a>
         <a href="menu_utama.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></a>
@@ -225,8 +241,6 @@
         
         if (!window.supabaseClient) { window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
 
-        // --- DEFINISI MESIN (SPLIT 36 + 10) ---
-        // HALAMAN 1 (Wajib muat 36 mesin)
         const machinesPage1 = [
             { no: 1, id: "INJECT BLOW LIANXIN IBM30H", label: "Inject Blow Lianxin IBM30H" },
             { no: 2, id: "TM EXPRESS 270/2250", label: "TM Express 270/2250 (+ Robot Wittmann 822)" },
@@ -249,55 +263,10 @@
             { no: 33, id: "NPC 160 T (WONG)", label: "NPC 160 T (Wong) + Robot Wittmann W818 (Grimlock)" },
             { no: 34, id: "FCS 150 T (ROCKET)", label: "FCS 150 T (Rocket)" },
             { no: 35, id: "FCS 150 T (MANTIS)", label: "FCS 150 T (Mantis)" },
-            { no: 36, id: "NPC 160 T (SHANCHI)", label: "NPC 160 T (Shanchi) + Robot Wittmann W818 (Grimlock)" },
-            { no: 37, id: "NPC 260 T (VISION)", label: "NPC 260 T (Vision) + Robot Sepro Success (Rinox)" },
-            { no: 38, id: "NPC 200 T (MAGNETO)", label: "NPC 200 T (Magneto) + Robot Wittmann W818 (Grimlock)" },
-            { no: 39, id: "FCS 100 T (NICK FURRY)", label: "FCS 100 T (Nick Furry)" },
-            { no: 40, id: "FCS 250 T (CYCLOPS)", label: "FCS 250 T (Cyclops) + Robot Wittmann W818 (Grimlock)" },
-            { no: 41, id: "NPC 260 T (HAWKEYE)", label: "NPC 260 T (Hawkeye) + Robot Wittmann Primus 26 (Mirage)" },
-            { no: 42, id: "WORKSHOP", label: "Workshop (ZSJ 328)" },
-            { no: 43, id: "GRINDING", label: "Grinding" },
-            { no: 44, id: "MILLING 1", label: "Milling 1" },
-            { no: 45, id: "MILLING 2", label: "Milling 2" },
-            { no: 46, id: "BUBUT", label: "Bubut" },
-            // Agar muat 36, saya pastikan semua masuk di sini
-            // Tapi, user minta 1-16, lalu 31-46. Totalnya = 16 + 16 = 32 mesin
-            // 32 mesin (64 baris) + header aman di 1 halaman
-            // TUNGGU, daftar di atas ada 32 mesin (1-16, 31-46).
-            // Kalau "NO 36 MALAH ILANG", berarti kemarin saya split di tengah2.
-            // Oke, saya akan split di mesin ke-22 (tengah-tengah) agar seimbang.
-            // Halaman 1: 20 Mesin
-            // Halaman 2: 12 Mesin + TTD
+            { no: 36, id: "NPC 160 T (SHANCHI)", label: "NPC 160 T (Shanchi) + Robot Wittmann W818 (Grimlock)" }
         ];
 
-        // REVISI SPLIT AGAR SEIMBANG DAN TIDAK ILANG
-        // Halaman 1: Mesin 1-16 + 31-34 (Total 20 Mesin = 40 Baris) -> Sangat Aman
-        const splitIndex = 20; 
-        
-        // Data asli (32 mesin)
-        const allMachinesData = [
-            { no: 1, id: "INJECT BLOW LIANXIN IBM30H", label: "Inject Blow Lianxin IBM30H" },
-            { no: 2, id: "TM EXPRESS 270/2250", label: "TM Express 270/2250 (+ Robot Wittmann 822)" },
-            { no: 3, id: "ECO POWER 240/750", label: "ECO Power 240/750 (+ Robot Wittmann 822)" },
-            { no: 4, id: "ECO POWER 210 T", label: "ECO Power 210 T (+ Robot Wittmann 823 UHS)" },
-            { no: 5, id: "TM EXPRESS 350/3400", label: "TM Express 350/3400 (Sepro S5-25 + Robot Jet Engine)" },
-            { no: 6, id: "ARBURG 320 T", label: "Arburg 320 T (Star Lord) + Robot Sonic 142 (Starscream)" },
-            { no: 7, id: "WIBA 500 T (STEVE)", label: "WIBA 500 T (Steve Rogers) + Robot Wittmann W837 (Optimus Prime)" },
-            { no: 8, id: "WIBA 500 T (THANOS)", label: "WIBA 500 T (Thanos) + Robot Wittmann W837 (Optimus Prime)" },
-            { no: 9, id: "FCS 220 T", label: "FCS 220 T (Black Widow) + Robot Sepro S5-25 (Wheel Jack)" },
-            { no: 10, id: "ENGEL 220 T", label: "ENGEL 220 T (Deadpool) + Robot Wittmann Primus 26 (Mirage)" },
-            { no: 11, id: "ARBURG 200 T", label: "Arburg 200 T (Wolverine) + Robot Wittmann Primus 26 (Mirage)" },
-            { no: 12, id: "FCS 380 T (LOKI)", label: "FCS 380 T (Loki) + Robot Sepro S5-25 (Wheel Jack)" },
-            { no: 13, id: "ENGEL 380 T (INHUMANS)", label: "ENGEL 380 T (Inhumans) + Robot Wittmann WX142 (Ratchet)" },
-            { no: 14, id: "ENGEL 380 T (HULK)", label: "ENGEL 380 T (Hulk) + Robot Wittmann WX142 (Ratchet)" },
-            { no: 15, id: "NPC 400 T (WANDA)", label: "NPC 400 T (Wanda) + Robot Sepro Success (Rinox)" },
-            { no: 16, id: "ENGEL 280 T", label: "ENGEL 280 T (Doctor Strange) + Robot Wittmann W833 Pro (Fallen)" },
-            { no: 31, id: "FCS 100 T (ANTMAN)", label: "FCS 100 T (Antman)" },
-            { no: 32, id: "NPC 160 T (WASP)", label: "NPC 160 T (Wasp) + Robot Wittmann W818 (Grimlock)" },
-            { no: 33, id: "NPC 160 T (WONG)", label: "NPC 160 T (Wong) + Robot Wittmann W818 (Grimlock)" },
-            { no: 34, id: "FCS 150 T (ROCKET)", label: "FCS 150 T (Rocket)" },
-            { no: 35, id: "FCS 150 T (MANTIS)", label: "FCS 150 T (Mantis)" },
-            { no: 36, id: "NPC 160 T (SHANCHI)", label: "NPC 160 T (Shanchi) + Robot Wittmann W818 (Grimlock)" },
+        const machinesPage2 = [
             { no: 37, id: "NPC 260 T (VISION)", label: "NPC 260 T (Vision) + Robot Sepro Success (Rinox)" },
             { no: 38, id: "NPC 200 T (MAGNETO)", label: "NPC 200 T (Magneto) + Robot Wittmann W818 (Grimlock)" },
             { no: 39, id: "FCS 100 T (NICK FURRY)", label: "FCS 100 T (Nick Furry)" },
@@ -310,11 +279,14 @@
             { no: 46, id: "BUBUT", label: "Bubut" }
         ];
 
+        // Gabung untuk Lookup
+        const allMachinesData = [...machinesPage1, ...machinesPage2];
+
         let logoBase64 = "";
 
-        // --- IMAGE LOADER (WS Proxy) ---
         async function prepareLogo() {
             const logoUrl = "https://amarilyskg.co.id/bootstrap/img/logo.png";
+            // Proxy wsrv.nl yang stabil dan CORS-friendly
             const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(logoUrl)}&output=png`;
             try {
                 const response = await fetch(proxyUrl);
@@ -322,9 +294,7 @@
                 const reader = new FileReader();
                 reader.onloadend = function() { logoBase64 = reader.result; }
                 reader.readAsDataURL(blob);
-            } catch (e) {
-                console.warn("Logo proxy failed");
-            }
+            } catch (e) { console.warn("Logo proxy failed"); }
         }
 
         window.onload = function() {
@@ -343,16 +313,19 @@
             
             const element = document.getElementById('report-wrapper');
             
+            // CONFIG PDF FINAL (Scale 1.35 untuk garis tipis dan tajam)
             const opt = {
                 margin: 0, 
                 filename: 'Laporan_Perawatan_AKG.pdf',
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
-                    scale: 1.5, // Scale bagus untuk A4
+                    scale: 1.35, 
                     useCORS: true, 
                     allowTaint: true,
                     scrollY: 0,
-                    windowWidth: 1123 
+                    windowWidth: 1123,
+                    dpi: 96,
+                    letterRendering: true
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
                 pagebreak: { mode: ['css', 'legacy'] }
@@ -433,7 +406,6 @@
                     rowA += `<td class="${clsA || style}"><div class="cell-fill"></div></td>`;
                 }
                 
-                let picHTML = ''; 
                 rowP += `<td rowspan="2" class="col-pic" id="pic-${m.id}"></td>`;
 
                 html += rowP + "</tr>" + rowA + "</tr>";
@@ -441,7 +413,6 @@
 
             html += `</tbody></table>`;
             
-            // Signature on Page 2
             if (pageNum === 2) {
                 html += `
                 <div class="signature-section">
@@ -453,7 +424,7 @@
                 </div>`;
             }
 
-            html += `</div>`; // End Page
+            html += `</div>`; 
             return html;
         }
 
@@ -517,9 +488,9 @@
                 const container = document.getElementById('report-wrapper');
                 container.innerHTML = ''; 
 
-                // SPLIT MANUAL AGAR SEIMBANG: 20 Mesin (Hal 1) + 12 Mesin (Hal 2)
-                const page1Machines = allMachinesData.slice(0, 20); // 1-20
-                const page2Machines = allMachinesData.slice(20, 32); // 21-32 (Sisa)
+                // SPLIT MANUAL: Halaman 1 (1-22), Halaman 2 (23-32)
+                const page1Machines = allMachinesData.slice(0, 22); 
+                const page2Machines = allMachinesData.slice(22, 32); 
 
                 // Page 1
                 container.innerHTML += createTableHTML(page1Machines, daysInMonth, dataMap, holidayMap, periodText, 1);
