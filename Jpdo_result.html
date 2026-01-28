@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Bulanan - AKG Maintenance</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- LIBRARIES KHUSUS TEKNIK SCREENSHOT MANUAL -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #DC2626; 
+            --bg-dark: #050505; 
+            --bg-card: #121212; 
+            --text-white: #FFFFFF;
+            --nav-height: 70px;
+            
+            /* UKURAN KERTAS A4 LANDSCAPE */
+            --a4-w: 297mm;
+            --a4-h: 210mm;
+        }
+
+        * { box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-print-color-adjust: exact; }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text-white);
+            margin: 0;
+            padding: 20px;
+            padding-bottom: calc(var(--nav-height) + 40px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden; 
+        }
+
+        /* --- UI CONTROLS --- */
+        .controls {
+            background: var(--bg-card);
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            width: 100%;
+            max-width: 1120px;
+            color: white;
+            position: sticky; top: 10px; z-index: 500;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            flex-wrap: wrap;
+        }
+
+        .btn-print {
+            background: var(--primary); color: white; border: none; padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 14px;
+            margin-left: auto; white-space: nowrap;
+        }
+        
+        .btn-back, .btn-refresh {
+            background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); 
+            padding: 8px; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block;
+        }
+
+        input[type="month"] {
+            background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2);
+            color: white; padding: 8px; border-radius: 8px; color-scheme: dark;
+        }
+
+        /* --- PREVIEW CONTAINER (SCALER) --- */
+        .preview-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform-origin: top center;
+            transition: transform 0.3s ease;
+        }
+
+        /* --- WRAPPER LAPORAN --- */
+        #report-wrapper {
+            width: var(--a4-w);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: transparent;
+        }
+
+        /* --- HALAMAN KERTAS (YANG AKAN DI-SCREENSHOT) --- */
+        .page {
+            background: white;
+            width: var(--a4-w);
+            height: var(--a4-h); /* Tinggi pas A4 */
+            
+            /* Padding isi agar rapi */
+            padding: 10mm; 
+            
+            margin-bottom: 30px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            position: relative;
+            color: black;
+            overflow: hidden; 
+            
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .page:last-child {
+            margin-bottom: 0;
+        }
+
+        /* --- MODE PRINT (UNTUK PROSES SCREENSHOT) --- */
+        /* Saat kelas ini aktif, kita paksa tampilan jadi Desktop mode agar canvas tidak kepotong */
+        body.screenshot-mode {
+            width: 1200px !important; /* Paksa lebar desktop */
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+            overflow: visible !important;
+            display: block !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        body.screenshot-mode .controls, 
+        body.screenshot-mode .bottom-nav,
+        body.screenshot-mode #loading {
+            display: none !important;
+        }
+
+        body.screenshot-mode .preview-container {
+            transform: none !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: block !important;
+        }
+
+        body.screenshot-mode #report-wrapper {
+            margin: 0 auto !important; /* Center Wrapper */
+        }
+
+        body.screenshot-mode .page {
+            margin: 0 auto !important; /* Center Page */
+            margin-bottom: 0 !important; /* Hilangkan jarak antar page agar rapi saat loop */
+            box-shadow: none !important;
+            border: none !important;
+        }
+
+        /* HEADER TABEL */
+        .report-header-table {
+            width: 100%; border-collapse: collapse; border: 0.8px solid #000; margin-bottom: 5px;
+        }
+        .report-header-table td { border: 0.5px solid #000; padding: 3px; vertical-align: middle; }
+
+        .header-brand-container { display: flex; align-items: center; gap: 10px; }
+        .header-logo { width: 70px; height: auto; object-fit: contain; } 
+        .header-company-name { font-size: 10px; font-weight: 900; text-transform: uppercase; line-height: 1.1; }
+        .header-title { font-size: 16px; font-weight: 900; text-transform: uppercase; text-align: center; margin: 0; }
+
+        .header-meta-table { width: 100%; border-collapse: collapse; font-size: 8px; }
+        .header-meta-table td { border: none; border-bottom: 0.5px solid #000; padding: 1px 4px; }
+        .meta-label { font-weight: 700; width: 35%; border-right: 0.5px solid #000 !important; }
+        .meta-value { width: 65%; padding-left: 4px; }
+
+        .period-display { 
+            text-align: center; font-weight: 700; font-size: 10px; margin: 2px 0 5px 0; 
+            text-transform: uppercase; letter-spacing: 0.5px; 
+        }
+
+        /* TABEL DATA */
+        .schedule-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 7px;
+            table-layout: fixed; 
+            margin-bottom: 0;
+            margin-left: auto; margin-right: auto;
+        }
+        .schedule-table th, .schedule-table td { 
+            border: 0.4px solid #000; 
+            padding: 0; 
+            text-align: center; 
+            vertical-align: middle; 
+            height: 11px;
+            line-height: 11px;
+            overflow: hidden;
+        }
+        .schedule-table th { background: #eee; font-weight: 700; height: 16px; padding: 1px; }
+
+        /* Kolom */
+        .col-no { width: 15px; }
+        .col-machine { 
+            width: 170px;
+            text-align: left !important; padding-left: 3px !important; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-weight: 600; font-size: 7px;
+        }
+        .col-type { width: 25px; font-weight: 700; font-size: 6px; }
+        .col-pic { width: 40px; font-size: 6px; padding: 0 1px !important; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+        /* Warna Cell */
+        .bg-plan { background-color: #007bff !important; -webkit-print-color-adjust: exact; }
+        .bg-actual { background-color: #28a745 !important; -webkit-print-color-adjust: exact; }
+        .bg-miss { background-color: #D30000 !important; -webkit-print-color-adjust: exact; }
+        .bg-holiday { background-color: #D30000 !important; color: white; -webkit-print-color-adjust: exact; }
+        .bg-grey { background-color: #ddd !important; -webkit-print-color-adjust: exact; }
+        .cell-fill { width: 100%; height: 100%; display: block; min-height: 11px; }
+
+        /* TANDA TANGAN */
+        .signature-section { 
+            margin-top: 15px;
+            display: flex; justify-content: space-between; gap: 5px; 
+            width: 100%;
+        }
+        .sig-box { flex: 1; border: none; text-align: center; }
+        .sig-header { font-size: 8px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
+        .sig-body { 
+            height: 40px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-end; 
+        }
+        .sig-img { max-height: 35px; max-width: 100%; margin-bottom: 2px; }
+        .sig-name { 
+            font-size: 8px; font-weight: 700; text-decoration: underline; text-transform: uppercase; 
+            margin-bottom: 2px;
+        }
+        .sig-role { font-size: 7px; font-weight: 600; text-transform: uppercase; }
+
+        /* Loading Overlay */
+        #loading {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 100000;
+            display: none;
+            justify-content: center; align-items: center;
+            font-size: 20px; font-weight: 600; color: var(--primary);
+            flex-direction: column; gap: 10px;
+        }
+
+        /* BOTTOM NAV */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 100%; max-width: 600px;
+            background: rgba(18, 18, 18, 0.95); backdrop-filter: blur(10px);
+            border-top: 1px solid var(--primary); display: flex; justify-content: space-around;
+            padding: 0; height: var(--nav-height); z-index: 1000;
+            border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(220, 38, 38, 0.15);
+        }
+        .nav-item { color: #666; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; text-decoration: none; }
+        .nav-item.active { color: var(--primary); }
+        .nav-item svg { width: 28px; height: 28px; }
+    </style>
+</head>
+<body>
+
+    <div id="loading">
+        <i class="fa-solid fa-spinner fa-spin fa-2x"></i> 
+        <span id="loading-text">Menyiapkan Sistem...</span>
+    </div>
+
+    <!-- UI Controls -->
+    <div class="controls">
+        <a href="download_data.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
+        <div style="flex: 1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <label style="font-weight: 500; font-size: 14px;">Periode:</label>
+            <input type="month" id="month-picker" onchange="fetchReport()">
+            <button onclick="fetchReport()" class="btn-refresh"><i class="fa-solid fa-rotate-right"></i></button>
+        </div>
+        <button onclick="downloadPDF()" class="btn-print"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+    </div>
+
+    <!-- Container Preview -->
+    <div class="preview-container" id="preview-container">
+        <div id="report-wrapper"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></a>
+        <a href="menu_utama.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></a>
+        <a href="download_data.html" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></a>
+        <a href="informasi_akun.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></a>
+    </nav>
+
+    <script>
+        var SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E'; 
+        
+        if (!window.supabaseClient) { window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
+
+        // --- DATA MESIN ---
+        const machinesPage1 = [
+            { no: 1, id: "INJECT BLOW LIANXIN IBM30H", label: "Inject Blow Lianxin IBM30H" },
+            { no: 2, id: "TM EXPRESS 270/2250", label: "TM Express 270/2250 (+ Robot Wittmann 822)" },
+            { no: 3, id: "ECO POWER 240/750", label: "ECO Power 240/750 (+ Robot Wittmann 822)" },
+            { no: 4, id: "ECO POWER 210 T", label: "ECO Power 210 T (+ Robot Wittmann 823 UHS)" },
+            { no: 5, id: "TM EXPRESS 350/3400", label: "TM Express 350/3400 (Sepro S5-25 + Robot Jet Engine)" },
+            { no: 6, id: "ARBURG 320 T", label: "Arburg 320 T (Star Lord) + Robot Sonic 142 (Starscream)" },
+            { no: 7, id: "WIBA 500 T (STEVE)", label: "WIBA 500 T (Steve Rogers) + Robot Wittmann W837 (Optimus Prime)" },
+            { no: 8, id: "WIBA 500 T (THANOS)", label: "WIBA 500 T (Thanos) + Robot Wittmann W837 (Optimus Prime)" },
+            { no: 9, id: "FCS 220 T", label: "FCS 220 T (Black Widow) + Robot Sepro S5-25 (Wheel Jack)" },
+            { no: 10, id: "ENGEL 220 T", label: "ENGEL 220 T (Deadpool) + Robot Wittmann Primus 26 (Mirage)" },
+            { no: 11, id: "ARBURG 200 T", label: "Arburg 200 T (Wolverine) + Robot Wittmann Primus 26 (Mirage)" },
+            { no: 12, id: "FCS 380 T (LOKI)", label: "FCS 380 T (Loki) + Robot Sepro S5-25 (Wheel Jack)" },
+            { no: 13, id: "ENGEL 380 T (INHUMANS)", label: "ENGEL 380 T (Inhumans) + Robot Wittmann WX142 (Ratchet)" },
+            { no: 14, id: "ENGEL 380 T (HULK)", label: "ENGEL 380 T (Hulk) + Robot Wittmann WX142 (Ratchet)" },
+            { no: 15, id: "NPC 400 T (WANDA)", label: "NPC 400 T (Wanda) + Robot Sepro Success (Rinox)" },
+            { no: 16, id: "ENGEL 280 T", label: "ENGEL 280 T (Doctor Strange) + Robot Wittmann W833 Pro (Fallen)" },
+            { no: 31, id: "FCS 100 T (ANTMAN)", label: "FCS 100 T (Antman)" },
+            { no: 32, id: "NPC 160 T (WASP)", label: "NPC 160 T (Wasp) + Robot Wittmann W818 (Grimlock)" },
+            { no: 33, id: "NPC 160 T (WONG)", label: "NPC 160 T (Wong) + Robot Wittmann W818 (Grimlock)" },
+            { no: 34, id: "FCS 150 T (ROCKET)", label: "FCS 150 T (Rocket)" },
+            { no: 35, id: "FCS 150 T (MANTIS)", label: "FCS 150 T (Mantis)" },
+            { no: 36, id: "NPC 160 T (SHANCHI)", label: "NPC 160 T (Shanchi) + Robot Wittmann W818 (Grimlock)" }
+        ];
+
+        const machinesPage2 = [
+            { no: 37, id: "NPC 260 T (VISION)", label: "NPC 260 T (Vision) + Robot Sepro Success (Rinox)" },
+            { no: 38, id: "NPC 200 T (MAGNETO)", label: "NPC 200 T (Magneto) + Robot Wittmann W818 (Grimlock)" },
+            { no: 39, id: "FCS 100 T (NICK FURRY)", label: "FCS 100 T (Nick Furry)" },
+            { no: 40, id: "FCS 250 T (CYCLOPS)", label: "FCS 250 T (Cyclops) + Robot Wittmann W818 (Grimlock)" },
+            { no: 41, id: "NPC 260 T (HAWKEYE)", label: "NPC 260 T (Hawkeye) + Robot Wittmann Primus 26 (Mirage)" },
+            { no: 42, id: "WORKSHOP", label: "Workshop (ZSJ 328)" },
+            { no: 43, id: "GRINDING", label: "Grinding" },
+            { no: 44, id: "MILLING 1", label: "Milling 1" },
+            { no: 45, id: "MILLING 2", label: "Milling 2" },
+            { no: 46, id: "BUBUT", label: "Bubut" }
+        ];
+
+        const allMachinesData = [...machinesPage1, ...machinesPage2];
+        let logoBase64 = "";
+
+        async function prepareLogo() {
+            const logoUrl = "https://amarilyskg.co.id/bootstrap/img/logo.png";
+            const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(logoUrl)}&output=png`;
+            try {
+                const response = await fetch(proxyUrl);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                reader.onloadend = function() { logoBase64 = reader.result; }
+                reader.readAsDataURL(blob);
+            } catch (e) { console.warn("Logo proxy failed"); }
+        }
+
+        // --- AUTO SCALER (VIEW MODE) ---
+        function autoScalePreview() {
+            if (document.body.classList.contains('screenshot-mode')) return;
+
+            const container = document.getElementById('preview-container');
+            const targetWidth = 1123; 
+            const screenWidth = window.innerWidth - 30;
+
+            let scale = 1;
+            if (screenWidth < targetWidth) {
+                scale = screenWidth / targetWidth;
+            }
+            if (scale < 0.3) scale = 0.3;
+
+            container.style.transform = `scale(${scale})`;
+            
+            const wrapper = document.getElementById('report-wrapper');
+            if(wrapper) {
+                const height = wrapper.offsetHeight * scale;
+                container.style.height = `${height}px`;
+            }
+        }
+
+        window.addEventListener('resize', autoScalePreview);
+
+        window.onload = function() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const picker = document.getElementById('month-picker');
+            if (picker) picker.value = `${year}-${month}`;
+            prepareLogo();
+            if (typeof fetchReport === 'function') fetchReport();
+        }
+
+        // --- TEKNIK SCREENSHOT MANUAL (RAJA TERAKHIR) ---
+        async function downloadPDF() {
+            const loading = document.getElementById('loading');
+            
+            // Cek data
+            const wrapper = document.getElementById('report-wrapper');
+            if(!wrapper.innerHTML) { alert("Data belum dimuat!"); return; }
+
+            loading.style.display = 'flex';
+            document.getElementById('loading-text').innerText = "Mengambil Foto Halaman...";
+
+            // 1. MASUK MODE SCREENSHOT
+            // Kita paksa body jadi lebar desktop agar html2canvas tidak bingung
+            document.body.classList.add('screenshot-mode');
+            window.scrollTo(0, 0);
+
+            // Tunggu render
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            try {
+                // Inisialisasi jsPDF Landscape A4
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('l', 'mm', 'a4');
+                const pdfWidth = 297;  // Lebar A4 Landscape (mm)
+                const pdfHeight = 210; // Tinggi A4 Landscape (mm)
+
+                // Ambil semua halaman (.page)
+                const pages = document.querySelectorAll('.page');
+
+                for (let i = 0; i < pages.length; i++) {
+                    const page = pages[i];
+                    
+                    // Gunakan html2canvas untuk memotret DOM
+                    // scale 2 agar tajam, windowWidth 1600 agar layout desktop
+                    const canvas = await html2canvas(page, {
+                        scale: 2,
+                        useCORS: true,
+                        scrollY: 0,
+                        windowWidth: 1600 
+                    });
+
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+                    // Tambahkan halaman baru jika bukan halaman pertama
+                    if (i > 0) pdf.addPage();
+
+                    // TEMPEL GAMBAR DI POSISI 0,0 dengan UKURAN FULL 297x210
+                    // Ini kuncinya: Memaksa gambar memenuhi kertas tanpa margin
+                    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                    
+                    document.getElementById('loading-text').innerText = `Memproses Halaman ${i+1}...`;
+                }
+
+                pdf.save('Laporan_Perawatan_AKG.pdf');
+
+            } catch (err) {
+                alert("Gagal PDF: " + err.message);
+                console.error(err);
+            } finally {
+                // KEMBALIKAN KE NORMAL
+                document.body.classList.remove('screenshot-mode');
+                autoScalePreview();
+                loading.style.display = 'none';
+            }
+        }
+
+        function createTableHTML(machineList, daysInMonth, dataMap, holidayMap, headerText, pageNum) {
+            const logoSrc = logoBase64 || "https://amarilyskg.co.id/bootstrap/img/logo.png";
+            
+            let html = `
+            <div class="page">
+                <table class="report-header-table">
+                    <tr>
+                        <td class="header-left">
+                            <div class="header-brand-container">
+                                <img src="${logoSrc}" class="header-logo" crossorigin="anonymous">
+                                <span class="header-company-name">PT. AMARILYS<br>KARISMA<br>GEMILANG</span>
+                            </div>
+                        </td>
+                        <td class="header-center">
+                            <h1 class="header-title">JADWAL PERAWATAN DAN OVERHAUL</h1>
+                        </td>
+                        <td class="header-right">
+                            <table class="header-meta-table">
+                                <tr><td class="meta-label">No Dokumen</td><td class="meta-value">: AF.SP 05.05.Rev-00</td></tr>
+                                <tr><td class="meta-label">Tanggal Terbit</td><td class="meta-value">: 02 Agustus 2024</td></tr>
+                                <tr><td class="meta-label">Halaman</td><td class="meta-value">: ${pageNum}/2</td></tr>
+                                <tr><td class="meta-label">Tanggal Revisi</td><td class="meta-value">: -</td></tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+
+                <div class="period-display">${headerText}</div>
+
+                <table class="schedule-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="col-no">NO</th>
+                            <th rowspan="2" class="col-machine">NAMA MESIN / TOOL / EQUIPMENT</th>
+                            <th rowspan="2" class="col-type">STS</th>
+                            <th colspan="31">TANGGAL</th>
+                            <th rowspan="2" class="col-pic">PIC</th>
+                        </tr>
+                        <tr>`;
+            
+            for (let i = 1; i <= 31; i++) {
+                if (i <= daysInMonth) html += `<th>${i}</th>`;
+                else html += `<th class="bg-grey"></th>`;
+            }
+            html += `</tr></thead><tbody>`;
+
+            machineList.forEach(m => {
+                let rowP = `<tr><td rowspan="2">${m.no}</td><td rowspan="2" class="col-machine">${m.label}</td><td class="col-type">PLN</td>`;
+                let rowA = `<tr><td class="col-type">ACT</td>`;
+                
+                for(let d=1; d<=31; d++) {
+                    let clsP='', clsA='', style='';
+                    if(d > daysInMonth) style='bg-grey';
+                    else if(holidayMap[d]) style='bg-holiday';
+
+                    if(dataMap[m.id] && dataMap[m.id][d]) {
+                        const e = dataMap[m.id][d];
+                        if(e.plan === 'YA') clsP = 'bg-plan';
+                        if(e.actual === 'YA') clsA = 'bg-actual';
+                        else if(e.plan === 'YA' && e.actual === 'TIDAK') clsA = 'bg-miss';
+                    }
+                    rowP += `<td class="${clsP || style}"><div class="cell-fill"></div></td>`;
+                    rowA += `<td class="${clsA || style}"><div class="cell-fill"></div></td>`;
+                }
+                
+                rowP += `<td rowspan="2" class="col-pic" id="pic-${m.id}-${pageNum}"></td>`;
+
+                html += rowP + "</tr>" + rowA + "</tr>";
+            });
+
+            html += `</tbody></table>`;
+            
+            if (pageNum === 2) {
+                html += `
+                <div class="signature-section">
+                    <div class="sig-box"><div class="sig-header">DIBUAT OLEH :</div><div class="sig-body" id="sig-spv-p2"></div><div class="sig-role">SUPERVISOR</div></div>
+                    <div class="sig-box"><div class="sig-header">DIPERIKSA :</div><div class="sig-body" id="sig-supt-p2"></div><div class="sig-role">SUPERINTENDENT</div></div>
+                    <div class="sig-box"><div class="sig-header">MENGETAHUI :</div><div class="sig-body" id="sig-prod-p2"></div><div class="sig-role">PRODUKSI</div></div>
+                    <div class="sig-box"><div class="sig-header">MENGETAHUI :</div><div class="sig-body" id="sig-ppc-p2"></div><div class="sig-role">PPC</div></div>
+                    <div class="sig-box"><div class="sig-header">MENYETUJUI :</div><div class="sig-body" id="sig-mgr-p2"></div><div class="sig-role">MANAGER ENGINEERING</div></div>
+                </div>`;
+            }
+
+            html += `</div>`; 
+            return html;
+        }
+
+        window.fetchReport = async function() {
+            const picker = document.getElementById('month-picker');
+            if (!picker.value) return;
+
+            document.getElementById('loading').style.display = 'flex';
+            
+            const [year, month] = picker.value.split('-');
+            const daysInMonth = new Date(year, month, 0).getDate(); 
+            const monthNames = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
+            const periodText = `TANGGAL PREVENTIVE / OVERHAUL : ${monthNames[parseInt(month)-1]} ${year}`;
+
+            const startDate = `${picker.value}-01`;
+            let nextM = parseInt(month) + 1, nextY = parseInt(year);
+            if (nextM > 12) { nextM = 1; nextY++; }
+            const endDate = `${nextY}-${String(nextM).padStart(2,'0')}-01`;
+
+            try {
+                const { data: logs, error: logError } = await window.supabaseClient
+                    .from('jpdo_log')
+                    .select('tanggal, nama_supervisor, tanda_tangan, nama_mesin, status_hari, nama_pic, jpdo_result(plan_status, actual_status)')
+                    .gte('tanggal', startDate).lt('tanggal', endDate)
+                    .order('created_at', { ascending: false });
+
+                if (logError) throw logError;
+
+                const { data: appSupt } = await window.supabaseClient.from('jpdo_approval').select('*').eq('bulan', picker.value).maybeSingle();
+                const { data: appProd } = await window.supabaseClient.from('jpdo_approval_produksi').select('*').eq('bulan', picker.value).maybeSingle();
+                const { data: appPPC } = await window.supabaseClient.from('jpdo_approval_ppc').select('*').eq('bulan', picker.value).maybeSingle();
+                const { data: appMgr } = await window.supabaseClient.from('jpdo_approval_manager').select('*').eq('bulan', picker.value).maybeSingle();
+
+                const dataMap = {}, holidayMap = {}, picMap = {};
+                let spvData = null;
+
+                if (logs && logs.length > 0) {
+                    const lastLog = logs.find(l => l.tanda_tangan);
+                    if(lastLog) spvData = { nama: lastLog.nama_supervisor, ttd: lastLog.tanda_tangan, date: lastLog.tanggal };
+
+                    logs.forEach(log => {
+                        const day = parseInt(log.tanggal.split('-')[2]);
+                        if(log.status_hari === 'LIBUR') holidayMap[day] = true;
+                        
+                        if(log.status_hari === 'KERJA' && log.nama_mesin) {
+                            if(!dataMap[log.nama_mesin]) dataMap[log.nama_mesin] = {};
+                            if(log.nama_pic) {
+                                if(!picMap[log.nama_mesin]) picMap[log.nama_mesin] = new Set();
+                                picMap[log.nama_mesin].add(log.nama_pic);
+                            }
+                            if(log.jpdo_result && log.jpdo_result.length > 0) {
+                                dataMap[log.nama_mesin][day] = {
+                                    plan: log.jpdo_result[0].plan_status,
+                                    actual: log.jpdo_result[0].actual_status
+                                };
+                            }
+                        }
+                    });
+                }
+
+                const container = document.getElementById('report-wrapper');
+                container.innerHTML = ''; 
+
+                container.innerHTML += createTableHTML(machinesPage1, daysInMonth, dataMap, holidayMap, periodText, 1);
+                container.innerHTML += createTableHTML(machinesPage2, daysInMonth, dataMap, holidayMap, periodText, 2);
+
+                allMachinesData.forEach(m => {
+                    let cell = document.getElementById(`pic-${m.id}-1`);
+                    if(!cell) cell = document.getElementById(`pic-${m.id}-2`);
+                    if(cell && picMap[m.id]) {
+                        cell.innerText = Array.from(picMap[m.id]).join(', ');
+                    }
+                });
+
+                if(document.getElementById('sig-supt-p2')) {
+                    const elSpv = document.getElementById('sig-spv-p2');
+                    if(spvData) elSpv.innerHTML = `<img src="${spvData.ttd}" class="sig-img"><div class="sig-name">${spvData.nama}</div>`;
+                    else elSpv.innerHTML = `<span style="color:#ccc; font-size:9px;">(Menunggu)</span>`;
+
+                    renderSig('sig-supt-p2', appSupt, 'nama_superintendent', 'tanda_tangan_superintendent');
+                    renderSig('sig-prod-p2', appProd, 'nama_produksi', 'tanda_tangan_produksi');
+                    renderSig('sig-ppc-p2', appPPC, 'nama_ppc', 'tanda_tangan_ppc');
+                    renderSig('sig-mgr-p2', appMgr, 'nama_manager', 'tanda_tangan_manager');
+                }
+
+                setTimeout(autoScalePreview, 100);
+
+            } catch (err) {
+                alert("Gagal: " + err.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function renderSig(elementId, data, nameField, sigField) {
+            const el = document.getElementById(elementId);
+            if (data) {
+                el.innerHTML = `<img src="${data[sigField]}" class="sig-img"><div class="sig-name">${data[nameField]}</div>`;
+            } else {
+                el.innerHTML = `<span style="color:#ccc; font-size:9px;">(Belum ada)</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
