@@ -10,218 +10,222 @@
     
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- HTML2PDF JS (Stable Version) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
         :root {
-            --primary: #DC2626;
+            --primary: #DC2626; 
+            --bg-dark: #050505; 
+            --bg-card: #121212; 
+            --text-white: #FFFFFF;
             --border-color: #000;
+            --nav-height: 70px;
         }
 
         * { box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-print-color-adjust: exact; }
 
         body {
-            background: #f5f5f5;
+            background: var(--bg-dark);
             padding: 20px;
-            color: #000;
+            padding-bottom: calc(var(--nav-height) + 40px);
+            color: var(--text-white);
+            margin: 0;
         }
 
-        /* UI Controls (Hidden on Print) */
+        /* --- UI CONTROLS --- */
         .controls {
-            background: #fff;
+            background: var(--bg-card);
             padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 16px;
+            border: 1px solid rgba(220, 38, 38, 0.3);
             margin-bottom: 20px;
             display: flex;
             gap: 15px;
             align-items: center;
-            max-width: 297mm;
+            max-width: 1123px;
             margin-left: auto;
             margin-right: auto;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
         .btn-print {
-            background: var(--primary); color: white; border: none; padding: 10px 20px;
-            border-radius: 6px; cursor: pointer; font-weight: 600;
+            background: var(--primary); color: white; border: none; padding: 12px 24px;
+            border-radius: 12px; cursor: pointer; font-weight: 700;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+            display: flex; align-items: center; gap: 8px;
+            transition: transform 0.2s;
         }
+        .btn-print:active { transform: scale(0.98); }
         
         .btn-back {
-            background: #333; color: white; border: none; padding: 10px 20px;
-            border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block;
+            background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); 
+            padding: 12px 15px; border-radius: 12px; cursor: pointer; text-decoration: none; display: inline-block;
         }
 
-        /* A4 Landscape Paper Layout */
-        .sheet {
-            background: white;
-            width: 297mm;
-            min-height: 210mm;
-            padding: 10mm;
-            margin: 0 auto;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-            position: relative;
+        .btn-refresh {
+            padding: 10px 14px; cursor:pointer; background: rgba(255,255,255,0.1); 
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; color: white;
         }
 
-        /* === ISO HEADER STYLE === */
-        .report-header-table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 2px solid #000;
+        input[type="month"] {
+            background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2);
+            color: white; padding: 10px; border-radius: 12px; color-scheme: dark;
             font-family: 'Inter', sans-serif;
         }
 
-        .report-header-table td {
-            border: 1px solid #000;
-            padding: 5px;
-            vertical-align: middle;
+        /* --- SHEET LAPORAN (ISO STANDARD) --- */
+        .sheet {
+            background: white;
+            width: 100%;
+            max-width: 1123px; /* Kunci lebar pixel A4 Landscape @96DPI */
+            min-height: 210mm;
+            padding: 10mm;
+            margin: 0 auto;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            position: relative;
+            color: black;
+            overflow: visible;
         }
 
-        .header-left { 
-            width: 25%; 
-            padding: 10px !important; 
+        /* HEADER */
+        .report-header-table {
+            width: 100%; border-collapse: collapse; border: 1px solid #000; font-family: 'Inter', sans-serif; margin-bottom: 5px;
         }
-        
-        /* Flex container untuk Logo dan Nama PT agar samping-sampingan */
-        .header-brand-container {
-            display: flex;
-            align-items: center;
-            gap: 15px; /* Jarak antara logo dan teks */
-            justify-content: center;
-        }
+        .report-header-table td { border: 0.5px solid #000; padding: 4px; vertical-align: middle; }
 
-        .header-logo { 
-            width: 70px; /* Logo agak gede */
-            height: auto; 
-            display: block; 
-        }
+        .header-left { width: 28%; padding: 5px !important; }
+        .header-brand-container { display: flex; align-items: center; gap: 10px; justify-content: flex-start; }
+        .header-logo { width: 70px; height: auto; display: block; object-fit: contain; } 
+        .header-company-name { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; display: block; text-align: left; line-height: 1.1; }
 
-        .header-company-name { 
-            font-size: 12px; 
-            font-weight: 800; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px; 
-            display: block; 
-            text-align: left;
-            line-height: 1.3;
-        }
-
-        .header-center { width: 45%; text-align: center; }
-        .header-title { font-size: 18px; font-weight: 900; text-transform: uppercase; margin: 0; line-height: 1.2; }
+        .header-center { width: 42%; text-align: center; }
+        .header-title { font-size: 16px; font-weight: 900; text-transform: uppercase; margin: 0; line-height: 1.2; text-align: center; }
 
         .header-right { width: 30%; padding: 0 !important; }
-        .header-meta-table { width: 100%; border-collapse: collapse; font-size: 9px; border: none; }
-        .header-meta-table td { border: none; border-bottom: 1px solid #000; padding: 6px 8px; text-align: left; }
+        .header-meta-table { width: 100%; border-collapse: collapse; font-size: 8px; border: none; }
+        .header-meta-table td { border: none; border-bottom: 0.5px solid #000; padding: 2px 4px; text-align: left; }
         .header-meta-table tr:last-child td { border-bottom: none; }
-        .meta-label { font-weight: 700; width: 35%; border-right: 1px solid #000 !important; background-color: #fff; }
-        .meta-value { width: 65%; padding-left: 8px; }
+        .meta-label { font-weight: 700; width: 40%; border-right: 0.5px solid #000 !important; background-color: #fff; }
+        .meta-value { width: 60%; padding-left: 4px; }
 
-        /* Period Display (Updated Style) */
-        .period-display {
-            text-align: center;
-            font-weight: 400; /* Jangan ditebelin */
-            font-size: 12px; /* Agak dikecilin */
-            margin: 10px 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            /* Border dihapus agar lebih bersih seperti PDF header, atau biarkan tipis */
-            padding: 5px;
+        .period-display { text-align: center; font-weight: 400; font-size: 10px; margin: 5px 0; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* TABEL UTAMA - ISO THIN BORDERS */
+        .schedule-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 7px; 
+            table-layout: fixed; 
         }
-
-        /* Main Schedule Table */
-        .schedule-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 9px;
+        .schedule-table th, .schedule-table td { 
+            border: 0.5px solid #000; /* Garis hairline */
+            padding: 0; 
+            text-align: center; 
+            vertical-align: middle; 
+            height: 14px; 
+            overflow: hidden;
         }
-
-        .schedule-table th, .schedule-table td {
-            border: 1px solid var(--border-color);
-            padding: 0;
-            text-align: center;
-            vertical-align: middle;
-            height: 18px;
-        }
-
-        .schedule-table th { background: #eee; font-weight: 700; height: 30px; padding: 2px; }
+        .schedule-table th { background: #eee; font-weight: 700; height: 20px; padding: 1px; }
         
-        .col-no { width: 25px; padding: 2px !important; }
-        .col-machine { text-align: left !important; padding-left: 5px !important; width: 250px; font-size: 8px; white-space: normal; }
-        .col-type { font-weight: 600; font-size: 7px; width: 35px; padding: 2px !important; }
-        .col-pic { width: 40px; font-weight: 700; font-size: 8px; } /* Kolom PIC Baru */
-
-        /* Full Box Markers */
-        .cell-fill {
-            width: 100%;
-            height: 100%;
-            display: block;
-            min-height: 18px;
+        /* Definisi Lebar Kolom */
+        .col-no { width: 3%; }
+        .col-machine { 
+            width: 20%; 
+            text-align: left !important; 
+            padding-left: 3px !important; 
+            white-space: normal; 
+            line-height: 1.1; 
+        }
+        .col-type { width: 4%; font-weight: 700; font-size: 6px; }
+        .col-pic { 
+            width: 8%; 
+            font-weight: 400; 
+            font-size: 6px; 
+            white-space: normal; 
+            word-break: break-word; 
+            line-height: 1; 
+            padding: 1px !important;
+            overflow: visible;
         }
 
-        .bg-plan { background-color: #007bff; } /* Biru Solid */
-        .bg-actual { background-color: #28a745; } /* Hijau Solid */
-        .bg-miss { background-color: #ff0000; } /* Merah Terang (Miss) */
-        .bg-holiday { background-color: #D30000; opacity: 1; color: white; } /* MERAH TERANG #D30000 untuk Libur */
-        .bg-grey { background-color: #ddd; } /* Tanggal tidak ada */
+        /* CELL FILLERS */
+        .cell-fill { width: 100%; height: 100%; display: block; min-height: 14px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .bg-plan { background-color: #007bff !important; }
+        .bg-actual { background-color: #28a745 !important; }
+        .bg-miss { background-color: #D30000 !important; }
+        .bg-holiday { background-color: #D30000 !important; color: white; }
+        .bg-grey { background-color: #ddd !important; }
 
-        /* Signature Section - REVISED */
-        .signature-section {
-            margin-top: 20px;
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            page-break-inside: avoid;
-        }
-
-        .sig-box { flex: 1; border: none; text-align: center; } /* Border dihapus agar lebih bersih/seperti surat */
-        
-        .sig-header { 
-            font-size: 10px; 
-            font-weight: 700; 
-            text-transform: uppercase;
-            margin-bottom: 5px;
-        }
-        
-        .sig-body { 
-            height: 70px; 
+        /* TANDA TANGAN */
+        .signature-section { 
+            margin-top: 10px; 
             display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: flex-end; /* Align signature to bottom */
+            justify-content: space-between; 
+            gap: 5px; 
+            page-break-inside: avoid; 
+        }
+        .sig-box { flex: 1; border: none; text-align: center; }
+        .sig-header { font-size: 8px; font-weight: 700; text-transform: uppercase; margin-bottom: 2px; }
+        .sig-body { height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; position: relative; }
+        .sig-img { max-height: 35px; max-width: 90%; margin-bottom: 2px; }
+        .sig-name { font-size: 8px; font-weight: 700; text-decoration: underline; text-transform: uppercase; }
+        .sig-role { font-size: 7px; font-weight: 600; text-transform: uppercase; margin-top: 1px; }
+
+        /* --- BOTTOM NAVIGATION --- */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 100%; max-width: 600px;
+            background: rgba(18, 18, 18, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--primary);
+            display: flex; justify-content: space-around; align-items: center;
+            padding: 0; height: var(--nav-height); z-index: 1000;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -5px 20px rgba(220, 38, 38, 0.15);
+        }
+        
+        .nav-item { 
+            color: #666; display: flex; align-items: center; justify-content: center;
+            text-decoration: none; width: 100%; height: 100%; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
         }
-        
-        .sig-img { 
-            max-height: 50px; 
-            max-width: 90%; 
-            margin-bottom: 5px;
+        .nav-item.active { color: var(--primary); }
+        .nav-item.active::after {
+            content: ''; position: absolute; bottom: 8px; 
+            width: 6px; height: 6px; background: var(--primary);
+            border-radius: 50%; box-shadow: 0 0 10px var(--primary);
         }
-        
-        .sig-name { 
-            font-size: 10px; 
-            font-weight: 700; 
-            text-decoration: underline; 
-            text-transform: uppercase;
-        }
-        
-        .sig-role { 
-            font-size: 9px; 
-            font-weight: 400; 
-            text-transform: uppercase;
-            margin-top: 2px;
-        }
+        .nav-item svg { width: 28px; height: 28px; }
 
         #loading {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.9); z-index: 999;
-            display: none; justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.9); z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
             font-size: 20px; font-weight: 600; color: var(--primary);
             flex-direction: column; gap: 10px;
         }
 
+        /* PRINT CONFIG */
         @media print {
-            body { background: white; padding: 0; }
-            .controls { display: none; }
-            .sheet { box-shadow: none; margin: 0; width: 100%; padding: 0; }
-            @page { size: A4 landscape; margin: 5mm; }
+            body { background: white; padding: 0; margin: 0; }
+            .controls, .bottom-nav { display: none !important; }
+            .sheet { width: 100%; margin: 0; padding: 0; border: none; box-shadow: none; max-width: none; }
+            
+            /* FORCE THIN BORDERS IN PRINT */
+            .schedule-table th, 
+            .schedule-table td {
+                border-width: 0.4px !important;
+                border-style: solid !important;
+                border-color: #000 !important;
+            }
+            .report-header-table, .report-header-table td,
+            .header-meta-table td, .meta-label {
+                border-width: 0.5px !important;
+            }
+            tr { page-break-inside: avoid; }
         }
     </style>
 </head>
@@ -229,26 +233,28 @@
 
     <div id="loading">
         <i class="fa-solid fa-spinner fa-spin fa-2x"></i> 
-        <span>Mengambil Data...</span>
+        <span id="loading-text">Menyiapkan Sistem...</span>
     </div>
 
     <div class="controls">
-        <a href="menu_utama.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Kembali</a>
-        <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
-            <label style="font-weight: 600;">Pilih Periode:</label>
-            <input type="month" id="month-picker" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;" onchange="fetchReport()">
-            <button onclick="fetchReport()" style="padding: 8px; cursor:pointer;">Refresh Data</button>
+        <a href="menu_utama.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
+        <div style="flex: 1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <label style="font-weight: 500; font-size: 14px;">Periode:</label>
+            <input type="month" id="month-picker" onchange="fetchReport()">
+            <button onclick="fetchReport()" class="btn-refresh"><i class="fa-solid fa-rotate-right"></i></button>
         </div>
-        <button onclick="window.print()" class="btn-print"><i class="fa-solid fa-print"></i> Cetak PDF</button>
+        <button onclick="downloadPDF()" class="btn-print"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
     </div>
 
-    <div class="sheet">
-        <!-- HEADER -->
+    <!-- Area Laporan -->
+    <div class="sheet" id="report-content">
+        <!-- Header Table -->
         <table class="report-header-table">
             <tr>
                 <td class="header-left">
                     <div class="header-brand-container">
-                        <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" alt="AKG Logo" class="header-logo">
+                        <!-- Logo (ID untuk JS) -->
+                        <img id="logo-img" src="" alt="AKG Logo" class="header-logo">
                         <span class="header-company-name">PT. AMARILYS<br>KARISMA<br>GEMILANG</span>
                     </div>
                 </td>
@@ -266,38 +272,32 @@
             </tr>
         </table>
 
-        <!-- PERIODE DI TENGAH (Tampilan disesuaikan) -->
         <div id="period-text" class="period-display">
             TANGGAL PREVENTIVE / OVERHAUL : -
         </div>
 
-        <!-- TABLE -->
+        <!-- Tabel Data -->
         <table class="schedule-table">
             <thead>
                 <tr>
                     <th rowspan="2" class="col-no">NO</th>
-                    <th rowspan="2">NAMA MESIN / TOOL / EQUIPMENT</th>
-                    <th rowspan="2">STATUS</th>
+                    <th rowspan="2" class="col-machine">NAMA MESIN / TOOL / EQUIPMENT</th>
+                    <th rowspan="2" class="col-type">STATUS</th>
                     <th colspan="31">TANGGAL</th>
                     <th rowspan="2" class="col-pic">PIC</th>
                 </tr>
-                <tr id="date-header-row">
-                    <!-- Dates injected here -->
-                </tr>
+                <tr id="date-header-row"></tr>
             </thead>
-            <tbody id="schedule-body">
-                <!-- Data injected here -->
-            </tbody>
+            <tbody id="schedule-body"></tbody>
         </table>
 
-        <!-- SIGNATURES (REVISED LAYOUT) -->
+        <!-- Tanda Tangan -->
         <div class="signature-section">
             <div class="sig-box">
                 <div class="sig-header">DIBUAT OLEH :</div>
                 <div class="sig-body" id="sig-spv">
-                    <div style="font-size: 9px; color: #888; font-style: italic;">(Menunggu Input)</div>
+                    <div style="font-size: 8px; color: #888; font-style: italic;">(Menunggu)</div>
                 </div>
-                <!-- Jabatan hardcoded untuk kolom ini karena SPV dinamis -->
                 <div class="sig-role">SUPERVISOR</div> 
             </div>
             
@@ -322,20 +322,36 @@
             <div class="sig-box">
                 <div class="sig-header">MENYETUJUI :</div>
                 <div class="sig-body" id="sig-mgr"></div>
-                <div class="sig-role">MANAGER ENG</div>
+                <div class="sig-role">MANAGER ENGINEERING</div>
             </div>
         </div>
     </div>
 
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        </a>
+        <a href="menu_utama.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </a>
+        <a href="download_data.html" class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </a>
+    </nav>
+
     <script>
+        // === CONFIG ===
         var SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
-        var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E'; 
-        
+        var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E'; 
+         
         if (!window.supabaseClient) {
             window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
-        // Updated Machine List
         const machines = [
             { no: 1, id: "INJECT BLOW LIANXIN IBM30H", label: "Inject Blow Lianxin IBM30H" },
             { no: 2, id: "TM EXPRESS 270/2250", label: "TM Express 270/2250 (+ Robot Wittmann 822)" },
@@ -371,15 +387,69 @@
             { no: 46, id: "BUBUT", label: "Bubut" }
         ];
 
+        // --- IMAGE LOADER (Proxy wsrv.nl) ---
+        async function prepareLogo() {
+            const logoUrl = "https://amarilyskg.co.id/bootstrap/img/logo.png";
+            // Proxy yang lebih reliable untuk html2pdf
+            const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(logoUrl)}&output=png`;
+             
+            const img = document.getElementById('logo-img');
+            img.crossOrigin = "Anonymous"; // Penting
+            img.src = proxyUrl;
+            
+            img.onerror = function() {
+                console.warn("Proxy image failed, using original.");
+                img.src = logoUrl; 
+            }
+        }
+
         window.onload = function() {
             const now = new Date();
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const picker = document.getElementById('month-picker');
             if (picker) picker.value = `${year}-${month}`;
+             
+            prepareLogo();
+
             if (typeof fetchReport === 'function') fetchReport();
         }
 
+        async function downloadPDF() {
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('loading-text').innerText = "Membuat PDF...";
+             
+            const element = document.getElementById('report-content');
+             
+            // CONFIG PDF FINAL - HIGH PRECISION
+            const opt = {
+                margin: [5, 5, 5, 5], // Margin manual (Top, Left, Bottom, Right)
+                filename: 'Laporan_Perawatan_AKG.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 1.3, // Scale rendah untuk garis tipis
+                    useCORS: true, 
+                    allowTaint: true,
+                    scrollY: 0,
+                    windowWidth: 1123, // Lebar A4
+                    dpi: 96,
+                    letterRendering: true
+                },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+            };
+             
+            try {
+                await html2pdf().set(opt).from(element).save();
+            } catch(err) {
+                alert("Gagal download PDF: " + err.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('loading-text').innerText = "Mengambil Data...";
+            }
+        }
+
+        // --- DATA FETCHING ---
         function renderDateHeader(year, month) {
             const daysInMonth = new Date(year, month, 0).getDate();
             const headerRow = document.getElementById('date-header-row');
@@ -396,10 +466,10 @@
             if (!picker.value) return;
 
             document.getElementById('loading').style.display = 'flex';
-            
+             
             const [year, month] = picker.value.split('-');
             const daysInMonth = renderDateHeader(year, month);
-            
+             
             const monthNames = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
             document.getElementById('period-text').textContent = `TANGGAL PREVENTIVE / OVERHAUL : ${monthNames[parseInt(month)-1]} ${year}`;
 
@@ -409,12 +479,11 @@
             const endDate = `${nextY}-${String(nextM).padStart(2,'0')}-01`;
 
             try {
-                // Fetch Logs + Tanda Tangan SPV
                 const { data: logs, error: logError } = await window.supabaseClient
                     .from('jpdo_log')
-                    .select('tanggal, nama_supervisor, tanda_tangan, nama_mesin, status_hari, jpdo_result(plan_status, actual_status)')
+                    .select('tanggal, nama_supervisor, tanda_tangan, nama_mesin, status_hari, nama_pic, jpdo_result(plan_status, actual_status)')
                     .gte('tanggal', startDate).lt('tanggal', endDate)
-                    .order('created_at', { ascending: false }); // Ambil yang terbaru untuk TTD SPV
+                    .order('created_at', { ascending: false });
 
                 if (logError) throw logError;
 
@@ -423,11 +492,10 @@
                 const { data: appPPC } = await window.supabaseClient.from('jpdo_approval_ppc').select('*').eq('bulan', picker.value).maybeSingle();
                 const { data: appMgr } = await window.supabaseClient.from('jpdo_approval_manager').select('*').eq('bulan', picker.value).maybeSingle();
 
-                const dataMap = {}, holidayMap = {};
-                let spvData = null; // Untuk menyimpan TTD SPV
+                const dataMap = {}, holidayMap = {}, picMap = {}; 
+                let spvData = null;
 
                 if (logs && logs.length > 0) {
-                    // Ambil SPV dari log terakhir di bulan tersebut yang memiliki tanda tangan
                     const lastLogWithSig = logs.find(l => l.tanda_tangan);
                     if (lastLogWithSig) {
                         spvData = {
@@ -440,9 +508,16 @@
                     logs.forEach(log => {
                         const day = parseInt(log.tanggal.split('-')[2]);
                         if (log.status_hari === 'LIBUR') holidayMap[day] = true;
+                         
                         if (log.status_hari === 'KERJA' && log.nama_mesin) {
                             const machine = log.nama_mesin;
                             if (!dataMap[machine]) dataMap[machine] = {};
+                             
+                            if (log.nama_pic) {
+                                if (!picMap[machine]) picMap[machine] = new Set();
+                                picMap[machine].add(log.nama_pic);
+                            }
+
                             if (log.jpdo_result && log.jpdo_result.length > 0) {
                                 dataMap[machine][day] = {
                                     plan: log.jpdo_result[0].plan_status,
@@ -469,7 +544,7 @@
                         if (dataMap[machineData.id] && dataMap[machineData.id][d]) {
                             const entry = dataMap[machineData.id][d];
                             if (entry.plan === 'YA') classPlan = 'bg-plan';
-                            
+                             
                             if (entry.actual === 'YA') classActual = 'bg-actual';
                             else if (entry.plan === 'YA' && entry.actual === 'TIDAK') classActual = 'bg-miss';
                         }
@@ -477,18 +552,16 @@
                         rowPlan += `<td class="${classPlan || bgStyle}"><div class="cell-fill"></div></td>`;
                         rowActual += `<td class="${classActual || bgStyle}"><div class="cell-fill"></div></td>`;
                     }
-                    
-                    // Add PIC Column (Empty for manual use)
-                    rowPlan += `<td rowspan="2" class="col-pic"></td>`;
+                     
+                    let picText = picMap[machineData.id] ? Array.from(picMap[machineData.id]).join(', ') : '';
+                    rowPlan += `<td rowspan="2" class="col-pic">${picText}</td>`;
 
                     rowPlan += `</tr>`; rowActual += `</tr>`;
                     tbody.innerHTML += rowPlan + rowActual;
                 });
 
-                // Render SPV Sig manually
                 const elSpv = document.getElementById('sig-spv');
                 if (spvData) {
-                    // Hanya Tanda Tangan dan Nama
                     elSpv.innerHTML = `<img src="${spvData.ttd}" class="sig-img"><div class="sig-name">${spvData.nama}</div>`;
                 } else {
                     elSpv.innerHTML = `<span style="color:#ccc; font-size:9px;">(Belum ada data)</span>`;
@@ -509,7 +582,6 @@
         function renderSig(elementId, data, nameField, sigField) {
             const el = document.getElementById(elementId);
             if (data) {
-                // Revised: Image -> Name (Underlined)
                 el.innerHTML = `<img src="${data[sigField]}" class="sig-img"><div class="sig-name">${data[nameField]}</div>`;
             } else {
                 el.innerHTML = `<span style="color:#ccc; font-size:9px;">(Belum ada)</span>`;
