@@ -20,9 +20,9 @@
             --bg-card: #121212; 
             --text-white: #FFFFFF;
             --nav-height: 70px;
-            /* Dimensi A4 Landscape Mutlak */
-            --a4-width: 297mm;
-            --a4-height: 209mm; 
+            /* Dimensi A4 Landscape Mutlak (96 DPI) */
+            --a4-width: 1123px; 
+            --a4-height: 794px; 
         }
 
         * { box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-print-color-adjust: exact; }
@@ -80,14 +80,25 @@
             flex-direction: column;
             align-items: center;
             transform-origin: top center;
-            transition: transform 0.2s ease;
+            transition: transform 0.3s ease; /* Animasi halus saat resize */
         }
 
-        /* --- TAMPILAN KERTAS --- */
+        /* --- WADAH LAPORAN (ASLI) --- */
+        #report-wrapper {
+            /* Pastikan lebarnya fix A4 Landscape */
+            width: var(--a4-width);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: transparent;
+        }
+
+        /* --- TAMPILAN HALAMAN --- */
         .page {
             background: white;
             width: var(--a4-width);
-            height: var(--a4-height);
+            height: 209mm; /* Sedikit kurang dari A4 Landscape (210mm) untuk margin error */
+            
             padding: 10mm 12mm; 
             margin-bottom: 30px;
             box-shadow: 0 0 50px rgba(0,0,0,0.5);
@@ -104,36 +115,35 @@
             margin-bottom: 0;
         }
 
-        /* --- MODE CETAK (SAAT PDF DIPROSES) --- */
-        /* Kelas ini akan ditempel ke body saat tombol download ditekan */
-        body.print-mode {
-            background: white !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            width: 1123px !important; /* Paksa lebar A4 Pixel */
-            height: auto !important;
+        /* --- MODE EKSPOR PDF (CRITICAL) --- */
+        /* Saat kelas ini aktif, semua elemen dipaksa ke ukuran Desktop/A4 */
+        body.exporting {
+            width: 1150px !important; /* Paksa body lebar */
             overflow: visible !important;
             align-items: flex-start !important;
+            background: white !important; /* Background putih biar bersih */
         }
 
-        /* Matikan semua scaling dan UI saat print mode */
-        body.print-mode .controls, 
-        body.print-mode .bottom-nav {
-            display: none !important;
+        body.exporting .controls,
+        body.exporting .bottom-nav {
+            display: none !important; /* Sembunyikan UI */
         }
 
-        body.print-mode .preview-container {
-            transform: none !important; /* MATIKAN ZOOM */
+        body.exporting .preview-container {
+            transform: none !important; /* MATIKAN ZOOM HP */
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
-            height: auto !important;
         }
 
-        body.print-mode .page {
+        body.exporting #report-wrapper {
             margin: 0 !important;
+        }
+
+        body.exporting .page {
             box-shadow: none !important;
-            page-break-after: always;
+            margin-bottom: 0 !important;
+            border: none !important;
         }
 
         /* HEADER TABEL */
@@ -215,7 +225,7 @@
         /* Loading Overlay */
         #loading {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 9999;
+            background: rgba(0,0,0,0.9); z-index: 100000;
             display: none;
             justify-content: center; align-items: center;
             font-size: 20px; font-weight: 600; color: var(--primary);
@@ -262,7 +272,7 @@
         <button onclick="downloadPDF()" class="btn-print"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
     </div>
 
-    <!-- Container Preview -->
+    <!-- Container Preview (Akan discale agar muat di layar HP) -->
     <div class="preview-container" id="preview-container">
         <div id="report-wrapper"></div>
     </div>
@@ -338,8 +348,8 @@
 
         // --- AUTO SCALER (UNTUK VIEW HP/LAPTOP) ---
         function autoScalePreview() {
-            // Jangan jalankan jika sedang mode print
-            if (document.body.classList.contains('print-mode')) return;
+            // Jangan jalankan jika sedang mode exporting
+            if (document.body.classList.contains('exporting')) return;
 
             const container = document.getElementById('preview-container');
             const targetWidth = 1123; 
@@ -372,7 +382,7 @@
             if (typeof fetchReport === 'function') fetchReport();
         }
 
-        // --- GENERATE PDF (TEKNIK FREEZE VIEW) ---
+        // --- GENERATE PDF DENGAN TEKNIK "EXPAND & SNAP" (METODE TERBAIK) ---
         async function downloadPDF() {
             const loading = document.getElementById('loading');
             const wrapper = document.getElementById('report-wrapper');
@@ -383,13 +393,16 @@
             }
 
             loading.style.display = 'flex';
-            document.getElementById('loading-text').innerText = "Menyiapkan Dokumen...";
+            document.getElementById('loading-text').innerText = "Menyiapkan Ukuran A4...";
 
-            // 1. AKTIFKAN MODE PRINT (Matikan Zoom, Paksa Lebar A4)
-            document.body.classList.add('print-mode');
+            // 1. MASUK MODE EXPORT (Layar akan membesar di HP)
+            document.body.classList.add('exporting');
+            
+            // Scroll ke kiri atas agar capture tidak terpotong
+            window.scrollTo(0,0);
 
-            // 2. TUNGGU RENDER BROWSER (Penting!)
-            await new Promise(resolve => setTimeout(resolve, 800));
+            // 2. TUNGGU RENDER (Wajib ada delay agar browser selesai repaint)
+            await new Promise(resolve => setTimeout(resolve, 1000));
 
             const opt = {
                 margin: 0, 
@@ -399,22 +412,22 @@
                     scale: 2,           
                     useCORS: true, 
                     scrollY: 0,
-                    width: 1123,
-                    windowWidth: 1123 
+                    width: 1123,       
+                    windowWidth: 1200  // Pura-pura jadi Desktop
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
                 pagebreak: { mode: ['css', 'legacy'] }
             };
             
             try {
-                // Generate langsung dari elemen yang sudah di-freeze
+                // Generate dari elemen asli yang sudah diperbesar
                 await html2pdf().set(opt).from(wrapper).save();
             } catch(err) {
                 alert("Gagal PDF: " + err.message);
             } finally {
-                // 3. KEMBALIKAN KE MODE NORMAL
-                document.body.classList.remove('print-mode');
-                autoScalePreview(); // Hitung ulang zoom HP
+                // 3. KEMBALI KE MODE HP
+                document.body.classList.remove('exporting');
+                autoScalePreview(); // Hitung ulang scale HP
                 
                 loading.style.display = 'none';
                 document.getElementById('loading-text').innerText = "Mengambil Data...";
