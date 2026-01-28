@@ -35,7 +35,7 @@
             padding-bottom: calc(var(--nav-height) + 40px);
             display: flex;
             flex-direction: column;
-            align-items: center;
+            align-items: center; /* Default Centered untuk User View */
             overflow-x: hidden; 
         }
 
@@ -78,27 +78,24 @@
             width: 100%;
             display: flex;
             flex-direction: column;
-            align-items: center;
+            align-items: center; /* Normal: Centered */
             transform-origin: top center;
-            transition: transform 0.3s ease; /* Animasi halus saat resize */
+            transition: transform 0.2s ease;
         }
 
-        /* --- WADAH LAPORAN (ASLI) --- */
+        /* --- WADAH LAPORAN --- */
         #report-wrapper {
-            /* Pastikan lebarnya fix A4 Landscape */
             width: var(--a4-width);
             display: flex;
             flex-direction: column;
             align-items: center;
-            background: transparent;
         }
 
         /* --- TAMPILAN HALAMAN --- */
         .page {
             background: white;
             width: var(--a4-width);
-            height: 209mm; /* Sedikit kurang dari A4 Landscape (210mm) untuk margin error */
-            
+            height: 209mm; 
             padding: 10mm 12mm; 
             margin-bottom: 30px;
             box-shadow: 0 0 50px rgba(0,0,0,0.5);
@@ -115,35 +112,40 @@
             margin-bottom: 0;
         }
 
-        /* --- MODE EKSPOR PDF (CRITICAL) --- */
-        /* Saat kelas ini aktif, semua elemen dipaksa ke ukuran Desktop/A4 */
-        body.exporting {
-            width: 1150px !important; /* Paksa body lebar */
+        /* --- MODE PRINT (SOLUSI ANTI-POTONG & ANTI-BLANK) --- */
+        /* Kelas ini akan ditempel ke body saat proses generate PDF */
+        body.print-mode {
+            width: 1123px !important;  /* Paksa lebar body pas A4 */
+            min-width: 1123px !important;
+            margin: 0 !important;
+            padding: 0 !important;
             overflow: visible !important;
-            align-items: flex-start !important;
-            background: white !important; /* Background putih biar bersih */
+            background: white !important;
+            align-items: flex-start !important; /* PENTING: Geser ke kiri (0,0) agar tidak kepotong */
         }
 
-        body.exporting .controls,
-        body.exporting .bottom-nav {
+        body.print-mode .controls, 
+        body.print-mode .bottom-nav {
             display: none !important; /* Sembunyikan UI */
         }
 
-        body.exporting .preview-container {
-            transform: none !important; /* MATIKAN ZOOM HP */
-            width: 100% !important;
+        body.print-mode .preview-container {
+            transform: none !important; /* Matikan Zoom */
+            width: 1123px !important;
+            align-items: flex-start !important; /* PENTING: Kontainer juga geser kiri */
             margin: 0 !important;
             padding: 0 !important;
         }
 
-        body.exporting #report-wrapper {
+        body.print-mode #report-wrapper {
             margin: 0 !important;
         }
 
-        body.exporting .page {
+        body.print-mode .page {
+            margin: 0 !important;
             box-shadow: none !important;
-            margin-bottom: 0 !important;
             border: none !important;
+            page-break-after: always;
         }
 
         /* HEADER TABEL */
@@ -272,8 +274,9 @@
         <button onclick="downloadPDF()" class="btn-print"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
     </div>
 
-    <!-- Container Preview (Akan discale agar muat di layar HP) -->
+    <!-- Container Preview -->
     <div class="preview-container" id="preview-container">
+        <!-- Wadah Laporan (Ini yang akan difoto html2pdf) -->
         <div id="report-wrapper"></div>
     </div>
 
@@ -348,8 +351,8 @@
 
         // --- AUTO SCALER (UNTUK VIEW HP/LAPTOP) ---
         function autoScalePreview() {
-            // Jangan jalankan jika sedang mode exporting
-            if (document.body.classList.contains('exporting')) return;
+            // Jangan jalankan jika sedang mode print
+            if (document.body.classList.contains('print-mode')) return;
 
             const container = document.getElementById('preview-container');
             const targetWidth = 1123; 
@@ -382,7 +385,7 @@
             if (typeof fetchReport === 'function') fetchReport();
         }
 
-        // --- GENERATE PDF DENGAN TEKNIK "EXPAND & SNAP" (METODE TERBAIK) ---
+        // --- GENERATE PDF DENGAN TEKNIK "FORCE ALIGNMENT" ---
         async function downloadPDF() {
             const loading = document.getElementById('loading');
             const wrapper = document.getElementById('report-wrapper');
@@ -393,16 +396,16 @@
             }
 
             loading.style.display = 'flex';
-            document.getElementById('loading-text').innerText = "Menyiapkan Ukuran A4...";
+            document.getElementById('loading-text').innerText = "Menyiapkan PDF...";
 
-            // 1. MASUK MODE EXPORT (Layar akan membesar di HP)
-            document.body.classList.add('exporting');
+            // 1. AKTIFKAN MODE PRINT (Paksa Rata Kiri & Reset Zoom)
+            document.body.classList.add('print-mode');
             
-            // Scroll ke kiri atas agar capture tidak terpotong
-            window.scrollTo(0,0);
+            // Scroll ke paling atas kiri
+            window.scrollTo(0, 0);
 
-            // 2. TUNGGU RENDER (Wajib ada delay agar browser selesai repaint)
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // 2. TUNGGU RENDER (Wajib)
+            await new Promise(resolve => setTimeout(resolve, 800));
 
             const opt = {
                 margin: 0, 
@@ -412,22 +415,23 @@
                     scale: 2,           
                     useCORS: true, 
                     scrollY: 0,
-                    width: 1123,       
-                    windowWidth: 1200  // Pura-pura jadi Desktop
+                    scrollX: 0,       // KUNCI: Paksa titik 0 X
+                    width: 1123,      // Lebar Fix Canvas
+                    windowWidth: 1123 // Lebar Fix Browser Virtual
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
                 pagebreak: { mode: ['css', 'legacy'] }
             };
             
             try {
-                // Generate dari elemen asli yang sudah diperbesar
+                // Generate dari elemen asli yang sudah di-reset posisinya
                 await html2pdf().set(opt).from(wrapper).save();
             } catch(err) {
                 alert("Gagal PDF: " + err.message);
             } finally {
-                // 3. KEMBALI KE MODE HP
-                document.body.classList.remove('exporting');
-                autoScalePreview(); // Hitung ulang scale HP
+                // 3. KEMBALIKAN KE MODE RESPONSIVE
+                document.body.classList.remove('print-mode');
+                autoScalePreview(); // Scale ulang buat HP
                 
                 loading.style.display = 'none';
                 document.getElementById('loading-text').innerText = "Mengambil Data...";
