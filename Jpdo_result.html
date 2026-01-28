@@ -20,19 +20,23 @@
             --bg-card: #121212; 
             --text-white: #FFFFFF;
             --nav-height: 70px;
+            /* Ukuran A4 Landscape dalam Pixel (96 DPI) */
+            --a4-width: 1123px;
+            --a4-height: 794px;
         }
 
         * { box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-print-color-adjust: exact; }
 
         body {
             background: var(--bg-dark);
-            padding: 20px;
-            padding-bottom: calc(var(--nav-height) + 40px);
             color: var(--text-white);
             margin: 0;
+            padding: 20px;
+            padding-bottom: calc(var(--nav-height) + 40px);
             display: flex;
             flex-direction: column;
             align-items: center;
+            overflow-x: hidden; /* Hilangkan scrollbar browser default */
         }
 
         /* --- UI CONTROLS --- */
@@ -46,15 +50,18 @@
             gap: 10px;
             align-items: center;
             width: 100%;
-            max-width: 297mm;
+            /* Batasi lebar controls agar tidak lebih lebar dari kertas saat full screen */
+            max-width: var(--a4-width); 
             color: white;
             position: sticky; top: 10px; z-index: 500;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
 
         .btn-print {
             background: var(--primary); color: white; border: none; padding: 10px 20px;
             border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 14px;
             margin-left: auto;
+            white-space: nowrap;
         }
         
         .btn-back, .btn-refresh {
@@ -67,42 +74,51 @@
             color: white; padding: 8px; border-radius: 8px; color-scheme: dark;
         }
 
+        /* --- PREVIEW CONTAINER (SCALER) --- */
+        /* Wadah ini yang akan kita resize menggunakan CSS Transform */
+        .preview-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* Transition halus saat resize window */
+            transition: transform 0.2s ease;
+            transform-origin: top center; 
+        }
+
         /* --- LAYOUT KERTAS FIX (ISO A4 LANDSCAPE) --- */
         #report-wrapper {
-            width: 297mm; /* Lebar A4 Landscape */
-            min-width: 1123px; /* Pixel fallback */
-            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* Kunci lebar wrapper agar sama persis dengan kertas */
+            width: var(--a4-width); 
         }
 
         /* Definisi Satu Halaman Kertas */
         .page {
             background: white;
-            width: 297mm;
-            /* TINGGI DIKURANGI SEDIKIT (209mm) AGAR TIDAK MEMICU HALAMAN BARU KOSONG */
-            height: 209mm; 
-            padding: 8mm 12mm; /* Margin dalam lebih aman */
+            width: 297mm;  /* Ukuran Fisik A4 */
+            height: 209mm; /* Ukuran Fisik A4 - 1mm */
+            
+            /* Pixel width fallback untuk HTML2CANVAS agar akurat */
+            min-width: var(--a4-width);
+            min-height: var(--a4-height);
+            
+            padding: 10mm 12mm; 
             margin-bottom: 30px;
             box-shadow: 0 0 50px rgba(0,0,0,0.5);
             position: relative;
             color: black;
-            overflow: hidden; /* Potong konten berlebih */
+            overflow: hidden; 
             display: flex;
             flex-direction: column;
-            page-break-after: always; /* Kunci ganti halaman */
+            page-break-after: always;
         }
         
-        /* Hapus break di halaman terakhir agar tidak ada halaman kosong di akhir */
         .page:last-child {
             page-break-after: auto;
             margin-bottom: 0;
-        }
-
-        /* Container Preview HP */
-        .preview-container {
-            width: 100%;
-            overflow-x: auto;
-            display: flex;
-            justify-content: center;
         }
 
         /* HEADER TABEL */
@@ -139,7 +155,7 @@
             padding: 0; 
             text-align: center; 
             vertical-align: middle; 
-            height: 11px; /* Tinggi baris data */
+            height: 11px; 
         }
         .schedule-table th { background: #eee; font-weight: 700; height: 16px; padding: 1px; }
 
@@ -163,13 +179,13 @@
 
         /* TANDA TANGAN (Halaman 2) */
         .signature-section { 
-            margin-top: 20px; /* Jarak pas dari tabel */
+            margin-top: 15px;
             display: flex; justify-content: space-between; gap: 5px; 
         }
         .sig-box { flex: 1; border: none; text-align: center; }
         .sig-header { font-size: 8px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
         .sig-body { 
-            height: 45px; 
+            height: 40px; 
             display: flex; flex-direction: column; align-items: center; justify-content: flex-end; 
         }
         .sig-img { max-height: 35px; max-width: 100%; margin-bottom: 2px; }
@@ -201,18 +217,30 @@
         .nav-item.active { color: var(--primary); }
         .nav-item svg { width: 28px; height: 28px; }
 
-        /* PRINT SETTINGS */
+        /* CLASS KHUSUS SAAT PRINT AGAR FULL WIDTH DAN RESET SCALE */
+        .forcing-pdf-mode .preview-container {
+            transform: none !important; /* Matikan zoom saat print */
+            width: auto !important;
+            height: auto !important;
+        }
+        .forcing-pdf-mode body {
+            overflow: visible !important;
+            align-items: flex-start !important; /* Align left biar aman saat generate */
+        }
+        .forcing-pdf-mode .controls, .forcing-pdf-mode .bottom-nav {
+            display: none !important;
+        }
+
+        /* PRINT SETTINGS BROWSER (CTRL+P) */
         @media print {
-            body { background: white; padding: 0; margin: 0; display: block; }
+            body { background: white; padding: 0; margin: 0; display: block; overflow: visible; zoom: 1 !important; }
             .controls, .bottom-nav { display: none !important; }
-            .preview-container { display: block; width: 100%; overflow: visible; }
+            .preview-container { transform: none !important; width: 100% !important; display: block; }
             #report-wrapper { margin: 0; width: 100%; }
             .page { 
                 margin: 0; box-shadow: none; border: none; 
-                page-break-after: always; width: 100%; height: 100%; padding: 0;
+                page-break-after: always; width: 297mm; height: 209mm;
             }
-            .page:last-child { page-break-after: auto; }
-            td, th { border-width: 0.4px !important; border-color: #000 !important; }
         }
     </style>
 </head>
@@ -233,8 +261,9 @@
         <button onclick="downloadPDF()" class="btn-print"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
     </div>
 
-    <div class="preview-container">
-        <!-- WADAH UTAMA LAPORAN -->
+    <!-- WRAPPER UTAMA untuk Scaling -->
+    <div class="preview-container" id="preview-container">
+        <!-- KONTEN LAPORAN -->
         <div id="report-wrapper"></div>
     </div>
 
@@ -307,6 +336,35 @@
             } catch (e) { console.warn("Logo proxy failed"); }
         }
 
+        // --- AUTO SCALER LOGIC ---
+        // Ini kuncinya: Resize tampilan di layar HP/Laptop biar fit, tapi tetap A4 aslinya
+        function autoScalePreview() {
+            if (document.body.classList.contains('forcing-pdf-mode')) return; // Jangan resize pas lagi print
+
+            const container = document.getElementById('preview-container');
+            const wrapper = document.getElementById('report-wrapper');
+            const targetWidth = 1123; // Lebar asli A4
+            const screenWidth = window.innerWidth - 40; // Kurangi padding
+
+            let scale = 1;
+            
+            // Jika layar lebih kecil dari kertas A4 (misal HP atau Laptop kecil)
+            if (screenWidth < targetWidth) {
+                scale = screenWidth / targetWidth;
+            }
+
+            // Terapkan scale
+            container.style.transform = `scale(${scale})`;
+            
+            // Fix ketinggian wrapper karena transform scale menyisakan whitespace
+            // Kita hitung tinggi total halaman lalu dikali scale
+            const totalHeight = wrapper.offsetHeight * scale;
+            // container.style.height = `${totalHeight}px`; // Optional: kalau mau exact height
+            // Tapi margin-bottom container biasanya cukup handle ini
+        }
+
+        window.addEventListener('resize', autoScalePreview);
+
         window.onload = function() {
             const now = new Date();
             const year = now.getFullYear();
@@ -318,22 +376,30 @@
         }
 
         async function downloadPDF() {
-            document.getElementById('loading').style.display = 'flex';
+            const loading = document.getElementById('loading');
+            const element = document.getElementById('report-wrapper');
+            const body = document.body;
+            
+            loading.style.display = 'flex';
             document.getElementById('loading-text').innerText = "Membuat PDF...";
             
-            const element = document.getElementById('report-wrapper');
+            // 1. MATIKAN SCALING untuk sementara
+            body.classList.add('forcing-pdf-mode');
             
-            // CONFIG PDF AMAN UNTUK HP & LAPTOP
+            // Tunggu render ulang browser (penting!)
+            await new Promise(resolve => setTimeout(resolve, 800));
+
             const opt = {
-                margin: 0, // Margin diatur oleh .page padding
+                margin: 0, 
                 filename: 'Laporan_Perawatan_AKG.pdf',
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
-                    scale: 1.4,        // Scale moderat agar tidak berat di HP
+                    scale: 2,           // Scale 2x biar tajam
                     useCORS: true, 
-                    allowTaint: true,
                     scrollY: 0,
-                    windowWidth: 1123  // KUNCI: Render seolah-olah layar 1123px (A4 Landscape)
+                    // KUNCI: Window width harus fix 1123 (A4) saat render, 
+                    // terlepas dari ukuran layar user sekarang
+                    windowWidth: 1123   
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
                 pagebreak: { mode: ['css', 'legacy'] }
@@ -344,7 +410,11 @@
             } catch(err) {
                 alert("Gagal PDF: " + err.message);
             } finally {
-                document.getElementById('loading').style.display = 'none';
+                // 2. KEMBALIKAN SCALING
+                body.classList.remove('forcing-pdf-mode');
+                autoScalePreview(); // Hitung ulang scale
+                
+                loading.style.display = 'none';
                 document.getElementById('loading-text').innerText = "Mengambil Data...";
             }
         }
@@ -358,7 +428,7 @@
                     <tr>
                         <td class="header-left">
                             <div class="header-brand-container">
-                                <img src="${logoSrc}" class="header-logo">
+                                <img src="${logoSrc}" class="header-logo" crossorigin="anonymous">
                                 <span class="header-company-name">PT. AMARILYS<br>KARISMA<br>GEMILANG</span>
                             </div>
                         </td>
@@ -520,6 +590,9 @@
                     renderSig('sig-ppc-p2', appPPC, 'nama_ppc', 'tanda_tangan_ppc');
                     renderSig('sig-mgr-p2', appMgr, 'nama_manager', 'tanda_tangan_manager');
                 }
+
+                // JALANKAN AUTO SCALE SETELAH RENDER
+                setTimeout(autoScalePreview, 100);
 
             } catch (err) {
                 alert("Gagal: " + err.message);
