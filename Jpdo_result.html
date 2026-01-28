@@ -20,9 +20,9 @@
             --bg-card: #121212; 
             --text-white: #FFFFFF;
             --nav-height: 70px;
-            /* Ukuran A4 Landscape dalam Pixel (96 DPI) */
-            --a4-width: 1123px;
-            --a4-height: 794px;
+            /* Dimensi A4 Landscape Mutlak */
+            --a4-width: 297mm;
+            --a4-height: 209mm; 
         }
 
         * { box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-print-color-adjust: exact; }
@@ -36,7 +36,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            overflow-x: hidden; /* Hilangkan scrollbar browser default */
+            overflow-x: hidden; 
         }
 
         /* --- UI CONTROLS --- */
@@ -50,18 +50,17 @@
             gap: 10px;
             align-items: center;
             width: 100%;
-            /* Batasi lebar controls agar tidak lebih lebar dari kertas saat full screen */
-            max-width: var(--a4-width); 
+            max-width: 1100px;
             color: white;
             position: sticky; top: 10px; z-index: 500;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            flex-wrap: wrap;
         }
 
         .btn-print {
             background: var(--primary); color: white; border: none; padding: 10px 20px;
             border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 14px;
-            margin-left: auto;
-            white-space: nowrap;
+            margin-left: auto; white-space: nowrap;
         }
         
         .btn-back, .btn-refresh {
@@ -74,37 +73,21 @@
             color: white; padding: 8px; border-radius: 8px; color-scheme: dark;
         }
 
-        /* --- PREVIEW CONTAINER (SCALER) --- */
-        /* Wadah ini yang akan kita resize menggunakan CSS Transform */
+        /* --- PREVIEW CONTAINER --- */
         .preview-container {
             width: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* Transition halus saat resize window */
+            transform-origin: top center;
             transition: transform 0.2s ease;
-            transform-origin: top center; 
         }
 
-        /* --- LAYOUT KERTAS FIX (ISO A4 LANDSCAPE) --- */
-        #report-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            /* Kunci lebar wrapper agar sama persis dengan kertas */
-            width: var(--a4-width); 
-        }
-
-        /* Definisi Satu Halaman Kertas */
+        /* --- TAMPILAN KERTAS --- */
         .page {
             background: white;
-            width: 297mm;  /* Ukuran Fisik A4 */
-            height: 209mm; /* Ukuran Fisik A4 - 1mm */
-            
-            /* Pixel width fallback untuk HTML2CANVAS agar akurat */
-            min-width: var(--a4-width);
-            min-height: var(--a4-height);
-            
+            width: var(--a4-width);
+            height: var(--a4-height);
             padding: 10mm 12mm; 
             margin-bottom: 30px;
             box-shadow: 0 0 50px rgba(0,0,0,0.5);
@@ -119,6 +102,38 @@
         .page:last-child {
             page-break-after: auto;
             margin-bottom: 0;
+        }
+
+        /* --- MODE CETAK (SAAT PDF DIPROSES) --- */
+        /* Kelas ini akan ditempel ke body saat tombol download ditekan */
+        body.print-mode {
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 1123px !important; /* Paksa lebar A4 Pixel */
+            height: auto !important;
+            overflow: visible !important;
+            align-items: flex-start !important;
+        }
+
+        /* Matikan semua scaling dan UI saat print mode */
+        body.print-mode .controls, 
+        body.print-mode .bottom-nav {
+            display: none !important;
+        }
+
+        body.print-mode .preview-container {
+            transform: none !important; /* MATIKAN ZOOM */
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+        }
+
+        body.print-mode .page {
+            margin: 0 !important;
+            box-shadow: none !important;
+            page-break-after: always;
         }
 
         /* HEADER TABEL */
@@ -146,7 +161,7 @@
         .schedule-table { 
             width: 100%; 
             border-collapse: collapse; 
-            font-size: 7px; 
+            font-size: 7px;
             table-layout: fixed; 
             margin-bottom: 0;
         }
@@ -155,29 +170,31 @@
             padding: 0; 
             text-align: center; 
             vertical-align: middle; 
-            height: 11px; 
+            height: 11px;
+            line-height: 11px;
+            overflow: hidden;
         }
         .schedule-table th { background: #eee; font-weight: 700; height: 16px; padding: 1px; }
 
         /* Kolom */
-        .col-no { width: 15px; }
+        .col-no { width: 18px; }
         .col-machine { 
             width: 180px; text-align: left !important; padding-left: 3px !important; 
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            font-weight: 600;
+            font-weight: 600; font-size: 7px;
         }
-        .col-type { width: 25px; font-weight: 700; font-size: 6px; }
-        .col-pic { width: 40px; font-size: 6px; padding: 0 1px !important; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .col-type { width: 28px; font-weight: 700; font-size: 6px; }
+        .col-pic { width: 45px; font-size: 6px; padding: 0 1px !important; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
         /* Warna Cell */
-        .bg-plan { background-color: #007bff !important; }
-        .bg-actual { background-color: #28a745 !important; }
-        .bg-miss { background-color: #D30000 !important; }
-        .bg-holiday { background-color: #D30000 !important; color: white; }
-        .bg-grey { background-color: #ddd !important; }
+        .bg-plan { background-color: #007bff !important; -webkit-print-color-adjust: exact; }
+        .bg-actual { background-color: #28a745 !important; -webkit-print-color-adjust: exact; }
+        .bg-miss { background-color: #D30000 !important; -webkit-print-color-adjust: exact; }
+        .bg-holiday { background-color: #D30000 !important; color: white; -webkit-print-color-adjust: exact; }
+        .bg-grey { background-color: #ddd !important; -webkit-print-color-adjust: exact; }
         .cell-fill { width: 100%; height: 100%; display: block; min-height: 11px; }
 
-        /* TANDA TANGAN (Halaman 2) */
+        /* TANDA TANGAN */
         .signature-section { 
             margin-top: 15px;
             display: flex; justify-content: space-between; gap: 5px; 
@@ -195,11 +212,12 @@
         }
         .sig-role { font-size: 7px; font-weight: 600; text-transform: uppercase; }
 
-        /* Loading */
+        /* Loading Overlay */
         #loading {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); z-index: 9999;
-            display: flex; justify-content: center; align-items: center;
+            display: none;
+            justify-content: center; align-items: center;
             font-size: 20px; font-weight: 600; color: var(--primary);
             flex-direction: column; gap: 10px;
         }
@@ -217,30 +235,12 @@
         .nav-item.active { color: var(--primary); }
         .nav-item svg { width: 28px; height: 28px; }
 
-        /* CLASS KHUSUS SAAT PRINT AGAR FULL WIDTH DAN RESET SCALE */
-        .forcing-pdf-mode .preview-container {
-            transform: none !important; /* Matikan zoom saat print */
-            width: auto !important;
-            height: auto !important;
-        }
-        .forcing-pdf-mode body {
-            overflow: visible !important;
-            align-items: flex-start !important; /* Align left biar aman saat generate */
-        }
-        .forcing-pdf-mode .controls, .forcing-pdf-mode .bottom-nav {
-            display: none !important;
-        }
-
-        /* PRINT SETTINGS BROWSER (CTRL+P) */
         @media print {
-            body { background: white; padding: 0; margin: 0; display: block; overflow: visible; zoom: 1 !important; }
-            .controls, .bottom-nav { display: none !important; }
-            .preview-container { transform: none !important; width: 100% !important; display: block; }
+            body { background: white; padding: 0; margin: 0; }
+            .controls, .bottom-nav, #loading { display: none !important; }
+            .preview-container { transform: none !important; width: 100%; }
             #report-wrapper { margin: 0; width: 100%; }
-            .page { 
-                margin: 0; box-shadow: none; border: none; 
-                page-break-after: always; width: 297mm; height: 209mm;
-            }
+            .page { margin: 0; box-shadow: none; border: none; page-break-after: always; }
         }
     </style>
 </head>
@@ -251,9 +251,10 @@
         <span id="loading-text">Menyiapkan Sistem...</span>
     </div>
 
+    <!-- UI Controls -->
     <div class="controls">
         <a href="download_data.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
-        <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
+        <div style="flex: 1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <label style="font-weight: 500; font-size: 14px;">Periode:</label>
             <input type="month" id="month-picker" onchange="fetchReport()">
             <button onclick="fetchReport()" class="btn-refresh"><i class="fa-solid fa-rotate-right"></i></button>
@@ -261,12 +262,12 @@
         <button onclick="downloadPDF()" class="btn-print"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
     </div>
 
-    <!-- WRAPPER UTAMA untuk Scaling -->
+    <!-- Container Preview -->
     <div class="preview-container" id="preview-container">
-        <!-- KONTEN LAPORAN -->
         <div id="report-wrapper"></div>
     </div>
 
+    <!-- Navigation -->
     <nav class="bottom-nav">
         <a href="index.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></a>
         <a href="menu_utama.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></a>
@@ -280,7 +281,7 @@
         
         if (!window.supabaseClient) { window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
 
-        // --- DEFINISI MESIN (SPLIT 22 + 10) ---
+        // --- DEFINISI MESIN ---
         const machinesPage1 = [
             { no: 1, id: "INJECT BLOW LIANXIN IBM30H", label: "Inject Blow Lianxin IBM30H" },
             { no: 2, id: "TM EXPRESS 270/2250", label: "TM Express 270/2250 (+ Robot Wittmann 822)" },
@@ -320,10 +321,9 @@
         ];
 
         const allMachinesData = [...machinesPage1, ...machinesPage2];
-
         let logoBase64 = "";
 
-        // --- IMAGE LOADER (WS Proxy) ---
+        // --- IMAGE LOADER ---
         async function prepareLogo() {
             const logoUrl = "https://amarilyskg.co.id/bootstrap/img/logo.png";
             const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(logoUrl)}&output=png`;
@@ -336,31 +336,28 @@
             } catch (e) { console.warn("Logo proxy failed"); }
         }
 
-        // --- AUTO SCALER LOGIC ---
-        // Ini kuncinya: Resize tampilan di layar HP/Laptop biar fit, tapi tetap A4 aslinya
+        // --- AUTO SCALER (UNTUK VIEW HP/LAPTOP) ---
         function autoScalePreview() {
-            if (document.body.classList.contains('forcing-pdf-mode')) return; // Jangan resize pas lagi print
+            // Jangan jalankan jika sedang mode print
+            if (document.body.classList.contains('print-mode')) return;
 
             const container = document.getElementById('preview-container');
-            const wrapper = document.getElementById('report-wrapper');
-            const targetWidth = 1123; // Lebar asli A4
-            const screenWidth = window.innerWidth - 40; // Kurangi padding
+            const targetWidth = 1123; 
+            const screenWidth = window.innerWidth - 30;
 
             let scale = 1;
-            
-            // Jika layar lebih kecil dari kertas A4 (misal HP atau Laptop kecil)
             if (screenWidth < targetWidth) {
                 scale = screenWidth / targetWidth;
             }
+            if (scale < 0.3) scale = 0.3;
 
-            // Terapkan scale
             container.style.transform = `scale(${scale})`;
             
-            // Fix ketinggian wrapper karena transform scale menyisakan whitespace
-            // Kita hitung tinggi total halaman lalu dikali scale
-            const totalHeight = wrapper.offsetHeight * scale;
-            // container.style.height = `${totalHeight}px`; // Optional: kalau mau exact height
-            // Tapi margin-bottom container biasanya cukup handle ini
+            const wrapper = document.getElementById('report-wrapper');
+            if(wrapper) {
+                const height = wrapper.offsetHeight * scale;
+                container.style.height = `${height}px`;
+            }
         }
 
         window.addEventListener('resize', autoScalePreview);
@@ -375,18 +372,23 @@
             if (typeof fetchReport === 'function') fetchReport();
         }
 
+        // --- GENERATE PDF (TEKNIK FREEZE VIEW) ---
         async function downloadPDF() {
             const loading = document.getElementById('loading');
-            const element = document.getElementById('report-wrapper');
-            const body = document.body;
+            const wrapper = document.getElementById('report-wrapper');
             
+            if(!wrapper.innerHTML) {
+                alert("Data belum dimuat!");
+                return;
+            }
+
             loading.style.display = 'flex';
-            document.getElementById('loading-text').innerText = "Membuat PDF...";
-            
-            // 1. MATIKAN SCALING untuk sementara
-            body.classList.add('forcing-pdf-mode');
-            
-            // Tunggu render ulang browser (penting!)
+            document.getElementById('loading-text').innerText = "Menyiapkan Dokumen...";
+
+            // 1. AKTIFKAN MODE PRINT (Matikan Zoom, Paksa Lebar A4)
+            document.body.classList.add('print-mode');
+
+            // 2. TUNGGU RENDER BROWSER (Penting!)
             await new Promise(resolve => setTimeout(resolve, 800));
 
             const opt = {
@@ -394,25 +396,25 @@
                 filename: 'Laporan_Perawatan_AKG.pdf',
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
-                    scale: 2,           // Scale 2x biar tajam
+                    scale: 2,           
                     useCORS: true, 
                     scrollY: 0,
-                    // KUNCI: Window width harus fix 1123 (A4) saat render, 
-                    // terlepas dari ukuran layar user sekarang
-                    windowWidth: 1123   
+                    width: 1123,
+                    windowWidth: 1123 
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
                 pagebreak: { mode: ['css', 'legacy'] }
             };
             
             try {
-                await html2pdf().set(opt).from(element).save();
+                // Generate langsung dari elemen yang sudah di-freeze
+                await html2pdf().set(opt).from(wrapper).save();
             } catch(err) {
                 alert("Gagal PDF: " + err.message);
             } finally {
-                // 2. KEMBALIKAN SCALING
-                body.classList.remove('forcing-pdf-mode');
-                autoScalePreview(); // Hitung ulang scale
+                // 3. KEMBALIKAN KE MODE NORMAL
+                document.body.classList.remove('print-mode');
+                autoScalePreview(); // Hitung ulang zoom HP
                 
                 loading.style.display = 'none';
                 document.getElementById('loading-text').innerText = "Mengambil Data...";
@@ -453,7 +455,7 @@
                         <tr>
                             <th rowspan="2" class="col-no">NO</th>
                             <th rowspan="2" class="col-machine">NAMA MESIN / TOOL / EQUIPMENT</th>
-                            <th rowspan="2" class="col-type">STATUS</th>
+                            <th rowspan="2" class="col-type">STS</th>
                             <th colspan="31">TANGGAL</th>
                             <th rowspan="2" class="col-pic">PIC</th>
                         </tr>
@@ -466,8 +468,8 @@
             html += `</tr></thead><tbody>`;
 
             machineList.forEach(m => {
-                let rowP = `<tr><td rowspan="2">${m.no}</td><td rowspan="2" class="col-machine">${m.label}</td><td class="col-type">PLAN</td>`;
-                let rowA = `<tr><td class="col-type">ACTUAL</td>`;
+                let rowP = `<tr><td rowspan="2">${m.no}</td><td rowspan="2" class="col-machine">${m.label}</td><td class="col-type">PLN</td>`;
+                let rowA = `<tr><td class="col-type">ACT</td>`;
                 
                 for(let d=1; d<=31; d++) {
                     let clsP='', clsA='', style='';
@@ -484,7 +486,7 @@
                     rowA += `<td class="${clsA || style}"><div class="cell-fill"></div></td>`;
                 }
                 
-                rowP += `<td rowspan="2" class="col-pic" id="pic-${m.id}"></td>`;
+                rowP += `<td rowspan="2" class="col-pic" id="pic-${m.id}-${pageNum}"></td>`; // ID Unik per page
 
                 html += rowP + "</tr>" + rowA + "</tr>";
             });
@@ -567,13 +569,15 @@
                 const container = document.getElementById('report-wrapper');
                 container.innerHTML = ''; 
 
-                // SPLIT MANUAL
                 container.innerHTML += createTableHTML(machinesPage1, daysInMonth, dataMap, holidayMap, periodText, 1);
                 container.innerHTML += createTableHTML(machinesPage2, daysInMonth, dataMap, holidayMap, periodText, 2);
 
                 // --- FILL PIC DATA ---
                 allMachinesData.forEach(m => {
-                    const cell = document.getElementById(`pic-${m.id}`);
+                    // Cek page 1 dan 2
+                    let cell = document.getElementById(`pic-${m.id}-1`);
+                    if(!cell) cell = document.getElementById(`pic-${m.id}-2`);
+                    
                     if(cell && picMap[m.id]) {
                         cell.innerText = Array.from(picMap[m.id]).join(', ');
                     }
@@ -591,7 +595,6 @@
                     renderSig('sig-mgr-p2', appMgr, 'nama_manager', 'tanda_tangan_manager');
                 }
 
-                // JALANKAN AUTO SCALE SETELAH RENDER
                 setTimeout(autoScalePreview, 100);
 
             } catch (err) {
