@@ -10,19 +10,19 @@
     
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
 
     <style>
+        /* --- THEME VARIABLES (Match Dark Neon) --- */
         :root {
-            --primary: #DC2626;
-            --primary-dark: #991B1B;
-            --primary-glow: rgba(220, 38, 38, 0.6);
-            --bg-dark: #050505;
-            --bg-card: #121212; 
-            --bg-input: #1A1A1A;
+            --primary: #FF3333; /* Merah Neon */
+            --primary-dark: #b91c1c;
+            --bg-dark: #080808;
+            --bg-card: #1a1a1a; 
             --text-white: #FFFFFF;
+            --text-header: #FF3333;
             --text-gray: #A3A3A3;
-            --border-light: rgba(255,255,255,0.1);
-            --radius: 12px;
+            --radius: 16px;
             --nav-height: 70px;
         }
 
@@ -32,274 +32,282 @@
             background: var(--bg-dark);
             min-height: 100vh;
             color: var(--text-white);
-            /* Padding bottom disesuaikan nanti lewat JS jika form muncul/hilang */
-            padding-bottom: calc(var(--nav-height) + 20px);
-            padding-top: 20px;
-            transition: padding-bottom 0.3s;
+            /* Padding bottom statis cukup untuk navigasi bawah saja */
+            padding-bottom: calc(var(--nav-height) + 40px);
+            overflow-x: hidden;
         }
 
-        /* --- Background Animation --- */
-        .bg-animation { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; overflow: hidden; background: #000; }
-        .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4; animation: float 20s ease-in-out infinite; }
-        .orb-1 { width: 400px; height: 400px; background: radial-gradient(circle, var(--primary) 0%, transparent 70%); top: -150px; right: -150px; }
-        .orb-2 { width: 300px; height: 300px; background: radial-gradient(circle, #7F1D1D 0%, transparent 70%); bottom: 10%; left: -100px; animation-delay: -5s; }
-        .grid-pattern { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 40px 40px; opacity: 0.3; }
+        /* --- BACKGROUND ANIMATION --- */
+        .bg-animation {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: -1; overflow: hidden; background: #050505;
+        }
+        .orb {
+            position: absolute; border-radius: 50%; filter: blur(90px);
+            opacity: 0.4; animation: float 20s ease-in-out infinite;
+        }
+        .orb-1 {
+            width: 400px; height: 400px; top: -150px; right: -100px;
+            background: radial-gradient(circle, var(--primary-dark) 0%, transparent 70%);
+        }
+        .orb-2 {
+            width: 300px; height: 300px; bottom: 10%; left: -100px;
+            background: radial-gradient(circle, #500000 0%, transparent 70%);
+        }
+        .grid-pattern {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px; opacity: 0.5;
+        }
+        @keyframes float { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-20px, 20px); } }
 
-        /* --- Layout --- */
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
+        /* --- LAYOUT --- */
+        .app-shell {
+            width: 100%; max-width: 600px; min-height: 100vh;
+            margin: 0 auto; position: relative; z-index: 1;
+        }
+        .app-container {
+            padding: 24px 20px;
         }
 
-        /* --- Data Cards --- */
+        /* --- HEADER --- */
+        .header {
+            background: linear-gradient(180deg, rgba(20, 0, 0, 0.9), rgba(40, 0, 0, 0.95));
+            border: 1px solid rgba(255, 51, 51, 0.3);
+            border-bottom: 4px solid var(--primary-dark);
+            border-radius: var(--radius);
+            padding: 24px; margin-bottom: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center; position: relative;
+        }
+        .header-title {
+            font-size: 24px; font-weight: 900; color: var(--text-header);
+            text-transform: uppercase; letter-spacing: 2px;
+            text-shadow: 0 0 20px rgba(255, 51, 51, 0.6); margin: 0;
+        }
+
+        /* --- SECTION TITLE --- */
+        .section-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 16px; padding-left: 8px; border-left: 4px solid var(--primary);
+        }
+        .section-title {
+            font-size: 16px; font-weight: 700; color: #fff;
+            text-transform: uppercase; letter-spacing: 1.5px;
+        }
+        
+        .pending-badge {
+            background: rgba(255, 51, 51, 0.2); 
+            border: 1px solid var(--primary); 
+            color: var(--primary); 
+            padding: 4px 12px; border-radius: 20px; 
+            font-size: 11px; font-weight: 700;
+            box-shadow: 0 0 10px rgba(255, 51, 51, 0.2);
+        }
+
+        /* --- DATA CARDS --- */
         .data-list {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
+            display: flex; flex-direction: column; gap: 16px;
         }
 
         .data-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-light);
-            border-radius: var(--radius);
-            padding: 0; 
-            position: relative;
-            animation: fadeIn 0.5s ease-out;
+            background: linear-gradient(145deg, #1e1e1e, #141414);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 4px solid var(--primary-dark);
+            border-radius: 16px; 
+            padding: 0;
+            position: relative; 
             overflow: hidden;
-            transition: transform 0.2s, border-color 0.2s;
-            /* Border kiri merah sebagai penanda pending */
-            border-left: 3px solid #EF4444;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            animation: fadeIn 0.4s ease-out;
         }
-        
-        .data-card:active {
-            transform: scale(0.99);
-        }
-
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Card Header */
         .card-header {
-            padding: 14px 16px;
-            background: rgba(255,255,255,0.03);
-            border-bottom: 1px solid var(--border-light);
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
             display: flex; justify-content: space-between; align-items: center;
         }
+        .spv-info { font-size: 12px; color: #fff; font-weight: 700; }
+        .spv-date { font-size: 10px; color: var(--text-gray); }
 
-        .spv-info { 
-            font-size: 13px; color: var(--text-white); font-weight: 600; 
-        }
-        .spv-date { font-size: 11px; color: var(--text-gray); margin-top: 2px; }
-
-        /* Checkbox Custom */
+        /* Custom Checkbox */
         .item-checkbox {
-            width: 22px; height: 22px; accent-color: var(--primary);
-            cursor: pointer;
+            width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer;
         }
 
-        /* Card Body - Grid Layout */
-        .card-body { 
-            padding: 16px;
-        }
-
+        .card-body { padding: 16px; }
         .info-grid {
-            display: grid;
-            grid-template-columns: 90px 1fr;
-            gap: 8px 12px;
-            font-size: 13px;
+            display: grid; grid-template-columns: 80px 1fr; gap: 8px 12px; font-size: 13px;
         }
+        .label { color: var(--text-gray); font-size: 11px; align-self: center; }
+        .val { color: var(--text-white); font-weight: 600; text-align: right; }
+        
+        .qc-badge {
+            font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 4px;
+        }
+        .qc-ok { color: #00C851; background: rgba(0, 200, 81, 0.1); border: 1px solid #00C851; }
+        .qc-not { color: #ff4444; background: rgba(255, 68, 68, 0.1); border: 1px solid #ff4444; }
 
-        .label { 
-            color: var(--text-gray); 
-            font-size: 12px; 
-            align-self: center;
-        }
-        .val { 
-            color: var(--text-white); 
-            font-weight: 500; 
-            text-align: right; 
-        }
-
-        /* Job Desc Box */
         .job-desc-box {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px dashed var(--border-light);
+            margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.1);
         }
-        .job-desc-label {
-            font-size: 11px; color: var(--text-gray); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;
-        }
-        .job-desc-val {
-            font-size: 13px; color: #ddd; line-height: 1.5;
-        }
+        .job-desc-label { font-size: 10px; color: var(--text-gray); text-transform: uppercase; margin-bottom: 4px; }
+        .job-desc-val { font-size: 12px; color: #ddd; line-height: 1.4; }
 
-        /* --- Approval Form (Sticky Bottom) --- */
+        /* --- APPROVAL FORM (STATIC - NOT FIXED) --- */
         .approval-section {
-            position: fixed;
-            bottom: var(--nav-height);
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100%;
-            max-width: 600px;
-            background: rgba(15, 15, 15, 0.98);
-            backdrop-filter: blur(15px);
-            border-top: 1px solid var(--border-light);
-            padding: 24px 20px 20px 20px;
-            border-radius: 24px 24px 0 0;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.6);
-            z-index: 50;
-            display: none; /* Default Hidden: Only show if pending items exist */
-            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            /* Hapus posisi fixed agar mengalir di bawah list secara natural */
+            margin-top: 30px;
+            background: linear-gradient(145deg, #151515, #101010);
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            display: none; /* Controlled by JS */
+            animation: fadeIn 0.5s ease-out;
         }
 
-        @keyframes slideUp {
-            from { transform: translate(-50%, 100%); }
-            to { transform: translate(-50%, 0); }
+        .approval-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;
         }
+        .approval-title { color: var(--primary); font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
 
-        .section-header-approve {
-            display: flex; justify-content: space-between; align-items: center;
+        /* Input Field (Vertical) */
+        .input-wrapper {
             margin-bottom: 16px;
         }
-        .section-title {
-            color: var(--primary); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+
+        .input-field {
+            width: 100%; padding: 14px; background: #080808; border: 1px solid #333;
+            border-radius: 12px; color: white; font-size: 14px; outline: none; transition: 0.3s;
         }
+        .input-field:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(255, 51, 51, 0.2); }
 
-        .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
-        .form-col { flex: 1; }
-
-        .form-input {
-            width: 100%; background: var(--bg-input);
-            border: 1px solid var(--border-light);
-            border-radius: 10px; padding: 12px;
-            color: var(--text-white); font-size: 13px; outline: none;
-            transition: border-color 0.3s;
-        }
-        .form-input:focus { border-color: var(--primary); }
-
-        /* Signature Area */
+        /* Signature (Tinggi Diperbesar) */
         .sig-container {
-            background: #fff;
-            border-radius: 10px;
-            position: relative;
-            height: 100px;
-            overflow: hidden;
-            margin-bottom: 12px;
+            background: #fff; border-radius: 12px; position: relative; 
+            height: 200px; /* Diperbesar dari 120px ke 200px */
+            overflow: hidden; margin-bottom: 20px; border: 2px dashed #444;
         }
-        canvas { width: 100%; height: 100%; cursor: crosshair; }
-        
-        .sig-label {
-            position: absolute; top: 5px; left: 8px; font-size: 10px; color: #999; pointer-events: none;
-        }
+        canvas { width: 100%; height: 100%; display: block; touch-action: none; }
         
         .clear-sig {
             position: absolute; bottom: 5px; right: 5px;
-            background: rgba(255,255,255,0.9); color: var(--primary);
-            border: 1px solid #ddd; padding: 2px 8px;
-            border-radius: 4px; font-size: 10px; cursor: pointer;
-            font-weight: 600;
+            background: rgba(255,255,255,0.9); color: var(--primary); border: 1px solid var(--primary);
+            padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 700;
         }
 
         .approve-btn {
-            width: 100%; background: var(--primary);
-            color: white; border: none; padding: 14px; border-radius: 12px;
-            font-size: 14px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 1px; cursor: pointer;
-            box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3);
-            display: flex; justify-content: center; align-items: center; gap: 8px;
-            transition: transform 0.2s;
+            width: 100%; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; border: none; padding: 16px; border-radius: 12px;
+            font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+            cursor: pointer; box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+            display: flex; justify-content: center; align-items: center; gap: 8px; transition: transform 0.2s;
         }
-        .approve-btn:active { transform: scale(0.98); background: var(--primary-dark); }
+        .approve-btn:active { transform: scale(0.98); }
 
-        .empty-state { 
-            text-align: center; color: var(--text-gray); font-size: 13px; 
-            padding: 60px 20px; border: 1px dashed var(--border-light); border-radius: var(--radius);
-        }
+        /* States */
+        .empty-state { text-align: center; color: var(--text-gray); font-size: 13px; padding: 60px 20px; }
         .empty-icon { font-size: 32px; margin-bottom: 12px; color: #333; }
 
-        /* --- Nav --- */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-            width: 100%; max-width: 600px;
-            background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(20px);
-            border-top: 1px solid var(--border-light);
-            display: flex; justify-content: space-around; align-items: center;
-            padding: 12px 0; height: var(--nav-height); z-index: 100;
-        }
-        .nav-item { color: #555; width: 56px; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .nav-item.active { color: var(--primary); background: rgba(220, 38, 38, 0.1); border-radius: 12px; }
-        .nav-item svg { width: 22px; height: 22px; }
-
-        /* --- Loading & Alert --- */
+        /* --- LOADING & NOTIFICATION --- */
         .loading-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            background: rgba(0,0,0,0.9); backdrop-filter: blur(5px);
             z-index: 999; display: none; flex-direction: column; align-items: center; justify-content: center;
         }
         .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        
+        .loading-text { margin-top: 15px; color: white; font-weight: 500; font-size: 14px; letter-spacing: 1px; }
+
         #customAlert {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            background: #1a1a1a; padding: 15px 20px; border-radius: 12px;
-            border: 1px solid var(--border-light); display: none; z-index: 1000;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5); align-items: center; gap: 10px; min-width: 300px;
+            background: #1a1a1a; padding: 16px 20px; border-radius: 12px;
+            border: 1px solid #333; border-left: 4px solid var(--primary);
+            display: none; z-index: 1000; width: 90%; max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8); align-items: center; gap: 12px;
         }
+
+        /* --- BOTTOM NAV --- */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 100%; max-width: 600px;
+            background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex; justify-content: space-around; align-items: center;
+            padding: 12px 0; height: var(--nav-height); z-index: 100;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
+        }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; text-decoration: none; color: #555; width: 56px; height: 44px; border-radius: 12px; transition: 0.3s; position: relative; }
+        .nav-item svg { width: 22px; height: 22px; transition: 0.3s; }
+        .nav-item.active { color: var(--primary); background: rgba(255, 51, 51, 0.1); box-shadow: 0 0 20px rgba(255, 51, 51, 0.1); }
+        .nav-item.active::after { content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px; background: var(--primary); border-radius: 50%; box-shadow: 0 0 10px var(--primary); }
+
     </style>
 </head>
 <body>
 
+    <!-- Background Animation -->
     <div class="bg-animation">
         <div class="orb orb-1"></div>
         <div class="orb orb-2"></div>
         <div class="grid-pattern"></div>
     </div>
 
-    <div class="container">
-        <!-- Statistik Header -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 4px;">
-            <div class="section-title" style="margin-bottom: 0; font-size:16px;">Pending Approval</div>
-            <!-- Hanya menampilkan count pending -->
-            <div id="pendingCount" style="background: rgba(220, 38, 38, 0.2); border: 1px solid rgba(220, 38, 38, 0.4); color: #EF4444; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;">
-                0 Item
-            </div>
-        </div>
-        
-        <div id="loadingData" style="text-align: center; padding: 40px; color: var(--text-gray);">
-            <i class="fa-solid fa-circle-notch fa-spin" style="margin-bottom: 10px; font-size: 24px;"></i><br>Memuat data...
-        </div>
+    <div class="app-shell">
+        <div class="app-container">
 
-        <div id="dataList" class="data-list">
-            <!-- Data akan dimasukkan di sini oleh JS -->
-        </div>
+            <header class="header">
+                <h1 class="header-title">SUPERINTENDENT</h1>
+            </header>
 
-        <!-- Form Approval Superintendent (Sticky Bottom - Hidden by default) -->
-        <div class="approval-section" id="approvalSection">
-            <div class="section-header-approve">
-                <span class="section-title">Validasi Item Terpilih</span>
-                <span style="font-size: 11px; color: var(--text-gray);">Centang untuk Approve</span>
+            <!-- Statistik Header -->
+            <div class="section-header">
+                <span class="section-title">Pending Approval</span>
+                <div id="pendingCount" class="pending-badge">0 Item</div>
             </div>
             
-            <form id="approvalForm">
-                <div class="form-row">
-                    <div class="form-col">
-                        <input type="text" id="nama_superintendent" class="form-input" placeholder="Nama Superintendent" required>
-                    </div>
-                    <div class="form-col">
-                         <input type="text" id="catatan_superintendent" class="form-input" placeholder="Catatan (Opsional)">
-                    </div>
-                </div>
+            <div id="loadingData" style="text-align: center; padding: 40px; color: var(--text-gray);">
+                <i class="fa-solid fa-spinner fa-spin" style="margin-bottom: 10px; font-size: 24px;"></i><br>Memuat data...
+            </div>
 
-                <div class="sig-container">
-                    <span class="sig-label">Tanda Tangan di sini</span>
-                    <canvas id="signaturePad"></canvas>
-                    <button type="button" class="clear-sig" onclick="clearSignature()">Hapus</button>
-                </div>
+            <div id="dataList" class="data-list">
+                <!-- Data akan dimasukkan di sini oleh JS -->
+            </div>
 
-                <button type="submit" class="approve-btn">
-                    Finish Report
-                </button>
-            </form>
+            <!-- Form Approval (Static at Bottom) -->
+            <div class="approval-section" id="approvalSection">
+                <div class="approval-header">
+                    <span class="approval-title">Validasi Item Terpilih</span>
+                    <span style="font-size: 10px; color: var(--text-gray);">Centang data di atas</span>
+                </div>
+                
+                <form id="approvalForm">
+                    <!-- Layout vertikal (atas bawah) -->
+                    <div class="input-wrapper">
+                        <input type="text" id="nama_superintendent" class="input-field" placeholder="Nama Superintendent" required>
+                    </div>
+                    <div class="input-wrapper">
+                         <input type="text" id="catatan_superintendent" class="input-field" placeholder="Catatan (Opsional)">
+                    </div>
+
+                    <div class="sig-container">
+                        <!-- Teks "Tanda Tangan di sini" dihapus -->
+                        <canvas id="signaturePad"></canvas>
+                        <button type="button" class="clear-sig" onclick="clearSignature()">Hapus</button>
+                    </div>
+
+                    <button type="submit" class="approve-btn">
+                        Finish Report
+                    </button>
+                </form>
+            </div>
+
         </div>
     </div>
 
@@ -342,7 +350,7 @@
     <div id="customAlert">
         <i id="alertIcon" class="fa-solid fa-circle-check" style="color: #059669; font-size: 20px;"></i>
         <div style="flex:1;">
-            <h4 id="alertTitle" style="font-size: 14px; margin-bottom: 2px;">Berhasil</h4>
+            <h4 id="alertTitle" style="font-size: 14px; color:white; font-weight:700; margin-bottom: 2px;">Berhasil</h4>
             <p id="alertMsg" style="font-size: 12px; color: var(--text-gray);">Data tersimpan.</p>
         </div>
     </div>
@@ -373,8 +381,7 @@
             if (error) {
                 console.error(error);
                 listContainer.innerHTML = '<div class="empty-state">Gagal memuat data.</div>';
-                approvalSection.style.display = 'none'; // Hide approval form on error
-                document.body.style.paddingBottom = 'calc(var(--nav-height) + 20px)'; // Reset padding
+                approvalSection.style.display = 'none';
                 return;
             }
 
@@ -385,24 +392,26 @@
                         Semua pekerjaan sudah selesai.
                     </div>`;
                 pendingBadge.textContent = '0 Item';
-                approvalSection.style.display = 'none'; // Hide approval form if no data
-                document.body.style.paddingBottom = 'calc(var(--nav-height) + 20px)'; // Reset padding
+                approvalSection.style.display = 'none';
                 return;
             }
 
             // Jika ada data:
             pendingBadge.textContent = data.length + ' Item';
-            approvalSection.style.display = 'block'; // Show approval form
-            document.body.style.paddingBottom = 'calc(var(--nav-height) + 260px)'; // Increase padding
+            approvalSection.style.display = 'block';
+            
+            // Trigger resize canvas agar ukurannya benar saat muncul
+            setTimeout(resizeCanvas, 100); 
+
             listContainer.innerHTML = '';
 
             data.forEach(item => {
                 let dateStr = item.tanggal; 
                 
-                // Hasil QC Clean (Text Only - White)
-                let qcText = item.status_hasil === 'OK' ? 
-                    '<span style="color:var(--text-white); font-weight:700;">OK</span>' : 
-                    '<span style="color:var(--text-white); font-weight:700;">NOT OK</span>';
+                // Hasil QC Clean 
+                let qcHtml = item.status_hasil === 'OK' ? 
+                    '<span class="qc-badge qc-ok">OK</span>' : 
+                    '<span class="qc-badge qc-not">NOT OK</span>';
 
                 let html = `
                     <div class="data-card">
@@ -418,7 +427,7 @@
                         <div class="card-body">
                             <div class="info-grid">
                                 <span class="label">Nama Part</span>
-                                <span class="val" style="font-weight:700; color:var(--primary);">${item.nama_part}</span>
+                                <span class="val" style="color:var(--primary);">${item.nama_part}</span>
                                 
                                 <span class="label">Estimasi</span>
                                 <span class="val">${item.estimasi_waktu || '-'}</span>
@@ -428,7 +437,7 @@
 
                                 <span class="label">Hasil QC</span>
                                 <span style="justify-self: end;">
-                                    ${qcText}
+                                    ${qcHtml}
                                 </span>
                             </div>
 
@@ -447,28 +456,24 @@
 
         // --- 3. Signature Logic ---
         var canvas = document.getElementById('signaturePad');
-        var ctx = canvas.getContext('2d');
-        var isDrawing = false;
+        // Initial setup only, we will configure in resizeCanvas
+        var signaturePad = new SignaturePad(canvas, { minWidth: 1, maxWidth: 2.5, penColor: 'black' });
 
         function resizeCanvas() {
             var ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            ctx.scale(ratio, ratio);
+            
+            // Set canvas dimensions explicitly based on container width/height
+            // This is crucial when the container was previously hidden
+            if (canvas.offsetWidth > 0) {
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
+                signaturePad.clear(); // Clear to prevent artifacts
+            }
         }
         window.addEventListener("resize", resizeCanvas);
-        // Delay slighty so display:block layout is calculated
-        setTimeout(resizeCanvas, 500); 
 
-        function startDraw(e) { isDrawing = true; ctx.beginPath(); var pos = getPos(e); ctx.moveTo(pos.x, pos.y); }
-        function draw(e) { if (!isDrawing) return; e.preventDefault(); var pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.stroke(); }
-        function endDraw() { isDrawing = false; }
-        function getPos(e) { var rect = canvas.getBoundingClientRect(); var clientX = e.touches ? e.touches[0].clientX : e.clientX; var clientY = e.touches ? e.touches[0].clientY : e.clientY; return { x: clientX - rect.left, y: clientY - rect.top }; }
-
-        canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mousemove', draw); canvas.addEventListener('mouseup', endDraw); canvas.addEventListener('mouseleave', endDraw);
-        canvas.addEventListener('touchstart', startDraw); canvas.addEventListener('touchmove', draw); canvas.addEventListener('touchend', endDraw);
-
-        window.clearSignature = function() { ctx.clearRect(0, 0, canvas.width, canvas.height); };
+        window.clearSignature = function() { signaturePad.clear(); };
 
         // --- 4. Submit Approval Logic ---
         function showNotification(title, msg, type) {
@@ -477,9 +482,19 @@
             var icon = document.getElementById('alertIcon');
             var titleEl = document.getElementById('alertTitle');
             var msgEl = document.getElementById('alertMsg');
+            
             titleEl.textContent = title; msgEl.textContent = msg;
-            if (type === 'success') { icon.className = 'fa-solid fa-circle-check'; icon.style.color = '#059669'; } 
-            else { icon.className = 'fa-solid fa-circle-exclamation'; icon.style.color = '#DC2626'; }
+            
+            if (type === 'success') { 
+                icon.className = 'fa-solid fa-circle-check'; 
+                icon.style.color = '#059669'; 
+                alertBox.style.borderLeftColor = '#059669';
+            } else { 
+                icon.className = 'fa-solid fa-circle-exclamation'; 
+                icon.style.color = '#DC2626'; 
+                alertBox.style.borderLeftColor = '#DC2626';
+            }
+            
             alertBox.style.display = 'flex';
             setTimeout(function() { alertBox.style.display = 'none'; }, 3000);
         }
@@ -487,7 +502,6 @@
         document.getElementById('approvalForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            // 1. Ambil ID item yang dicentang
             var checkboxes = document.querySelectorAll('.item-checkbox:checked');
             var selectedIds = Array.from(checkboxes).map(cb => cb.value);
 
@@ -496,15 +510,18 @@
                 return;
             }
 
+            if(signaturePad.isEmpty()) {
+                showNotification('Perhatian', 'Tanda tangan diperlukan.', 'error');
+                return;
+            }
+
             document.getElementById('loadingOverlay').style.display = 'flex';
 
             try {
-                // 2. Ambil data form
                 var nama = document.getElementById('nama_superintendent').value;
                 var catatan = document.getElementById('catatan_superintendent').value;
-                var signatureData = canvas.toDataURL('image/png');
+                var signatureData = signaturePad.toDataURL('image/png');
 
-                // 3. Update Supabase (Bulk Update menggunakan 'in')
                 const { data, error } = await supabaseClient
                     .from('ppw_log')
                     .update({
@@ -521,10 +538,9 @@
                     throw error;
                 } else {
                     showNotification('Berhasil!', selectedIds.length + ' Pekerjaan telah di-approve.');
-                    // Refresh data list: Data yang sudah diapprove akan hilang dari list ini
                     fetchPendingData(); 
                     document.getElementById('approvalForm').reset();
-                    window.clearSignature();
+                    signaturePad.clear();
                 }
 
             } catch (err) {
