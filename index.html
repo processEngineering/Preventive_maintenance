@@ -57,6 +57,31 @@
             align-items: center;
         }
 
+        /* LOGO DI LUAR KARTU (KECIL) */
+        .header-logo {
+            margin-bottom: 25px; /* Jarak antara logo dan kartu */
+            text-align: center;
+            animation: floatLogo 3s ease-in-out infinite;
+        }
+
+        .logo { 
+            width: 70px; /* UKURAN KECIL */
+            height: auto;
+            transition: transform 0.3s ease;
+            /* Bayangan merah agar menyala di background hitam */
+            filter: drop-shadow(0 0 15px rgba(220, 38, 38, 0.6));
+        }
+
+        .logo:hover {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        @keyframes floatLogo {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0px); }
+        }
+
         /* KARTU LOGIN */
         .login-card {
             width: 100%;
@@ -311,13 +336,45 @@
             try {
                 const { data: { session } } = await client.auth.getSession();
                 if (session) {
-                    window.location.href = 'home_akg.html';
+                    // Cek jabatan dulu sebelum redirect
+                    cekJabatanDanRedirect(session.user.id);
                 }
             } catch (err) {
                 console.error("Cek sesi error:", err);
             }
         }
         cekSesi();
+
+        // FUNGSI UTAMA: Cek Jabatan & Redirect
+        async function cekJabatanDanRedirect(userId) {
+            try {
+                const { data: profile, error } = await client
+                    .from('profiles')
+                    .select('jabatan')
+                    .eq('id', userId)
+                    .single();
+
+                if (error || !profile) {
+                    console.warn("Profil tidak ditemukan, redirect ke home default.");
+                    window.location.href = 'home_akg.html';
+                    return;
+                }
+
+                const jabatan = profile.jabatan;
+                
+                if (jabatan === 'PRODUKSI') {
+                    window.location.href = 'Jpdo_produksi.html';
+                } else if (jabatan === 'PPC') {
+                    window.location.href = 'Jpdo_ppc.html';
+                } else {
+                    window.location.href = 'home_akg.html';
+                }
+
+            } catch (e) {
+                console.error("Gagal cek jabatan:", e);
+                window.location.href = 'home_akg.html'; // Fallback
+            }
+        }
 
         // FUNGSI LOGIN
         async function prosesLogin() {
@@ -341,6 +398,7 @@
             btn.disabled = true;
 
             try {
+                // 1. PROSES LOGIN AUTH
                 const { data, error } = await client.auth.signInWithPassword({
                     email: email,
                     password: password
@@ -353,11 +411,17 @@
                     throw error;
                 }
 
+                // LOGIN SUKSES
                 tampilkanPesan("Login Berhasil! Mengalihkan...", "success");
-                
-                setTimeout(() => {
-                    window.location.href = 'home_akg.html';
-                }, 1000);
+
+                // 2. CEK JABATAN & REDIRECT (Logic Baru)
+                if (data.user) {
+                    // Panggil fungsi cek jabatan
+                    // Kita kasih timeout sedikit biar user sempat baca pesan sukses
+                    setTimeout(() => {
+                        cekJabatanDanRedirect(data.user.id);
+                    }, 1000);
+                }
 
             } catch (err) {
                 console.error(err);
