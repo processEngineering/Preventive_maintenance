@@ -3,514 +3,531 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pelaksana (CHSLR) - AKG Maintenance</title>
+    <title>Pelaksana CHSLR - AKG Maintenance</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <style>
-        /* ==================== VARIABLES & RESET ==================== */
         :root {
-            --primary: #DC2626;       /* Merah Utama */
-            --primary-dark: #991B1B;
-            --bg-app: #09090b;        /* Hitam Pekat */
-            --bg-card: #18181b;       /* Abu Gelap */
-            --bg-input: #27272a;      /* Input Field */
-            --text-main: #fafafa;     /* Putih */
-            --text-muted: #a1a1aa;    /* Abu Terang */
-            --border: #3f3f46;
+            --primary: #FF3333; /* Merah Neon */
+            --primary-dark: #b91c1c;
+            --bg-dark: #080808;
+            --bg-card: #1a1a1a; 
+            --text-white: #FFFFFF;
+            --text-header: #FF3333;
+            --text-gray: #A3A3A3;
+            --radius: 16px;
+            --nav-height: 70px;
             
             /* Status Colors */
-            --ok: #059669; 
-            --ng: #EF4444; 
-            --mn: #D97706; 
-            --na: #52525B;
-
-            --nav-height: 65px;
-            --safe-area-bottom: env(safe-area-inset-bottom);
+            --ok: #10b981;
+            --ng: #ef4444;
+            --mn: #f59e0b;
+            --na: #6b7280;
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        
+        * { 
+            margin: 0; padding: 0; box-sizing: border-box; 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
         body {
-            margin: 0; padding: 0;
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-app);
-            color: var(--text-main);
-            overscroll-behavior-y: none;
-        }
-
-        /* ==================== APP LAYOUT ==================== */
-        .app-container {
-            width: 100%;
-            max-width: 480px;
-            margin: 0 auto;
+            background: var(--bg-dark);
             min-height: 100vh;
             display: flex;
-            flex-direction: column;
-            position: relative;
-            padding-bottom: calc(var(--nav-height) + 20px);
+            justify-content: center;
+            overflow-x: hidden;
+            color: var(--text-white);
         }
 
-        /* ==================== HEADER ==================== */
-        .header-capsule {
-            background: var(--bg-card);
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        /* --- Background Animation --- */
+        .bg-animation {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 0; overflow: hidden;
+            background: #050505;
         }
-        .header-capsule h1 { font-size: 18px; font-weight: 700; margin: 0; color: var(--primary); }
-        .badge-role { 
-            font-size: 11px; font-weight: 700; background: var(--primary); 
-            color: white; padding: 4px 10px; border-radius: 20px; 
+        .orb {
+            position: absolute; border-radius: 50%; filter: blur(90px);
+            opacity: 0.4; animation: float 20s ease-in-out infinite;
+        }
+        .orb-1 { width: 400px; height: 400px; background: radial-gradient(circle, var(--primary-dark) 0%, transparent 70%); top: -150px; right: -100px; }
+        .orb-2 { width: 300px; height: 300px; background: radial-gradient(circle, #500000 0%, transparent 70%); bottom: 10%; left: -100px; }
+        .grid-pattern {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px; opacity: 0.5;
+        }
+        @keyframes float { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-30px, 30px) scale(0.9); } }
+
+        .app-shell {
+            width: 100%; max-width: 600px; min-height: 100vh;
+            position: relative; z-index: 1;
+        }
+        .app-container { padding: 24px 20px calc(var(--nav-height) + 24px) 20px; }
+
+        /* --- HEADER 3D --- */
+        .header {
+            background: linear-gradient(180deg, rgba(20, 0, 0, 0.9), rgba(40, 0, 0, 0.95));
+            border: 1px solid rgba(255, 51, 51, 0.3);
+            border-bottom: 4px solid var(--primary-dark);
+            border-radius: var(--radius);
+            padding: 20px; margin-bottom: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center; position: relative;
+        }
+        .header-title {
+            font-size: 20px; font-weight: 900; color: var(--text-header);
+            text-transform: uppercase; letter-spacing: 1px;
+            text-shadow: 0 0 20px rgba(255, 51, 51, 0.8);
+            line-height: 1.4;
+        }
+        /* Badge dihapus sesuai request */
+        .header-badge { display: none; }
+
+        /* --- 3D CARD STYLE --- */
+        .card-3d {
+            background: linear-gradient(145deg, #1e1e1e, #141414);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 5px solid #000;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            padding: 20px; margin-bottom: 16px;
         }
 
-        /* ==================== SCANNER VIEW ==================== */
-        #page-scanner { 
-            flex: 1; display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; padding: 20px; 
-        }
+        /* --- SCANNER --- */
         .scanner-box {
-            width: 280px; height: 280px;
-            background: black;
-            border-radius: 24px;
-            overflow: hidden;
             border: 4px solid var(--primary);
+            border-radius: 24px; overflow: hidden;
             box-shadow: 0 0 30px rgba(220, 38, 38, 0.2);
-            margin-bottom: 30px;
-            position: relative;
+            margin-bottom: 20px; background: #000;
         }
-        #reader { width: 100%; height: 100%; object-fit: cover; }
-        
-        .scan-hint { color: var(--text-muted); text-align: center; margin-bottom: 20px; font-size: 14px; }
-        .btn-scan-static {
-            background: var(--primary); color: white; border: none;
-            padding: 12px 30px; border-radius: 50px; font-weight: 600; font-size: 14px;
-            box-shadow: 0 4px 10px rgba(220, 38, 38, 0.4);
+        #reader { width: 100%; }
+
+        /* --- INPUTS --- */
+        .input-3d {
+            width: 100%; padding: 14px;
+            background: #0f0f0f; border: 1px solid #333;
+            border-bottom: 2px solid #000; border-radius: 12px;
+            color: white; font-size: 14px;
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.5);
         }
+        .input-3d:focus { outline: none; border-color: var(--primary); }
+        .label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--text-gray); margin-bottom: 6px; display: block; margin-left: 4px; }
 
-        /* ==================== FORM VIEW ==================== */
-        #page-form { display: none; padding: 20px; animation: slideUp 0.3s ease-out; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Machine Info Card */
-        .machine-card {
-            background: linear-gradient(145deg, var(--bg-card), #202022);
-            border: 1px solid var(--border);
-            border-left: 4px solid var(--primary);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 24px;
-        }
-        .m-name { font-size: 18px; font-weight: 700; margin-bottom: 8px; display: block; }
-        .m-meta { display: flex; gap: 8px; }
-        .m-tag { font-size: 11px; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 6px; color: var(--text-muted); }
-
-        /* Inputs */
-        .form-group { margin-bottom: 20px; }
-        .label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-        
-        .input-field {
-            width: 100%;
-            background: var(--bg-input);
-            border: 1px solid var(--border);
-            color: white;
-            padding: 14px;
-            border-radius: 12px;
-            font-size: 16px;
-            outline: none;
-            transition: 0.2s;
-        }
-        .input-field:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2); }
-
-        /* Checklist Items */
-        .category-header {
-            font-size: 13px; font-weight: 700; color: var(--primary);
-            margin: 30px 0 10px 0; text-transform: uppercase; border-bottom: 1px solid var(--border);
-            padding-bottom: 5px;
+        /* --- CHECKLIST ITEMS --- */
+        .category-title {
+            color: var(--primary); font-size: 12px; font-weight: 900; 
+            text-transform: uppercase; letter-spacing: 1px;
+            margin: 24px 0 12px 4px; border-bottom: 1px solid #333; padding-bottom: 4px;
         }
 
-        .item-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
-        }
-        .item-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-        .item-std { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; display: block; font-style: italic; }
-
-        /* Radio Buttons (The 4 Grid) */
-        .radio-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
+        .radio-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
         .radio-option input { display: none; }
         .radio-tile {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            height: 50px;
-            background: var(--bg-input);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: 0.2s;
+            height: 45px; background: #222; border: 1px solid #333;
+            border-radius: 10px; cursor: pointer; transition: 0.2s;
+            color: #666;
         }
-        .radio-tile i { font-size: 16px; margin-bottom: 2px; }
-        .radio-tile span { font-size: 10px; font-weight: 700; }
-
-        /* Active States */
-        .radio-option input:checked + .radio-tile.ok { background: var(--ok); border-color: var(--ok); color: white; }
-        .radio-option input:checked + .radio-tile.ng { background: var(--ng); border-color: var(--ng); color: white; }
-        .radio-option input:checked + .radio-tile.mn { background: var(--mn); border-color: var(--mn); color: white; }
-        .radio-option input:checked + .radio-tile.na { background: var(--na); border-color: var(--na); color: white; }
-
-        /* Value Input */
-        .val-box { display: flex; align-items: center; gap: 10px; }
-        .val-input { flex: 1; text-align: center; font-weight: bold; letter-spacing: 1px; border: 1px solid var(--primary); }
-
-        /* NG Note */
-        .ng-box { 
-            margin-top: 12px; background: rgba(239, 68, 68, 0.1); 
-            border: 1px dashed var(--ng); border-radius: 8px; padding: 10px; display: none; 
-        }
-        .ng-box.active { display: block; animation: slideUp 0.2s; }
-        .ng-text { width: 100%; background: transparent; border: none; color: white; font-size: 14px; outline: none; resize: none; }
-
-        /* Signature Area */
-        .sig-container {
-            margin-top: 30px;
-            border: 2px dashed var(--border);
-            /* PERBAIKAN: Background PUTIH agar tinta HITAM terlihat jelas */
-            background: #f5f5f5; 
-            border-radius: 12px;
-            height: 180px;
-            position: relative;
-            overflow: hidden;
-        }
-        canvas { width: 100%; height: 100%; touch-action: none; } 
+        .radio-tile span { font-size: 10px; font-weight: 800; }
         
-        .sig-tools { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .btn-clear-sig { font-size: 12px; color: var(--primary); background: none; border: none; font-weight: 600; padding: 10px; }
+        /* Active States */
+        .radio-option input:checked + .radio-tile.ok { background: rgba(16, 185, 129, 0.2); border-color: var(--ok); color: var(--ok); box-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
+        .radio-option input:checked + .radio-tile.ng { background: rgba(239, 68, 68, 0.2); border-color: var(--ng); color: var(--ng); box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
+        .radio-option input:checked + .radio-tile.mn { background: rgba(245, 158, 11, 0.2); border-color: var(--mn); color: var(--mn); box-shadow: 0 0 10px rgba(245, 158, 11, 0.3); }
+        .radio-option input:checked + .radio-tile.na { background: rgba(107, 114, 128, 0.2); border-color: var(--na); color: var(--na); }
 
-        /* Submit Button */
-        .btn-submit {
-            width: 100%; background: var(--primary); color: white; border: none;
-            padding: 16px; border-radius: 12px; font-size: 16px; font-weight: 700;
-            margin-top: 30px; margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+        .ng-box {
+            margin-top: 12px; background: rgba(239, 68, 68, 0.1);
+            border: 1px dashed var(--ng); border-radius: 10px; padding: 10px;
+            display: none; animation: slideDown 0.3s ease;
         }
-        .btn-submit:active { transform: scale(0.98); }
-        .btn-submit:disabled { background: var(--border); box-shadow: none; color: var(--text-muted); }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .ng-box textarea { width: 100%; background: transparent; border: none; color: white; font-size: 12px; outline: none; resize: none; }
 
-        /* Bottom Nav */
+        /* --- SIGNATURE BOX --- */
+        .sig-container {
+            background: #ffffff; /* Putih agar tinta hitam jelas */
+            border-radius: 16px; 
+            border: 2px solid var(--primary-dark);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+            overflow: hidden; height: 160px;
+        }
+
+        /* --- BUTTONS --- */
+        .btn-3d {
+            width: 100%; padding: 16px; border-radius: 14px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 1px;
+            transition: all 0.1s ease; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-bottom: 4px solid #600; color: #fff;
+        }
+        .btn-primary:active { transform: translateY(3px); border-bottom-width: 1px; }
+        
+        /* Removed btn-secondary (Cancel button style removed) */
+
+        /* --- BOTTOM NAV --- */
         .bottom-nav {
-            position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto; max-width: 480px;
-            height: var(--nav-height);
-            background: rgba(24, 24, 27, 0.95);
-            backdrop-filter: blur(10px);
-            border-top: 1px solid var(--border);
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 100%; max-width: 600px; background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(20px); border-top: 1px solid rgba(255, 255, 255, 0.1);
             display: flex; justify-content: space-around; align-items: center;
-            z-index: 100;
-            padding-bottom: var(--safe-area-bottom);
+            height: var(--nav-height); z-index: 100; box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
         }
-        .nav-link { color: var(--text-muted); font-size: 20px; padding: 10px 20px; border-radius: 12px; transition: 0.2s; }
-        .nav-link.active { color: var(--primary); background: rgba(220, 38, 38, 0.15); }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-decoration: none; color: #555; width: 56px; height: 44px;
+            border-radius: 12px; transition: all 0.3s ease; position: relative;
+        }
+        .nav-item svg { width: 22px; height: 22px; }
+        .nav-item.active { color: var(--primary); }
+        .nav-item.active::after {
+            content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px;
+            background: var(--primary); border-radius: 50%; box-shadow: 0 0 10px var(--primary);
+        }
 
     </style>
 </head>
-<body>
+<body class="pb-28">
 
-<div class="app-container">
-    
-    <div class="header-capsule">
-        <h1>Pelaksana</h1>
-        <span class="badge-role">TEKNISI</span>
+    <div class="bg-animation">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="grid-pattern"></div>
     </div>
 
-    <div id="page-scanner">
-        <div class="scanner-box">
-            <div id="reader"></div>
-        </div>
-        <div class="scan-hint">Arahkan kamera ke QR Code Mesin</div>
-        <button class="btn-scan-static">KAMERA AKTIF</button>
-    </div>
-
-    <div id="page-form">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 style="font-size: 18px; margin: 0;">Isi Checklist</h2>
-            <button onclick="location.reload()" class="btn-cancel" style="background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border); padding: 8px 16px; border-radius: 8px;">Batal</button>
-        </div>
-
-        <div class="machine-card">
-            <span id="machine-name" class="m-name">...</span>
-            <div class="m-meta">
-                <span class="m-tag">Ton: <span id="machine-ton">-</span></span>
-                <span class="m-tag">SN: <span id="machine-sn">-</span></span>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label class="label">Nama Pelaksana</label>
-            <input type="text" id="technician-name" class="input-field" placeholder="Nama Lengkap Anda...">
-        </div>
-
-        <div id="checklist-container"></div>
-
-        <div class="form-group" style="margin-top: 30px;">
-            <div class="sig-tools">
-                <label class="label">Tanda Tangan Pelaksana</label>
-                <button onclick="sigPad.clear()" class="btn-clear-sig">HAPUS TTD</button>
-            </div>
-            <div class="sig-container">
-                <canvas id="signature-pad"></canvas>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label class="label">Catatan Tambahan</label>
-            <textarea id="general-note" rows="3" class="input-field" placeholder="Kondisi mesin secara umum..."></textarea>
-        </div>
-
-        <button onclick="saveAll()" id="btn-save" class="btn-submit">KIRIM LAPORAN</button>
-    </div>
-
-</div>
-
-<nav class="bottom-nav">
-    <a href="index.html" class="nav-link active"><i class="fa-solid fa-house"></i></a>
-    <a href="menu_utama.html" class="nav-link"><i class="fa-solid fa-bars"></i></a>
-    <a href="download_data.html" class="nav-link"><i class="fa-solid fa-download"></i></a>
-    <a href="informasi_akun.html" class="nav-link"><i class="fa-solid fa-user"></i></a>
-</nav>
-
-<script>
-    const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
-    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
-    const _sb = supabase.createClient(SB_URL, SB_KEY);
-    
-    let scanner, sigPad, currentMachineId;
-
-    window.onload = () => {
-        scanner = new Html5Qrcode("reader");
-        scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, onScanSuccess);
-    };
-
-    async function onScanSuccess(decodedText) {
-        if (navigator.vibrate) navigator.vibrate(50);
-        await scanner.stop(); scanner.clear();
-        
-        const { data: mesin } = await _sb.from('chslr_mesin').select('*').ilike('nama_mesin', `%${decodedText.trim()}%`).maybeSingle();
-        
-        if (mesin) {
-            currentMachineId = mesin.nama_mesin;
-            document.getElementById('page-scanner').style.display = 'none';
-            document.getElementById('page-form').style.display = 'block';
+    <div class="app-shell">
+        <div class="app-container">
             
-            document.getElementById('machine-name').innerText = mesin.nama_mesin;
-            document.getElementById('machine-ton').innerText = mesin.tonage || '-';
-            document.getElementById('machine-sn').innerText = mesin.no_seri || '-';
+            <!-- SCANNER VIEW -->
+            <div id="page-scanner" class="flex flex-col items-center justify-center min-h-[60vh] fade-in">
+                <header class="header w-full">
+                    <h1 class="header-title">Scan Mesin</h1>
+                    <!-- Badge dihapus -->
+                </header>
+
+                <div class="scanner-box w-64 h-64 relative">
+                    <div id="reader" class="w-full h-full object-cover"></div>
+                    <!-- Overlay Frame -->
+                    <div class="absolute inset-0 border-2 border-primary/50 m-4 rounded-xl pointer-events-none"></div>
+                </div>
+                
+                <p class="text-xs text-gray-400 mt-4 text-center">Arahkan kamera ke QR Code Mesin<br>untuk memulai checklist.</p>
+                
+                <div class="mt-8 px-4 py-2 bg-primary/10 border border-primary/30 rounded-lg">
+                    <p class="text-[10px] text-primary font-bold animate-pulse">KAMERA AKTIF</p>
+                </div>
+            </div>
+
+            <!-- FORM VIEW -->
+            <div id="page-form" class="hidden fade-in">
+                <header class="header">
+                    <!-- Judul Diganti -->
+                    <h1 class="header-title">Form Checklist Harian<br>Stand Label & Robot</h1>
+                    <!-- Badge dihapus -->
+                </header>
+
+                <!-- Machine Info -->
+                <div class="card-3d border-l-4 border-l-primary">
+                    <h2 id="machine-name" class="text-xl font-black text-white uppercase mb-2">...</h2>
+                    <div class="flex gap-3">
+                        <span class="text-[10px] font-bold bg-gray-800 px-2 py-1 rounded text-gray-400 border border-gray-700">TON: <span id="machine-ton" class="text-white">-</span></span>
+                        <span class="text-[10px] font-bold bg-gray-800 px-2 py-1 rounded text-gray-400 border border-gray-700">SN: <span id="machine-sn" class="text-white">-</span></span>
+                    </div>
+                </div>
+
+                <!-- Identity -->
+                <div class="mb-6">
+                    <label class="label">Nama Pelaksana</label>
+                    <input type="text" id="technician-name" class="input-3d font-bold" placeholder="nama lengkap anda">
+                </div>
+
+                <!-- Checklist Items -->
+                <div id="checklist-container"></div>
+
+                <!-- General Note (Dipindah ke atas Tanda Tangan) -->
+                <div class="mt-8 mb-6">
+                    <label class="label">Catatan Tambahan</label>
+                    <textarea id="general-note" rows="3" class="input-3d" placeholder="berikan catatan anda sebagai laporan tambahan untuk koordinator"></textarea>
+                </div>
+
+                <!-- Signature -->
+                <div class="card-3d">
+                    <div class="flex justify-between items-center mb-2 px-1">
+                        <label class="label mb-0">paraf anda</label>
+                        <button onclick="sigPad.clear()" class="text-[10px] text-primary hover:text-white uppercase font-bold">ulangi</button>
+                    </div>
+                    <!-- Background Putih -->
+                    <div class="sig-container">
+                        <canvas id="signature-pad"></canvas>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="mt-6 pb-6">
+                    <!-- Tombol Batal Dihapus, tombol Kirim Full Width -->
+                    <button onclick="saveAll()" id="btn-save" class="btn-3d btn-primary w-full">
+                        <i class="fa-solid fa-paper-plane"></i> KIRIM LAPORAN
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            </a>
+            <a href="menu_utama.html" class="nav-item active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </a>
+            <a href="download_data.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            </a>
+            <a href="informasi_akun.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </a>
+        </nav>
+    </div>
+
+    <script>
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
+        
+        let scanner, sigPad, currentMachineId;
+
+        window.onload = () => {
+            scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, onScanSuccess);
+        };
+
+        async function onScanSuccess(decodedText) {
+            if (navigator.vibrate) navigator.vibrate(50);
+            await scanner.stop(); scanner.clear();
             
-            loadItems(); 
-            setTimeout(initSigPad, 100);
-        } else { 
-            alert("QR Code Tidak Dikenal!"); location.reload(); 
+            const { data: mesin } = await _sb.from('chslr_mesin').select('*').ilike('nama_mesin', `%${decodedText.trim()}%`).maybeSingle();
+            
+            if (mesin) {
+                currentMachineId = mesin.nama_mesin;
+                document.getElementById('page-scanner').classList.add('hidden');
+                document.getElementById('page-form').classList.remove('hidden');
+                
+                document.getElementById('machine-name').innerText = mesin.nama_mesin;
+                document.getElementById('machine-ton').innerText = mesin.tonage || '-';
+                document.getElementById('machine-sn').innerText = mesin.no_seri || '-';
+                
+                loadItems(); 
+                setTimeout(initSigPad, 100);
+            } else { 
+                alert("QR Code Tidak Dikenal!"); location.reload(); 
+            }
         }
-    }
 
-    function initSigPad() {
-        const canvas = document.getElementById('signature-pad');
-        const ratio = Math.max(window.devicePixelRatio || 1, 1);
-        canvas.width = canvas.offsetWidth * ratio; 
-        canvas.height = canvas.offsetHeight * ratio;
-        canvas.getContext("2d").scale(ratio, ratio);
-        
-        // PERBAIKAN: TINTA HITAM DI BACKGROUND PUTIH
-        sigPad = new SignaturePad(canvas, { 
-            minWidth: 2,
-            maxWidth: 4,
-            penColor: 'black',  // TINTA HITAM PEKAT
-            backgroundColor: 'rgba(0,0,0,0)'
-        });
-    }
-
-    async function loadItems() {
-        const container = document.getElementById('checklist-container');
-        const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
-        container.innerHTML = "";
-        let lastCategory = "";
-
-        items.forEach((item) => {
-            if (item.kategori && item.kategori !== lastCategory) {
-                container.insertAdjacentHTML('beforeend', `<div class="category-header">${item.kategori}</div>`);
-                lastCategory = item.kategori;
-            }
-
-            let inputHtml = '';
+        function initSigPad() {
+            const canvas = document.getElementById('signature-pad');
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio; 
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
             
-            if (item.input_type === 'val') {
-                inputHtml = `
-                    <div class="val-box">
-                        <input type="number" id="val-${item.id}" class="input-field val-input" placeholder="0">
-                        <span style="font-weight:700; color:var(--primary);">VALUE</span>
-                    </div>
-                `;
-            } else {
-                inputHtml = `
-                    <div class="radio-grid">
-                        <label class="radio-option">
-                            <input type="radio" name="st-${item.id}" value="OK" checked onchange="handleStatusChange('${item.id}', 'OK')">
-                            <div class="radio-tile ok"><i class="fa-solid fa-check"></i><span>OK</span></div>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="st-${item.id}" value="NG" onchange="handleStatusChange('${item.id}', 'NG')">
-                            <div class="radio-tile ng"><i class="fa-solid fa-xmark"></i><span>NG</span></div>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="st-${item.id}" value="MN" onchange="handleStatusChange('${item.id}', 'MN')">
-                            <div class="radio-tile mn"><i class="fa-solid fa-wrench"></i><span>MN</span></div>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="st-${item.id}" value="NA" onchange="handleStatusChange('${item.id}', 'NA')">
-                            <div class="radio-tile na"><i class="fa-solid fa-minus"></i><span>NA</span></div>
-                        </label>
-                    </div>
-                `;
-            }
+            // Pen Color Hitam, Background Putih
+            sigPad = new SignaturePad(canvas, { 
+                minWidth: 2,
+                maxWidth: 4,
+                penColor: 'black',  
+                backgroundColor: 'rgba(255,255,255,0)' // Transparan karena container sudah putih
+            });
+        }
 
-            const itemHtml = `
-                <div class="item-card" id="card-${item.id}" data-type="${item.input_type || 'std'}">
-                    <div class="item-title">${item.item_name}</div>
-                    <span class="item-std">Std: ${item.standard}</span>
-                    
-                    ${inputHtml}
+        async function loadItems() {
+            const container = document.getElementById('checklist-container');
+            const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
+            container.innerHTML = "";
+            let lastCategory = "";
 
-                    <div id="ng-box-${item.id}" class="ng-box">
-                        <div style="font-size:11px; font-weight:700; color:#ff8888; margin-bottom:5px;">
-                            <i class="fa-solid fa-circle-exclamation"></i> KETERANGAN MASALAH:
+            items.forEach((item) => {
+                if (item.kategori && item.kategori !== lastCategory) {
+                    container.insertAdjacentHTML('beforeend', `<div class="category-title">${item.kategori}</div>`);
+                    lastCategory = item.kategori;
+                }
+
+                let inputHtml = '';
+                
+                if (item.input_type === 'val') {
+                    inputHtml = `
+                        <div class="flex items-center gap-3 mt-3">
+                            <input type="number" id="val-${item.id}" class="input-3d text-center font-bold text-primary" placeholder="0">
+                            <span class="text-xs font-bold text-gray-500">VALUE</span>
                         </div>
-                        <textarea id="note-${item.id}" rows="2" class="ng-text" placeholder="Jelaskan detail kerusakan..."></textarea>
-                    </div>
-                </div>`;
-            container.insertAdjacentHTML('beforeend', itemHtml);
-        });
-    }
+                    `;
+                } else {
+                    inputHtml = `
+                        <div class="radio-grid">
+                            <label class="radio-option">
+                                <input type="radio" name="st-${item.id}" value="OK" checked onchange="handleStatusChange('${item.id}', 'OK')">
+                                <div class="radio-tile ok"><span>OK</span></div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="st-${item.id}" value="NG" onchange="handleStatusChange('${item.id}', 'NG')">
+                                <div class="radio-tile ng"><span>NG</span></div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="st-${item.id}" value="MN" onchange="handleStatusChange('${item.id}', 'MN')">
+                                <div class="radio-tile mn"><span>MN</span></div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="st-${item.id}" value="NA" onchange="handleStatusChange('${item.id}', 'NA')">
+                                <div class="radio-tile na"><span>NA</span></div>
+                            </label>
+                        </div>
+                    `;
+                }
 
-    window.handleStatusChange = function(itemId, status) {
-        const ngBox = document.getElementById(`ng-box-${itemId}`);
-        const noteInput = document.getElementById(`note-${itemId}`);
+                // Hapus class italic
+                const itemHtml = `
+                    <div class="card-3d p-4" id="card-${item.id}" data-type="${item.input_type || 'std'}">
+                        <div class="flex justify-between items-start">
+                            <div class="w-2/3">
+                                <h3 class="text-sm font-bold text-white mb-1">${item.item_name}</h3>
+                                <p class="text-[10px] text-gray-500">Std: ${item.standard}</p>
+                            </div>
+                        </div>
+                        
+                        ${inputHtml}
 
-        if (status === 'NG' || status === 'MN') {
-            ngBox.classList.add('active');
-            noteInput.focus();
-        } else {
-            ngBox.classList.remove('active');
-            noteInput.value = ''; 
+                        <div id="ng-box-${item.id}" class="ng-box">
+                            <div class="flex items-center gap-1 mb-1 text-red-400">
+                                <i class="fa-solid fa-circle-exclamation text-[10px]"></i>
+                                <span class="text-[10px] font-bold uppercase">Keterangan Masalah</span>
+                            </div>
+                            <textarea id="note-${item.id}" rows="2" placeholder="Jelaskan detail kerusakan..."></textarea>
+                        </div>
+                    </div>`;
+                container.insertAdjacentHTML('beforeend', itemHtml);
+            });
         }
-    }
 
-    async function saveAll() {
-        const name = document.getElementById('technician-name').value.trim();
-        const generalNote = document.getElementById('general-note').value.trim();
+        window.handleStatusChange = function(itemId, status) {
+            const ngBox = document.getElementById(`ng-box-${itemId}`);
+            const noteInput = document.getElementById(`note-${itemId}`);
 
-        if(!name) { 
-            alert("⚠️ Mohon isi Nama Pelaksana terlebih dahulu."); 
-            document.getElementById('technician-name').focus(); 
-            return; 
+            if (status === 'NG' || status === 'MN') {
+                ngBox.style.display = 'block';
+            } else {
+                ngBox.style.display = 'none';
+                noteInput.value = ''; 
+            }
         }
-        if(sigPad.isEmpty()) { 
-            alert("⚠️ Tanda Tangan Pelaksana wajib diisi."); 
-            return; 
-        }
-        
-        const itemCards = document.querySelectorAll('.item-card');
-        const results = [];
-        let hasError = false;
 
-        itemCards.forEach(card => {
+        async function saveAll() {
+            const name = document.getElementById('technician-name').value.trim();
+            const generalNote = document.getElementById('general-note').value.trim();
+
+            if(!name) { 
+                alert("⚠️ Mohon isi Nama Pelaksana terlebih dahulu."); 
+                document.getElementById('technician-name').focus(); 
+                return; 
+            }
+            if(sigPad.isEmpty()) { 
+                alert("⚠️ Tanda Tangan Pelaksana wajib diisi."); 
+                return; 
+            }
+            
+            const itemCards = document.querySelectorAll('.card-3d[id^="card-"]');
+            const results = [];
+            let hasError = false;
+
+            itemCards.forEach(card => {
+                if(hasError) return;
+
+                const itemId = card.id.replace('card-', '');
+                const type = card.getAttribute('data-type');
+                let status = '', valData = '', note = '';
+                
+                const noteEl = document.getElementById(`note-${itemId}`);
+                
+                if (type === 'val') {
+                    valData = document.getElementById(`val-${itemId}`).value.trim();
+                    status = 'OK';
+                    if(!valData) {
+                        alert(`⚠️ Nilai angka untuk item ini wajib diisi!`);
+                        document.getElementById(`val-${itemId}`).focus();
+                        hasError = true; return;
+                    }
+                } else {
+                    const checked = document.querySelector(`input[name="st-${itemId}"]:checked`);
+                    status = checked ? checked.value : 'OK';
+                    
+                    if ((status === 'NG' || status === 'MN') && !noteEl.value.trim()) {
+                        alert(`⚠️ Keterangan wajib diisi untuk status ${status}!`);
+                        noteEl.focus();
+                        hasError = true; return;
+                    }
+                    note = noteEl.value.trim();
+                }
+
+                results.push({ itemId, status, valData, note });
+            });
+
             if(hasError) return;
 
-            const itemId = card.id.replace('card-', '');
-            const type = card.getAttribute('data-type');
-            let status = '', valData = '', note = '';
-            
-            const noteEl = document.getElementById(`note-${itemId}`);
-            
-            if (type === 'val') {
-                valData = document.getElementById(`val-${itemId}`).value.trim();
-                status = 'OK';
-                if(!valData) {
-                    alert(`⚠️ Nilai angka untuk item ini wajib diisi!`);
-                    document.getElementById(`val-${itemId}`).focus();
-                    hasError = true; return;
-                }
-            } else {
-                const checked = document.querySelector(`input[name="st-${itemId}"]:checked`);
-                status = checked ? checked.value : 'OK';
+            const btn = document.getElementById('btn-save');
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> MENGIRIM...`; btn.disabled = true;
+
+            const now = new Date();
+            const d = now.getDate(), m = now.getMonth()+1, y = now.getFullYear();
+
+            try {
+                let { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', currentMachineId).eq('bulan', m).eq('tahun', y).maybeSingle();
                 
-                if ((status === 'NG' || status === 'MN') && !noteEl.value.trim()) {
-                    alert(`⚠️ Keterangan wajib diisi untuk status ${status}!`);
-                    noteEl.focus();
-                    hasError = true; return;
+                if(!log) {
+                    const { data: nLog } = await _sb.from('chslr_log').insert({ 
+                        mesin_id: currentMachineId, bulan: m, tahun: y, 
+                        pelaksana_names: [name], catatan_pelaksana: generalNote
+                    }).select().single();
+                    log = nLog;
+                } else {
+                    let updatedNames = log.pelaksana_names || [];
+                    if(!updatedNames.includes(name)) updatedNames.push(name);
+                    await _sb.from('chslr_log').update({ 
+                        pelaksana_names: updatedNames, catatan_pelaksana: generalNote 
+                    }).eq('id', log.id);
                 }
-                note = noteEl.value.trim();
+
+                const payload = results.map(r => ({
+                    log_id: log.id,
+                    item_id: r.itemId,
+                    tanggal: d,
+                    status: r.status,
+                    input_value: r.valData,
+                    keterangan: r.note,
+                    signature: sigPad.toDataURL()
+                }));
+
+                await _sb.from('chslr_result').delete().eq('log_id', log.id).eq('tanggal', d);
+                const { error } = await _sb.from('chslr_result').insert(payload);
+
+                if(error) throw error;
+
+                alert("Laporan Berhasil Disimpan!"); location.reload();
+            } catch(e) {
+                alert("❌ GAGAL: " + e.message); 
+                btn.innerHTML = originalHtml; btn.disabled = false;
             }
-
-            results.push({ itemId, status, valData, note });
-        });
-
-        if(hasError) return;
-
-        const btn = document.getElementById('btn-save');
-        const originalText = btn.innerText;
-        btn.innerText = 'MENGIRIM...'; btn.disabled = true;
-
-        const now = new Date();
-        const d = now.getDate(), m = now.getMonth()+1, y = now.getFullYear();
-
-        try {
-            let { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', currentMachineId).eq('bulan', m).eq('tahun', y).maybeSingle();
-            
-            if(!log) {
-                const { data: nLog } = await _sb.from('chslr_log').insert({ 
-                    mesin_id: currentMachineId, bulan: m, tahun: y, 
-                    pelaksana_names: [name], catatan_pelaksana: generalNote
-                }).select().single();
-                log = nLog;
-            } else {
-                let updatedNames = log.pelaksana_names || [];
-                if(!updatedNames.includes(name)) updatedNames.push(name);
-                await _sb.from('chslr_log').update({ 
-                    pelaksana_names: updatedNames, catatan_pelaksana: generalNote 
-                }).eq('id', log.id);
-            }
-
-            const payload = results.map(r => ({
-                log_id: log.id,
-                item_id: r.itemId,
-                tanggal: d,
-                status: r.status,
-                input_value: r.valData,
-                keterangan: r.note,
-                signature: sigPad.toDataURL()
-            }));
-
-            await _sb.from('chslr_result').delete().eq('log_id', log.id).eq('tanggal', d);
-            const { error } = await _sb.from('chslr_result').insert(payload);
-
-            if(error) throw error;
-
-            alert("✅ Laporan Berhasil Disimpan!"); location.reload();
-        } catch(e) {
-            alert("❌ GAGAL: " + e.message); 
-            btn.innerText = originalText; btn.disabled = false;
         }
-    }
-</script>
+    </script>
 </body>
 </html>
