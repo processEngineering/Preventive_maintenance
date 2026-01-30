@@ -5,705 +5,537 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Preventif Pelaksana (PRSLB) - AKG Maintenance</title>
     
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
+    
     <style>
-        /* ==================== THEME VARIABLES (BLACK-RED 3D EDITION) ==================== */
+        /* --- THEME VARIABLES (Dark Neon) --- */
         :root {
-            --primary: #DC2626;       /* Bright Red */
-            --primary-light: #EF4444; /* Light Red */
-            --primary-dark: #991B1B;  /* Dark Red */
-            --accent: #F87171;        /* Soft Red */
-            --accent-soft: rgba(220, 38, 38, 0.1);
-            
-            --success: #10B981;
-            --success-bg: rgba(16, 185, 129, 0.1);
-            --warning: #F59E0B;
-            --danger: #EF4444;
-            --danger-bg: rgba(239, 68, 68, 0.1);
-            
-            --bg-body: #0A0A0A;
-            --bg-dark: #111111;
-            --bg-card: #FFFFFF;
-            --text-main: #111111;
-            --text-light: #FFFFFF;
-            --text-muted: #6B7280;
-            --border: rgba(220, 38, 38, 0.2);
-            --border-light: rgba(255, 255, 255, 0.1);
-            
-            --shadow-red: 0 8px 32px rgba(220, 38, 38, 0.3);
-            --shadow-3d: 0 10px 0 #7F1D1D, 0 15px 30px rgba(0, 0, 0, 0.5);
-            --glow-red: 0 0 30px rgba(220, 38, 38, 0.4);
-            
-            --radius-md: 12px;
-            --radius-lg: 16px;
+            --primary: #FF3333;       /* Merah Neon */
+            --primary-dark: #b91c1c;
+            --bg-dark: #080808;
+            --bg-card: #1a1a1a; 
+            --bg-input: #121212;
+            --text-white: #FFFFFF;
+            --text-header: #FF3333;
+            --text-gray: #A3A3A3;
+            --border-light: rgba(255,255,255,0.1);
+            --radius: 16px;
             --nav-height: 70px;
+            
+            --success: #00C851;
+            --danger: #FF3333;
         }
 
-        /* ==================== BASE RESET ==================== */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        
-        body { 
-            background: var(--bg-body);
-            background-image: 
-                radial-gradient(ellipse at 20% 20%, rgba(220, 38, 38, 0.15) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 80%, rgba(220, 38, 38, 0.1) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 50%, rgba(127, 29, 29, 0.08) 0%, transparent 70%);
-            display: flex; 
-            justify-content: center; 
-            min-height: 100vh; 
-            color: var(--text-light); 
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text-white);
+            /* Padding bottom cukup besar untuk mengakomodasi tombol simpan & navbar */
+            padding-bottom: 160px; 
+            min-height: 100vh;
+            overflow-x: hidden;
         }
-        
-        /* ==================== APP SHELL ==================== */
+
+        /* --- BACKGROUND ANIMATION --- */
+        .bg-animation {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: -1; overflow: hidden; background: #050505;
+        }
+        .orb {
+            position: absolute; border-radius: 50%; filter: blur(90px);
+            opacity: 0.4; animation: float 20s ease-in-out infinite;
+        }
+        .orb-1 { width: 400px; height: 400px; top: -150px; right: -100px; background: radial-gradient(circle, var(--primary-dark) 0%, transparent 70%); }
+        .orb-2 { width: 300px; height: 300px; bottom: 10%; left: -100px; background: radial-gradient(circle, #500000 0%, transparent 70%); }
+        .grid-pattern {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px; opacity: 0.5;
+        }
+        @keyframes float { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-20px, 20px); } }
+
         .app-container {
             width: 100%; 
-            max-width: 480px; 
-            background: linear-gradient(180deg, #1A1A1A 0%, #0D0D0D 100%);
-            display: flex; 
-            flex-direction: column; 
-            padding: 24px 20px 120px 20px; 
-            position: relative; 
-            align-items: center; 
-            min-height: 100vh;
-            margin: 0 auto;
-            border-left: 1px solid var(--border);
-            border-right: 1px solid var(--border);
-            box-shadow: var(--glow-red);
-        }
-
-        @media (min-width: 768px) {
-            .app-container { 
-                margin: 40px auto; 
-                min-height: calc(100vh - 80px); 
-                border-radius: 24px; 
-                box-shadow: var(--shadow-red), var(--glow-red);
-                overflow-x: hidden;
-                border: 1px solid var(--border); 
-            }
-            body { background: #050505; }
-            .bottom-nav { 
-                max-width: 480px; 
-                border-radius: 0 0 24px 24px; 
-                left: 50%; 
-                transform: translateX(-50%); 
-            }
-        }
-
-        /* ==================== HEADER ==================== */
-        .header-capsule {
-            width: 100%; 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between;
-            margin-bottom: 24px; 
-            padding-bottom: 16px; 
-            border-bottom: 1px solid var(--border);
+            max-width: 600px; 
+            margin: 0 auto; 
+            /* Padding top ditambah agar konten tidak tertutup header yang fixed */
+            padding: 120px 20px 24px 20px; 
             position: relative;
         }
-        .header-capsule::before {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 0;
-            width: 60%;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), transparent);
-            box-shadow: 0 0 10px var(--primary);
+
+        /* --- HEADER (FIXED TOP) --- */
+        .header {
+            background: linear-gradient(180deg, rgba(20, 0, 0, 0.95), rgba(40, 0, 0, 0.98));
+            border-bottom: 4px solid var(--primary-dark);
+            /* Radius bawah saja agar nempel di langit-langit */
+            border-radius: 0 0 24px 24px;
+            padding: 20px; 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+            text-align: center;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            
+            /* FIXED POSITION */
+            position: fixed; 
+            top: 0; 
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 600px;
+            z-index: 1000; 
+            backdrop-filter: blur(15px);
         }
-        .header-capsule h1 { 
-            font-size: 20px; 
-            font-weight: 800; 
-            color: var(--text-light); 
-            letter-spacing: -0.5px;
-            text-shadow: 0 0 20px rgba(220, 38, 38, 0.5);
-        }
-        .header-capsule::after {
-            content: 'Preventif'; 
-            font-size: 11px; 
-            color: var(--primary); 
-            font-weight: 600; 
-            background: rgba(220, 38, 38, 0.1); 
-            padding: 4px 12px; 
-            border-radius: 20px;
-            border: 1px solid var(--border);
+        
+        .header-title {
+            font-size: 18px; 
+            font-weight: 900; 
+            color: var(--text-header);
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            margin: 0;
+            text-shadow: 0 0 15px rgba(255, 51, 51, 0.6);
+            line-height: 1.3;
         }
 
-        /* ==================== SCANNER VIEW ==================== */
-        #view-scan { width: 100%; display: flex; flex-direction: column; align-items: center; flex: 1; animation: fadeIn 0.4s ease; }
+        /* --- SCANNER VIEW --- */
+        #view-scan { width: 100%; display: flex; flex-direction: column; align-items: center; animation: fadeIn 0.5s ease; }
         
         .instruction-text { 
-            text-align: center; 
-            font-size: 14px; 
-            color: #9CA3AF; 
-            margin-bottom: 24px; 
-            line-height: 1.5; 
-            max-width: 90%; 
+            text-align: center; color: var(--text-gray); font-size: 13px; margin-bottom: 20px;
         }
-        
-        .qr-frame-container { 
-            width: 260px; 
-            height: 260px; 
-            border-radius: 24px; 
-            overflow: hidden; 
-            background: #000; 
-            position: relative; 
-            margin-bottom: 20px;
-            box-shadow: var(--shadow-red), inset 0 0 30px rgba(220, 38, 38, 0.2);
+
+        .qr-frame-container {
+            width: 260px; height: 260px; border-radius: 24px; overflow: hidden;
+            background: #000; position: relative; margin-bottom: 20px;
+            box-shadow: 0 0 30px rgba(255, 51, 51, 0.2);
             border: 3px solid var(--primary);
-            display: flex; 
-            justify-content: center; 
-            align-items: center;
+            display: flex; justify-content: center; align-items: center;
         }
         #reader { width: 100%; height: 100%; border: none !important; }
-        #reader video { 
-            width: 100% !important; 
-            height: 100% !important; 
-            object-fit: cover !important; 
-            border-radius: 20px; 
-        }
+        #reader video { width: 100% !important; height: 100% !important; object-fit: cover !important; }
 
-        .scan-label {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white; 
-            border: none; 
-            border-radius: 50px; 
-            padding: 14px 40px; 
-            font-size: 14px; 
-            font-weight: 700; 
-            letter-spacing: 0.5px;
-            pointer-events: none; 
-            box-shadow: var(--shadow-3d);
-            text-transform: uppercase; 
-            margin-bottom: 12px;
-            position: relative;
-            overflow: hidden;
-        }
-        .scan-label::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            animation: shine 2s infinite;
-        }
-        .scan-status { font-size: 12px; color: #9CA3AF; font-style: italic; min-height: 20px; }
+        .scan-status { font-size: 12px; color: var(--primary); font-weight: 700; text-transform: uppercase; margin-top: 10px; min-height: 20px; }
 
-        /* ==================== FORM VIEW ==================== */
-        #view-form { display: none; width: 100%; animation: slideUp 0.4s ease; padding-bottom: 20px; }
-        
-        /* Machine Card */
+        /* --- FORM VIEW --- */
+        #view-form { display: none; width: 100%; animation: slideUp 0.5s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Machine Info Card */
         .machine-card {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            border-radius: var(--radius-lg); 
-            padding: 20px; 
-            margin-bottom: 24px;
-            color: white; 
-            box-shadow: var(--shadow-3d);
-            text-align: left; 
-            position: relative;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius); padding: 20px; margin-bottom: 24px;
+            color: white; box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3);
+            text-align: left; position: relative; border: 1px solid rgba(255,255,255,0.1);
         }
-        .machine-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
-        .machine-card p { font-size: 12px; opacity: 0.9; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+        .machine-card h3 { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+        .machine-card p { font-size: 12px; opacity: 0.9; text-transform: uppercase; }
+        
         .btn-rescan {
-            position: absolute; 
-            top: 20px; 
-            right: 20px; 
-            background: rgba(255,255,255,0.2);
-            color: white; 
-            border: none; 
-            padding: 8px 14px; 
-            border-radius: 8px;
-            font-size: 11px; 
-            font-weight: 700; 
-            cursor: pointer; 
-            backdrop-filter: blur(4px);
-            transition: all 0.2s;
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.3);
+            padding: 6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700;
+            cursor: pointer; backdrop-filter: blur(4px);
         }
-        .btn-rescan:active { background: rgba(255,255,255,0.3); }
 
         /* Inputs */
-        .form-group { margin-bottom: 18px; }
-        .form-row { display: flex; gap: 12px; margin-bottom: 18px; }
-        .form-col { flex: 1; }
+        .form-group { margin-bottom: 16px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
         
-        label { 
-            display: block; 
-            font-size: 12px; 
-            font-weight: 700; 
-            color: #9CA3AF; 
-            margin-bottom: 8px; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px; 
-        }
+        label { display: block; font-size: 11px; color: var(--text-gray); margin-bottom: 6px; font-weight: 700; text-transform: uppercase; }
         
-        input[type="text"], input[type="time"], input[type="number"] {
-            width: 100%; 
-            padding: 14px; 
-            border: 1px solid var(--border); 
-            border-radius: var(--radius-md);
-            font-size: 14px; 
-            background: var(--bg-card); 
-            outline: none; 
-            transition: all 0.2s;
-            color: var(--text-main); 
-            font-weight: 600;
+        .form-control {
+            width: 100%; padding: 12px;
+            background: var(--bg-input); border: 1px solid #333;
+            border-radius: 10px; color: white; font-size: 14px; outline: none; transition: 0.3s;
         }
-        input:focus { 
-            border-color: var(--primary); 
-            background: white; 
-            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2), var(--glow-red); 
-        }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(255, 51, 51, 0.2); }
+        .form-control:read-only { background: #1a1a1a; color: #777; cursor: not-allowed; }
 
-        /* Checklist Items */
+        /* Checklist Style */
         .cat-header {
-            font-size: 13px; 
-            font-weight: 800; 
-            color: var(--primary); 
-            margin: 28px 0 12px;
-            background: rgba(220, 38, 38, 0.1); 
-            padding: 8px 16px; 
-            border-radius: 8px; 
-            display: inline-block;
-            border: 1px solid var(--border);
-            text-shadow: 0 0 10px rgba(220, 38, 38, 0.3);
+            font-size: 12px; font-weight: 800; color: var(--primary);
+            margin: 24px 0 12px; text-transform: uppercase; letter-spacing: 1px;
+            border-bottom: 1px solid #333; padding-bottom: 6px;
         }
 
         .check-item {
-            background: var(--bg-card); 
-            border: 1px solid rgba(220, 38, 38, 0.15); 
-            border-radius: var(--radius-lg);
-            padding: 16px; 
-            margin-bottom: 14px; 
-            box-shadow: 0 4px 0 rgba(127, 29, 29, 0.3), 0 8px 20px rgba(0, 0, 0, 0.3);
-            border-left: 4px solid var(--primary);
-            transition: all 0.3s ease;
+            background: var(--bg-card); border: 1px solid var(--border-light);
+            border-left: 3px solid var(--primary); border-radius: 12px;
+            padding: 16px; margin-bottom: 12px;
         }
-        .check-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 0 rgba(127, 29, 29, 0.3), 0 12px 25px rgba(0, 0, 0, 0.4);
-        }
-        .item-name { font-weight: 700; font-size: 14px; color: var(--text-main); margin-bottom: 4px; line-height: 1.4; }
-        .item-std { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
-
-        .btn-group { display: flex; gap: 10px; }
-        .btn-status {
-            flex: 1; 
-            padding: 12px; 
-            border: 1px solid #E5E7EB; 
-            background: #F3F4F6;
-            border-radius: 10px; 
-            font-weight: 700; 
-            font-size: 13px; 
-            cursor: pointer;
-            transition: all 0.2s; 
-            color: var(--text-muted);
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            gap: 6px;
-        }
-        .btn-ok.active { 
-            background: var(--success); 
-            border-color: var(--success); 
-            color: white; 
-            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3); 
-        }
-        .btn-ng.active { 
-            background: var(--danger); 
-            border-color: var(--danger); 
-            color: white; 
-            box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3); 
-        }
-
-        .note-area { margin-top: 16px; display: none; }
-        .note-area.show { display: block; animation: fadeIn 0.3s; }
-        .note-label { font-size: 11px; font-weight: 700; color: var(--danger); display: block; margin-bottom: 6px; }
-        .input-note {
-            width: 100%; 
-            padding: 12px; 
-            border: 1px solid #FCA5A5; 
-            border-radius: 10px;
-            font-size: 13px; 
-            background: #FEF2F2; 
-            outline: none;
-            color: var(--text-main);
-        }
-
-        /* Signature & Submit */
-        .sig-box {
-            border: 2px dashed var(--primary); 
-            border-radius: var(--radius-lg);
-            background: var(--bg-card); 
-            margin-top: 8px; 
-            overflow: hidden; 
-            height: 180px; 
-            position: relative;
-            box-shadow: inset 0 0 20px rgba(220, 38, 38, 0.05);
-        }
-        #signature-pad { width: 100%; height: 100%; touch-action: none; display: block; }
         
+        .item-name { font-weight: 700; font-size: 13px; color: white; margin-bottom: 4px; }
+        .item-std { font-size: 11px; color: var(--text-gray); margin-bottom: 12px; font-style: italic; }
+
+        .btn-group { display: flex; gap: 8px; }
+        .btn-status {
+            flex: 1; padding: 10px; border: 1px solid #333; background: #000;
+            border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer;
+            color: #666; display: flex; align-items: center; justify-content: center; gap: 6px;
+            transition: 0.2s;
+        }
+        
+        .btn-ok.active { background: rgba(0, 200, 81, 0.2); border-color: var(--success); color: var(--success); }
+        .btn-ng.active { background: rgba(255, 51, 51, 0.2); border-color: var(--danger); color: var(--danger); }
+
+        .note-area { margin-top: 12px; display: none; animation: fadeIn 0.3s; }
+        .note-area.show { display: block; }
+        .note-label { font-size: 10px; font-weight: 700; color: var(--danger); display: block; margin-bottom: 4px; }
+        .input-note {
+            width: 100%; padding: 10px; border: 1px solid var(--danger);
+            border-radius: 8px; font-size: 12px; background: rgba(255, 51, 51, 0.05); color: white; outline: none;
+        }
+
+        /* Signature */
+        .sig-box {
+            background: #fff; border-radius: 12px; border: 2px dashed #444;
+            height: 180px; position: relative; overflow: hidden; margin-top: 5px;
+        }
+        canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
         .btn-clear-sig {
-            position: absolute; 
-            bottom: 10px; 
-            right: 10px; 
-            background: white; 
-            border: 1px solid var(--danger);
-            color: var(--danger); 
-            font-size: 10px; 
-            font-weight: 700; 
-            padding: 6px 12px; 
-            border-radius: 6px; 
-            cursor: pointer;
-            z-index: 10;
+            position: absolute; bottom: 10px; right: 10px;
+            background: white; border: 1px solid var(--primary); color: var(--primary);
+            padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 700; cursor: pointer;
         }
 
+        /* Submit Button (Static) */
         .btn-submit {
-            width: 100%; 
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white; 
-            border: none;
-            border-radius: var(--radius-lg); 
-            padding: 18px; 
-            font-size: 16px; 
-            font-weight: 700;
-            text-transform: uppercase; 
-            cursor: pointer; 
-            box-shadow: var(--shadow-3d);
-            margin-top: 30px; 
-            letter-spacing: 0.5px; 
-            transition: all 0.2s;
-            position: relative;
-            overflow: hidden;
+            width: 100%; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; border: none; padding: 18px; border-radius: 14px;
+            font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4); cursor: pointer;
+            margin-top: 30px; transition: transform 0.2s;
         }
-        .btn-submit::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            animation: shine 2s infinite;
-        }
-        .btn-submit:active { transform: translateY(4px); box-shadow: 0 6px 0 #7F1D1D, 0 10px 20px rgba(0, 0, 0, 0.4); }
-        .btn-submit:disabled { background: #374151; opacity: 0.7; box-shadow: none; cursor: not-allowed; }
+        .btn-submit:active { transform: scale(0.98); }
+        .btn-submit:disabled { opacity: 0.7; cursor: not-allowed; }
 
-        /* ==================== BOTTOM NAV ==================== */
-        .bottom-nav { 
-            position: fixed; 
-            bottom: 0; 
-            width: 100%; 
-            max-width: 100%; 
-            background: rgba(17, 17, 17, 0.95); 
-            backdrop-filter: blur(16px); 
-            -webkit-backdrop-filter: blur(16px);
-            border-top: 1px solid var(--border); 
-            display: flex; 
-            justify-content: space-around; 
-            padding: 12px 0; 
-            z-index: 999; 
-            height: var(--nav-height); 
-            box-shadow: 0 -4px 30px rgba(220, 38, 38, 0.2); 
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 100%; max-width: 600px;
+            background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-light);
+            display: flex; justify-content: space-around; align-items: center;
+            padding: 12px 0; height: var(--nav-height); z-index: 1000;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
         }
-        .nav-item { 
-            text-decoration: none; 
-            color: #6B7280; 
-            font-size: 20px; 
-            width: 60px; 
-            height: 100%; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            border-radius: 16px; 
-            transition: all 0.3s; 
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #555; width: 56px; height: 44px; border-radius: 12px; transition: 0.3s;
         }
-        .nav-item:hover {
-            color: var(--primary);
-            text-shadow: 0 0 15px rgba(220, 38, 38, 0.5);
-        }
-        .nav-item.active { 
-            color: var(--primary); 
-            background: rgba(220, 38, 38, 0.15);
-            box-shadow: 0 0 20px rgba(220, 38, 38, 0.3);
-        }
+        .nav-item svg { width: 22px; height: 22px; margin-bottom: 4px; }
+        .nav-item.active { color: var(--primary); background: rgba(255, 51, 51, 0.1); }
 
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes shine { 0% { left: -100%; } 50%, 100% { left: 100%; } }
+        /* SweetAlert Dark */
+        div:where(.swal2-container) div:where(.swal2-popup) { background: #111 !important; border: 1px solid #333; color: #fff !important; }
+        div:where(.swal2-confirm) { background-color: var(--primary) !important; }
+
     </style>
 </head>
 <body>
 
-<div class="app-container">
-    
-    <div class="header-capsule">
-        <h1>Mechanic Non Shift</h1>
+    <!-- Background Animation -->
+    <div class="bg-animation">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="grid-pattern"></div>
     </div>
 
-    <div id="view-scan">
-        <div class="instruction-text">
-            Silahkan scan QR code pada mesin untuk melanjutkan ke halaman form checklist preventif.
+    <!-- Header (FIXED AT TOP) -->
+    <header class="header">
+        <h1 class="header-title">FORM PREVENTIF ROBOT & STANDLABEL BULANAN</h1>
+    </header>
+
+    <div class="app-container">
+        <!-- SCAN VIEW -->
+        <div id="view-scan">
+            <div class="instruction-text">
+                Silahkan scan QR code pada mesin untuk melanjutkan.
+            </div>
+            
+            <div class="qr-frame-container">
+                <div id="reader"></div>
+            </div>
+            
+            <div class="scan-status" id="status-scan">Arahkan kamera ke QR code</div>
         </div>
-        
-        <div class="qr-frame-container">
-            <div id="reader"></div>
+
+        <!-- FORM VIEW -->
+        <div id="view-form">
+            <!-- Machine Info Card -->
+            <div class="machine-card">
+                <h3 id="txt-mesin-nama">-</h3>
+                <p id="txt-mesin-detail">-</p>
+                <button class="btn-rescan" onclick="location.reload()">SCAN ULANG</button>
+            </div>
+
+            <!-- Inputs -->
+            <div class="form-group">
+                <label>Nama Pelaksana</label>
+                <input type="text" id="input-nama" class="form-control" placeholder="Nama lengkap anda">
+            </div>
+
+            <div class="form-row">
+                <div>
+                    <label>Start Jam</label>
+                    <input type="time" id="input-start" class="form-control">
+                </div>
+                <div>
+                    <label>Finish Jam</label>
+                    <input type="time" id="input-finish" class="form-control">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div>
+                    <label>Running Hours (HM)</label>
+                    <input type="number" id="input-hours" class="form-control" placeholder="12500">
+                </div>
+                <div>
+                    <label>Target Selesai</label>
+                    <input type="time" id="input-target" class="form-control">
+                </div>
+            </div>
+
+            <!-- Checklist Container -->
+            <div id="checklist-container">
+                <!-- Items will be injected here -->
+            </div>
+
+            <!-- Signature -->
+            <div class="form-group" style="margin-top:30px;">
+                <label>Paraf Pelaksana</label>
+                <div class="sig-box">
+                    <canvas id="signature-pad"></canvas>
+                    <button onclick="signaturePad.clear()" class="btn-clear-sig">HAPUS</button>
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <button class="btn-submit" id="btn-save" onclick="simpanData()">
+                KIRIM LAPORAN
+            </button>
         </div>
-        
-        <div class="scan-label"><i class="fa-solid fa-qrcode" style="margin-right:8px;"></i> SCAN QR</div>
-        <div class="scan-status" id="status-scan">Arahkan kamera ke QR code</div>
+
     </div>
 
-    <div id="view-form">
-        <div class="machine-card">
-            <h3 id="txt-mesin-nama">-</h3>
-            <p id="txt-mesin-detail">-</p>
-            <button class="btn-rescan" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i> SCAN ULANG</button>
-        </div>
+    <!-- Bottom Navbar -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        </a>
+        <a href="menu_utama.html" class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </a>
+    </nav>
 
-        <div class="form-group">
-            <label>Nama Pelaksana</label>
-            <input type="text" id="input-nama" placeholder="nama lengkap anda">
-        </div>
+    <script>
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-        <div class="form-row">
-            <div class="form-col">
-                <label>Start Jam</label>
-                <input type="time" id="input-start">
-            </div>
-            <div class="form-col">
-                <label>Finish Jam</label>
-                <input type="time" id="input-finish">
-            </div>
-        </div>
+        let scanner = null, signaturePad = null, currentMesin = null;
 
-        <div class="form-row">
-            <div class="form-col">
-                <label>Running Hours (HM)</label>
-                <input type="number" id="input-hours" placeholder="Contoh: 12500">
-            </div>
-            <div class="form-col">
-                <label>Target Selesai</label>
-                <input type="time" id="input-target">
-            </div>
-        </div>
-
-        <div id="checklist-container"></div>
-
-        <div class="form-group" style="margin-top:24px;">
-            <label>paraf</label>
-            <div class="sig-box">
-                <canvas id="signature-pad"></canvas>
-                <button onclick="signaturePad.clear()" class="btn-clear-sig">HAPUS PARAF</button>
-            </div>
-        </div>
-
-        <button class="btn-submit" id="btn-save" onclick="simpanData()">Laporkan</button>
-    </div>
-
-</div>
-
-<nav class="bottom-nav">
-    <a href="index.html" class="nav-item active"><i class="fa-solid fa-house"></i></a>
-    <a href="menu_utama.html" class="nav-item"><i class="fa-solid fa-bars"></i></a>
-    <a href="download_data.html" class="nav-item"><i class="fa-solid fa-download"></i></a>
-    <a href="informasi_akun.html" class="nav-item"><i class="fa-solid fa-circle-user"></i></a>
-</nav>
-
-<script>
-    const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
-    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
-    const _sb = supabase.createClient(SB_URL, SB_KEY);
-
-    let scanner = null, signaturePad = null, currentMesin = null;
-
-    async function startScanner() {
-        scanner = new Html5Qrcode("reader");
-        await scanner.start(
-            { facingMode: "environment" },
-            { fps: 20, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
-            onScanSuccess
-        ).catch(err => {
-            document.getElementById('status-scan').innerHTML = "<span style='color:red'>Gagal akses kamera!</span>";
-        });
-    }
-
-    async function onScanSuccess(decodedText) {
-        const clean = decodedText.trim();
-        document.getElementById('status-scan').innerText = "MENCARI DATA MESIN...";
-
-        const { data, error } = await _sb.from('prslb_mesin')
-            .select('*')
-            .ilike('nama_mesin', `%${clean}%`) 
-            .maybeSingle();
-
-        if (data) {
-            currentMesin = data;
-            if(navigator.vibrate) navigator.vibrate(50);
-            if(scanner) await scanner.stop();
-            renderForm();
-        } else {
-            document.getElementById('status-scan').innerHTML = `<span style="color:var(--danger)">MESIN TIDAK TERDAFTAR: ${clean}</span>`;
+        async function startScanner() {
+            scanner = new Html5Qrcode("reader");
+            await scanner.start(
+                { facingMode: "environment" },
+                { fps: 20, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
+                onScanSuccess
+            ).catch(err => {
+                document.getElementById('status-scan').innerHTML = "<span style='color:red'>Gagal akses kamera! Periksa izin browser.</span>";
+            });
         }
-    }
 
-    async function renderForm() {
-        document.getElementById('view-scan').style.display = 'none';
-        document.getElementById('view-form').style.display = 'block';
-        
-        document.getElementById('txt-mesin-nama').innerText = currentMesin.nama_mesin;
-        document.getElementById('txt-mesin-detail').innerText = `NO SERI: ${currentMesin.no_seri || '-'} | TONNAGE: ${currentMesin.tonase || '-'}`;
+        async function onScanSuccess(decodedText) {
+            const clean = decodedText.trim();
+            document.getElementById('status-scan').innerText = "MENCARI DATA MESIN...";
 
-        const now = new Date();
-        const timeString = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-        
-        // Set Start Time
-        const startInput = document.getElementById('input-start');
-        startInput.value = timeString;
-        
-        // Set Target Time (Start + 70 mins default)
-        updateTargetTime(timeString);
+            const { data, error } = await _sb.from('prslb_mesin')
+                .select('*')
+                .ilike('nama_mesin', `%${clean}%`) 
+                .maybeSingle();
 
-        // Add Listener to Start Time to auto-update Target Time
-        startInput.addEventListener('change', function() {
-            updateTargetTime(this.value);
-        });
-
-        setTimeout(() => {
-            const canvas = document.getElementById('signature-pad');
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext("2d").scale(ratio, ratio);
-            signaturePad = new SignaturePad(canvas, { backgroundColor: '#FFFFFF' });
-        }, 100);
-
-        const { data: items } = await _sb.from('prslb_items').select('*').order('id');
-        const container = document.getElementById('checklist-container');
-        let currentCat = "";
-
-        items.forEach(item => {
-            if (item.kategori !== currentCat) {
-                currentCat = item.kategori;
-                container.innerHTML += `<div class="cat-header">${currentCat}</div>`;
+            if (data) {
+                currentMesin = data;
+                if(navigator.vibrate) navigator.vibrate(50);
+                if(scanner) await scanner.stop();
+                renderForm();
+            } else {
+                document.getElementById('status-scan').innerHTML = `<span style="color:#FF3333">MESIN TIDAK TERDAFTAR: ${clean}</span>`;
             }
-            container.innerHTML += `
-                <div class="check-item" data-id="${item.id}">
-                    <div class="item-name">${item.item_name}</div>
-                    <div class="item-std">Standar: ${item.standard}</div>
-                    <div class="btn-group">
-                        <button type="button" class="btn-status btn-ok" onclick="setStatus(this,'OK')"><i class="fa-solid fa-check"></i> OK</button>
-                        <button type="button" class="btn-status btn-ng" onclick="setStatus(this,'NG')"><i class="fa-solid fa-xmark"></i> NG</button>
-                    </div>
-                    <div class="note-area">
-                        <span class="note-label"><i class="fa-solid fa-triangle-exclamation"></i> KET/SPAREPART PENGGANTIAN</span>
-                        <input type="text" class="input-note" placeholder="Ketik keterangan masalah...">
-                    </div>
-                </div>`;
-        });
-    }
-
-    // NEW FUNCTION: Auto calc 70 mins from start
-    function updateTargetTime(startVal) {
-        if(!startVal) return;
-        const [h, m] = startVal.split(':').map(Number);
-        const date = new Date();
-        date.setHours(h);
-        date.setMinutes(m + 70); // ADD 70 MINUTES
-        
-        const newH = String(date.getHours()).padStart(2, '0');
-        const newM = String(date.getMinutes()).padStart(2, '0');
-        document.getElementById('input-target').value = `${newH}:${newM}`;
-    }
-
-    window.setStatus = function(btn, status) {
-        const p = btn.closest('.check-item');
-        p.querySelectorAll('.btn-status').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const noteArea = p.querySelector('.note-area');
-        if (status === 'NG') {
-            noteArea.classList.add('show');
-        } else {
-            noteArea.classList.remove('show');
-            p.querySelector('.input-note').value = '';
         }
-    };
 
-    async function simpanData() {
-        const nama = document.getElementById('input-nama').value.trim();
-        const start = document.getElementById('input-start').value;
-        const finish = document.getElementById('input-finish').value;
-        const hours = document.getElementById('input-hours').value.trim();
-        const target = document.getElementById('input-target').value;
-        const saveBtn = document.getElementById('btn-save');
-
-        if (!nama) return alert("NAMA PELAKSANA WAJIB DIISI!");
-        if (!start || !finish) return alert("JAM START & FINISH WAJIB DIISI!");
-        if (!hours) return alert("RUNNING HOURS WAJIB DIISI!");
-        if (!target) return alert("TARGET SELESAI WAJIB DIISI!");
-        if (signaturePad.isEmpty()) return alert("TANDA TANGAN WAJIB DIISI!");
-
-        const checks = document.querySelectorAll('.check-item');
-        const results = [];
-        let missing = false;
-        
-        checks.forEach(c => {
-            const btn = c.querySelector('.btn-status.active');
-            if (!btn) { missing = true; return; }
+        async function renderForm() {
+            document.getElementById('view-scan').style.display = 'none';
+            document.getElementById('view-form').style.display = 'block';
             
-            const status = btn.innerText.includes('OK') ? 'OK' : 'NG';
-            const note = c.querySelector('.input-note').value.trim();
-            if (status === 'NG' && !note) { 
-                alert("KETERANGAN NG WAJIB DIISI!"); 
-                missing = true; 
-                c.scrollIntoView({behavior: "smooth", block: "center"});
-                return;
+            // FIX: Menggunakan property 'tonage' sesuai database
+            document.getElementById('txt-mesin-nama').innerText = currentMesin.nama_mesin;
+            document.getElementById('txt-mesin-detail').innerText = `NO SERI: ${currentMesin.no_seri || '-'} | TONNAGE: ${currentMesin.tonage || '-'}`;
+
+            const now = new Date();
+            const timeString = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+            
+            // Set Start Time
+            const startInput = document.getElementById('input-start');
+            startInput.value = timeString;
+            
+            // Set Target Time (Start + 70 mins default)
+            updateTargetTime(timeString);
+
+            // Add Listener to Start Time to auto-update Target Time
+            startInput.addEventListener('change', function() {
+                updateTargetTime(this.value);
+            });
+
+            // Init Signature Pad
+            setTimeout(() => {
+                const canvas = document.getElementById('signature-pad');
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
+                signaturePad = new SignaturePad(canvas, { backgroundColor: '#FFFFFF', penColor: '#000000' }); // White bg, black ink
+            }, 100);
+
+            // Fetch Items
+            const { data: items } = await _sb.from('prslb_items').select('*').order('id');
+            const container = document.getElementById('checklist-container');
+            let currentCat = "";
+
+            items.forEach(item => {
+                if (item.kategori !== currentCat) {
+                    currentCat = item.kategori;
+                    container.innerHTML += `<div class="cat-header">${currentCat}</div>`;
+                }
+                container.innerHTML += `
+                    <div class="check-item" data-id="${item.id}">
+                        <div class="item-name">${item.item_name}</div>
+                        <div class="item-std">Standar: ${item.standard}</div>
+                        <div class="btn-group">
+                            <button type="button" class="btn-status btn-ok" onclick="setStatus(this,'OK')"><i class="fa-solid fa-check"></i> OK</button>
+                            <button type="button" class="btn-status btn-ng" onclick="setStatus(this,'NG')"><i class="fa-solid fa-xmark"></i> NG</button>
+                        </div>
+                        <div class="note-area">
+                            <span class="note-label"><i class="fa-solid fa-triangle-exclamation"></i> KET/SPAREPART PENGGANTIAN</span>
+                            <input type="text" class="form-control" style="border:1px solid #FF3333; background:#1a0505;" placeholder="Ketik keterangan masalah...">
+                        </div>
+                    </div>`;
+            });
+        }
+
+        // Auto calc 70 mins from start
+        function updateTargetTime(startVal) {
+            if(!startVal) return;
+            const [h, m] = startVal.split(':').map(Number);
+            const date = new Date();
+            date.setHours(h);
+            date.setMinutes(m + 70); // ADD 70 MINUTES
+            
+            const newH = String(date.getHours()).padStart(2, '0');
+            const newM = String(date.getMinutes()).padStart(2, '0');
+            document.getElementById('input-target').value = `${newH}:${newM}`;
+        }
+
+        window.setStatus = function(btn, status) {
+            const p = btn.closest('.check-item');
+            p.querySelectorAll('.btn-status').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const noteArea = p.querySelector('.note-area');
+            if (status === 'NG') {
+                noteArea.classList.add('show');
+            } else {
+                noteArea.classList.remove('show');
+                const inp = p.querySelector('input');
+                if(inp) inp.value = '';
             }
+        };
+
+        async function simpanData() {
+            const nama = document.getElementById('input-nama').value.trim();
+            const start = document.getElementById('input-start').value;
+            const finish = document.getElementById('input-finish').value;
+            const hours = document.getElementById('input-hours').value.trim();
+            const target = document.getElementById('input-target').value;
+            const saveBtn = document.getElementById('btn-save');
+
+            if (!nama) return alert("NAMA PELAKSANA WAJIB DIISI!");
+            if (!start || !finish) return alert("JAM START & FINISH WAJIB DIISI!");
+            if (!hours) return alert("RUNNING HOURS WAJIB DIISI!");
+            if (!target) return alert("TARGET SELESAI WAJIB DIISI!");
+            if (signaturePad.isEmpty()) return alert("TANDA TANGAN WAJIB DIISI!");
+
+            const checks = document.querySelectorAll('.check-item');
+            const results = [];
+            let missing = false;
             
-            results.push({ item_id: c.dataset.id, status: status, keterangan: note });
-        });
+            checks.forEach(c => {
+                const btn = c.querySelector('.btn-status.active');
+                if (!btn) { missing = true; return; }
+                
+                const status = btn.innerText.includes('OK') ? 'OK' : 'NG';
+                const noteInput = c.querySelector('.note-area input');
+                const note = noteInput ? noteInput.value.trim() : '';
+                
+                if (status === 'NG' && !note) { 
+                    alert("KETERANGAN NG WAJIB DIISI!"); 
+                    missing = true; 
+                    c.scrollIntoView({behavior: "smooth", block: "center"});
+                    return;
+                }
+                
+                results.push({ item_id: c.dataset.id, status: status, keterangan: note });
+            });
 
-        if (missing) return alert("Mohon lengkapi semua checklist atau keterangan NG.");
+            if (missing) return alert("Mohon lengkapi semua checklist atau keterangan NG.");
 
-        saveBtn.disabled = true;
-        saveBtn.innerText = "MENGIRIM...";
+            saveBtn.disabled = true;
+            saveBtn.innerText = "MENGIRIM...";
 
-        try {
-            const { data: log, error: e1 } = await _sb.from('prslb_log').insert({
-                mesin_id: String(currentMesin.nama_mesin),
-                pelaksana_nama: nama,
-                signature_pelaksana: signaturePad.toDataURL(),
-                start_jam: start,
-                finish_jam: finish,
-                running_hours: hours,
-                target_selesai: target 
-            }).select().single();
+            try {
+                const { data: log, error: e1 } = await _sb.from('prslb_log').insert({
+                    mesin_id: String(currentMesin.nama_mesin),
+                    pelaksana_nama: nama,
+                    signature_pelaksana: signaturePad.toDataURL(),
+                    start_jam: start,
+                    finish_jam: finish,
+                    running_hours: hours,
+                    target_selesai: target 
+                }).select().single();
 
-            if (e1) throw e1;
+                if (e1) throw e1;
 
-            const payload = results.map(r => ({ ...r, log_id: log.id }));
-            const { error: e2 } = await _sb.from('prslb_result').insert(payload);
-            
-            if (e2) throw e2;
+                const payload = results.map(r => ({ ...r, log_id: log.id }));
+                const { error: e2 } = await _sb.from('prslb_result').insert(payload);
+                
+                if (e2) throw e2;
 
-            alert("DATA PREVENTIF BERHASIL DISIMPAN!");
-            location.reload();
-        } catch (e) { 
-            alert("GAGAL: " + e.message); 
-            saveBtn.disabled = false;
-            saveBtn.innerText = "SIMPAN DATA";
+                alert("DATA PREVENTIF BERHASIL DISIMPAN!");
+                location.reload();
+            } catch (e) { 
+                alert("GAGAL: " + e.message); 
+                saveBtn.disabled = false;
+                saveBtn.innerText = "LAPORKAN";
+            }
         }
-    }
 
-    window.onload = startScanner;
-</script>
+        window.onload = startScanner;
+    </script>
 
 </body>
 </html>
