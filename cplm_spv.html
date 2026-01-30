@@ -355,7 +355,7 @@
 
     <header class="header">
         <div class="container">
-            <h1>Supervisor</h1>
+            <h1>SPV Dashboard</h1>
         </div>
     </header>
 
@@ -422,26 +422,26 @@
             <div class="detail-section">
                 <div style="width: 100%;">
                     
-                    <div class="section-header">VALIDASI Supervisor</div>
+                    <div class="section-header">VALIDASI SPV</div>
 
                     <!-- 1. INPUT MODE (Belum Validasi) -->
                     <div id="inputModeArea">
                         <div class="spv-input-group">
                             <label>Nama Supervisor</label>
-                            <input type="text" id="inputSpvName" class="spv-input-field" placeholder=" nama Anda">
+                            <input type="text" id="inputSpvName" class="spv-input-field" placeholder="Masukkan nama Anda">
                         </div>
                         <div class="spv-input-group">
-                            <label>Catatan</label>
-                            <textarea id="inputSpvNote" class="spv-input-field" rows="2" placeholder="berikan catatan sebagai laporan untuk superintendent"></textarea>
+                            <label>Catatan Tambahan (Opsional)</label>
+                            <textarea id="inputSpvNote" class="spv-input-field" rows="2" placeholder="Catatan perbaikan atau validasi..."></textarea>
                         </div>
                         
                         <div class="spv-input-group">
-                            <label>paraf anda</label>
+                            <label>Tanda Tangan</label>
                             <div class="signature-wrapper">
                                 <canvas id="spvSignaturePad"></canvas>
                             </div>
                             <button onclick="clearSpvSig()" style="background:transparent; color:var(--primary); border:1px solid var(--primary); padding:8px; font-size:11px; font-weight:700; border-radius:6px; margin-top:8px; float:right; cursor:pointer;">
-                               ulangi
+                                HAPUS TANDA TANGAN
                             </button>
                             <div style="clear:both;"></div>
                         </div>
@@ -597,9 +597,11 @@
                 let kondisiMouldText = '-';
 
                 details.forEach(d => {
-                    // CLEAN STYLE: Gray color only
-                    const color = '#333';
-                    const textColor = '#ccc';
+                    let color = '#333';
+                    if(d.kondisi === 'OK') color = '#059669';
+                    else if(d.kondisi === 'NOT OK') color = '#DC2626';
+                    else if(d.kondisi === 'GANTI BARU') color = '#7C3AED';
+                    else if(d.kondisi.includes('BERSIH')) color = '#2563EB';
 
                     // Cek jika ada catatan kondisi mould (biasanya di item 26)
                     if (d.catatan_kondisi_mould) {
@@ -611,11 +613,10 @@
                             <td style="color:#666;">${d.no_item}</td>
                             <td>${d.item_check}</td>
                             <td>
-                                <span class="status-badge" style="background:${color}; color:${textColor}; border:1px solid #444;">
+                                <span class="status-badge" style="background:${color}; color:white;">
                                     ${d.kondisi}
                                 </span>
                             </td>
-                            <!-- Normal Font Style (Not Italic) -->
                             <td style="color:#aaa;">${d.catatan || '-'}</td>
                         </tr>
                     `;
@@ -635,9 +636,10 @@
             document.getElementById('inputSpvName').value = '';
             document.getElementById('inputSpvNote').value = '';
             
+            // Resize Canvas Safety Check
             setTimeout(() => {
                 initSpvCanvas();
-            }, 100);
+            }, 300);
 
             if (item.paraf_spv) {
                 inputMode.style.display = 'none';
@@ -661,7 +663,8 @@
 
         function initSpvCanvas() {
             const wrapper = document.querySelector('.signature-wrapper');
-            if(!wrapper) return;
+            // Pastikan wrapper visible dan punya lebar sebelum init
+            if(!wrapper || wrapper.offsetWidth === 0) return;
 
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
             
@@ -680,6 +683,7 @@
             ctx.strokeStyle = '#000';
         }
         
+        // Panggil init saat resize layar
         window.addEventListener('resize', initSpvCanvas);
 
         function getPos(e) {
@@ -716,56 +720,62 @@
             ctx.beginPath();
         }
 
+        // SAFE CHECK: Mencegah error jika canvas belum siap (width=0)
         function isCanvasBlank() {
-            const pixelBuffer = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
-            return !pixelBuffer.some(color => color !== 0);
+            if (canvas.width === 0 || canvas.height === 0) return true;
+            try {
+                const pixelBuffer = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
+                return !pixelBuffer.some(color => color !== 0);
+            } catch (e) {
+                return true;
+            }
         }
 
         // --- SUBMIT VALIDATION ---
         async function submitValidation() {
-            const spvName = document.getElementById('inputSpvName').value;
-            const spvNote = document.getElementById('inputSpvNote').value;
+            try {
+                const spvName = document.getElementById('inputSpvName').value;
+                const spvNote = document.getElementById('inputSpvNote').value;
 
-            // Helper style popup
-            const swalRedStyle = {
-                background: '#1a1a1a', 
-                color: '#ffffff',      
-                confirmButtonColor: '#DC2626', 
-                cancelButtonColor: '#333'   
-            };
+                // Helper style popup
+                const swalRedStyle = {
+                    background: '#1a1a1a', 
+                    color: '#ffffff',      
+                    confirmButtonColor: '#DC2626', 
+                    cancelButtonColor: '#333'   
+                };
 
-            if (!spvName) {
-                Swal.fire({ 
+                if (!spvName) {
+                    Swal.fire({ 
+                        ...swalRedStyle,
+                        icon: 'warning', 
+                        title: 'Data Kurang',
+                        text: 'Mohon isi Nama Supervisor.' 
+                    });
+                    return;
+                }
+
+                if (isCanvasBlank()) {
+                    Swal.fire({ 
+                        ...swalRedStyle,
+                        icon: 'warning', 
+                        title: 'Tanda Tangan',
+                        text: 'Mohon tanda tangan terlebih dahulu.' 
+                    });
+                    return;
+                }
+
+                const result = await Swal.fire({
                     ...swalRedStyle,
-                    icon: 'warning', 
-                    title: 'Data Kurang',
-                    text: 'Mohon isi Nama Supervisor.' 
+                    title: 'Validasi Laporan?',
+                    text: "Data akan disimpan sebagai tervalidasi.", 
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, Validasi!',
+                    cancelButtonText: 'Batal'
                 });
-                return;
-            }
 
-            if (isCanvasBlank()) {
-                Swal.fire({ 
-                    ...swalRedStyle,
-                    icon: 'warning', 
-                    title: 'Tanda Tangan',
-                    text: 'Mohon tanda tangan terlebih dahulu.' 
-                });
-                return;
-            }
-
-            const result = await Swal.fire({
-                ...swalRedStyle,
-                title: 'Validasi Laporan?',
-                text: "Data akan disimpan sebagai tervalidasi.", 
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Ya, Validasi!',
-                cancelButtonText: 'Batal'
-            });
-
-            if (result.isConfirmed) {
-                try {
+                if (result.isConfirmed) {
                     const sigData = canvas.toDataURL();
                     const now = new Date().toISOString();
 
@@ -790,17 +800,16 @@
                     
                     closeModal();
                     fetchReports(); 
-
-                } catch (err) {
-                    console.error(err);
-                    const errorMsg = err.message || err.error_description || JSON.stringify(err);
-                    Swal.fire({
-                        ...swalRedStyle,
-                        title: 'Gagal Validasi',
-                        text: 'Detail: ' + errorMsg,
-                        icon: 'error'
-                    });
                 }
+            } catch (err) {
+                console.error(err);
+                const errorMsg = err.message || JSON.stringify(err);
+                Swal.fire({
+                    background: '#1a1a1a', color: '#ffffff',
+                    title: 'Gagal Validasi',
+                    text: 'Detail: ' + errorMsg,
+                    icon: 'error'
+                });
             }
         }
 
