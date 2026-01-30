@@ -168,7 +168,8 @@
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000;
-            z-index: 2000;
+            /* Z-INDEX TINGGI AGAR DI ATAS NAVIGASI */
+            z-index: 3000;
             display: none;
             overflow-y: auto;
             animation: slideUp 0.3s ease-out;
@@ -287,7 +288,8 @@
             backdrop-filter: blur(20px);
             border-top: 1px solid var(--border-light);
             display: flex; justify-content: space-around; align-items: center;
-            padding: 10px 0; height: var(--nav-height); z-index: 2000;
+            padding: 10px 0; height: var(--nav-height); 
+            z-index: 1000; /* Lebih rendah dari modal */
             box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
         }
         
@@ -327,12 +329,15 @@
             box-shadow: 0 0 8px var(--primary);
         }
 
+        /* SweetAlert Custom Z-Index (PENTING!) */
+        div:where(.swal2-container) { z-index: 9999 !important; }
+
         /* Loading Overlay */
         .loading-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9);
             display: none;
-            justify-content: center; align-items: center; z-index: 999;
+            justify-content: center; align-items: center; z-index: 4000;
             flex-direction: column; gap: 15px;
         }
         .spinner {
@@ -355,7 +360,7 @@
 
     <header class="header">
         <div class="container">
-            <h1>SUPERVISOR</h1>
+            <h1>SPV Dashboard</h1>
         </div>
     </header>
 
@@ -427,12 +432,12 @@
                     <!-- 1. INPUT MODE (Belum Validasi) -->
                     <div id="inputModeArea">
                         <div class="spv-input-group">
-                            <label>Nama Anda</label>
-                            <input type="text" id="inputSpvName" class="spv-input-field" placeholder="nama lengkap anda">
+                            <label>Nama Supervisor</label>
+                            <input type="text" id="inputSpvName" class="spv-input-field" placeholder="nama Anda">
                         </div>
                         <div class="spv-input-group">
-                            <label>Catatan Tambahan (Opsional)</label>
-                            <textarea id="inputSpvNote" class="spv-input-field" rows="2" placeholder="berikan catatan sebagai laporan untuk superintendent"></textarea>
+                            <label>Catatan</label>
+                            <textarea id="inputSpvNote" class="spv-input-field" rows="2" placeholder="berikan catatan anda sebagai laporan untuk superintendent"></textarea>
                         </div>
                         
                         <div class="spv-input-group">
@@ -441,7 +446,7 @@
                                 <canvas id="spvSignaturePad"></canvas>
                             </div>
                             <button onclick="clearSpvSig()" style="background:transparent; color:var(--primary); border:1px solid var(--primary); padding:8px; font-size:11px; font-weight:700; border-radius:6px; margin-top:8px; float:right; cursor:pointer;">
-                                ulangi
+                            ulangi
                             </button>
                             <div style="clear:both;"></div>
                         </div>
@@ -518,7 +523,6 @@
 
                 if (error) throw error;
                 
-                // FILTER: Hanya ambil yang paraf_spv-nya KOSONG (Belum divalidasi)
                 reportData = data.filter(item => !item.paraf_spv);
                 
                 renderList(reportData);
@@ -597,11 +601,10 @@
                 let kondisiMouldText = '-';
 
                 details.forEach(d => {
-                    // CLEAN STYLE: Gray color only
+                    // COLOR FIX: ALL GRAY (Neutral)
                     const color = '#333';
                     const textColor = '#ccc';
 
-                    // Cek jika ada catatan kondisi mould (biasanya di item 26)
                     if (d.catatan_kondisi_mould) {
                         kondisiMouldText = d.catatan_kondisi_mould;
                     }
@@ -615,13 +618,12 @@
                                     ${d.kondisi}
                                 </span>
                             </td>
-                            <td style="color:#aaa;">${d.catatan || '-'}</td>
+                            <!-- Font Style Normal (Not Italic) -->
+                            <td style="color:#aaa; font-style: normal;">${d.catatan || '-'}</td>
                         </tr>
                     `;
                 });
                 tbody.innerHTML = html;
-                
-                // Update tampilan Kondisi Mould
                 document.getElementById('d_kondisi_mould').innerText = kondisiMouldText;
             }
 
@@ -630,10 +632,10 @@
             const readMode = document.getElementById('readModeArea');
             const actionArea = document.getElementById('actionArea');
 
-            // Reset Inputs
             document.getElementById('inputSpvName').value = '';
             document.getElementById('inputSpvNote').value = '';
             
+            // Init Canvas (Wait for modal transition)
             setTimeout(() => {
                 initSpvCanvas();
             }, 100);
@@ -679,18 +681,15 @@
             ctx.strokeStyle = '#000';
         }
         
-        // Panggil init saat resize layar
         window.addEventListener('resize', initSpvCanvas);
 
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
             let cx = e.clientX, cy = e.clientY;
-            
             if(e.touches && e.touches.length > 0) {
                 cx = e.touches[0].clientX; 
                 cy = e.touches[0].clientY;
             }
-            
             return { x: cx - rect.left, y: cy - rect.top };
         }
         
@@ -716,24 +715,24 @@
             ctx.beginPath();
         }
 
-        // SAFE CHECK: Mencegah error jika canvas belum siap (width=0)
+        // IMPROVED SAFETY CHECK FOR CANVAS
         function isCanvasBlank() {
             if (canvas.width === 0 || canvas.height === 0) return true;
             try {
                 const pixelBuffer = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
                 return !pixelBuffer.some(color => color !== 0);
             } catch (e) {
-                return true;
+                console.warn("Canvas check failed:", e);
+                return true; 
             }
         }
 
-        // --- SUBMIT VALIDATION ---
+        // --- SUBMIT VALIDATION (WITH ERROR HANDLING) ---
         async function submitValidation() {
             try {
                 const spvName = document.getElementById('inputSpvName').value;
                 const spvNote = document.getElementById('inputSpvNote').value;
 
-                // Helper style popup
                 const swalRedStyle = {
                     background: '#1a1a1a', 
                     color: '#ffffff',      
@@ -742,22 +741,12 @@
                 };
 
                 if (!spvName) {
-                    Swal.fire({ 
-                        ...swalRedStyle,
-                        icon: 'warning', 
-                        title: 'Data Kurang',
-                        text: 'Mohon isi Nama Supervisor.' 
-                    });
+                    Swal.fire({ ...swalRedStyle, icon: 'warning', title: 'Data Kurang', text: 'Mohon isi Nama Supervisor.' });
                     return;
                 }
 
                 if (isCanvasBlank()) {
-                    Swal.fire({ 
-                        ...swalRedStyle,
-                        icon: 'warning', 
-                        title: 'Tanda Tangan',
-                        text: 'Mohon tanda tangan terlebih dahulu.' 
-                    });
+                    Swal.fire({ ...swalRedStyle, icon: 'warning', title: 'Tanda Tangan', text: 'Mohon tanda tangan terlebih dahulu.' });
                     return;
                 }
 
@@ -799,19 +788,16 @@
                 }
             } catch (err) {
                 console.error(err);
-                const errorMsg = err.message || JSON.stringify(err);
                 Swal.fire({
                     background: '#1a1a1a', color: '#ffffff',
                     title: 'Gagal Validasi',
-                    text: 'Detail: ' + errorMsg,
+                    text: 'Detail: ' + (err.message || JSON.stringify(err)),
                     icon: 'error'
                 });
             }
         }
 
-        // --- INIT ---
         fetchReports();
-
     </script>
 </body>
 </html>
