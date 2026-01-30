@@ -8,6 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
         /* ==================== DARK NEON THEME VARIABLES ==================== */
@@ -314,16 +316,16 @@
             </table>
         </div>
 
-        <!-- Approval Panel (Sekarang di bawah tabel, bukan fixed) -->
-        <div class="approval-panel">
+        <!-- Approval Panel (Sekarang di bawah tabel, bukan fixed, dan hidden by default) -->
+        <div class="approval-panel" id="approvalPanel" style="display: none;">
             <div class="signature-container">
                 <input type="text" id="spv_name" class="input-spv" placeholder="nama anda">
                 
-                <textarea id="spv_note" class="input-spv" placeholder="berikan catatan anda sebagai laporan untuk superintendent"></textarea>
+                <textarea id="spv_note" class="input-spv" placeholder="berikan catatan sebagai laporan untuk superintendent"></textarea>
                 
                 <div class="sig-header">
                     <span style="font-size:12px; font-weight:600; color:var(--text-muted);">paraf</span>
-                    <button class="btn-clear" onclick="clearSignature()">ulangi</button>
+                    <button class="btn-clear" onclick="clearSignature()">ulang</button>
                 </div>
                 
                 <!-- Canvas Tanda Tangan -->
@@ -380,6 +382,8 @@
         function resizeCanvas() {
             // Get width from parent container to fit perfectly
             const wrapper = document.querySelector('.signature-container');
+            if(!wrapper) return; // Prevent error if hidden
+            
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
             
             // Subtract padding manually if needed, or use clientWidth
@@ -394,8 +398,6 @@
             ctx.scale(ratio, ratio);
         }
         window.addEventListener('resize', resizeCanvas);
-        // Delay slightly to ensure DOM is rendered
-        setTimeout(resizeCanvas, 500); 
 
         ['mousedown', 'touchstart'].forEach(evt => canvas.addEventListener(evt, (e) => startDraw(e)));
         ['mousemove', 'touchmove'].forEach(evt => canvas.addEventListener(evt, (e) => draw(e)));
@@ -432,6 +434,7 @@
 
         async function fetchData() {
             const tbody = document.getElementById('tableBody');
+            const approvalPanel = document.getElementById('approvalPanel'); // Referensi Panel Approval
             
             try {
                 const { data, error } = await db
@@ -444,8 +447,12 @@
 
                 if (!data || data.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Tidak ada data yang perlu diapprove.</td></tr>';
+                    approvalPanel.style.display = 'none'; // SEMBUNYIKAN PANEL
                     return;
                 }
+
+                // TAMPILKAN PANEL JIKA ADA DATA
+                approvalPanel.style.display = 'block';
 
                 tbody.innerHTML = '';
                 data.forEach(item => {
@@ -466,10 +473,14 @@
                     `;
                     tbody.innerHTML += row;
                 });
+                
+                // Resize canvas setelah panel muncul
+                setTimeout(resizeCanvas, 100);
 
             } catch (err) {
                 console.error(err);
                 tbody.innerHTML = '<tr><td colspan="7" class="empty-state" style="color:#FF5555">Gagal memuat data.</td></tr>';
+                approvalPanel.style.display = 'none'; // Sembunyikan jika error
             }
         }
 
@@ -527,32 +538,18 @@
 
                 if (error) throw error;
 
-                alert(`Berhasil meng-approve ${ids.length} data!`);
-
-                // 1. Hapus baris yang dicentang
-                checkedBoxes.forEach(cb => {
-                    const row = cb.closest('tr');
-                    row.classList.add('fade-out'); 
-                    setTimeout(() => row.remove(), 500); 
+                // 1. Success Message
+                await Swal.fire({
+                    title: 'Berhasil!',
+                    text: `Berhasil meng-approve ${ids.length} data!`,
+                    icon: 'success',
+                    background: '#111',
+                    color: '#fff',
+                    confirmButtonColor: '#DC2626'
                 });
 
-                // 2. Reset Form
-                clearSignature();
-                document.getElementById('spv_name').value = '';
-                document.getElementById('spv_note').value = '';
-                document.getElementById('checkAll').checked = false;
-
-                // 3. Kembalikan Tombol
-                btn.innerHTML = originalBtnText;
-                btn.disabled = false;
-
-                // 4. Cek Tabel Kosong
-                setTimeout(() => {
-                    const remainingRows = document.querySelectorAll('#tableBody tr');
-                    if (remainingRows.length === 0 || (remainingRows.length === 1 && remainingRows[0].classList.contains('empty-state'))) {
-                        document.getElementById('tableBody').innerHTML = '<tr><td colspan="7" class="empty-state">Semua data sudah diapprove!</td></tr>';
-                    }
-                }, 600);
+                // 2. Redirect to Jpdo.html
+                window.location.href = 'Jpdo.html';
 
             } catch (err) {
                 console.error(err);
