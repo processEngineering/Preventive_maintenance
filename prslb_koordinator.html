@@ -5,444 +5,569 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Koordinator (PRSLB) - Approval</title>
     
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        /* ==================== THEME VARIABLES (DARK RED EDITION) ==================== */
+        /* --- THEME VARIABLES (Dark Neon) --- */
         :root {
-            --primary: #DC2626;
-            --primary-dark: #7F1D1D;
-            --bg-body: #000000;
-            --bg-card: #141414;
-            --text-main: #E5E5E5;
-            --text-light: #FFFFFF;
-            --text-muted: #9CA3AF;
-            --border: rgba(220, 38, 38, 0.4);
-            --success: #4ADE80;
-            --danger: #F87171;
+            --primary: #FF3333;       /* Merah Neon */
+            --primary-dark: #b91c1c;
+            --bg-dark: #080808;
+            --bg-card: #1a1a1a; 
+            --bg-input: #121212;
+            --text-white: #FFFFFF;
+            --text-header: #FF3333;
+            --text-gray: #A3A3A3;
+            --border-light: rgba(255,255,255,0.1);
+            --radius: 16px;
             --nav-height: 70px;
-            --radius-lg: 16px;
+            
+            --success: #00C851;
+            --danger: #FF3333;
+            --warning: #F59E0B;
         }
 
-        /* ==================== BASE RESET ==================== */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         
         body { 
-            background: var(--bg-body);
-            background-image: radial-gradient(circle at 50% 10%, rgba(50, 0, 0, 0.3) 0%, transparent 50%);
-            display: flex; justify-content: center; min-height: 100vh; color: var(--text-main); 
+            background: var(--bg-dark); 
+            color: var(--text-white); 
+            min-height: 100vh; 
+            padding-bottom: calc(var(--nav-height) + 40px); 
+            overflow-x: hidden;
         }
+
+        /* --- BACKGROUND ANIMATION --- */
+        .bg-animation {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: -1; overflow: hidden; background: #050505;
+        }
+        .orb {
+            position: absolute; border-radius: 50%; filter: blur(90px);
+            opacity: 0.4; animation: float 20s ease-in-out infinite;
+        }
+        .orb-1 { width: 400px; height: 400px; top: -150px; right: -100px; background: radial-gradient(circle, var(--primary-dark) 0%, transparent 70%); }
+        .orb-2 { width: 300px; height: 300px; bottom: 10%; left: -100px; background: radial-gradient(circle, #500000 0%, transparent 70%); }
+        .grid-pattern {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px; opacity: 0.5;
+        }
+
+        .app-container {
+            width: 100%; max-width: 600px; margin: 0 auto; padding: 110px 20px 24px 20px; position: relative;
+        }
+
         .hidden { display: none !important; }
 
-        /* ==================== APP SHELL (RESPONSIVE) ==================== */
-        .app-container {
-            width: 100%; 
-            max-width: 480px; /* Default HP */
-            background: #0A0A0A;
-            display: flex; flex-direction: column; 
-            padding: 24px 20px 120px 20px;
-            position: relative; align-items: center; min-height: 100vh;
-            border-left: 1px solid #1f1f1f; border-right: 1px solid #1f1f1f;
+        /* --- HEADER (FIXED) --- */
+        .header {
+            background: linear-gradient(180deg, rgba(20, 0, 0, 0.95), rgba(40, 0, 0, 0.98));
+            border-bottom: 3px solid var(--primary-dark);
+            border-radius: 0 0 24px 24px;
+            padding: 20px; 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            text-align: center;
+            display: flex; justify-content: center; align-items: center;
+            
+            position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+            width: 100%; max-width: 600px;
+            z-index: 1000; backdrop-filter: blur(15px);
+        }
+        
+        .header-title {
+            font-size: 18px; font-weight: 900; color: var(--text-header);
+            text-transform: uppercase; letter-spacing: 1px; margin: 0;
+            text-shadow: 0 0 10px rgba(255, 51, 51, 0.5);
         }
 
-        /* TABLET & DESKTOP TWEAK */
-        @media (min-width: 768px) {
-            .app-container {
-                max-width: 720px; /* Lebih lebar untuk tablet */
-                margin: 20px auto;
-                min-height: calc(100vh - 40px);
-                border-radius: 24px;
-                border: 1px solid #333;
-                box-shadow: 0 0 40px rgba(0,0,0,0.8);
-            }
-            .bottom-nav {
-                max-width: 720px !important;
-                border-radius: 0 0 24px 24px;
-                left: 50% !important;
-                transform: translateX(-50%);
-            }
+        /* --- LIST CARD --- */
+        .card {
+            background: linear-gradient(145deg, #1e1e1e, #141414);
+            border: 1px solid var(--border-light);
+            border-left: 4px solid var(--primary);
+            border-radius: 16px;
+            padding: 20px; margin-bottom: 16px;
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            position: relative; overflow: hidden;
+            animation: fadeIn 0.4s ease-out;
         }
-
-        /* ==================== HEADER ==================== */
-        .header-capsule {
-            width: 100%; display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
-        }
-        .header-capsule h1 { font-size: 20px; font-weight: 800; color: var(--text-light); }
-        .header-capsule::after {
-            content: 'Koordinator PRSLB'; font-size: 11px; color: var(--text-light); 
-            font-weight: 600; background: var(--primary-dark); padding: 6px 14px; 
-            border-radius: 20px; border: 1px solid var(--primary);
-        }
-
-        /* ==================== CONTENT ==================== */
-        .content { width: 100%; flex: 1; animation: fadeIn 0.4s ease; display: flex; flex-direction: column; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* LIST CARD STYLE */
-        .card {
-            background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05);
-            border-radius: var(--radius-lg); padding: 16px; margin-bottom: 12px;
-            cursor: pointer; display: flex; justify-content: space-between; align-items: center;
-            position: relative; overflow: hidden;
-            min-height: 80px; /* Lebih tinggi untuk touch target */
-        }
-        .card::before { 
-            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--primary); 
-        }
-        .card h4 { margin: 0 0 6px 0; font-size: 16px; font-weight: 700; color: var(--text-light); }
-        .card p { margin: 0; font-size: 13px; color: var(--text-muted); }
-        .btn-approve-init {
-            background: transparent; color: var(--primary); border: 1px solid var(--primary);
-            padding: 10px 16px; border-radius: 8px; font-weight: 700; font-size: 12px;
-        }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(255, 51, 51, 0.2); border-color: var(--primary); }
 
-        /* SCANNER STYLE */
+        .card h4 { font-size: 16px; font-weight: 700; margin: 0 0 4px 0; color: var(--text-white); }
+        .card p { font-size: 12px; color: var(--text-gray); margin: 0; }
+        
+        .btn-approve-init {
+            background: rgba(255, 51, 51, 0.15); color: var(--primary);
+            border: 1px solid var(--primary); padding: 8px 16px;
+            border-radius: 8px; font-weight: 700; font-size: 11px;
+            cursor: pointer; transition: 0.3s;
+        }
+        .btn-approve-init:hover { background: var(--primary); color: white; }
+
+        /* --- SCANNER --- */
         .scan-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
         .scanner-box {
-            width: 100%; max-width: 320px; aspect-ratio: 1; border-radius: 24px; overflow: hidden; background: #000; 
-            margin-bottom: 20px; border: 2px solid var(--primary);
+            width: 100%; max-width: 300px; aspect-ratio: 1; border-radius: 24px; overflow: hidden;
+            background: #000; margin-bottom: 20px; border: 3px solid var(--primary);
+            box-shadow: 0 0 30px rgba(255, 51, 51, 0.2); position: relative;
+            display: flex; justify-content: center; align-items: center;
         }
-        #reader video { width: 100% !important; height: 100% !important; object-fit: cover; }
+        #reader { width: 100% !important; height: 100% !important; border: none !important; padding:0 !important; overflow: hidden !important; }
+        #reader video { width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: 0 !important; }
 
-        /* ITEM ROWS */
-        .item-row { 
-            background: var(--bg-card); border: 1px solid #333; border-radius: 12px; 
-            padding: 14px; margin-bottom: 12px; display: flex; flex-direction: column; 
+        .instruction-text { text-align: center; color: var(--text-gray); font-size: 13px; margin-bottom: 20px; }
+
+        /* --- INFO BOX --- */
+        .info-box {
+            background: linear-gradient(145deg, #1a1a1a, #111);
+            border: 1px solid var(--border-light); border-radius: 16px;
+            padding: 20px; text-align: center; margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-        .item-row.is-ng {
-            border: 1px solid var(--danger);
-            background: rgba(248, 113, 113, 0.05);
+        .info-box h3 { color: var(--primary); font-size: 18px; margin-bottom: 4px; }
+        .info-box p { color: var(--text-gray); font-size: 12px; margin: 0; text-transform: uppercase; }
+
+        /* --- ITEM ROWS (DETAIL) --- */
+        .item-row { 
+            background: var(--bg-card); border: 1px solid var(--border-light); 
+            border-radius: 12px; padding: 16px; margin-bottom: 12px; 
+            display: flex; flex-direction: column; 
+        }
+        .item-row.is-ng { 
+            border: 1px solid var(--danger); 
+            background: rgba(255, 51, 51, 0.05); 
         }
 
         .item-header { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 8px; }
-        .item-name { font-weight: 600; font-size: 14px; color: var(--text-light); flex: 1; padding-right: 10px; line-height: 1.4; }
+        .item-name { font-weight: 700; font-size: 13px; color: var(--text-white); flex: 1; padding-right: 10px; line-height: 1.4; }
         
         .status-badge { 
-            font-size: 11px; font-weight: 800; padding: 6px 12px; border-radius: 6px; min-width: 45px; text-align: center; 
+            font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 6px; min-width: 40px; text-align: center; 
         }
-        .status-ok { background: rgba(74, 222, 128, 0.2); color: var(--success); }
-        .status-ng { background: rgba(248, 113, 113, 0.2); color: var(--danger); }
+        .status-ok { background: rgba(0, 200, 81, 0.2); color: var(--success); border: 1px solid var(--success); }
+        .status-ng { background: rgba(255, 51, 51, 0.2); color: var(--danger); border: 1px solid var(--danger); }
 
         .pelaksana-note {
-            font-size: 12px; color: #ccc; background: #222; padding: 10px; border-radius: 6px; 
-            margin-bottom: 10px; border-left: 2px solid #555;
+            font-size: 12px; color: #ccc; background: #111; padding: 10px; border-radius: 8px; 
+            margin-bottom: 12px; border-left: 2px solid var(--danger);
         }
 
-        /* KOORDINATOR ACTION BOX */
+        /* --- KOORDINATOR ACTION --- */
         .koor-action-box {
-            background: #111;
-            border-top: 1px dashed var(--danger);
-            padding-top: 12px;
-            margin-top: 5px;
+            background: #0f0f0f; border-top: 1px dashed var(--danger);
+            padding-top: 12px; margin-top: 5px;
         }
-        .koor-label { font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 6px; display: block; text-transform: uppercase;}
+        .koor-label { font-size: 10px; font-weight: 700; color: var(--primary); margin-bottom: 8px; display: block; text-transform: uppercase; }
         
         .radio-group { display: flex; gap: 10px; margin-bottom: 10px; }
-        .radio-opt { flex: 1; position: relative; height: 44px; /* Tinggi touch target */ }
+        .radio-opt { flex: 1; position: relative; height: 40px; cursor: pointer; }
         .radio-opt input { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+        
         .radio-tile {
             display: flex; align-items: center; justify-content: center; height: 100%; width: 100%;
             background: #222; border: 1px solid #444; border-radius: 8px;
-            font-size: 12px; font-weight: 600; color: #888; transition: all 0.2s;
+            font-size: 11px; font-weight: 700; color: #888; transition: all 0.2s;
         }
-        .radio-opt input:checked + .radio-tile { border-width: 2px; }
-        .radio-opt input[value="NG"]:checked + .radio-tile { background: rgba(248, 113, 113, 0.2); border-color: var(--danger); color: var(--danger); }
-        .radio-opt input[value="OK"]:checked + .radio-tile { background: rgba(74, 222, 128, 0.2); border-color: var(--success); color: var(--success); }
+        
+        .radio-opt input[value="NG"]:checked + .radio-tile { background: rgba(255, 51, 51, 0.2); border-color: var(--danger); color: var(--danger); }
+        .radio-opt input[value="OK"]:checked + .radio-tile { background: rgba(0, 200, 81, 0.2); border-color: var(--success); color: var(--success); }
 
         .koor-input {
             width: 100%; background: #000; border: 1px solid #444; color: white;
-            padding: 12px; font-size: 13px; border-radius: 8px; outline: none;
+            padding: 10px; font-size: 12px; border-radius: 8px; outline: none;
         }
         .koor-input:focus { border-color: var(--primary); }
 
-        /* FORM & BUTTONS */
-        .form-input { 
-            width: 100%; padding: 16px; border: 1px solid #333; border-radius: 12px; 
-            font-size: 15px; background: #050505; color: white; margin-bottom: 16px; 
+        /* --- APPROVAL CARD --- */
+        .approval-card {
+            background: linear-gradient(145deg, #1e1e1e, #141414);
+            border: 1px solid var(--border-light);
+            border-left: 4px solid var(--primary);
+            border-radius: var(--radius);
+            padding: 24px; margin-top: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
         }
-        
-        /* SIGNATURE BOX - FIXED TOUCH ISSUE */
-        .sig-box { 
-            border: 2px dashed var(--primary); border-radius: 12px; 
-            height: 200px; /* Lebih tinggi agar mudah tanda tangan di Tablet */
-            background: #fff; margin-bottom: 16px; position: relative; 
-            touch-action: none; /* KRUSIAL UNTUK HP: mencegah scroll saat disentuh */
-            overflow: hidden;
+        .approval-title {
+            font-size: 14px; font-weight: 800; color: var(--text-header); 
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px;
+            border-bottom: 1px dashed #333; padding-bottom: 10px;
         }
-        canvas { 
-            width: 100%; height: 100%; display: block; 
-            touch-action: none; /* Mencegah browser melakukan scroll/zoom saat canvas disentuh */
-        }
-        
-        .btn-submit {
-            width: 100%; background: var(--primary); color: white; border: none; padding: 18px;
-            font-size: 15px; font-weight: 700; border-radius: 12px; cursor: pointer; text-transform: uppercase;
-            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
-        }
-        .btn-cancel { width: 100%; background: #222; color: #ccc; border: none; padding: 16px; border-radius: 12px; margin-top: 12px; cursor: pointer; }
 
-        /* NAV */
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: rgba(10,10,10,0.98); display: flex; justify-content: space-around; padding: 12px 0; height: var(--nav-height); border-top: 1px solid #222; z-index: 1000; }
-        .nav-item { color: #555; font-size: 24px; width: 60px; display: flex; align-items: center; justify-content: center; }
-        .nav-item.active { color: var(--primary); }
+        .form-label {
+            display: block; font-size: 11px; color: var(--text-gray);
+            margin-bottom: 8px; font-weight: 700; text-transform: uppercase;
+        }
+
+        .form-input { 
+            width: 100%; padding: 14px; background: #080808; border: 1px solid #333;
+            border-radius: 10px; font-size: 14px; color: white; margin-bottom: 16px; outline: none;
+            transition: 0.3s;
+        }
+        .form-input:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(255, 51, 51, 0.1); }
+        
+        /* Signature */
+        .sig-box { 
+            border: 2px dashed #444; border-radius: 12px; height: 150px; 
+            background: #fff; margin-bottom: 10px; position: relative; overflow: hidden;
+        }
+        canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+        
+        .btn-clear-sig {
+            font-size: 11px; color: var(--primary); background: transparent; 
+            border: 1px solid var(--primary); padding: 4px 12px; border-radius: 6px;
+            cursor: pointer; float: right; margin-bottom: 20px;
+        }
+
+        .btn-submit {
+            width: 100%; padding: 16px; border-radius: 12px; font-size: 15px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 1px; cursor: pointer; border: none;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); 
+            color: white; box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3);
+            transition: transform 0.2s;
+        }
+        .btn-submit:active { transform: scale(0.98); }
+        
+        /* --- BOTTOM NAV --- */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 600px;
+            background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-light); display: flex; justify-content: space-around;
+            align-items: center; padding: 12px 0; height: var(--nav-height); z-index: 1000;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-decoration: none; color: #555; width: 60px; height: 50px; border-radius: 12px; transition: 0.3s;
+        }
+        .nav-item svg { width: 22px; height: 22px; margin-bottom: 4px; }
+        .nav-item.active { color: var(--primary); background: rgba(255, 51, 51, 0.1); }
+
+        /* SweetAlert Dark */
+        div:where(.swal2-container) div:where(.swal2-popup) { background: #111 !important; border: 1px solid #333; color: #fff !important; }
+        div:where(.swal2-confirm) { background-color: var(--primary) !important; }
+
     </style>
 </head>
 <body>
 
-<div class="app-container">
-    <div class="header-capsule"><h1>Koordinator</h1></div>
-
-    <!-- 1. LIST ANTREAN -->
-    <div id="view-list" class="content">
-        <div style="display:flex; justify-content:space-between; margin-bottom:16px;">
-            <span style="font-size:12px; font-weight:700; color:#888;">ANTREAN VERIFIKASI</span>
-            <button onclick="loadAntrean()" style="background:none; border:none; color:var(--primary); font-weight:700; cursor:pointer;">REFRESH</button>
-        </div>
-        <div id="antrean-container"></div>
+    <!-- Background Animation -->
+    <div class="bg-animation">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="grid-pattern"></div>
     </div>
 
-    <!-- 2. SCANNER -->
-    <div id="view-scan" class="content hidden">
-        <div class="scan-container">
-            <p style="color:#ccc; margin-bottom:10px;">Scan Barcode Mesin:</p>
-            <h3 id="target-name" style="color:var(--primary); margin-bottom:20px;">...</h3>
-            <div class="scanner-box"><div id="reader"></div></div>
-            <button class="btn-cancel" onclick="location.reload()">BATAL</button>
-        </div>
+    <!-- Header (Fixed) -->
+    <div class="header">
+        <h1 class="header-title">KOORDINATOR PREVENTIF</h1>
     </div>
 
-    <!-- 3. APPROVAL FORM -->
-    <div id="view-approve" class="content hidden">
-        <div style="background:#1a1a1a; padding:15px; border-radius:12px; text-align:center; margin-bottom:20px; border:1px solid #333;">
-            <h3 id="disp-mesin" style="color:var(--primary);">-</h3>
-            <p id="disp-pelaksana" style="font-size:12px; color:#999;"></p>
+    <div class="app-container">
+
+        <!-- 1. LIST ANTREAN -->
+        <div id="view-list" class="content">
+            <div style="display:flex; justify-content:space-between; margin-bottom:16px; align-items:center;">
+                <span style="font-size:12px; font-weight:700; color:#888;">ANTREAN VERIFIKASI</span>
+            </div>
+            <div id="antrean-container">
+                <div style="text-align:center; padding:40px; color:#666;">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i> Memuat...
+                </div>
+            </div>
         </div>
 
-        <span style="font-size:12px; font-weight:700; color:#666; margin-bottom:10px; display:block;">ITEM PENGECEKAN</span>
-        <div id="detail-items" style="margin-bottom: 20px;"></div>
+        <!-- 2. SCANNER -->
+        <div id="view-scan" class="content hidden">
+            <div class="scan-container">
+                <p style="color:#ccc; margin-bottom:20px; font-size:13px; text-align:center;">Scan QR Code Mesin untuk Melanjutkan</p>
+                <div class="scanner-box"><div id="reader"></div></div>
+                <h3 id="target-name" style="color:var(--primary); margin-bottom:20px; font-weight:700;">...</h3>
+            </div>
+        </div>
 
-        <div style="border-top:1px dashed #333; padding-top:20px;">
-            <label style="font-size:12px; font-weight:700; color:#888; display:block; margin-bottom:6px;">NAMA KOORDINATOR</label>
-            <input type="text" id="koor-nama" class="form-input" placeholder="Isi nama anda">
-
-            <label style="font-size:12px; font-weight:700; color:#888; display:block; margin-bottom:6px;">PARAF</label>
-            <div class="sig-box">
-                <canvas id="signature-pad"></canvas>
-                <button onclick="clearPad()" style="position:absolute; bottom:8px; right:8px; background:var(--danger); color:white; border:none; padding:6px 10px; font-size:11px; border-radius:6px;">HAPUS</button>
+        <!-- 3. APPROVAL FORM -->
+        <div id="view-approve" class="content hidden">
+            
+            <!-- Info Mesin -->
+            <div class="info-box">
+                <h3 id="disp-mesin">-</h3>
+                <p id="disp-pelaksana">-</p>
             </div>
 
-            <button class="btn-submit" id="btn-submit-approve" onclick="submitApproval()">APPROVE SEKARANG</button>
-            <button class="btn-cancel" onclick="location.reload()">BATAL</button>
+            <div style="font-size:12px; font-weight:700; color:#666; margin-bottom:12px; border-bottom:1px solid #333; padding-bottom:5px;">ITEM PENGECEKAN</div>
+            <div id="detail-items"></div>
+
+            <!-- Approval Card -->
+            <div class="approval-card">
+                <div class="approval-title">VALIDASI KOORDINATOR</div>
+                
+                <div class="form-group">
+                    <label class="form-label">NAMA KOORDINATOR</label>
+                    <input type="text" id="koor-nama" class="form-input" placeholder="Isi nama anda">
+                </div>
+
+                <!-- Moved here: Catatan Koordinator -->
+                <div class="form-group">
+                    <label class="form-label">CATATAN (OPSIONAL)</label>
+                    <textarea id="koor-note" class="form-input" style="min-height:80px; resize:vertical;" placeholder="Tambahkan catatan jika ada..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">PARAF</label>
+                    <div class="sig-box">
+                        <canvas id="signature-pad"></canvas>
+                    </div>
+                    <button onclick="clearPad()" class="btn-clear-sig">HAPUS TANDA TANGAN</button>
+                    <div style="clear:both;"></div>
+                </div>
+
+                <!-- Single Approve Button -->
+                <button class="btn-submit" id="btn-submit-approve" onclick="submitApproval()">
+                    APPROVE LAPORAN
+                </button>
+            </div>
         </div>
     </div>
-</div>
 
-<nav class="bottom-nav">
-    <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i></a>
-    <a href="menu_utama.html" class="nav-item active"><i class="fa-solid fa-bars"></i></a>
-    <a href="download_data.html" class="nav-item"><i class="fa-solid fa-download"></i></a>
-    <a href="informasi_akun.html" class="nav-item"><i class="fa-solid fa-circle-user"></i></a>
-</nav>
+    <!-- Navigasi Bawah -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        </a>
+        <a href="menu_utama.html" class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </a>
+    </nav>
 
-<script>
-    const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
-    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
-    const _sb = supabase.createClient(SB_URL, SB_KEY);
-    let scanner, signaturePad, targetName, activeLog;
+    <script>
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
+        let scanner, signaturePad, targetName, activeLog;
 
-    // Helper: Resize Canvas
-    function resizeCanvas() {
-        const c = document.getElementById('signature-pad');
-        if(!c) return;
-        // PENTING: Gunakan offsetWidth canvas untuk set width internal
-        const ratio = Math.max(window.devicePixelRatio || 1, 1);
-        c.width = c.offsetWidth * ratio; 
-        c.height = c.offsetHeight * ratio;
-        c.getContext("2d").scale(ratio, ratio);
-    }
-    
-    function clearPad() { if(signaturePad) signaturePad.clear(); }
-
-    window.onload = () => {
-        loadAntrean();
-        window.addEventListener("resize", resizeCanvas);
-    };
-
-    async function loadAntrean() {
-        const { data } = await _sb.from('prslb_log').select('*').eq('status_verifikasi', false).order('created_at', { ascending: false });
-        const c = document.getElementById('antrean-container');
-        c.innerHTML = data?.length ? '' : '<div style="text-align:center; padding:30px; color:#555;">Tidak ada antrean.</div>';
+        // Helper: Resize Canvas
+        function resizeCanvas() {
+            const c = document.getElementById('signature-pad');
+            if(!c) return;
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            c.width = c.offsetWidth * ratio; 
+            c.height = c.offsetHeight * ratio;
+            c.getContext("2d").scale(ratio, ratio);
+        }
         
-        data?.forEach(log => {
-            const d = new Date(log.created_at).toLocaleDateString('id-ID', {day:'numeric', month:'short'});
-            c.innerHTML += `
-                <div class="card" onclick="startScan('${log.mesin_id}')">
-                    <div><h4>${log.mesin_id}</h4><p>${log.pelaksana_nama} | ${d}</p></div>
-                    <button class="btn-approve-init">VERIF</button>
-                </div>`;
-        });
-    }
+        function clearPad() { if(signaturePad) signaturePad.clear(); }
 
-    function startScan(name) {
-        targetName = name;
-        document.getElementById('view-list').classList.add('hidden');
-        document.getElementById('view-scan').classList.remove('hidden');
-        document.getElementById('target-name').innerText = name;
-        
-        scanner = new Html5Qrcode("reader");
-        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decoded) => {
-            if (decoded.trim().toLowerCase().includes(targetName.toLowerCase())) {
-                scanner.stop(); loadDetail(targetName);
-            } else { alert("QR Salah!"); }
-        });
-    }
+        window.onload = () => {
+            loadAntrean();
+            window.addEventListener("resize", resizeCanvas);
+        };
 
-    async function loadDetail(name) {
-        const { data } = await _sb.from('prslb_log')
-            .select('*, prslb_result(*, prslb_items(item_name))')
-            .eq('status_verifikasi', false).eq('mesin_id', name)
-            .limit(1).single();
-
-        if (!data) return location.reload();
-        activeLog = data;
-
-        document.getElementById('view-scan').classList.add('hidden');
-        document.getElementById('view-approve').classList.remove('hidden');
-
-        document.getElementById('disp-mesin').innerText = data.mesin_id;
-        document.getElementById('disp-pelaksana').innerText = data.pelaksana_nama;
-
-        const c = document.getElementById('detail-items');
-        c.innerHTML = '';
-
-        const results = data.prslb_result.sort((a,b) => (a.status === 'NG' ? -1 : 1));
-
-        results.forEach((res, index) => {
-            if (res.status === 'OK') {
-                c.innerHTML += `
-                    <div class="item-row">
-                        <div class="item-header">
-                            <span class="item-name">${res.prslb_items.item_name}</span>
-                            <span class="status-badge status-ok">OK</span>
-                        </div>
-                    </div>`;
-            } else {
-                c.innerHTML += `
-                    <div class="item-row is-ng" id="ng-row-${index}" data-resultid="${res.id}" data-itemname="${res.prslb_items.item_name}">
-                        <div class="item-header">
-                            <span class="item-name">${res.prslb_items.item_name}</span>
-                            <span class="status-badge status-ng">NG</span>
-                        </div>
-                        <div class="pelaksana-note">
-                            <i class="fa-solid fa-triangle-exclamation" style="color:var(--danger)"></i> Note Mekanik: ${res.keterangan || "-"}
-                        </div>
-
-                        <div class="koor-action-box">
-                            <span class="koor-label">TINDAKAN KOORDINATOR:</span>
-                            <div class="radio-group">
-                                <label class="radio-opt">
-                                    <input type="radio" name="verif_${index}" value="NG" checked onchange="toggleReason(${index})">
-                                    <div class="radio-tile">TETAP NG</div>
-                                </label>
-                                <label class="radio-opt">
-                                    <input type="radio" name="verif_${index}" value="OK" onchange="toggleReason(${index})">
-                                    <div class="radio-tile">SUDAH OK</div>
-                                </label>
-                            </div>
-                            <input type="text" id="reason_${index}" class="koor-input" placeholder="Wajib isi: Alasan kenapa masih NG?">
-                        </div>
-                    </div>`;
-            }
-        });
-
-        // --- FIXED SIGNATURE PAD INITIALIZATION ---
-        // Kita beri sedikit delay agar layout render selesai sepenuhnya sebelum canvas dihitung
-        setTimeout(() => {
-            const canvas = document.getElementById('signature-pad');
-            resizeCanvas(); 
+        async function loadAntrean() {
+            const c = document.getElementById('antrean-container');
+            c.innerHTML = '<div style="text-align:center; padding:30px; color:#555;"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>';
             
-            // Re-init pad jika perlu
-            if(signaturePad) signaturePad.off();
-            signaturePad = new SignaturePad(canvas, { 
-                penColor: 'black',
-                backgroundColor: 'rgb(255, 255, 255)' 
+            const { data, error } = await _sb.from('prslb_log').select('*').eq('status_verifikasi', false).order('created_at', { ascending: false });
+            
+            c.innerHTML = '';
+            
+            if (!data || data.length === 0) {
+                c.innerHTML = '<div style="text-align:center; padding:30px; color:#555;">Tidak ada antrean verifikasi.</div>';
+                return;
+            }
+            
+            data.forEach(log => {
+                const d = new Date(log.created_at).toLocaleDateString('id-ID', {day:'numeric', month:'short'});
+                c.innerHTML += `
+                    <div class="card" onclick="startScan('${log.mesin_id}')">
+                        <div>
+                            <h4>${log.mesin_id}</h4>
+                            <p>${log.pelaksana_nama} | ${d}</p>
+                        </div>
+                        <button class="btn-approve-init">VERIF</button>
+                    </div>`;
             });
-        }, 300); // Delay 300ms cukup untuk transisi layar HP
-    }
-
-    window.toggleReason = (idx) => {
-        const val = document.querySelector(`input[name="verif_${idx}"]:checked`).value;
-        const input = document.getElementById(`reason_${idx}`);
-        if(val === 'OK') {
-            input.placeholder = "Jelaskan perbaikan apa yang dilakukan...";
-        } else {
-            input.placeholder = "Wajib isi: Alasan kenapa masih NG / Menunggu Part?";
         }
-    }
 
-    async function submitApproval() {
-        const nama = document.getElementById('koor-nama').value.trim();
-        
-        if (!nama || signaturePad.isEmpty()) return alert("Isi Nama & Tanda Tangan!");
+        function startScan(name) {
+            targetName = name;
+            document.getElementById('view-list').classList.add('hidden');
+            document.getElementById('view-scan').classList.remove('hidden');
+            document.getElementById('target-name').innerText = name;
+            
+            scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250, aspectRatio: 1.0 }, (decoded) => {
+                if (decoded.trim().toLowerCase().includes(targetName.toLowerCase().split(' ')[0].toLowerCase())) {
+                    scanner.stop(); 
+                    loadDetail(targetName);
+                }
+            });
+        }
 
-        const ngRows = document.querySelectorAll('.item-row.is-ng');
-        const updatePromises = [];
-        let hasEmptyReason = false;
+        async function loadDetail(name) {
+            const { data } = await _sb.from('prslb_log')
+                .select('*, prslb_result(*, prslb_items(item_name))')
+                .eq('status_verifikasi', false).eq('mesin_id', name)
+                .limit(1).single();
 
-        ngRows.forEach(row => {
-            const idx = row.id.split('-')[2]; 
-            const resultId = row.dataset.resultid; 
-            const status = document.querySelector(`input[name="verif_${idx}"]:checked`).value;
-            const reason = document.getElementById(`reason_${idx}`).value.trim();
+            if (!data) {
+                alert("Data tidak ditemukan atau sudah diverifikasi.");
+                return location.reload();
+            }
+            activeLog = data;
 
-            if (!reason) {
-                hasEmptyReason = true;
-                document.getElementById(`reason_${idx}`).style.border = "1px solid red";
-            } else {
-                document.getElementById(`reason_${idx}`).style.border = "1px solid #444";
+            document.getElementById('view-scan').classList.add('hidden');
+            document.getElementById('view-approve').classList.remove('hidden');
+
+            document.getElementById('disp-mesin').innerText = data.mesin_id;
+            document.getElementById('disp-pelaksana').innerText = data.pelaksana_nama;
+
+            const c = document.getElementById('detail-items');
+            c.innerHTML = '';
+
+            const results = data.prslb_result.sort((a,b) => (a.status === 'NG' ? -1 : 1));
+
+            results.forEach((res, index) => {
+                if (res.status === 'OK') {
+                    c.innerHTML += `
+                        <div class="item-row" style="background:#111; padding:12px; border-radius:10px; margin-bottom:10px; border:1px solid #333;">
+                            <div class="item-header">
+                                <span class="item-name">${res.prslb_items.item_name}</span>
+                                <span class="status-badge status-ok" style="font-size:10px; padding:4px 8px; border-radius:4px; background:rgba(0,200,81,0.2); color:#00C851; font-weight:800;">OK</span>
+                            </div>
+                        </div>`;
+                } else {
+                    c.innerHTML += `
+                        <div class="item-row is-ng" id="ng-row-${index}" data-resultid="${res.id}" style="background:rgba(255,51,51,0.05); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid #FF3333;">
+                            <div class="item-header">
+                                <span class="item-name">${res.prslb_items.item_name}</span>
+                                <span class="status-badge status-ng" style="font-size:10px; padding:4px 8px; border-radius:4px; background:rgba(255,51,51,0.2); color:#FF3333; font-weight:800;">NG</span>
+                            </div>
+                            <div class="pelaksana-note" style="font-size:12px; color:#ccc; margin:10px 0; padding-left:10px; border-left:2px solid #FF3333;">
+                                Note Mekanik: ${res.keterangan || "-"}
+                            </div>
+
+                            <div class="koor-action-box" style="margin-top:10px; border-top:1px dashed #444; padding-top:10px;">
+                                <span class="koor-label" style="font-size:10px; color:#FF3333; font-weight:700;">TINDAKAN KOORDINATOR:</span>
+                                <div class="radio-group">
+                                    <label class="radio-opt">
+                                        <input type="radio" name="verif_${index}" value="NG" checked onchange="toggleReason(${index})">
+                                        <div class="radio-tile">TETAP NG</div>
+                                    </label>
+                                    <label class="radio-opt">
+                                        <input type="radio" name="verif_${index}" value="OK" onchange="toggleReason(${index})">
+                                        <div class="radio-tile">SUDAH OK</div>
+                                    </label>
+                                </div>
+                                <input type="text" id="reason_${index}" class="koor-input" style="width:100%; padding:10px; background:#000; border:1px solid #444; color:white; border-radius:8px; margin-top:5px;" placeholder="Wajib isi: Alasan kenapa masih NG?">
+                            </div>
+                        </div>`;
+                }
+            });
+
+            // Init Signature Pad
+            setTimeout(() => {
+                const canvas = document.getElementById('signature-pad');
+                resizeCanvas(); 
                 
-                updatePromises.push(
-                    _sb.from('prslb_result')
-                        .update({ 
-                            status_koordinator: status, 
-                            keterangan_koordinator: reason 
-                        })
-                        .eq('id', resultId)
-                );
-            }
-        });
-
-        if (hasEmptyReason) return alert("Harap isi semua keterangan pada item NG!");
-
-        const btn = document.getElementById('btn-submit-approve');
-        btn.disabled = true; btn.innerText = "MENYIMPAN...";
-
-        try {
-            if (updatePromises.length > 0) {
-                await Promise.all(updatePromises);
-            }
-
-            const { error } = await _sb.from('prslb_log').update({
-                koordinator_nama: nama,
-                status_verifikasi: true,
-                signature_koordinator: signaturePad.toDataURL()
-            }).eq('id', activeLog.id);
-
-            if (error) throw error;
-
-            alert("✅ Berhasil! Data verifikasi tersimpan.");
-            location.reload();
-        } catch (e) {
-            console.error(e);
-            alert("Error: " + e.message);
-            btn.disabled = false; btn.innerText = "APPROVE SEKARANG";
+                if(signaturePad) signaturePad.off();
+                signaturePad = new SignaturePad(canvas, { 
+                    penColor: 'black',
+                    backgroundColor: 'rgb(255, 255, 255)' 
+                });
+            }, 300); 
         }
-    }
-</script>
+
+        window.toggleReason = (idx) => {
+            const val = document.querySelector(`input[name="verif_${idx}"]:checked`).value;
+            const input = document.getElementById(`reason_${idx}`);
+            if(val === 'OK') {
+                input.placeholder = "Jelaskan perbaikan apa yang dilakukan...";
+            } else {
+                input.placeholder = "Wajib isi: Alasan kenapa masih NG / Menunggu Part?";
+            }
+        }
+
+        async function submitApproval() {
+            const nama = document.getElementById('koor-nama').value.trim();
+            // --- ADDED NOTE VALUE ---
+            const note = document.getElementById('koor-note').value.trim();
+            
+            if (!nama || signaturePad.isEmpty()) return alert("Isi Nama & Tanda Tangan!");
+
+            const ngRows = document.querySelectorAll('.item-row.is-ng');
+            const updatePromises = [];
+            let hasEmptyReason = false;
+
+            ngRows.forEach(row => {
+                const idx = row.id.split('-')[2]; 
+                const resultId = row.dataset.resultid; 
+                const status = document.querySelector(`input[name="verif_${idx}"]:checked`).value;
+                const reason = document.getElementById(`reason_${idx}`).value.trim();
+
+                if (!reason) {
+                    hasEmptyReason = true;
+                    document.getElementById(`reason_${idx}`).style.border = "1px solid red";
+                } else {
+                    document.getElementById(`reason_${idx}`).style.border = "1px solid #444";
+                    
+                    updatePromises.push(
+                        _sb.from('prslb_result')
+                            .update({ 
+                                status_koordinator: status, 
+                                keterangan_koordinator: reason 
+                            })
+                            .eq('id', resultId)
+                    );
+                }
+            });
+
+            if (hasEmptyReason) return alert("Harap isi semua keterangan pada item NG!");
+
+            const btn = document.getElementById('btn-submit-approve');
+            btn.disabled = true; btn.innerText = "MENYIMPAN...";
+
+            try {
+                if (updatePromises.length > 0) {
+                    await Promise.all(updatePromises);
+                }
+
+                // --- UPDATED SUPABASE CALL ---
+                const { error } = await _sb.from('prslb_log').update({
+                    koordinator_nama: nama,
+                    koordinator_note: note, // Insert note here
+                    status_verifikasi: true,
+                    signature_koordinator: signaturePad.toDataURL()
+                }).eq('id', activeLog.id);
+
+                if (error) throw error;
+
+                alert("✅ Berhasil! Data verifikasi tersimpan.");
+                location.reload();
+            } catch (e) {
+                console.error(e);
+                alert("Error: " + e.message);
+                btn.disabled = false; btn.innerText = "APPROVE SEKARANG";
+            }
+        }
+    </script>
 </body>
 </html>
