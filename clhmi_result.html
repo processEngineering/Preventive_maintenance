@@ -595,7 +595,7 @@
 
         const headerIds = headers.map(h => h.id);
         const { data: allRes, error: rErr } = await sb.from('clhmi_results')
-            .select('item_kode, status, value, tanggal_cek, clhmi_items(nama_pengecekan)')
+            .select('item_kode, status, value, temperature_oli, tanggal_cek, clhmi_items(nama_pengecekan)') // UPDATE: Select temperature_oli
             .in('clhmi_id', headerIds);
 
         const head = headers[0];
@@ -633,10 +633,21 @@
 
                 let sym = '', cls = '';
                 if(f) {
-                    if (item.nama === "Running hour (jam)(**)") {
+                    const n = item.nama.toLowerCase();
+                    // --- LOGIKA BARU UNTUK DISPLAY REPORT ---
+                    
+                    // 1. Cek Running Hour (Ambil dari kolom 'value')
+                    if (n.includes("running hour")) {
                         sym = f.value || '-';
                         cls = 'st-val';
-                    } else {
+                    } 
+                    // 2. Cek Temperatur (Ambil dari kolom 'temperature_oli')
+                    else if (n.includes("temperatur") || n.includes("temperature")) {
+                        sym = f.temperature_oli || '-';
+                        cls = 'st-val';
+                    }
+                    // 3. Status Lainnya
+                    else {
                         if(f.status === 'OK') { sym = '✓'; cls = 'st-ok'; }
                         else if(f.status === 'NG') { sym = 'X'; cls = 'st-ng'; }
                         else if(f.status === 'MT') { sym = 'O'; cls = 'st-mt'; } 
