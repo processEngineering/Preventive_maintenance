@@ -453,7 +453,6 @@
             border: 2px dashed var(--border-red);
             border-radius: 12px;
             height: 150px;
-            /* UBAH: Background jadi Putih Transparan agar tinta hitam terlihat */
             background: rgba(255, 255, 255, 0.85); 
             position: relative;
             overflow: hidden;
@@ -718,7 +717,10 @@
             const isNewCategory = item.kategori !== currentKategori;
             if (isNewCategory) currentKategori = item.kategori;
 
-            const isRunningHour = item.nama_pengecekan.toLowerCase().includes("running hour");
+            // FIX: Deteksi temperatur (Indo & English) dan Running Hour
+            const nameLower = item.nama_pengecekan.toLowerCase();
+            const isRunningHour = nameLower.includes("running hour");
+            const isTempOli = nameLower.includes("temperature oli") || nameLower.includes("temperatur oli");
 
             container.innerHTML += `
                 <div class="check-card">
@@ -734,9 +736,9 @@
                         <option value="NA">NA - Tidak Ada</option>
                     </select>
 
-                    ${isRunningHour ? `
+                    ${(isRunningHour || isTempOli) ? `
                         <div class="value-input">
-                            <input type="number" id="val_${item.id}" placeholder="Input jam aktual">
+                            <input type="number" id="val_${item.id}" placeholder="${isRunningHour ? 'Input jam aktual' : 'Input suhu aktual (°C)'}">
                         </div>
                     ` : ''}
 
@@ -770,7 +772,6 @@
 
     function setupCanvas() {
         const r = cvs.getBoundingClientRect(); 
-        // FIX: Handle resolusi tinggi (Retina/HP) agar tidak pecah
         const ratio = Math.max(window.devicePixelRatio || 1, 1);
         cvs.width = r.width * ratio; 
         cvs.height = r.height * ratio;
@@ -779,8 +780,6 @@
         ctx.scale(ratio, ratio);
 
         ctx.lineWidth = 3; ctx.lineCap = "round"; 
-        
-        // UBAH: Warna tinta jadi hitam (#000000)
         ctx.strokeStyle = "#000000"; 
         
         const getXY = (e) => {
@@ -796,7 +795,7 @@
             ctx.beginPath(); 
             const p = getXY(e); 
             ctx.moveTo(p.x, p.y); 
-            if(e.cancelable) e.preventDefault(); // Mencegah scroll saat tanda tangan
+            if(e.cancelable) e.preventDefault(); 
         }, {passive:false}));
 
         ['mousemove', 'touchmove'].forEach(evt => cvs.addEventListener(evt, e => { 
@@ -847,7 +846,6 @@
                 bulan: bln, 
                 tahun: thn,
                 catatan_pelaksana: catatan_aman,
-                // Pastikan kolom ini ada di database atau hapus jika error
                 tonage: mData.tonage 
             }]).select().single();
 
@@ -859,17 +857,30 @@
                 const valEl = document.getElementById(`val_${item.id}`);
                 const noteEl = document.getElementById(`note_${item.id}`);
                 
+                // --- LOGIKA BARU: PISAH KOLOM VALUE & TEMPERATURE ---
+                const nameLower = item.nama_pengecekan.toLowerCase();
+                const isTempOli = nameLower.includes("temperature oli") || nameLower.includes("temperatur oli");
+                
+                let valueData = null;
+                let tempOliData = null;
+
+                if (valEl && valEl.value) {
+                    if (isTempOli) {
+                        tempOliData = valEl.value; // Save to temperature_oli
+                    } else {
+                        valueData = valEl.value;   // Save to value (Running Hour etc)
+                    }
+                }
+
                 return {
                     clhmi_id: hdr.id,
                     item_id: item.id,
-                    item_kode: item.item_kode, // Penting untuk report
-                    // kategori & nama tidak perlu disimpan berulang jika sudah ada relasi item_id, 
-                    // tapi jika tabel result butuh, uncomment bawah ini:
-                    // nama_pengecekan: item.nama_pengecekan, 
+                    item_kode: item.item_kode,
                     status: st,
-                    value: valEl ? valEl.value : null, // FIX: nama kolom 'value'
-                    catatan_item: noteEl ? noteEl.value : null, // FIX: nama kolom 'catatan_item'
-                    pelaksana: nama // FIX: tambah pelaksana di detail
+                    value: valueData,              // Kolom default
+                    temperature_oli: tempOliData,  // Kolom baru
+                    catatan_item: noteEl ? noteEl.value : null,
+                    pelaksana: nama
                 };
             });
 
