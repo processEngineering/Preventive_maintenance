@@ -141,8 +141,8 @@
         
         /* 1. Tanda Tangan Tabel (Pelaksana & Koordinator) */
         .sig-img { 
-            width: 100%;       /* Paksa lebar memenuhi sel */
-            height: 100%;      /* Paksa tinggi memenuhi sel */
+            width: 100%;        /* Paksa lebar memenuhi sel */
+            height: 100%;       /* Paksa tinggi memenuhi sel */
             object-fit: contain; /* Gambar mengecil proporsional agar muat di kotak kecil */
             display: block;
             margin: 0 auto;
@@ -473,7 +473,7 @@
         } catch(e) { console.error(e); }
     }
 
-    // --- FUNGSI EKSPOR PDF (SWAP CANVAS + CENTER FIX) ---
+    // --- FUNGSI EKSPOR PDF (FIXED FOR ANDROID) ---
     async function captureAndExportPDF() {
         const btn = document.querySelector('.print-btn');
         const originalText = btn.innerText;
@@ -500,26 +500,35 @@
 
             await new Promise(r => setTimeout(r, 200));
 
-            // 2. RESET TINGGI KERTAS AGAR CROP RAPI (FIX SPACE BAWAH)
+            // 2. RESET STYLE
             const originalShadow = element.style.boxShadow;
             const originalMinHeight = element.style.minHeight; 
             
             element.style.boxShadow = 'none';
-            element.style.minHeight = 'auto'; // HAPUS MIN HEIGHT AGAR PAS KONTEN
+            element.style.minHeight = 'auto';
             element.style.height = 'auto';
 
-            element.scrollIntoView();
+            // Scroll ke atas (penting untuk mobile)
+            window.scrollTo(0, 0);
 
             btn.innerText = "⏳ Mengambil Gambar...";
 
+            // --- DETEKSI MOBILE & MEMORY FIX ---
+            const isMobile = window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            // Jika HP: Scale 1.5 (Aman untuk memori). Jika PC: Scale 2.0 (Tajam)
+            const dynamicScale = isMobile ? 1.5 : 2; 
+
+            // FORCE WIDTH 1200: Memaksa tabel dirender dalam mode Desktop (melebar)
+            // meskipun dibuka di HP layar sempit.
+            const forceWidth = 1400; 
+
             const canvas = await html2canvas(element, {
-                scale: 3, /* NAIKKAN SCALE JADI 3 AGAR LEBIH TAJAM */
+                scale: dynamicScale,
                 useCORS: true, 
                 allowTaint: false,
                 backgroundColor: "#ffffff",
-                windowWidth: element.scrollWidth, 
-                // Tidak perlu paksa windowHeight, biarkan auto
-                scrollY: 0,
+                windowWidth: forceWidth, // KUNCI AGAR TABEL TIDAK BERANTAKAN DI HP
                 logging: false
             });
 
@@ -527,7 +536,9 @@
 
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF('l', 'mm', 'a4'); // LANDSCAPE
-            const imgData = canvas.toDataURL('image/png', 0.98);
+            
+            // KOMPRESI JPEG: Jauh lebih ringan daripada PNG
+            const imgData = canvas.toDataURL('image/jpeg', 0.85); 
             
             const pdfWidth = 297; 
             const pdfHeight = 210; 
@@ -538,7 +549,7 @@
 
             let finalWidth, finalHeight;
 
-            // Logika Resize (Fit Page)
+            // Logika Fit Page
             if (imgRatio > pdfRatio) {
                 finalWidth = pdfWidth;
                 finalHeight = (imgProps.height * pdfWidth) / imgProps.width;
@@ -547,11 +558,11 @@
                 finalWidth = (imgProps.width * pdfHeight) / imgProps.height;
             }
 
-            // HITUNG POSISI TENGAH (CENTER)
+            // Posisi Center
             const xPos = (pdfWidth - finalWidth) / 2;
             const yPos = (pdfHeight - finalHeight) / 2;
             
-            pdf.addImage(imgData, 'PNG', xPos, yPos, finalWidth, finalHeight);
+            pdf.addImage(imgData, 'JPEG', xPos, yPos, finalWidth, finalHeight);
 
             const machineName = document.getElementById('machine-select').selectedOptions[0].text;
             const bln = document.getElementById('month-select').selectedOptions[0].text;
@@ -562,7 +573,7 @@
 
             // Restore Style
             element.style.boxShadow = originalShadow;
-            element.style.minHeight = originalMinHeight; // Kembalikan tinggi A4
+            element.style.minHeight = originalMinHeight;
 
         } catch (err) {
             console.error(err);
