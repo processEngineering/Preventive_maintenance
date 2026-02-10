@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Data Laporan - AKG Maintenance</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Library jsPDF & AutoTable untuk Export PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            /* Tema Merah Hitam */
+            --primary: #DC2626;
+            --primary-dark: #991B1B;
+            --success: #10B981;
+            
+            --bg-dark: #050505;
+            --bg-card: #121212;
+            
+            --text-white: #FFFFFF;
+            --text-gray: #A3A3A3;
+            
+            --border-light: rgba(255,255,255,0.1);
+            --nav-height: 70px;
+        }
+
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        body {
+            background: var(--bg-dark);
+            min-height: 100vh;
+            color: var(--text-white);
+            display: flex;
+            flex-direction: column;
+            padding-bottom: var(--nav-height);
+        }
+
+        .header-fixed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-dark);
+            padding: 20px;
+            border-bottom: 1px solid var(--border-light);
+            z-index: 50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .header-title h1 {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+            margin: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-action {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-light);
+            color: var(--text-white);
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+
+        .btn-action:active {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        /* Tombol PDF Spesifik */
+        .btn-pdf {
+            background: rgba(220, 38, 38, 0.15);
+            border-color: rgba(220, 38, 38, 0.4);
+            color: #ffb3b3;
+        }
+        .btn-pdf:hover {
+            background: rgba(220, 38, 38, 0.3);
+        }
+
+        /* Container Table Horizontal */
+        .table-container {
+            margin-top: 85px; /* Offset header height */
+            padding: 0 20px 20px 20px;
+            width: 100%;
+            overflow-x: auto; /* Scroll horizontal jika layar kecil */
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            white-space: nowrap; /* Mencegah text turun ke bawah */
+            font-size: 13px;
+        }
+
+        thead {
+            background: var(--bg-card);
+        }
+
+        th {
+            padding: 15px 20px;
+            text-align: left;
+            color: var(--primary);
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 1px;
+            border-bottom: 2px solid var(--border-light);
+            position: sticky;
+            top: 0;
+        }
+
+        td {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-light);
+            color: var(--text-gray);
+        }
+
+        /* Highlight Columns */
+        td.highlight-pic {
+            color: var(--text-white);
+            font-weight: 700;
+        }
+
+        td.highlight-mesin {
+            color: #60A5FA; /* Biru muda */
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* APPROVED JADI PUTIH */
+        .status-badge.approved {
+            background: rgba(255, 255, 255, 0.1);
+            color: #FFFFFF;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .status-badge.pending {
+            background: rgba(220, 38, 38, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+        }
+
+        /* Feedback Text - Normal Font Style */
+        .feedback-text {
+            color: #E5E7EB;
+            font-style: normal; /* Tidak miring */
+            font-size: 12px;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: normal;
+        }
+
+        .loading-state, .empty-state {
+            padding: 40px;
+            text-align: center;
+            color: var(--text-gray);
+            font-size: 13px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 600px; /* Sesuai lebar aplikasi mobile */
+            background: #000000;
+            border-top: 1px solid var(--primary-dark);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 12px 0;
+            height: var(--nav-height);
+            z-index: 100;
+            box-shadow: 0 -5px 20px rgba(220, 38, 38, 0.1);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: #555;
+            width: 56px;
+            height: 44px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-item svg { width: 24px; height: 24px; stroke-width: 2; }
+        .nav-item.active { color: var(--primary); }
+        .nav-item:hover { color: var(--text-white); }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { height: 6px; width: 6px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+    </style>
+</head>
+<body>
+
+    <!-- Header Fixed -->
+    <header class="header-fixed">
+        <div class="header-title">
+            <h1>DATA LAPORAN</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn-action btn-pdf" onclick="exportPDF()">
+                EKSPOR PDF
+            </button>
+            <button class="btn-action" onclick="fetchData()">
+                REFRESH
+            </button>
+        </div>
+    </header>
+
+    <!-- Table Container -->
+    <div class="table-container">
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>TANGGAL</th>
+                    <th>SHIFT</th>
+                    <th>PIC</th>
+                    <th>MOLD / MESIN</th>
+                    <th>JENIS PROBLEM</th>
+                    <th>DESKRIPSI MASALAH</th>
+                    <th>WAKTU MULAI</th>
+                    <th>WAKTU SELESAI</th>
+                    <th>TARGET WAKTU PM</th>
+                    <th>STATUS</th>
+                    <th>FEEDBACK SPV</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- Data Rows Rendered Here -->
+            </tbody>
+        </table>
+        
+        <div id="loading" class="loading-state">MEMUAT DATA...</div>
+        <div id="empty" class="empty-state" style="display: none;">TIDAK ADA DATA.</div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        </a>
+        <a href="menu_utama.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </a>
+        <a href="download_data.html" class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </a>
+    </nav>
+
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        // Setup Supabase
+        const supabaseUrl = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const client = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
+
+        // FETCH DATA
+        async function fetchData() {
+            const tbody = document.getElementById('tableBody');
+            const loading = document.getElementById('loading');
+            const empty = document.getElementById('empty');
+
+            tbody.innerHTML = '';
+            loading.style.display = 'block';
+            empty.style.display = 'none';
+
+            if (!client) {
+                loading.innerText = 'Database Error: Client not initialized';
+                return;
+            }
+
+            try {
+                // Mengambil data dari tabel lkmr_repair
+                const { data, error } = await client
+                    .from('lkmr_repair') // Nama tabel huruf kecil sesuai di database
+                    .select('*')
+                    .order('tanggal', { ascending: false }) // Terbaru paling atas
+                    .order('waktu_mulai', { ascending: false });
+
+                if (error) throw error;
+
+                loading.style.display = 'none';
+
+                if (!data || data.length === 0) {
+                    empty.style.display = 'block';
+                    return;
+                }
+
+                data.forEach(item => {
+                    // Format Tanggal
+                    const dateObj = new Date(item.tanggal);
+                    const day = dateObj.getDate();
+                    const month = dateObj.toLocaleString('id-ID', { month: 'short' });
+                    const year = dateObj.getFullYear();
+                    const formattedDate = `${day} ${month} ${year}`;
+
+                    // Status Logic (Default PENDING jika kolom status belum ada di DB)
+                    const status = item.status || 'PENDING';
+                    const isApproved = status === 'APPROVED';
+                    const statusClass = isApproved ? 'approved' : 'pending';
+                    const statusLabel = isApproved ? 'APPROVED' : 'PENDING';
+
+                    // Feedback Logic
+                    const feedback = item.feedback 
+                        ? `<div class="feedback-text">${item.feedback}</div>` 
+                        : '-';
+
+                    // Mapping Data Supabase ke Tabel HTML
+                    const row = `
+                        <tr>
+                            <td>${formattedDate}</td>
+                            <td>${item.shift || '-'}</td>
+                            <td class="highlight-pic">${item.pic || '-'}</td>
+                            <td class="highlight-mesin">${item.nama_mold || '-'}</td> <!-- Mapping Nama Mold ke Kolom Mesin -->
+                            <td>${item.jenis_problem || '-'}</td>
+                            <td style="white-space: normal; min-width: 250px;">${item.deskripsi_masalah || '-'}</td>
+                            <td>${item.waktu_mulai || '--:--'}</td>
+                            <td>${item.waktu_selesai || '--:--'}</td>
+                            <td>${item.target_waktu_pm || '-'}</td>
+                            <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                            <td style="white-space: normal;">${feedback}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+
+            } catch (err) {
+                console.error(err);
+                loading.innerText = 'Error Memuat Data: ' + err.message;
+            }
+        }
+
+        // EXPORT PDF FUNCTION
+        async function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            
+            // Landscape orientation, Unit mm, Format A4
+            const doc = new jsPDF('l', 'mm', 'a4'); 
+
+            // Header PDF
+            doc.setFontSize(14);
+            doc.text('DATA LAPORAN MAINTENANCE & REPAIR - AKG', 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 14, 22);
+
+            // Generate Tabel
+            doc.autoTable({
+                html: '#dataTable',
+                startY: 28,
+                theme: 'grid',
+                headStyles: { 
+                    fillColor: [220, 38, 38], // Merah Header
+                    textColor: [255, 255, 255], // Putih Text
+                    fontStyle: 'bold'
+                },
+                styles: { 
+                    fontSize: 8, 
+                    cellPadding: 3,
+                    textColor: [0, 0, 0] // Hitam untuk isi agar jelas di kertas putih
+                },
+                columnStyles: {
+                    5: { cellWidth: 50 }, // Deskripsi lebih lebar
+                    10: { cellWidth: 40 } // Feedback lebih lebar
+                },
+                didParseCell: function (data) {
+                    // Membersihkan teks dari HTML tags jika ada di cell
+                    if (data.section === 'body') {
+                        // Khusus kolom status & feedback yang punya inner HTML
+                        let text = data.cell.raw.innerText || data.cell.raw.textContent || data.cell.text[0];
+                        data.cell.text = text.trim();
+                    }
+                }
+            });
+
+            // Simpan File
+            doc.save('Laporan_Maintenance_AKG.pdf');
+        }
+
+        // Auto load on open
+        fetchData();
+    </script>
+</body>
+</html>
