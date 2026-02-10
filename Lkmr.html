@@ -170,13 +170,15 @@
             align-items: center;
             gap: 16px;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             transform: translateY(0);
+            cursor: pointer;
+            z-index: 2; /* Ensure it stays above submenu */
         }
 
-        .menu-card:hover {
-            transform: translateY(-4px);
+        .menu-card:hover, .menu-card.active {
+            transform: translateY(-2px);
             border-bottom: 6px solid var(--primary-dark);
             border-top: 1px solid var(--primary);
             box-shadow: 0 15px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(220, 38, 38, 0.2);
@@ -204,7 +206,7 @@
             box-shadow: inset 2px 2px 5px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.1);
         }
 
-        .menu-card:hover .menu-icon-box {
+        .menu-card:hover .menu-icon-box, .menu-card.active .menu-icon-box {
             color: #fff;
             background: var(--primary);
             box-shadow: 0 0 15px var(--primary);
@@ -228,9 +230,74 @@
             transition: all 0.3s ease;
         }
 
-        .menu-card:hover .menu-arrow {
+        .menu-card:hover .menu-arrow, .menu-card.active .menu-arrow {
             color: var(--primary);
-            transform: translateX(4px);
+        }
+
+        /* Rotation for accordion arrow */
+        .menu-arrow.rotate {
+            transform: rotate(90deg);
+        }
+
+        /* --- SUBMENU (ACCORDION) --- */
+        .submenu-container {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out, opacity 0.3s ease;
+            opacity: 0;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 0 0 16px 16px;
+            margin-top: -12px; /* Pull it up to connect with card */
+            padding-top: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-top: none;
+        }
+
+        .submenu-container.show {
+            max-height: 200px; /* Cukup tinggi untuk menampung konten */
+            opacity: 1;
+            margin-bottom: 16px; /* Space after opened menu */
+        }
+
+        .submenu-item {
+            display: flex;
+            align-items: center;
+            padding: 16px 24px 16px 32px; /* Lebih menjorok ke dalam */
+            color: #ccc;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            transition: 0.2s;
+            position: relative;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .submenu-item:last-child {
+            border-bottom: none;
+        }
+
+        .submenu-item::before {
+            content: '';
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 6px;
+            height: 6px;
+            background: #444;
+            border-radius: 50%;
+            transition: 0.2s;
+        }
+
+        .submenu-item:hover {
+            background: rgba(255, 51, 51, 0.05);
+            color: var(--primary);
+            padding-left: 36px;
+        }
+
+        .submenu-item:hover::before {
+            background: var(--primary);
+            box-shadow: 0 0 8px var(--primary);
         }
 
         /* --- BOTTOM NAV --- */
@@ -321,20 +388,33 @@
 
             <div class="menu-grid">
                 
-                <!-- OPERATOR MAINTENANCE -->
-                <a href="Lkmr_operator.html" class="menu-card">
-                    <div class="menu-icon-box">
-                        <i class="fa-solid fa-users-gear"></i>
+                <!-- OPERATOR MAINTENANCE (ACCORDION) -->
+                <div>
+                    <!-- Dibuat div onclick, bukan a href -->
+                    <div class="menu-card" onclick="toggleMenu('operator-submenu', this)">
+                        <div class="menu-icon-box">
+                            <i class="fa-solid fa-users-gear"></i>
+                        </div>
+                        <div class="menu-text">
+                            <h2>OPERATOR MAINTENANCE</h2>
+                        </div>
+                        <svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
                     </div>
-                    <div class="menu-text">
-                        <h2>OPERATOR MAINTENANCE</h2>
-                    </div>
-                    <svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                </a>
 
-                <!-- SUPERINTENDENT MAINTENANCE -->
+                    <!-- Submenu Container -->
+                    <div id="operator-submenu" class="submenu-container">
+                        <a href="Lkmr_operator.html" class="submenu-item">
+                            Maintenance Mesin
+                        </a>
+                        <a href="Lkmr_operator_repair.html" class="submenu-item">
+                            Maintenance Repair
+                        </a>
+                    </div>
+                </div>
+
+                <!-- SUPERINTENDENT MAINTENANCE (Link Langsung) -->
                 <a href="Lkmr_superintendent.html" class="menu-card">
                     <div class="menu-icon-box">
                         <i class="fa-solid fa-user-shield"></i>
@@ -380,6 +460,23 @@
         </nav>
 
     </div>
+
+    <!-- Script untuk Toggle Submenu -->
+    <script>
+        function toggleMenu(menuId, cardElement) {
+            const submenu = document.getElementById(menuId);
+            const arrow = cardElement.querySelector('.menu-arrow');
+            
+            // Toggle Class Show
+            submenu.classList.toggle('show');
+            
+            // Toggle Rotation on Arrow
+            arrow.classList.toggle('rotate');
+            
+            // Toggle Active state on card style
+            cardElement.classList.toggle('active');
+        }
+    </script>
 
 </body>
 </html>
