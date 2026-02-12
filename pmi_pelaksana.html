@@ -423,8 +423,20 @@
     async function onScanSuccess(decodedText) {
         if(!isScanning) return; // Jika sudah dapat, abaikan scan berikutnya
         
+        // 1. Bersihkan spasi awal/akhir
         let code = decodedText.trim();
+        
+        // 2. Handle jika URL berakhiran garis miring atau mengandung path
+        if(code.endsWith('/')) code = code.slice(0, -1);
         if(code.includes('/')) code = code.split('/').pop().trim();
+
+        // 3. Decode URL characters (mengubah %20 kembali menjadi spasi)
+        try {
+            code = decodeURIComponent(code).trim();
+        } catch (e) {
+            console.warn("Gagal decode URI, pakai string asli", e);
+        }
+
         document.getElementById('scan-msg').innerText = "Membaca: " + code;
         
         // MATIKAN FLAG SEGERA
@@ -437,16 +449,18 @@
             await html5QrCode.stop();
             document.getElementById('reader').innerHTML = ""; // Bersihkan UI kamera
 
+            // 4. QUERY KE SUPABASE - Menggunakan tanda kutip ganda ("") untuk mengamankan spasi & kurung
             const { data } = await _sb.from('pmi_machines').select('*')
-                .or(`barcode.eq.${code},nama_mesin.eq.${code}`).maybeSingle();
+                .or(`barcode.eq."${code}",nama_mesin.eq."${code}"`)
+                .maybeSingle();
             
-            if(!data) throw new Error("MESIN TIDAK TERDAFTAR");
+            if(!data) throw new Error("MESIN TIDAK TERDAFTAR: " + code);
             
             loadForm(data);
 
         } catch (err) { 
             alert("Error: " + err.message);
-            // Jika error (misal mesin gak ada), nyalakan scanner lagi
+            // Jika error (misal mesin gak ada), nyalakan scanner lagi setelah 1 detik
             setTimeout(() => {
                 isScanning = false; 
                 startScanner();
