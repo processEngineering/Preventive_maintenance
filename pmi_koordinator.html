@@ -381,26 +381,50 @@
         if(isScanning) return; 
         currentReport = { id, targetBarcode };
         showView('view-scan');
-        document.getElementById('target-machine').innerText = targetName;
+        document.getElementById('target-machine').innerText = "Target: " + targetName;
+        document.getElementById('target-machine').style.color = "white";
 
         isScanning = true;
         html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 }, 
             (decoded) => {
                 if(!isScanning) return; 
 
+                // 1. Bersihkan spasi awal/akhir
                 let code = decoded.trim();
-                if(code.includes('/')) code = code.split('/').pop().trim();
                 
-                if (code === targetBarcode) {
+                // 2. Handle jika URL berakhiran garis miring atau mengandung path
+                if(code.endsWith('/')) code = code.slice(0, -1);
+                if(code.includes('/')) code = code.split('/').pop().trim();
+
+                // 3. Decode URL characters (mengubah %20 kembali menjadi spasi)
+                try {
+                    code = decodeURIComponent(code).trim();
+                } catch (e) {
+                    console.warn("Gagal decode URI, pakai string asli", e);
+                }
+                
+                // 4. Bandingkan (CASE INSENSITIVE) - CEK BARCODE ATAU NAMA MESIN
+                let tBarcode = (targetBarcode || "").trim().toLowerCase();
+                let tName = (targetName || "").trim().toLowerCase();
+                let sBarcode = code.toLowerCase();
+
+                // LOGIKA BARU: Lolos kalau scan cocok dengan Barcode ATAU Nama Mesin
+                if (sBarcode === tBarcode || sBarcode === tName) {
                     isScanning = false; 
                     if(navigator.vibrate) navigator.vibrate(50);
                     
+                    document.getElementById('target-machine').innerHTML = "COCOK! Membuka form...";
+                    document.getElementById('target-machine').style.color = "var(--success)";
+
                     html5QrCode.stop().then(() => {
                         openApproval(id);
                     }).catch(err => {
                         console.log("Stop error (ignore):", err);
                         openApproval(id); 
                     });
+                } else {
+                    // Kasih info kalau salah mesin biar ga disangka error/ga mau scan
+                    document.getElementById('target-machine').innerHTML = `Target: ${targetName}<br><span style="color:var(--danger); font-size:11px; margin-top:8px; display:block;">&#9888; Scan Ditolak: "${code}"</span>`;
                 }
             }, 
             (err) => {}
