@@ -7,249 +7,394 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
-        /* ==================== THEME VARIABLES (MATCHING OTHERS) ==================== */
+        /* ==================== THEME VARIABLES (Light Mode AKG) ==================== */
         :root {
-            --primary: #FF3333;       /* Merah Neon */
-            --primary-dark: #b91c1c;
-            --bg-dark: #080808;
-            --bg-card: #1a1a1a;
-            --text-white: #FFFFFF;
-            --text-header: #FF3333;
-            --text-gray: #A3A3A3;
-            --radius: 16px;
-            --nav-height: 70px;
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --accent: #dc2626;
+            --accent-soft: #ffebeb;
             
-            /* Status Colors */
-            --success: #00cc66;
-            --warning: #ffcc00;
+            --bg-body: #f4f6f8;
+            --bg-card: #ffffff; 
+            --bg-input: #ffffff;
+            
+            --text-main: #333333;
+            --text-muted: #6b7280;
+            --text-soft: #9ca3af;
+            
+            --border: #e5e7eb;
+            --border-red: rgba(201, 25, 25, 0.3);
+            
+            --radius-lg: 16px;
+            --sidebar-width: 280px; 
+            --header-height: 70px;
+
+            --success: #10B981;
+            --warning: #f59e0b;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         
         body { 
-            background: var(--bg-dark);
-            color: var(--text-white);
-            display: flex; justify-content: center; min-height: 100vh; 
+            background: var(--bg-body); 
+            color: var(--text-main); 
+            min-height: 100vh; 
+            display: block; 
             overflow-x: hidden;
+            padding-bottom: 40px;
         }
+
+        /* --- Background Animation --- */
+        .bg-glow {
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(201, 25, 25, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
         .hidden { display: none !important; }
 
-        /* --- Animated Background --- */
-        .bg-animation {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 0; overflow: hidden; background: #050505;
-        }
-        .orb {
-            position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.4;
-            animation: float 20s ease-in-out infinite;
-        }
-        .orb-1 { width: 400px; height: 400px; background: radial-gradient(circle, var(--primary-dark) 0%, transparent 70%); top: -150px; right: -100px; }
-        .orb-2 { width: 300px; height: 300px; background: radial-gradient(circle, #500000 0%, transparent 70%); bottom: 10%; left: -100px; }
-        .grid-pattern {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 40px 40px; opacity: 0.5;
+        /* --- PROFESSIONAL HEADER BAR (TOMBOL GARIS 3) --- */
+        .main-header {
+            position: fixed;
+            top: 0;
+            left: 0; 
+            right: 0;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
         }
 
-        /* ==================== APP SHELL ==================== */
+        .header-content-wrapper {
+            width: 100%;
+            max-width: 600px; 
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        .hamburger-menu {
+            font-size: 26px;
+            color: var(--primary);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            transition: transform 0.2s;
+            z-index: 2;
+        }
+        .hamburger-menu:active { transform: scale(0.9); }
+
+        .header-title-pill {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 30px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1);
+            white-space: nowrap;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+
+        .side-nav {
+            position: fixed;
+            top: 0; left: -100%;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+
+        .side-nav.active { left: 0; }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-title { font-weight: 800; color: var(--primary); font-size: 20px; }
+        .sidebar-close { font-size: 24px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: var(--text-muted);
+            background: white; width: 100%; padding: 14px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: 600;
+        }
+        
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 20px; color: var(--primary); }
+
+        /* --- APP CONTAINER (CENTERED) --- */
         .app-container {
-            width: 100%; max-width: 600px;
-            padding: 24px 20px 100px 20px; 
-            position: relative; z-index: 1;
+            width: 100%; 
+            max-width: 600px; 
+            margin: 0 auto;
+            padding: 20px 24px 60px 24px; 
+            padding-top: calc(var(--header-height) + 30px);
+            position: relative;
+            z-index: 1;
             display: flex; flex-direction: column;
         }
 
-        /* ==================== HEADER ==================== */
-        .header {
-            background: linear-gradient(180deg, rgba(20, 0, 0, 0.9), rgba(40, 0, 0, 0.95));
-            border: 1px solid rgba(255, 51, 51, 0.3);
-            border-bottom: 4px solid var(--primary-dark);
-            border-radius: var(--radius);
-            padding: 20px; margin-bottom: 24px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            text-align: center; position: relative;
-        }
-        .header h1 {
-            font-size: 22px; font-weight: 900; color: var(--text-header);
-            text-transform: uppercase; letter-spacing: 2px;
-            text-shadow: 0 0 15px rgba(255, 51, 51, 0.6); margin: 0;
-        }
-
-        /* ==================== CONTENT ==================== */
+        /* --- CONTENT SECTIONS --- */
         .content { width: 100%; flex: 1; animation: fadeIn 0.4s ease; display: flex; flex-direction: column; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* List Section Header */
         .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 4px; }
-        .section-title { font-size: 14px; font-weight: 700; color: #ccc; text-transform: uppercase; letter-spacing: 1px; }
+        .section-title { font-size: 12px; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 1px; }
 
-        /* CARD STYLE */
+        /* --- LIST CARD STYLE (LIGHT MODE) --- */
         .card {
-            background: linear-gradient(145deg, #1e1e1e, #141414);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            border-left: 1px solid rgba(255, 255, 255, 0.05);
-            border-bottom: 4px solid #000;
-            border-radius: 16px; padding: 18px; margin-bottom: 16px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            position: relative; display: flex; justify-content: space-between; align-items: center;
-            cursor: pointer; transition: transform 0.2s;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--primary);
+            border-radius: var(--radius-lg);
+            padding: 20px; margin-bottom: 16px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
+            cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center; transition: all 0.2s;
         }
-        .card:active { transform: scale(0.98); border-bottom-width: 2px; }
+        .card:active { transform: scale(0.98); border-color: var(--primary); }
+        .card:hover { box-shadow: 0 8px 25px rgba(201, 25, 25, 0.1); }
         
-        .card h3 { margin: 0 0 8px 0; font-size: 16px; font-weight: 700; color: #fff; letter-spacing: 0.5px; }
-        .card p { margin: 0; font-size: 12px; color: var(--text-gray); font-weight: 500; margin-bottom: 2px; }
-        .card i.fa-chevron-right { color: var(--primary); font-size: 14px; }
-        
-        /* APPROVAL FORM */
+        .card h3 { margin: 0 0 8px 0; font-size: 15px; font-weight: 800; color: var(--text-main); letter-spacing: 0.5px; }
+        .card p { margin: 0; font-size: 12px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; display: flex; gap: 8px; align-items: center;}
+        .card i.fa-chevron-right { color: var(--primary); }
+
+        /* --- APPROVAL FORM STYLE --- */
         .info-box {
-            background: linear-gradient(145deg, #1e1e1e, #141414);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            border-bottom: 4px solid #000;
-            border-radius: 18px; padding: 20px; margin-bottom: 24px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-bottom: 4px solid var(--primary-dark);
+            border-radius: var(--radius-lg); padding: 24px; margin-bottom: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
         }
-        .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px dashed #333; padding-bottom: 10px; }
-        .info-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-        .info-label { font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; }
-        .info-val { font-size: 13px; font-weight: 600; text-align: right; color: #fff; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px dashed var(--border); padding-bottom: 10px; align-items: center;}
+        .info-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0;}
+        .info-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;}
+        .info-val { font-size: 13px; font-weight: 800; text-align: right; color: var(--text-main); }
 
         /* Notes & Inputs */
-        .coord-label { font-size: 12px; font-weight: 700; color: #fff; text-transform: uppercase; margin-bottom: 8px; display: block; border-left: 3px solid var(--primary); padding-left: 8px; }
+        .coord-label { font-size: 11px; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 8px; display: block; border-left: 3px solid var(--primary); padding-left: 8px; letter-spacing: 0.5px;}
         .coord-note { 
-            background: #111; border: 1px solid #333; color: #ccc; 
-            padding: 14px; border-radius: 12px; margin-bottom: 24px; font-size: 13px; /* font-style: italic removed */
+            background: var(--bg-input); border: 1px solid var(--border); color: var(--text-main); 
+            padding: 16px; border-radius: 12px; margin-bottom: 30px; font-size: 13px; font-weight: 500;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
         }
 
         .approval-form { 
-            border-top: 2px dashed #222; padding-top: 24px; margin-top: 10px; 
+            border-top: 2px dashed var(--border); padding-top: 24px; margin-top: 10px; 
         }
         
-        .form-label { display: block; font-size: 11px; font-weight: 700; color: var(--text-gray); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-label { display: block; font-size: 11px; font-weight: 800; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
         .form-input {
-            width: 100%; padding: 14px; background: #0a0a0a; border: 1px solid #333; border-radius: 10px;
-            font-size: 14px; color: #fff; outline: none; margin-bottom: 20px; transition: all 0.2s;
+            width: 100%; padding: 14px 16px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;
+            font-size: 14px; color: var(--text-main); outline: none; margin-bottom: 20px; transition: all 0.2s; font-weight: 600;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
         }
-        .form-input:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(255, 51, 51, 0.2); }
+        .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--accent-soft); background: #fff;}
+        .form-input::placeholder { color: #cbd5e1; font-weight: 400; }
 
-        /* Signature */
+        /* --- SIGNATURE --- */
         .sig-wrapper { 
-            border: 2px dashed #444; border-radius: 12px; height: 160px; 
-            background: #fff; position: relative; margin-bottom: 20px; overflow: hidden;
+            border: 2px dashed var(--border-red); border-radius: 12px; height: 160px; 
+            background: #f8f9fa; position: relative; margin-bottom: 24px; overflow: hidden; transition: border-color 0.3s;
         }
-        canvas { width: 100%; height: 100%; cursor: crosshair; }
+        .sig-wrapper:hover { border-color: var(--primary-light); }
+        canvas { width: 100%; height: 100%; cursor: crosshair; touch-action: none;}
         
         .btn-clear-sig {
-            position: absolute; bottom: 8px; right: 8px; background: #111; border: none;
-            color: #fff; font-size: 10px; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer;
+            position: absolute; bottom: 8px; right: 8px; background: white; border: 1px solid var(--primary);
+            color: var(--primary); font-size: 10px; font-weight: 800; padding: 6px 12px; border-radius: 6px; cursor: pointer; text-transform: uppercase; transition: 0.3s;
         }
+        .btn-clear-sig:hover { background: var(--primary); color: white; }
 
+        /* --- MAIN BUTTON --- */
         .btn-submit {
-            width: 100%; background: var(--primary); color: #fff; border: none; border-radius: 14px;
-            padding: 18px; font-size: 16px; font-weight: 800; text-transform: uppercase; cursor: pointer;
-            box-shadow: 0 5px 20px rgba(255, 51, 51, 0.4); transition: transform 0.2s; letter-spacing: 1px;
+            width: 100%; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #fff; border: none; border-radius: 14px;
+            padding: 18px; font-size: 15px; font-weight: 800; text-transform: uppercase; cursor: pointer;
+            box-shadow: 0 8px 24px rgba(201, 25, 25, 0.3); transition: transform 0.2s; margin-top: 10px; letter-spacing: 1px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-        .btn-submit:active { transform: scale(0.98); }
+        .btn-submit:active { transform: translateY(3px); box-shadow: 0 4px 12px rgba(201, 25, 25, 0.3); }
+        .btn-submit:disabled { background: #d1d5db; box-shadow: none; color: #9ca3af; cursor: not-allowed; }
 
-        /* ==================== BOTTOM NAV ==================== */
-        .bottom-nav { 
-            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-            width: 100%; max-width: 600px;
-            background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(20px); 
-            border-top: 1px solid rgba(255, 255, 255, 0.1); display: flex; 
-            justify-content: space-around; padding: 12px 0; z-index: 100; height: var(--nav-height); 
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
+        /* Refresh Button Top */
+        .btn-refresh {
+            background: var(--accent-soft); border: 1px solid var(--border-red); color: var(--primary);
+            font-size: 10px; font-weight: 800; padding: 6px 14px; border-radius: 50px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; transition: 0.2s;
         }
-        .nav-item { 
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            text-decoration: none; color: #555; width: 56px; height: 44px;
-            border-radius: 12px; transition: all 0.3s; font-size: 20px; position: relative;
-        }
-        .nav-item.active { 
-            color: var(--primary); background: rgba(255, 51, 51, 0.1); 
-            box-shadow: 0 0 20px rgba(255, 51, 51, 0.1); 
-        }
-        .nav-item.active::after {
-            content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px;
-            background: var(--primary); border-radius: 50%; box-shadow: 0 0 10px var(--primary);
-        }
+        .btn-refresh:active { transform: scale(0.95); }
 
-        @keyframes float { 0% { transform: translate(0, 0); } 50% { transform: translate(20px, 40px); } 100% { transform: translate(0, 0); } }
+        /* SweetAlert Light Theme Overrides */
+        div:where(.swal2-container) { z-index: 9999 !important; }
+        div:where(.swal2-container) div:where(.swal2-popup) { background: #ffffff !important; border: 1px solid var(--border); color: var(--text-main) !important; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        div:where(.swal2-confirm) { background-color: var(--primary) !important; border-radius: 10px; font-weight: bold; }
+        div:where(.swal2-cancel) { color: var(--text-main) !important; font-weight: bold; background: #f1f5f9 !important; border: none; }
+
     </style>
 </head>
-<body>
+<body class="pb-24">
 
-    <!-- Background Animation -->
-    <div class="bg-animation">
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="grid-pattern"></div>
-    </div>
+    <div class="bg-glow"></div>
 
-<div class="app-container">
-
-    <header class="header">
-        <div class="header-content">
-            <h1>Superintendent</h1>
+    <!-- HEADER UTAMA (TOMBOL GARIS 3) -->
+    <header class="main-header">
+        <div class="header-content-wrapper">
+            <div class="hamburger-menu" onclick="toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+            <div class="header-title-pill">VERIFIKASI SUPERINTENDENT</div>
         </div>
     </header>
 
-    <div id="view-list" class="content">
-        <div class="section-header">
-            <span class="section-title">Antrean Final</span>
-            <!-- Tombol refresh dihapus agar clean -->
-        </div>
-        
-        <div id="list-data">
-            <div style="text-align:center; padding:40px; color:#444;">
-                <i class="fa-solid fa-spinner fa-spin" style="font-size:24px; margin-bottom:10px;"></i><br>Memuat data...
+    <!-- OVERLAY & SIDEBAR -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
             </div>
+        </div>
+
+        <!-- DYNAMIC ROUTING LINKS -->
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <div class="app-shell">
+        <div class="app-container">
+
+            <!-- LIST VIEW -->
+            <div id="view-list" class="content">
+                <div class="section-header">
+                    <span class="section-title">Antrean Final</span>
+                    <button onclick="loadList()" class="btn-refresh"><i class="fa-solid fa-rotate-right mr-1"></i> Refresh</button>
+                </div>
+                
+                <div id="list-data">
+                    <div style="text-align:center; padding:40px; color:var(--text-muted);">
+                        <i class="fa-solid fa-spinner fa-spin text-primary" style="font-size:28px; margin-bottom:12px;"></i><br>
+                        <span class="font-bold text-xs uppercase tracking-widest">Memuat data...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FORM VIEW -->
+            <div id="view-approve" class="content hidden">
+                
+                <div id="header-info" class="info-box">Loading info...</div>
+
+                <span class="coord-label">Catatan Koordinator</span>
+                <div id="coord-note-box" class="coord-note">-</div>
+
+                <div class="approval-form">
+                    <div style="text-align:center; margin-bottom: 24px;">
+                        <span class="section-title" style="color:var(--primary); font-size:14px; display:inline-block; margin:0;">OTORISASI FINAL</span>
+                    </div>
+                    
+                    <label class="form-label">Nama Superintendent</label>
+                    <input type="text" id="nama_sp" class="form-input" placeholder="Ketik nama lengkap anda">
+                    
+                    <label class="form-label">Catatan Evaluasi (Opsional)</label>
+                    <textarea id="catatan_sp" class="form-input" rows="2" placeholder="Tulis catatan tambahan..."></textarea>
+
+                    <label class="form-label">Paraf Digital</label>
+                    <div class="sig-wrapper">
+                        <canvas id="sig-canvas"></canvas>
+                        <button onclick="clearPad()" class="btn-clear-sig">HAPUS PARAF</button>
+                    </div>
+
+                    <button class="btn-submit" id="btn-submit" onclick="submitData()">
+                        <i class="fa-solid fa-check-double"></i> APPROVE SELESAI
+                    </button>
+                    
+                    <button onclick="goHome()" class="w-full bg-transparent border border-gray-300 text-gray-500 font-bold py-3 mt-3 rounded-xl hover:bg-gray-100 transition-colors uppercase text-sm tracking-wide">Batal</button>
+                </div>
+            </div>
+
         </div>
     </div>
 
-    <div id="view-approve" class="content hidden">
-        
-        <div id="header-info" class="info-box">Loading info...</div>
-
-        <span class="coord-label">Catatan Koordinator</span>
-        <div id="coord-note-box" class="coord-note">-</div>
-
-        <div class="approval-form">
-            <div style="text-align:center; margin-bottom: 20px;">
-                <span class="section-title" style="color:var(--primary); font-size:14px;">OTORISASI FINAL</span>
-            </div>
-            
-            <label class="form-label">Nama Superintendent</label>
-            <input type="text" id="nama_sp" class="form-input" placeholder="Isi nama lengkap anda">
-            
-            <label class="form-label">Catatan Evaluasi (Opsional)</label>
-            <textarea id="catatan_sp" class="form-input" rows="2" placeholder="Tulis catatan tambahan..."></textarea>
-
-            <label class="form-label">Paraf Digital</label>
-            <div class="sig-wrapper">
-                <canvas id="sig-canvas"></canvas>
-                <button onclick="clearPad()" class="btn-clear-sig">HAPUS PARAF</button>
-            </div>
-
-            <button class="btn-submit" id="btn-submit" onclick="submitData()">
-                <i class="fa-solid fa-check-double" style="margin-right:8px;"></i> APPROVE SELESAI
-            </button>
-        </div>
-    </div>
-
-</div>
-
-<nav class="bottom-nav">
-    <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i></a>
-    <a href="menu_utama.html" class="nav-item active"><i class="fa-solid fa-bars"></i></a>
-    <a href="download_data.html" class="nav-item"><i class="fa-solid fa-download"></i></a>
-    <a href="informasi_akun.html" class="nav-item"><i class="fa-solid fa-circle-user"></i></a>
-</nav>
-
+<!-- ======================= LOGIKA FUNGSIONAL TIDAK DIUBAH ======================= -->
 <script>
+    // Fungsi Sidebar & Navigasi Pintar
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+    }
+
     const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const _sb = supabase.createClient(SB_URL, SB_KEY);
@@ -272,11 +417,61 @@
     function clearPad() { if(signaturePad) signaturePad.clear(); }
 
     window.onload = () => {
+        setupDynamicNavigation();
         loadList();
         const canvas = document.getElementById('sig-canvas');
-        signaturePad = new SignaturePad(canvas, { penColor: 'black', backgroundColor: '#FFFFFF' });
+        // Tinta hitam karena background form terang
+        signaturePad = new SignaturePad(canvas, { penColor: 'black', backgroundColor: 'rgba(255,255,255,0)' });
         window.addEventListener("resize", resizeCanvas);
     };
+
+    // Fungsi Cek Jabatan & Update Link Navigasi
+    async function setupDynamicNavigation() {
+        try {
+            const { data: { session } } = await _sb.auth.getSession();
+            if (!session) return;
+
+            const { data: profile } = await _sb
+                .from('profiles')
+                .select('jabatan')
+                .eq('id', session.user.id)
+                .single();
+
+            if (profile) {
+                const jabatan = profile.jabatan.toUpperCase();
+                const navHome = document.getElementById('nav-home');
+                const navMenu = document.getElementById('nav-menu');
+
+                let homeLink = 'index.html';
+                let menuLink = 'menu_utama.html';
+
+                if (jabatan.includes('OPERATOR')) {
+                    homeLink = 'OPERATOR_HOME.html';
+                    menuLink = 'MENU_UTAMA_OPERATOR.html';
+                } else if (jabatan.includes('SUPERVISOR')) {
+                    homeLink = 'SUPERVISOR_HOME.html';
+                    menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                } else if (jabatan.includes('SUPERINTENDENT')) {
+                    homeLink = 'SUPERINTENDENT_HOME.html';
+                    menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                    homeLink = 'MANAGER_HOME.html';
+                    menuLink = 'MENU_UTAMA_MANAGER.html';
+                } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                    homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                    menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                    homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                    menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                }
+
+                if (navHome) navHome.href = homeLink;
+                if (navMenu) navMenu.href = menuLink;
+            }
+        } catch (err) {
+            console.error("Gagal mengatur navigasi dinamis:", err);
+        }
+    }
 
     function showView(id) {
         document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
@@ -294,7 +489,7 @@
     // 1. LOAD LIST (Hanya yang status 'Verified' oleh Koordinator)
     async function loadList() {
         const div = document.getElementById('list-data');
-        div.innerHTML = '<div style="text-align:center; padding:40px; color:#444;"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px; margin-bottom:10px;"></i><br>Memuat data...</div>';
+        div.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin text-primary" style="font-size:28px; margin-bottom:12px;"></i><br><span class="font-bold text-xs uppercase tracking-widest">Memuat data...</span></div>';
 
         const { data, error } = await _sb.from('pmi_header')
             .select(`id, tanggal, start_jam, nama_pelaksana, nama_koordinator, pmi_machines(nama_mesin, barcode), pmi_results(status)`)
@@ -302,7 +497,7 @@
             .order('verified_at', { ascending: false });
 
         if (error || !data || data.length === 0) {
-            div.innerHTML = '<div style="text-align:center; padding:40px; color:#444; border:2px dashed #333; border-radius:12px;"><i class="fa-regular fa-folder-open" style="font-size:32px; margin-bottom:10px;"></i><br>Tidak ada antrean approval.</div>';
+            div.innerHTML = '<div style="text-align:center; padding:50px 20px; color:var(--text-muted); border:1px dashed var(--border); border-radius:16px; background:var(--bg-card);"><i class="fa-regular fa-folder-open" style="font-size:40px; margin-bottom:15px; color:var(--text-soft);"></i><br><span class="font-bold text-xs uppercase tracking-widest">Tidak ada antrean approval.</span></div>';
             return;
         }
 
@@ -312,14 +507,14 @@
             
             let el = document.createElement('div');
             el.className = 'card';
-            // Layout Clean: Tanpa ikon, tanpa badge status
+            // Layout Clean Light Theme
             el.innerHTML = `
                 <div>
                     <h3>${mName}</h3>
-                    <p>Pelaksana: ${row.nama_pelaksana}</p>
-                    <p>Koordinator: ${row.nama_koordinator}</p>
+                    <p><i class="fa-solid fa-user-circle text-primary opacity-70"></i> ${row.nama_pelaksana}</p>
+                    <p><i class="fa-solid fa-user-check text-success opacity-70"></i> Koor: ${row.nama_koordinator}</p>
                 </div>
-                <i class="fa-solid fa-chevron-right"></i>
+                <i class="fa-solid fa-chevron-right card-arrow"></i>
             `;
             el.onclick = () => openForm(row.id);
             div.appendChild(el);
@@ -335,35 +530,47 @@
         document.getElementById('nama_sp').value = '';
         document.getElementById('catatan_sp').value = '';
         signaturePad.clear();
-        document.getElementById('header-info').innerHTML = 'Loading...';
+        document.getElementById('header-info').innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-primary"></i></div>';
 
         const { data: header } = await _sb.from('pmi_header')
             .select(`*, pmi_machines(nama_mesin)`).eq('id', id).single();
 
         if(header) {
             document.getElementById('header-info').innerHTML = `
-                <div class="info-row"><span class="info-label">MESIN</span><span class="info-val">${header.pmi_machines?.nama_mesin || '-'}</span></div>
+                <div class="info-row"><span class="info-label">MESIN</span><span class="info-val" style="color:var(--primary);">${header.pmi_machines?.nama_mesin || '-'}</span></div>
                 <div class="info-row"><span class="info-label">TANGGAL</span><span class="info-val">${header.tanggal}</span></div>
                 <div class="info-row"><span class="info-label">PELAKSANA</span><span class="info-val">${header.nama_pelaksana}</span></div>
                 <div class="info-row"><span class="info-label">KOORDINATOR</span><span class="info-val">${header.nama_koordinator}</span></div>
             `;
             
-            const note = header.catatan_koordinator || "Tidak ada catatan.";
-            document.getElementById('coord-note-box').innerText = note;
+            const note = header.catatan_koordinator || "Tidak ada catatan dari koordinator.";
+            document.getElementById('coord-note-box').innerHTML = `<p style="color:var(--text-main); font-size:13px; font-weight:500;">${note}</p>`;
         }
     }
 
-    // 3. SUBMIT (DENGAN TRY-CATCH)
+    // 3. SUBMIT (DENGAN SWEETALERT LIGHT THEME)
     async function submitData() {
         const nama = document.getElementById('nama_sp').value.trim();
         const note = document.getElementById('catatan_sp').value.trim();
         const btn = document.getElementById('btn-submit');
 
-        if(!nama || signaturePad.isEmpty()) return alert("Wajib isi Nama & Paraf!");
-        if(!confirm("Approve laporan ini?")) return;
+        // Setup Tema Terang untuk SweetAlert
+        const swalLightStyle = {
+            background: '#ffffff', color: '#333333', confirmButtonColor: '#c91919', cancelButtonColor: '#e5e7eb'
+        };
+
+        if(!nama || signaturePad.isEmpty()) {
+            Swal.fire({ ...swalLightStyle, icon: 'warning', title: 'Data Kurang', text: 'Mohon isi Nama Superintendent & Paraf!'});
+            return;
+        }
+        
+        const conf = await Swal.fire({
+            ...swalLightStyle, title: 'Konfirmasi', text: "Approve dan sahkan laporan ini?", icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Approve', cancelButtonText: '<span style="color:#333;">Batal</span>'
+        });
+        if(!conf.isConfirmed) return;
 
         const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> MENYIMPAN...';
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> MENYIMPAN...';
         btn.disabled = true;
 
         try {
@@ -376,12 +583,18 @@
 
             if(error) throw error;
 
-            alert("BERHASIL! Laporan Selesai (Completed).");
-            goHome();
+            await Swal.fire({
+                ...swalLightStyle, title: 'Berhasil!', text: 'Laporan Selesai (Completed).', icon: 'success'
+            });
+            
+            // Redirect cerdas ke menu yang sesuai jabatan
+            const menuLink = document.getElementById('nav-menu') ? document.getElementById('nav-menu').href : 'menu_utama.html';
+            location.href = menuLink;
 
         } catch (err) {
-            console.error(err);
-            alert("GAGAL MENYIMPAN: " + (err.message || "Periksa koneksi internet"));
+            console.error("ERROR DETAIL DARI SUPABASE:", err); 
+            let pesanError = err.message || JSON.stringify(err) || "Periksa koneksi internet";
+            Swal.fire({ ...swalLightStyle, icon: 'error', title: 'Gagal Menyimpan', text: pesanError });
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
