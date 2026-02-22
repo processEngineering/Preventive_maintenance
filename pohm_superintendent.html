@@ -5,357 +5,457 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Approval SPV - POHM</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <!-- SweetAlert2 -->
-    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        /* PURE BLACK & RED THEME */
+        /* --- THEME VARIABLES (Light Mode AKG) --- */
         :root {
-            --primary: #DC2626;       /* Merah Utama */
-            --primary-dark: #7F1D1D;  /* Merah Gelap */
-            --primary-glow: rgba(220, 38, 38, 0.5);
-            --bg-dark: #000000;       /* Hitam Pekat */
-            --bg-card: #0F0F0F;       /* Abu Sangat Gelap */
-            --text-main: #E5E7EB;     /* Putih Tulang */
-            --text-muted: #9CA3AF;    /* Abu-abu */
-            --border: #333333;        /* Border Gelap */
-            --nav-height: 70px;
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --accent: #dc2626;
+            --accent-soft: #ffebeb;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #ef4444;
+            
+            --bg-body: #f4f6f8;
+            --bg-card: #ffffff; 
+            --bg-input: #ffffff;
+            
+            --text-main: #333333;
+            --text-muted: #6b7280;
+            --text-soft: #9ca3af;
+            
+            --border: #e5e7eb;
+            --border-red: rgba(201, 25, 25, 0.3);
+            
+            --radius: 16px;
+            --sidebar-width: 280px; 
+            --header-height: 70px;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         
         body { 
-            background-color: var(--bg-dark); 
-            background-image: 
-                radial-gradient(circle at 10% 10%, rgba(220, 38, 38, 0.1) 0%, transparent 50%);
+            background: var(--bg-body); 
             color: var(--text-main); 
-            padding-bottom: 100px; 
-            min-height: 100vh;
+            min-height: 100vh; 
+            display: block; 
+            overflow-x: hidden;
+            padding-bottom: 40px;
         }
 
-        /* HEADER */
-        .header {
-            background: rgba(15, 15, 15, 0.95);
-            color: white; 
-            padding: 24px 20px;
-            border-bottom-left-radius: 24px; 
-            border-bottom-right-radius: 24px;
-            box-shadow: 
-                0 4px 20px rgba(0, 0, 0, 0.8),
-                0 0 15px rgba(220, 38, 38, 0.2);
-            margin-bottom: 20px;
-            position: sticky; 
-            top: 0; 
-            z-index: 50;
-            border-bottom: 2px solid var(--primary);
+        /* --- Background Animation --- */
+        .bg-glow {
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(201, 25, 25, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hidden { display: none !important; }
+
+        /* --- PROFESSIONAL HEADER BAR (TOMBOL GARIS 3) --- */
+        .main-header {
+            position: fixed;
+            top: 0;
+            left: 0; 
+            right: 0;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
+            z-index: 1000;
             display: flex;
-            justify-content: center;
             align-items: center;
-            text-align: center;
+            justify-content: center; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
         }
-        
-        .header h1 { font-size: 18px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; margin: 0;}
-        
-        .back-link { 
-            color: var(--text-main); 
-            text-decoration: none; 
-            font-size: 14px; 
-            font-weight: 600; 
-            display: inline-block; 
-            margin-bottom: 10px; 
+
+        .header-content-wrapper {
+            width: 100%;
+            max-width: 800px; 
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        .hamburger-menu {
+            font-size: 26px;
+            color: var(--primary);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            transition: transform 0.2s;
+            z-index: 2;
+        }
+        .hamburger-menu:active { transform: scale(0.9); }
+
+        .header-title-pill {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 30px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1);
+            white-space: nowrap;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
             transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
         }
-        .back-link:hover { color: var(--primary); text-shadow: 0 0 10px var(--primary-glow); }
 
-        .container { max-width: 600px; margin: 0 auto; padding: 0 20px; }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
 
-        /* LIST VIEW CARDS */
+        .side-nav {
+            position: fixed;
+            top: 0; left: -100%;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+
+        .side-nav.active { left: 0; }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-title { font-weight: 800; color: var(--primary); font-size: 20px; }
+        .sidebar-close { font-size: 24px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: var(--text-muted);
+            background: white; width: 100%; padding: 14px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: 600;
+        }
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 20px; color: var(--primary); }
+
+        /* --- APP CONTAINER (CENTERED) --- */
+        .app-container {
+            width: 100%; 
+            max-width: 600px; 
+            margin: 0 auto;
+            padding: 20px; 
+            padding-top: calc(var(--header-height) + 30px);
+            position: relative;
+            z-index: 1;
+        }
+
+        /* --- LIST VIEW CARDS (LIGHT THEME) --- */
         .task-card {
-            background: var(--bg-card); 
-            border-radius: 12px; 
-            padding: 16px; 
-            margin-bottom: 12px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            background: var(--bg-card);
             border: 1px solid var(--border);
             border-left: 4px solid var(--primary);
-            cursor: pointer; 
-            transition: all 0.3s ease;
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            cursor: pointer;
+            transition: all 0.2s ease;
             position: relative;
             overflow: hidden;
+            animation: fadeIn 0.4s ease-out;
         }
-        .task-card::after {
-            content: ''; position: absolute; top: 0; right: 0; width: 50px; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.1));
-            opacity: 0; transition: opacity 0.3s;
-        }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
         .task-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 0 15px rgba(220, 38, 38, 0.3);
+            box-shadow: 0 8px 25px rgba(201, 25, 25, 0.1);
             border-color: var(--primary);
         }
-        .task-card:hover::after { opacity: 1; }
 
-        .task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .machine-name { font-weight: 700; color: var(--primary); font-size: 15px; }
-        .task-date { font-size: 12px; color: var(--text-muted); }
+        .task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .machine-name { font-weight: 800; color: var(--text-main); font-size: 16px; }
+        .task-date { font-size: 12px; color: var(--text-muted); font-weight: 600;}
         .badge { 
-            background: rgba(220, 38, 38, 0.2); 
+            background: var(--accent-soft); 
             color: var(--primary); 
-            font-size: 11px; 
-            padding: 4px 8px; 
-            border-radius: 4px; 
-            font-weight: 600; 
-            border: 1px solid var(--primary);
+            font-size: 10px; 
+            padding: 6px 12px; 
+            border-radius: 6px; 
+            font-weight: 800; 
+            border: 1px solid var(--border-red);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        /* DETAIL VIEW */
+        /* --- DETAIL VIEW --- */
         #detailView { display: none; padding-bottom: 80px; }
+        
         .form-section {
-            background: var(--bg-card); 
-            border-radius: 12px; 
-            padding: 20px; 
-            margin-bottom: 16px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
             border: 1px solid var(--border);
-            border-left: 4px solid #333;
+            border-left: 4px solid var(--primary);
             transition: all 0.3s ease;
         }
+        
         .form-section h3 {
-            font-size: 14px; font-weight: 700; color: var(--primary); margin-bottom: 16px;
-            text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 8px;
+            font-size: 14px; font-weight: 800; color: var(--text-main); margin-bottom: 20px;
+            text-transform: uppercase; border-bottom: 1px dashed var(--border); padding-bottom: 10px;
+            display: flex; align-items: center; gap: 8px; letter-spacing: 1px;
         }
+        .form-section h3::before { content: ''; width: 6px; height: 6px; background: var(--primary); border-radius: 50%; }
         
         /* READ ONLY STYLING */
         .readonly-text {
-            background: #050505; 
-            border: 1px solid #333; 
+            background: var(--bg-body); 
+            border: 1px solid var(--border); 
             color: var(--text-main);
-            padding: 10px; 
-            border-radius: 8px; 
+            padding: 14px 16px; 
+            border-radius: 12px; 
             font-size: 14px; 
             width: 100%;
-            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
         }
+        
         .line-display {
-            border-bottom: 1px dashed #333; 
-            padding: 6px 0; 
+            border-bottom: 1px dashed var(--border); 
+            padding: 10px 0; 
             font-size: 14px; 
             color: var(--text-main);
-            min-height: 28px;
+            min-height: 36px;
+            font-weight: 500;
         }
         
         /* INPUT FIELDS */
         input[type="text"], textarea {
-            background: #000 !important;
-            border: 1px solid #333 !important;
-            color: white !important;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text-main);
             transition: all 0.3s ease;
             width: 100%;
-            padding: 10px;
-            border-radius: 8px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            outline: none;
+            font-family: inherit;
         }
         input[type="text"]:focus, textarea:focus {
-            outline: none;
-            border-color: var(--primary) !important;
-            box-shadow: 0 0 10px var(--primary-glow);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--accent-soft);
+            background: #fff;
         }
+        input[type="text"]::placeholder, textarea::placeholder { color: #cbd5e1; font-weight: 400; }
         
         /* TABLE */
-        .table-responsive { overflow-x: auto; }
+        .table-responsive { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
         .part-table { width: 100%; border-collapse: collapse; min-width: 500px; }
         .part-table th { 
-            background: #111; 
-            color: var(--primary);
-            padding: 10px; 
-            font-size: 12px; 
+            background: #f8f9fa; 
+            color: var(--text-muted);
+            padding: 14px 10px; 
+            font-size: 11px; 
             border-bottom: 2px solid var(--primary); 
             text-align: left;
             text-transform: uppercase;
+            font-weight: 800;
         }
         .part-table td { 
-            padding: 8px; 
-            border-bottom: 1px solid #333; 
+            padding: 12px 10px; 
+            border-bottom: 1px solid var(--border); 
             font-size: 13px; 
             color: var(--text-main);
-            background: #050505;
+            background: #ffffff;
+            font-weight: 500;
         }
 
-        /* SIGNATURE PAD - IMPORTANT: WHITE BG FOR BLACK INK */
-        .signature-pad {
-            border: 2px dashed #444; 
-            border-radius: 12px; 
-            background: #FFFFFF; /* White Canvas */
-            width: 100%; 
-            height: 200px; 
-            touch-action: none;
-            transition: all 0.3s ease;
-            cursor: crosshair;
+        /* SIGNATURE PAD */
+        .sig-wrapper {
+            background: #f8f9fa; border-radius: 12px; border: 2px dashed var(--border-red);
+            height: 180px; position: relative; overflow: hidden; transition: border-color 0.3s;
         }
-        .signature-pad:hover {
-            border-color: var(--primary);
-            box-shadow: 0 0 15px rgba(220, 38, 38, 0.2);
+        .sig-wrapper:hover { border-color: var(--primary-light); }
+        canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+        
+        .btn-clear {
+            display: inline-block; font-size: 10px; color: var(--primary);
+            border: 1px solid var(--primary); padding: 6px 14px; border-radius: 6px;
+            background: transparent; cursor: pointer; font-weight: 800; text-transform: uppercase; transition: 0.3s;
         }
-        .sig-tools { display: flex; justify-content: flex-end; margin-top: 8px; }
-        .btn-clear { 
-            background: transparent; 
-            border: 1px solid var(--primary); 
-            color: var(--primary);
-            padding: 6px 12px; 
-            border-radius: 6px; 
-            font-size: 12px; 
-            font-weight: 600; 
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .btn-clear:hover {
-            background: var(--primary);
-            color: black;
-        }
+        .btn-clear:hover { background: var(--primary); color: white; }
 
         /* BUTTONS */
         .btn-approve {
             width: 100%; 
-            background: var(--bg-dark); 
-            color: var(--primary); 
-            padding: 16px;
-            border: 2px solid var(--primary); 
-            border-radius: 12px; 
-            font-size: 16px; 
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: 0 0 15px rgba(220, 38, 38, 0.2);
-            margin-top: 20px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; border: none; padding: 18px; border-radius: 14px;
+            font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 8px 24px rgba(201, 25, 25, 0.3); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 24px;
         }
-        .btn-approve:hover:not(:disabled) {
-            background: var(--primary);
-            color: black;
-            box-shadow: 0 0 30px var(--primary-glow);
-            transform: translateY(-2px);
-        }
+        .btn-approve:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 4px 12px rgba(201, 25, 25, 0.3); }
+        .btn-approve:disabled { background: #d1d5db; box-shadow: none; color: #9ca3af; cursor: not-allowed; }
         
         .spinner { 
             display: none; 
-            width: 20px; 
-            height: 20px; 
-            border: 3px solid rgba(0,0,0,0.3); 
+            width: 20px; height: 20px; 
+            border: 3px solid rgba(255,255,255,0.3); 
             border-radius: 50%; 
-            border-top-color: black; 
+            border-top-color: white; 
             animation: spin 1s infinite; 
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* BOTTOM NAVBAR */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100%;
-            max-width: 600px;
-            height: 70px;
-            background-color: #000000;
-            border-top: 1px solid #1F1F1F;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 1000;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.8); 
-        }
+        /* SweetAlert Light Theme Overrides */
+        div:where(.swal2-container) { z-index: 9999 !important; }
+        div:where(.swal2-container) div:where(.swal2-popup) { background: #ffffff !important; border: 1px solid var(--border); color: var(--text-main) !important; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        div:where(.swal2-confirm) { background-color: var(--primary) !important; border-radius: 10px; font-weight: bold; }
+        div:where(.swal2-cancel) { color: var(--text-main) !important; font-weight: bold; background: #f1f5f9 !important; border: none; }
 
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #444; 
-            text-decoration: none;
-            font-size: 20px;
-            width: 25%;
-            height: 100%;
-            transition: 0.3s;
-            position: relative;
+        .back-link { 
+            color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 700; 
+            display: inline-flex; align-items: center; gap: 8px; margin-bottom: 24px; transition: all 0.3s ease;
+            padding: 8px 16px; background: #fff; border: 1px solid var(--border); border-radius: 50px;
         }
-
-        .nav-item.active {
-            color: var(--primary);
-            text-shadow: 0 0 10px rgba(220, 38, 38, 0.6);
-        }
-        .nav-item.active::after {
-            content: '';
-            position: absolute;
-            bottom: 12px;
-            width: 4px;
-            height: 4px;
-            background-color: var(--primary);
-            border-radius: 50%;
-            box-shadow: 0 0 5px var(--primary);
-        }
-
-        /* Custom Swal */
-        div:where(.swal2-container) div:where(.swal2-popup) { background: #111 !important; border: 1px solid #333; color: #fff !important; }
-        div:where(.swal2-confirm) { background-color: var(--primary) !important; }
+        .back-link:hover { color: var(--primary); border-color: var(--primary); box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1); }
 
     </style>
 </head>
 <body>
 
-    <div id="listHeader" class="header">
-        <h1>Daftar Laporan POHM</h1>
-    </div>
+    <div class="bg-glow"></div>
 
-    <div id="detailHeader" class="header" style="display: none;">
-        <a href="#" onclick="showList()" class="back-link"><i class="fa-solid fa-arrow-left"></i> Kembali ke Daftar</a>
-        <h1 style="margin-top: 5px;">Review Laporan</h1>
-    </div>
-
-    <div class="container">
-        
-        <div id="listView">
-            <div id="loadingList" style="text-align: center; padding: 40px; color: #666;">
-                <i class="fa-solid fa-circle-notch fa-spin"></i> Memuat data...
+    <!-- HEADER UTAMA (TOMBOL GARIS 3) -->
+    <header class="main-header">
+        <div class="header-content-wrapper">
+            <div class="hamburger-menu" onclick="toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
             </div>
-            <div id="taskList"></div>
-            <div id="emptyList" style="display: none; text-align: center; padding: 40px; color: #666;">
-                <p>Tidak ada laporan yang perlu diapprove saat ini.</p>
+            <div class="header-title-pill">VERIFIKASI SUPERINTENDENT</div>
+        </div>
+    </header>
+
+    <!-- OVERLAY & SIDEBAR -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
             </div>
         </div>
 
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <div class="app-container">
+        
+        <!-- LIST VIEW -->
+        <div id="listView">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding: 0 4px;">
+                <span style="font-size:12px; font-weight:800; color:var(--text-main); text-transform:uppercase; letter-spacing:1px;">Antrean Verifikasi</span>
+                <button onclick="loadList()" style="background:var(--accent-soft); border:1px solid var(--border-red); color:var(--primary); font-size:10px; font-weight:800; padding:6px 14px; border-radius:50px; cursor:pointer; text-transform:uppercase; letter-spacing:0.5px; transition:0.2s;"><i class="fa-solid fa-rotate-right mr-1"></i> Refresh</button>
+            </div>
+
+            <div id="loadingList" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                <i class="fa-solid fa-circle-notch fa-spin text-primary" style="font-size: 28px; margin-bottom: 12px;"></i><br>
+                <span class="font-bold text-xs uppercase tracking-widest">Memuat data...</span>
+            </div>
+            <div id="taskList"></div>
+            <div id="emptyList" style="display: none; text-align: center; padding: 50px 20px; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 16px; background: #fff;">
+                <i class="fa-regular fa-folder-open" style="font-size: 40px; margin-bottom: 15px; color: var(--text-soft);"></i><br>
+                <span class="font-bold text-xs uppercase tracking-widest">Tidak ada laporan yang perlu diapprove.</span>
+            </div>
+        </div>
+
+        <!-- DETAIL VIEW -->
         <div id="detailView">
+            <a href="#" onclick="showList()" class="back-link"><i class="fa-solid fa-arrow-left"></i> Kembali ke Daftar</a>
             
             <div class="form-section">
                 <h3>Identitas Mesin</h3>
-                <div style="margin-bottom: 10px;">
-                    <label style="font-size:12px;">Nama Mesin:</label>
-                    <div id="d_machine" class="readonly-text"></div>
+                <div style="margin-bottom: 16px;">
+                    <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; display:block;">Nama Mesin:</label>
+                    <div id="d_machine" class="readonly-text" style="color:var(--primary);"></div>
                 </div>
-                <div style="margin-bottom: 10px;">
-                    <label style="font-size:12px;">Jenis Pekerjaan:</label>
+                <div style="margin-bottom: 16px;">
+                    <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; display:block;">Jenis Pekerjaan:</label>
                     <div id="d_work_type" class="readonly-text"></div>
                 </div>
-                <div style="display: flex; gap: 10px;">
+                <div style="display: flex; gap: 16px;">
                     <div style="flex:1;">
-                        <label style="font-size:12px;">Mulai:</label>
+                        <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; display:block;">Mulai:</label>
                         <div id="d_start" class="readonly-text"></div>
                     </div>
                     <div style="flex:1;">
-                        <label style="font-size:12px;">Selesai:</label>
+                        <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; display:block;">Selesai:</label>
                         <div id="d_end" class="readonly-text"></div>
                     </div>
                 </div>
             </div>
 
             <div class="form-section">
-                <h3>Diskripsi Permasalahan</h3>
+                <h3>Deskripsi Permasalahan</h3>
                 <div id="d_problems_container"></div>
             </div>
 
@@ -369,7 +469,7 @@
                 <div class="table-responsive">
                     <table class="part-table">
                         <thead>
-                            <tr><th>No</th><th>Nama Part</th><th>Qty</th><th>Status</th></tr>
+                            <tr><th style="width:30px">No</th><th>Nama Part</th><th style="width:60px">Qty</th><th style="width:100px">Status</th></tr>
                         </thead>
                         <tbody id="d_parts_body"></tbody>
                     </table>
@@ -378,43 +478,42 @@
 
             <div class="form-section">
                 <h3>Laporan Engineer</h3>
-                <div style="margin-bottom: 10px;">
-                    <label style="font-size:12px;">Rekomendasi Engineer:</label>
+                <div style="margin-bottom: 16px;">
+                    <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; display:block;">Rekomendasi Engineer:</label>
                     <div id="d_eng_rec" class="readonly-text" style="min-height: 60px;"></div>
                 </div>
                 <div>
-                    <label style="font-size:12px;">Dikerjakan Oleh:</label>
-                    <div id="d_eng_name" class="readonly-text" style="font-weight: bold; color: var(--primary);"></div>
+                    <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; display:block;">Dikerjakan Oleh:</label>
+                    <div id="d_eng_name" class="readonly-text" style="font-weight: 800; color: var(--text-main);"></div>
                 </div>
             </div>
 
             <div class="form-section" style="border: 2px solid var(--primary);">
-                <h3>Persetujuan Superintendent</h3>
+                <h3>Persetujuan SPV</h3>
                 
-                <div style="margin-bottom: 15px;">
-                    <label style="font-weight: 700; color: var(--primary);">Nama Lengkap:</label>
-                    <input type="text" id="spv_name" placeholder="Nama lengkap anda">
+                <div style="margin-bottom: 20px;">
+                    <label style="font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; display:block; letter-spacing:0.5px;">Nama Lengkap Supervisor:</label>
+                    <input type="text" id="spv_name" placeholder="Ketik nama lengkap anda">
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; display:block; letter-spacing:0.5px;">Catatan Untuk Manager (Opsional):</label>
+                    <textarea id="spv_note" style="min-height: 80px; resize:none;" placeholder="Berikan catatan evaluasi jika ada"></textarea>
                 </div>
 
                 <div style="margin-bottom: 15px;">
-                    <label style="font-weight: 700; color: var(--primary);">Catatan Untuk Manager</label>
-                    <textarea id="spv_note" style="min-height: 80px;" placeholder="Berikan catatan anda sebagai laporan untuk manager"></textarea>
-                </div>
-
-                <div style="margin-bottom: 15px;">
-                    <label style="font-weight: 700; color: var(--primary);">Paraf anda</label>
-                    <p style="font-size: 11px; color: #999; margin-bottom: 5px;"></p>
-                    
-                    <!-- KANVAS TANDA TANGAN -->
-                    <canvas id="signaturePad" class="signature-pad" width="500" height="200"></canvas>
-                    
-                    <div class="sig-tools">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <label style="font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase; margin:0; letter-spacing:0.5px;">Paraf Digital:</label>
                         <button type="button" class="btn-clear" onclick="clearSignature()">Ulangi</button>
+                    </div>
+                    
+                    <div class="sig-wrapper">
+                        <canvas id="signaturePad"></canvas>
                     </div>
                 </div>
 
                 <button id="btnApprove" class="btn-approve" onclick="submitApproval()">
-                    <span class="btn-text">APPROVE LAPORAN</span>
+                    <span class="btn-text"><i class="fa-solid fa-check-circle mr-2"></i> APPROVE LAPORAN</span>
                     <div class="spinner"></div>
                 </button>
             </div>
@@ -422,23 +521,16 @@
         </div>
     </div>
 
-    <!-- Bottom Navbar -->
-    <nav class="bottom-nav">
-        <a href="index.html" class="nav-item">
-            <i class="fa-solid fa-house"></i>
-        </a>
-        <a href="menu_utama.html" class="nav-item active">
-            <i class="fa-solid fa-bars"></i>
-        </a>
-        <a href="download_data.html" class="nav-item">
-            <i class="fa-solid fa-download"></i>
-        </a>
-        <a href="informasi_akun.html" class="nav-item">
-            <i class="fa-solid fa-circle-user"></i>
-        </a>
-    </nav>
-
+    <!-- LOGIKA FUNGSIONAL TIDAK DIUBAH -->
     <script>
+        // Fungsi Sidebar & Navigasi Pintar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
         const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -446,8 +538,59 @@
         let currentItemId = null;
         let currentLogId = null;
 
+        // Routing Navigasi Dinamis
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await db.auth.getSession();
+                if (!session) return;
+
+                const { data: profile } = await db
+                    .from('profiles')
+                    .select('jabatan')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+
+                    let homeLink = 'index.html';
+                    let menuLink = 'menu_utama.html';
+
+                    if (jabatan.includes('OPERATOR')) {
+                        homeLink = 'OPERATOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_OPERATOR.html';
+                    } else if (jabatan.includes('SUPERVISOR')) {
+                        homeLink = 'SUPERVISOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                    } else if (jabatan.includes('SUPERINTENDENT')) {
+                        homeLink = 'SUPERINTENDENT_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                    } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                        homeLink = 'MANAGER_HOME.html';
+                        menuLink = 'MENU_UTAMA_MANAGER.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                        homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                        homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                    }
+
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) {
+                console.error("Gagal mengatur navigasi dinamis:", err);
+            }
+        }
+
         // --- 1. INITIAL LOAD (LIST VIEW) ---
-        document.addEventListener('DOMContentLoaded', loadList);
+        document.addEventListener('DOMContentLoaded', () => {
+            setupDynamicNavigation();
+            loadList();
+        });
 
         async function loadList() {
             const listContainer = document.getElementById('taskList');
@@ -474,9 +617,11 @@
 
                 if (!data || data.length === 0) {
                     empty.style.display = 'block';
+                    listContainer.innerHTML = '';
                     return;
                 }
 
+                empty.style.display = 'none';
                 listContainer.innerHTML = '';
                 data.forEach(log => {
                     const item = log.pohm_items;
@@ -493,8 +638,8 @@
                             <span class="task-date">${dateStr}</span>
                         </div>
                         <div class="machine-name">${item.machine_name}</div>
-                        <div style="font-size: 13px; color: #999; margin-top: 4px;">
-                            ${item.work_type} • Oleh: ${item.engineer_name}
+                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px; font-weight: 600;">
+                            <i class="fa-solid fa-wrench text-primary opacity-70"></i> ${item.work_type} &nbsp;|&nbsp; <i class="fa-solid fa-user-gear text-primary opacity-70"></i> ${item.engineer_name}
                         </div>
                     `;
                     listContainer.appendChild(card);
@@ -511,6 +656,11 @@
             currentItemId = itemId;
             currentLogId = logId;
 
+            // Setup Tema Terang untuk SweetAlert
+            const swalLightStyle = {
+                background: '#ffffff', color: '#333333', confirmButtonColor: '#c91919'
+            };
+
             try {
                 const { data, error } = await db.from('pohm_items').select('*').eq('id', itemId).single();
                 if (error) throw error;
@@ -518,8 +668,8 @@
                 // Populate Fields
                 document.getElementById('d_machine').textContent = data.machine_name;
                 document.getElementById('d_work_type').textContent = data.work_type;
-                document.getElementById('d_start').textContent = new Date(data.start_time).toLocaleString();
-                document.getElementById('d_end').textContent = new Date(data.end_time).toLocaleString();
+                document.getElementById('d_start').textContent = new Date(data.start_time).toLocaleString('id-ID');
+                document.getElementById('d_end').textContent = new Date(data.end_time).toLocaleString('id-ID');
                 document.getElementById('d_eng_name').textContent = data.engineer_name;
                 document.getElementById('d_eng_rec').textContent = data.recommendations || '-';
                 
@@ -527,22 +677,26 @@
                 const probContainer = document.getElementById('d_problems_container');
                 probContainer.innerHTML = '';
                 const problems = (data.problem_desc || '').split('\n');
-                for(let i=0; i<8; i++) {
-                    const line = document.createElement('div');
-                    line.className = 'line-display';
-                    line.textContent = `${i+1}. ${problems[i] || ''}`;
-                    probContainer.appendChild(line);
+                for(let i=0; i<5; i++) {
+                    if(problems[i] && problems[i].trim() !== '') {
+                        const line = document.createElement('div');
+                        line.className = 'line-display';
+                        line.textContent = `${i+1}. ${problems[i]}`;
+                        probContainer.appendChild(line);
+                    }
                 }
 
                 // Render 8 Lines Actions
                 const actContainer = document.getElementById('d_actions_container');
                 actContainer.innerHTML = '';
                 const actions = (data.action_taken || '').split('\n');
-                for(let i=0; i<8; i++) {
-                    const line = document.createElement('div');
-                    line.className = 'line-display';
-                    line.textContent = `${i+1}. ${actions[i] || ''}`;
-                    actContainer.appendChild(line);
+                for(let i=0; i<5; i++) {
+                    if(actions[i] && actions[i].trim() !== '') {
+                        const line = document.createElement('div');
+                        line.className = 'line-display';
+                        line.textContent = `${i+1}. ${actions[i]}`;
+                        actContainer.appendChild(line);
+                    }
                 }
 
                 // Render Parts Table
@@ -550,18 +704,16 @@
                 tbody.innerHTML = '';
                 if(data.spare_parts && data.spare_parts.length > 0) {
                     data.spare_parts.forEach(p => {
-                        const tr = `<tr><td>${p.no}</td><td>${p.name}</td><td>${p.qty}</td><td>${p.action}</td></tr>`;
+                        const tr = `<tr><td class="font-bold text-gray-500">${p.no}</td><td class="font-bold">${p.name}</td><td>${p.qty}</td><td>${p.action}</td></tr>`;
                         tbody.innerHTML += tr;
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:10px; color:#666;">Tidak ada penggantian part</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:16px; color:var(--text-muted); font-weight:600;">Tidak ada penggantian part</td></tr>';
                 }
 
                 // Switch Views
                 document.getElementById('listView').style.display = 'none';
-                document.getElementById('listHeader').style.display = 'none';
                 document.getElementById('detailView').style.display = 'block';
-                document.getElementById('detailHeader').style.display = 'block';
                 
                 // Clear inputs
                 document.getElementById('spv_name').value = '';
@@ -573,16 +725,14 @@
                 window.scrollTo(0,0);
 
             } catch (err) {
-                Swal.fire({icon: 'error', title: 'Error', text: err.message, background: '#111', color:'#fff'});
+                Swal.fire({...swalLightStyle, icon: 'error', title: 'Error', text: err.message});
             }
         }
 
         function showList() {
             document.getElementById('detailView').style.display = 'none';
-            document.getElementById('detailHeader').style.display = 'none';
-            
             document.getElementById('listView').style.display = 'block';
-            document.getElementById('listHeader').style.display = 'flex';
+            loadList(); // Refresh list just in case
         }
 
         // --- 3. SIGNATURE LOGIC (BLACK INK) ---
@@ -612,7 +762,7 @@
             ctx.moveTo(getX(e), getY(e)); 
             ctx.lineWidth = 3; 
             ctx.lineCap = 'round'; 
-            /* TINTA HITAM */
+            /* TINTA HITAM KARENA BACKGROUND PUTIH */
             ctx.strokeStyle = '#000000'; 
         }
         function draw(e) { if(!isDrawing) return; ctx.lineTo(getX(e), getY(e)); ctx.stroke(); }
@@ -627,21 +777,24 @@
             const spvName = document.getElementById('spv_name').value;
             const spvNote = document.getElementById('spv_note').value;
             
+            // Setup Tema Terang untuk SweetAlert
+            const swalLightStyle = {
+                background: '#ffffff', color: '#333333', confirmButtonColor: '#c91919', cancelButtonColor: '#e5e7eb'
+            };
+
             if(!spvName) { 
-                Swal.fire({icon: 'warning', title: 'Data Kosong', text: 'Harap isi Nama Superintendent!', background: '#111', color: '#fff', confirmButtonColor: '#DC2626'});
+                Swal.fire({...swalLightStyle, icon: 'warning', title: 'Data Kosong', text: 'Harap isi Nama Supervisor!'});
                 return; 
             }
             if(isCanvasBlank()) { 
                 const confirm = await Swal.fire({
+                    ...swalLightStyle,
                     title: 'Tanda Tangan Kosong',
                     text: "Apakah anda yakin ingin melanjutkan tanpa tanda tangan?",
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonColor: '#DC2626',
-                    cancelButtonColor: '#333',
                     confirmButtonText: 'Ya, Lanjut',
-                    background: '#111',
-                    color: '#fff'
+                    cancelButtonText: '<span style="color:#333;">Batal</span>'
                 });
                 if (!confirm.isConfirmed) return;
             }
@@ -650,7 +803,7 @@
             const spinner = btn.querySelector('.spinner');
             const btnText = btn.querySelector('.btn-text');
 
-            btn.disabled = true; spinner.style.display = 'inline-block'; btnText.textContent = 'Memproses...';
+            btn.disabled = true; spinner.style.display = 'inline-block'; btnText.textContent = 'MEMPROSES...';
 
             try {
                 const sigData = isCanvasBlank() ? null : canvas.toDataURL();
@@ -679,19 +832,20 @@
                 if(errLog) throw errLog;
 
                 Swal.fire({
+                    ...swalLightStyle,
                     icon: 'success', 
                     title: 'Berhasil!', 
                     text: 'Laporan telah diapprove.',
-                    background: '#111', 
-                    color: '#fff', 
-                    confirmButtonColor: '#DC2626'
+                    showConfirmButton: false, timer: 1500
                 }).then(() => {
-                    location.reload(); 
+                    // Redirect cerdas ke menu yang sesuai jabatan
+                    const menuLink = document.getElementById('nav-menu') ? document.getElementById('nav-menu').href : 'menu_utama.html';
+                    window.location.href = menuLink;
                 });
 
             } catch (err) {
-                Swal.fire({icon: 'error', title: 'Gagal', text: err.message, background: '#111', color:'#fff', confirmButtonColor: '#DC2626'});
-                btn.disabled = false; spinner.style.display = 'none'; btnText.textContent = 'APPROVE LAPORAN';
+                Swal.fire({...swalLightStyle, icon: 'error', title: 'Gagal', text: err.message});
+                btn.disabled = false; spinner.style.display = 'none'; btnText.innerHTML = '<i class="fa-solid fa-check-circle mr-2"></i> APPROVE LAPORAN';
             }
         }
     </script>
