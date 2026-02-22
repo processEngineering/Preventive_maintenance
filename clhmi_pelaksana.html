@@ -8,39 +8,51 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <style>
         :root {
-            --primary: #991B1B;
-            --primary-light: #B91C1C;
-            --accent: #DC2626;
-            --accent-soft: rgba(220, 38, 38, 0.1);
+            /* TEMA MERAH PUTIH */
+            --primary: #c91919; /* Merah AKG */
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --accent: #dc2626;
+            --accent-soft: #ffebeb;
             --success: #16a34a;
             --warning: #d97706;
             --danger: #ef4444;
-            --bg-dark: #0a0a0a;
-            --bg-card: #111111;
-            --bg-input: #1a1a1a;
-            --text-white: #ffffff;
+            
+            /* BACKGROUND PUTIH */
+            --bg-body: #ffffff;
+            --bg-card: #ffffff;
+            --bg-input: #f8f9fa;
+            
+            /* TEXT GELAP UNTUK BACKGROUND TERANG */
+            --text-main: #333333;
             --text-muted: #6b7280;
             --text-soft: #9ca3af;
-            --border: rgba(255,255,255,0.08);
-            --border-red: rgba(220, 38, 38, 0.3);
+            
+            /* BORDER TERANG */
+            --border: #e5e7eb;
+            --border-red: rgba(201, 25, 25, 0.3);
+            
             --radius: 16px;
-            --nav-height: 70px;
+            --sidebar-width: 280px; /* Lebar Navigasi Samping saat dibuka */
+            --header-height: 80px;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         
         body { 
-            background: var(--bg-dark);
+            background: var(--bg-body);
             min-height: 100vh;
-            color: var(--text-white);
+            color: var(--text-main);
             position: relative;
             overflow-x: hidden;
+            display: block; /* Diubah jadi block agar container bisa auto-center */
         }
 
-        /* Subtle Background Effect */
+        /* Subtle Background Effect (Efek Merah Tipis di Putih) */
         .bg-glow {
             position: fixed;
             top: -200px;
@@ -48,56 +60,173 @@
             transform: translateX(-50%);
             width: 600px;
             height: 600px;
-            background: radial-gradient(circle, rgba(220, 38, 38, 0.15) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(201, 25, 25, 0.05) 0%, transparent 70%);
             pointer-events: none;
             z-index: 0;
         }
 
         .hidden { display: none !important; }
 
-        /* App Container */
+        /* --- PROFESSIONAL HEADER BAR (TOMBOL GARIS 3) --- */
+        .main-header {
+            position: fixed;
+            top: 0;
+            left: 0; 
+            right: 0;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+
+        .header-content-wrapper {
+            width: 100%;
+            max-width: 600px; /* Disesuaikan dengan lebar kontainer form */
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        .hamburger-menu {
+            font-size: 26px;
+            color: var(--primary);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            transition: transform 0.2s;
+            z-index: 2;
+        }
+        .hamburger-menu:active { transform: scale(0.9); }
+
+        .header-title-pill {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 30px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1);
+            white-space: nowrap;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .side-nav {
+            position: fixed;
+            top: 0; left: -100%;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+
+        .side-nav.active { left: 0; }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-title {
+            font-weight: 800;
+            color: var(--primary);
+            font-size: 20px;
+        }
+
+        .sidebar-close {
+            font-size: 24px;
+            color: #888;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: var(--text-muted);
+            background: white;
+            width: 100%;
+            padding: 14px 20px;
+            margin-bottom: 15px;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        
+        .nav-item:hover, .nav-item.active {
+            border-color: var(--primary);
+            background: #fff5f5;
+            color: var(--primary);
+            transform: translateX(5px);
+        }
+
+        .nav-icon-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px; height: 32px;
+            margin-right: 15px;
+            font-size: 20px;
+            color: var(--primary);
+        }
+
+        /* --- APP CONTAINER (CENTERED) --- */
         .app-container {
             position: relative;
             z-index: 1;
-            max-width: 500px;
-            margin: 0 auto;
-            padding: 20px 16px 100px;
+            max-width: 600px;
+            margin: 0 auto; /* CENTER DITENGAH */
+            padding: 20px 24px 60px 24px;
+            padding-top: calc(var(--header-height) + 30px); /* Ruang untuk header */
             min-height: 100vh;
         }
 
-        @media (min-width: 768px) {
-            body { background: #050505; }
-            .app-container { 
-                margin: 30px auto; 
-                background: var(--bg-dark);
-                border: 1px solid var(--border);
-                border-radius: 24px;
-                min-height: calc(100vh - 60px);
-            }
-        }
-
-        /* Header */
-        .header {
-            text-align: center;
-            padding: 16px 0 24px;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 24px;
-        }
-
-        .header h1 {
-            font-size: 13px;
-            font-weight: 800;
-            color: var(--accent);
-            text-transform: uppercase;
-            letter-spacing: 3px;
-        }
-
-        .header p {
-            font-size: 10px;
-            color: var(--text-muted);
-            margin-top: 4px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+        /* Jika layar sangat kecil (Mobile Kecil) */
+        @media (max-width: 400px) {
+            .app-container { padding: 16px 16px 40px 16px; padding-top: calc(var(--header-height) + 20px); }
         }
 
         /* Scanner Section */
@@ -108,7 +237,8 @@
         .scan-title {
             text-align: center;
             font-size: 14px;
-            color: var(--text-soft);
+            font-weight: 600;
+            color: var(--text-main);
             margin-bottom: 24px;
             line-height: 1.6;
         }
@@ -119,21 +249,19 @@
             border-radius: var(--radius);
             padding: 12px;
             margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
         }
 
         .scanner-frame {
             position: relative;
             width: 100%;
             aspect-ratio: 1;
-            background: #000;
+            background: #f8f9fa; /* Background abu terang sebelum kamera nyala */
             border-radius: 8px;
             overflow: hidden;
         }
 
-        #reader {
-            width: 100%;
-            height: 100%;
-        }
+        #reader { width: 100%; height: 100%; }
 
         #reader video {
             width: 100% !important;
@@ -143,20 +271,19 @@
         }
 
         /* Corner Marks */
-        .corner { position: absolute; width: 20px; height: 20px; border: 2px solid var(--accent); z-index: 10; }
-        .corner-tl { top: 12px; left: 12px; border-right: none; border-bottom: none; }
-        .corner-tr { top: 12px; right: 12px; border-left: none; border-bottom: none; }
-        .corner-bl { bottom: 12px; left: 12px; border-right: none; border-top: none; }
-        .corner-br { bottom: 12px; right: 12px; border-left: none; border-top: none; }
+        .corner { position: absolute; width: 20px; height: 20px; border: 3px solid var(--primary); z-index: 10; }
+        .corner-tl { top: 12px; left: 12px; border-right: none; border-bottom: none; border-radius: 4px 0 0 0; }
+        .corner-tr { top: 12px; right: 12px; border-left: none; border-bottom: none; border-radius: 0 4px 0 0; }
+        .corner-bl { bottom: 12px; left: 12px; border-right: none; border-top: none; border-radius: 0 0 0 4px; }
+        .corner-br { bottom: 12px; right: 12px; border-left: none; border-top: none; border-radius: 0 0 4px 0; }
 
         /* Scan Line */
         .scan-line {
             position: absolute;
-            left: 20px;
-            right: 20px;
+            left: 20px; right: 20px;
             height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent), transparent);
-            box-shadow: 0 0 8px var(--accent);
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            box-shadow: 0 0 8px var(--primary);
             animation: scanMove 2s ease-in-out infinite;
             z-index: 5;
         }
@@ -171,7 +298,7 @@
             margin-top: 16px;
             font-size: 12px;
             font-weight: 700;
-            color: var(--accent);
+            color: var(--primary);
             text-transform: uppercase;
             letter-spacing: 2px;
             animation: pulse 1.5s ease-in-out infinite;
@@ -198,24 +325,23 @@
             to { opacity: 1; }
         }
 
-        /* Machine Info Card */
+        /* Machine Info Card (Tema Merah) */
         .machine-card {
-            background: linear-gradient(145deg, var(--primary) 0%, var(--primary-light) 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             border-radius: var(--radius);
             padding: 24px;
             margin-bottom: 24px;
             position: relative;
             overflow: hidden;
+            box-shadow: 0 10px 25px rgba(201, 25, 25, 0.2);
         }
 
         .machine-card::after {
             content: '';
             position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+            top: -50%; right: -50%;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%);
         }
 
         .machine-grid {
@@ -228,8 +354,9 @@
 
         .machine-item span {
             display: block;
-            font-size: 9px;
-            color: rgba(255,255,255,0.7);
+            font-size: 10px;
+            font-weight: 600;
+            color: #ffebeb;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 4px;
@@ -243,12 +370,22 @@
 
         /* Section Title */
         .section-title {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--primary);
             text-transform: uppercase;
             letter-spacing: 1.5px;
             margin: 28px 0 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 6px; height: 6px;
+            background: var(--primary);
+            border-radius: 50%;
         }
 
         /* Input Field */
@@ -260,13 +397,15 @@
             padding: 16px;
             font-size: 14px;
             font-weight: 600;
-            color: var(--text-white);
+            color: var(--text-main);
             outline: none;
             transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
         }
 
         .input-field:focus {
-            border-color: var(--accent);
+            border-color: var(--primary);
+            background: #fff;
             box-shadow: 0 0 0 3px var(--accent-soft);
         }
 
@@ -281,12 +420,14 @@
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 20px;
-            margin-bottom: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
             transition: all 0.3s ease;
         }
 
         .check-card:hover {
-            border-color: var(--border-red);
+            border-color: var(--primary-light);
+            box-shadow: 0 6px 20px rgba(201, 25, 25, 0.08);
         }
 
         .category-tag {
@@ -294,9 +435,9 @@
             padding: 6px 12px;
             background: var(--accent-soft);
             border-radius: 6px;
-            font-size: 9px;
+            font-size: 10px;
             font-weight: 800;
-            color: var(--accent);
+            color: var(--primary);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 12px;
@@ -305,20 +446,21 @@
         .check-title {
             font-size: 14px;
             font-weight: 700;
-            color: var(--text-white);
+            color: var(--text-main);
             margin-bottom: 6px;
             line-height: 1.4;
         }
 
         .check-standard {
-            font-size: 11px;
+            font-size: 12px;
             color: var(--text-muted);
             margin-bottom: 4px;
+            font-weight: 500;
         }
 
         .check-method {
-            font-size: 10px;
-            color: var(--text-muted);
+            font-size: 11px;
+            color: var(--text-soft);
             font-style: italic;
             margin-bottom: 16px;
         }
@@ -326,24 +468,25 @@
         /* Status Select */
         .status-select {
             width: 100%;
-            background: var(--bg-input);
-            border: 1px solid var(--border);
+            background: #ffffff;
+            border: 2px solid var(--border);
             border-radius: 10px;
             padding: 14px 16px;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-white);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-main);
             outline: none;
             appearance: none;
             cursor: pointer;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23DC2626' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23c91919' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 16px center;
             transition: all 0.3s ease;
         }
 
         .status-select:focus {
-            border-color: var(--accent);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--accent-soft);
         }
 
         /* NG Note */
@@ -355,19 +498,19 @@
 
         .ng-note textarea {
             width: 100%;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            background: #fffafa;
+            border: 1px solid rgba(201, 25, 25, 0.3);
             border-radius: 10px;
             padding: 14px;
-            font-size: 12px;
-            color: var(--text-white);
+            font-size: 13px;
+            color: var(--text-main);
             outline: none;
             resize: none;
             height: 80px;
         }
 
         .ng-note textarea::placeholder {
-            color: var(--text-muted);
+            color: #fca5a5;
         }
 
         /* Value Input */
@@ -377,18 +520,19 @@
 
         .value-input input {
             width: 100%;
-            background: var(--accent-soft);
-            border: 1px solid var(--border-red);
+            background: #ffffff;
+            border: 2px solid var(--border);
             border-radius: 10px;
             padding: 14px 16px;
             font-size: 14px;
             font-weight: 600;
-            color: var(--text-white);
+            color: var(--text-main);
             outline: none;
+            transition: border-color 0.3s;
         }
 
         .value-input input:focus {
-            box-shadow: 0 0 0 3px var(--accent-soft);
+            border-color: var(--primary);
         }
 
         /* Additional Notes */
@@ -398,15 +542,17 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 16px;
-            font-size: 13px;
-            color: var(--text-white);
+            font-size: 14px;
+            color: var(--text-main);
             outline: none;
             resize: none;
             height: 100px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
         }
 
         #container_catatan_aman textarea:focus {
-            border-color: var(--accent);
+            border-color: var(--primary);
+            background: #fff;
         }
 
         /* Signature */
@@ -416,6 +562,7 @@
             border-radius: var(--radius);
             padding: 20px;
             margin-top: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
         }
 
         .signature-header {
@@ -426,36 +573,42 @@
         }
 
         .signature-header h3 {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--text-main);
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
         .btn-clear {
             padding: 8px 14px;
-            background: transparent;
-            border: 1px solid var(--danger);
+            background: var(--accent-soft);
+            border: none;
             border-radius: 8px;
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 700;
-            color: var(--danger);
+            color: var(--primary);
             cursor: pointer;
             transition: all 0.3s ease;
         }
 
         .btn-clear:hover {
-            background: rgba(239, 68, 68, 0.1);
+            background: var(--primary);
+            color: white;
         }
 
         .signature-pad {
-            border: 2px dashed var(--border-red);
+            border: 2px dashed #cbd5e1;
             border-radius: 12px;
             height: 150px;
-            background: rgba(255, 255, 255, 0.85); 
+            background: #f8f9fa; 
             position: relative;
             overflow: hidden;
+            transition: border-color 0.3s;
+        }
+        
+        .signature-pad:hover {
+            border-color: var(--primary-light);
         }
 
         .signature-pad canvas {
@@ -468,23 +621,23 @@
         .btn-submit {
             width: 100%;
             padding: 18px;
-            background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             border: none;
             border-radius: 14px;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 800;
             color: #fff;
             text-transform: uppercase;
             letter-spacing: 1px;
             cursor: pointer;
             margin-top: 32px;
-            box-shadow: 0 8px 24px rgba(220, 38, 38, 0.4);
+            box-shadow: 0 8px 24px rgba(201, 25, 25, 0.3);
             transition: all 0.3s ease;
         }
 
         .btn-submit:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 32px rgba(220, 38, 38, 0.5);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(201, 25, 25, 0.4);
         }
 
         .btn-submit:active {
@@ -492,61 +645,11 @@
         }
 
         .btn-submit:disabled {
-            opacity: 0.6;
+            background: #d1d5db;
+            box-shadow: none;
+            color: #9ca3af;
             cursor: not-allowed;
             transform: none;
-        }
-
-        /* Bottom Nav */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(10, 10, 10, 0.95);
-            backdrop-filter: blur(20px);
-            border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: space-around;
-            padding: 14px 0;
-            z-index: 100;
-        }
-
-        @media (min-width: 768px) {
-            .bottom-nav {
-                max-width: 500px;
-                left: 50%;
-                transform: translateX(-50%);
-                border-radius: 0 0 24px 24px;
-            }
-        }
-
-        .nav-item {
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-            text-decoration: none;
-            transition: all 0.3s ease;
-        }
-
-        .nav-item svg {
-            width: 22px;
-            height: 22px;
-            stroke: var(--text-muted);
-            fill: none;
-            stroke-width: 2;
-            transition: all 0.3s ease;
-        }
-
-        .nav-item.active {
-            background: var(--accent-soft);
-        }
-
-        .nav-item.active svg {
-            stroke: var(--accent);
         }
 
         /* Loading */
@@ -554,13 +657,14 @@
             text-align: center;
             padding: 40px;
             color: var(--text-muted);
+            font-weight: 600;
         }
 
         .spinner {
-            width: 32px;
-            height: 32px;
-            border: 3px solid var(--border);
-            border-top-color: var(--accent);
+            width: 36px;
+            height: 36px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 12px;
@@ -575,10 +679,48 @@
 
 <div class="bg-glow"></div>
 
-<div class="app-container">
-    <div class="header">
-        <h1>Pelaksana</h1>
+<!-- HEADER UTAMA (TOMBOL GARIS 3) -->
+<header class="main-header">
+    <div class="header-content-wrapper">
+        <div class="hamburger-menu" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+        </div>
+        <div class="header-title-pill">PELAKSANA</div>
     </div>
+</header>
+
+<!-- OVERLAY & SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<nav class="side-nav" id="sidebar">
+    <div class="sidebar-header">
+        <span class="sidebar-title">Dashboard</span>
+        <div class="sidebar-close" onclick="toggleSidebar()">
+            <i class="fa-solid fa-xmark"></i>
+        </div>
+    </div>
+
+    <!-- DYNAMIC ROUTING LINKS -->
+    <a href="index.html" id="nav-home" class="nav-item">
+        <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+        <span>Home</span>
+    </a>
+    <a href="menu_utama.html" id="nav-menu" class="nav-item active">
+        <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+        <span>Menu Utama</span>
+    </a>
+    <a href="download_data.html" class="nav-item">
+        <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+        <span>Unduh Data</span>
+    </a>
+    <a href="informasi_akun.html" class="nav-item">
+        <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+        <span>Akun</span>
+    </a>
+</nav>
+
+<!-- KONTEN UTAMA -->
+<div class="app-container">
 
     <div id="step-scan">
         <p class="scan-title">Arahkan kamera ke QR Code mesin<br>untuk memulai pengecekan</p>
@@ -608,26 +750,26 @@
         </div>
 
         <p class="section-title">Nama Pelaksana</p>
-        <input type="text" id="nama_pelaksana" class="input-field" placeholder="nama lengkap anda">
+        <input type="text" id="nama_pelaksana" class="input-field" placeholder="Ketik nama lengkap anda">
 
         <p class="section-title">Poin Pengecekan</p>
         <div id="dynamic-checklist">
             <div class="loading-checklist">
                 <div class="spinner"></div>
-                <p>Memuat checklist</p>
+                <p>Memuat checklist dari server...</p>
             </div>
         </div>
 
         <div id="container_catatan_aman">
-            <p class="section-title">Catatan</p>
-            <textarea id="catatan_aman" placeholder="berikan catatan anda sebagai laporan untuk koordinator"></textarea>
+            <p class="section-title">Catatan Tambahan</p>
+            <textarea id="catatan_aman" placeholder="Berikan catatan anda sebagai laporan untuk koordinator (opsional)"></textarea>
         </div>
 
         <p class="section-title">Paraf Digital</p>
         <div class="signature-card">
             <div class="signature-header">
                 <h3>Tanda Tangan</h3>
-                <button class="btn-clear" onclick="resetCanvas()">Ulangi</button>
+                <button class="btn-clear" onclick="resetCanvas()">Hapus</button>
             </div>
             <div class="signature-pad">
                 <canvas id="canvas"></canvas>
@@ -638,22 +780,16 @@
     </div>
 </div>
 
-<nav class="bottom-nav">
-    <a href="index.html" class="nav-item">
-        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    </a>
-    <a href="menu_utama.html" class="nav-item active">
-        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-    </a>
-    <a href="download_data.html" class="nav-item">
-        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    </a>
-    <a href="informasi_akun.html" class="nav-item">
-        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-    </a>
-</nav>
-
+<!-- ======================= LOGIKA FUNGSIONAL TIDAK DIUBAH ======================= -->
 <script>
+    // Fungsi Buka Tutup Sidebar Samping
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+    }
+
     const _URL = "https://dsyvlavphvrdidmodokd.supabase.co";
     const _KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const sb = supabase.createClient(_URL, _KEY);
@@ -662,8 +798,57 @@
     const cvs = document.getElementById("canvas"), ctx = cvs.getContext("2d");
 
     window.onload = function() {
+        setupDynamicNavigation();
         initScanner();
     };
+
+    // Fungsi Cek Jabatan & Update Link Navigasi (Navigasi Pintar)
+    async function setupDynamicNavigation() {
+        try {
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) return;
+
+            const { data: profile, error } = await sb
+                .from('profiles')
+                .select('jabatan')
+                .eq('id', session.user.id)
+                .single();
+
+            if (profile) {
+                const jabatan = profile.jabatan.toUpperCase();
+                const navHome = document.getElementById('nav-home');
+                const navMenu = document.getElementById('nav-menu');
+
+                let homeLink = 'index.html';
+                let menuLink = 'menu_utama.html';
+
+                if (jabatan.includes('OPERATOR')) {
+                    homeLink = 'OPERATOR_HOME.html';
+                    menuLink = 'MENU_UTAMA_OPERATOR.html';
+                } else if (jabatan.includes('SUPERVISOR')) {
+                    homeLink = 'SUPERVISOR_HOME.html';
+                    menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                } else if (jabatan.includes('SUPERINTENDENT')) {
+                    homeLink = 'SUPERINTENDENT_HOME.html';
+                    menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                    homeLink = 'MANAGER_HOME.html';
+                    menuLink = 'MENU_UTAMA_MANAGER.html';
+                } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                    homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                    menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                    homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                    menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                }
+
+                if (navHome) navHome.href = homeLink;
+                if (navMenu) navMenu.href = menuLink;
+            }
+        } catch (err) {
+            console.error("Gagal mengatur navigasi dinamis:", err);
+        }
+    }
 
     function initScanner() {
         scanner = new Html5Qrcode("reader");
@@ -888,7 +1073,10 @@
             if (e2) throw new Error("Gagal Detail: " + e2.message);
 
             alert("Data berhasil dikirim!");
-            location.href = "menu_utama.html";
+            
+            // Redirect cerdas ke menu yang sesuai jabatan
+            const menuLink = document.getElementById('nav-menu') ? document.getElementById('nav-menu').href : 'menu_utama.html';
+            location.href = menuLink;
 
         } catch (err) {
             alert("❌ ERROR: " + err.message);
