@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Menu Utama JM Produksi - AKG Maintenance</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #c91919; /* Merah */
+            --primary-dark: #a50e0e;
+            --bg-body: #f8f9fa;
+            --text-dark: #333333;
+            --sidebar-width: 280px;
+            --header-height: 80px;
+        }
+
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        body {
+            background: var(--bg-body);
+            min-height: 100vh;
+            color: var(--text-dark);
+            overflow-x: hidden;
+        }
+
+        /* --- App Shell (Container Utama) --- */
+        .app-shell {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            min-height: 100vh;
+            position: relative;
+            background: #fff;
+            box-shadow: 0 0 40px rgba(0,0,0,0.05);
+        }
+
+        .app-container {
+            padding: 20px;
+            padding-top: calc(var(--header-height) + 20px);
+        }
+
+        /* --- PROFESSIONAL HEADER BAR --- */
+        .main-header {
+            position: fixed;
+            top: 0;
+            left: 0; 
+            right: 0;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+
+        .header-content-wrapper {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        /* Tombol Hamburger */
+        .hamburger-menu {
+            font-size: 26px;
+            color: var(--primary);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            transition: transform 0.2s;
+            z-index: 2;
+            animation: fadeInRight 0.6s ease forwards;
+        }
+        .hamburger-menu:active { transform: scale(0.9); }
+
+        /* Keyframes untuk Header */
+        @keyframes fadeInRight {
+            0% { opacity: 0; transform: translateX(-20px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes popDown {
+            0% { opacity: 0; transform: translateX(-50%) translateY(-30px); }
+            100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        /* Judul Header */
+        .header-title-pill {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 30px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1);
+            white-space: nowrap;
+            
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+            /* Menggunakan cubic-bezier yang lebih smooth */
+            animation: popDown 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* --- GRID LAYOUT RESPONSIVE (KHUSUS 1-2 ITEM AGAR DITENGAH) --- */
+        .menu-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            padding: 10px 0;
+        }
+
+        @media (min-width: 600px) {
+            .menu-grid {
+                gap: 30px;
+            }
+            .header-title-pill {
+                font-size: 16px;
+                padding: 10px 40px;
+            }
+        }
+
+        @media (min-width: 900px) {
+            .menu-grid {
+                gap: 40px;
+            }
+        }
+
+        /* --- MENU CARD (Grid Item Baru Tanpa Gambar) --- */
+        .menu-card {
+            display: block;
+            text-decoration: none;
+            position: relative;
+            height: 100%;
+            width: 100%;
+            max-width: 260px; /* Dibatasi agar tidak melebar karena menggunakan flex */
+            /* Persiapan animasi masuk yang jauh lebih smooth */
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            perspective: 1000px; /* Tambahan wajib untuk efek kedalaman 3D */
+        }
+
+        /* Class ini ditambahkan via JS agar muncul bergantian */
+        .menu-card.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* --- EFEK RIPPLE (GELOMBANG SAAT DITEKAN) --- */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            /* Animasi ripple lebih natural dengan ease-out */
+            animation: ripple-animation 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            background-color: rgba(255, 255, 255, 0.4);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        @keyframes ripple-animation {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        .menu-pill {
+            background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+            width: 100%;
+            height: 100%;
+            padding: 30px 15px; 
+            border-radius: 20px;
+            border: 2px solid #a50e0e;
+            color: white;
+            text-align: center;
+            box-shadow: 0 8px 15px rgba(201, 25, 25, 0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            min-height: 160px;
+            /* Transisi mendukung 3D */
+            transition: box-shadow 0.4s ease, border-color 0.4s ease, background 0.4s ease-in-out, transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative; 
+            overflow: hidden; 
+            transform-style: preserve-3d; /* Penting untuk efek teks melayang */
+            will-change: transform;
+        }
+
+        /* Efek Cahaya (Spotlight) mengikuti Kursor */
+        .menu-pill::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle 100px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.25), transparent 100%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Mengubah warna background, border, dan shadow menjadi biru gelap saat disentuh/hover */
+        .menu-card:hover .menu-pill,
+        .menu-card.active-hover .menu-pill {
+            box-shadow: 0 20px 40px rgba(13, 71, 161, 0.5);
+            border-color: #64b5f6;
+            background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+        }
+
+        /* Menyalakan cahaya spotlight saat disorot */
+        .menu-card:hover .menu-pill::before,
+        .menu-card.active-hover .menu-pill::before {
+            opacity: 1;
+        }
+
+        .menu-card:active .menu-pill {
+            transform: scale3d(0.95, 0.95, 0.95) !important;
+            box-shadow: 0 10px 20px rgba(13, 71, 161, 0.4);
+        }
+
+        .menu-pill h2 {
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.4;
+            margin: 0;
+            text-shadow: 1px 2px 6px rgba(0,0,0,0.4);
+            transform: translateZ(40px); /* Efek Teks Terbang/Melayang ke depan (Depth 3D) */
+            transition: transform 0.3s ease;
+            position: relative;
+            z-index: 2;
+        }
+
+        @media (min-width: 768px) {
+            .menu-pill h2 {
+                font-size: 14px;
+            }
+        }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .side-nav {
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+
+        .side-nav.active {
+            left: 0;
+        }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-title {
+            font-weight: 800;
+            color: var(--primary);
+            font-size: 20px;
+        }
+
+        .sidebar-close {
+            font-size: 24px;
+            color: #888;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: var(--primary);
+            background: white;
+            width: 100%;
+            padding: 14px 20px;
+            margin-bottom: 15px;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-item:hover, .nav-item:active {
+            border-color: var(--primary);
+            background: #fff5f5;
+            transform: translateX(5px);
+        }
+
+        .nav-icon-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            margin-right: 15px;
+            font-size: 20px;
+            color: var(--primary);
+        }
+
+        .nav-item span {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- OVERLAY & SIDEBAR -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">AKG Maintenance</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+
+        <a href="index.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <!-- HEADER UTAMA -->
+    <header class="main-header">
+        <div class="header-content-wrapper">
+            <div class="hamburger-menu" onclick="toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+            <!-- Title Dirubah -->
+            <div class="header-title-pill">MENU UTAMA JM PRODUKSI</div>
+        </div>
+    </header>
+
+    <div class="app-shell">
+        <div class="app-container">
+            
+            <!-- Grid Content Khusus (Tengah & 1 Item) -->
+            <div class="menu-grid">
+
+                <!-- Item 9 (Hanya 1 ini yang disisakan) -->
+                <a href="Jpdo_produksi.html" class="menu-card">
+                    <div class="menu-pill">
+                        <h2>Jadwal perawatan<br>dan overhaul</h2>
+                    </div>
+                </a>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- SCRIPT -->
+    <script>
+        // Sidebar Toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        // Animasi Card Muncul Bergantian (Staggered Animation)
+        document.addEventListener('DOMContentLoaded', () => {
+            requestAnimationFrame(() => {
+                const cards = document.querySelectorAll('.menu-card');
+                cards.forEach((card, index) => {
+                    setTimeout(() => {
+                        card.classList.add('show');
+                    }, 50 * index); // Jeda dipercepat menjadi 50ms agar cascade-nya lebih mengalir
+                    
+                    // Tambahkan Event Listener untuk Efek Ripple (Pencetan)
+                    card.addEventListener('mousedown', createRipple);
+                    card.addEventListener('touchstart', createRipple, {passive: true});
+
+                    // Tambahkan Event Listener untuk Efek 3D Parallax & Spotlight
+                    card.addEventListener('mousemove', handleMouseMove);
+                    card.addEventListener('mouseleave', handleMouseLeave);
+                    
+                    // Dukungan khusus layar sentuh untuk efek 3D
+                    card.addEventListener('touchmove', handleTouchMove, {passive: true});
+                    card.addEventListener('touchend', handleMouseLeave);
+                });
+            });
+        });
+
+        // Fungsi Pembuat Efek Ripple
+        function createRipple(event) {
+            const button = event.currentTarget.querySelector('.menu-pill');
+            if (!button) return;
+
+            const circle = document.createElement('span');
+            const diameter = Math.max(button.clientWidth, button.clientHeight);
+            const radius = diameter / 2;
+            const rect = button.getBoundingClientRect();
+            
+            // Dapatkan koordinat klik/sentuh (mendukung mouse & layar sentuh)
+            let clientX, clientY;
+            if (event.type === 'touchstart') {
+                clientX = event.touches[0].clientX;
+                clientY = event.touches[0].clientY;
+            } else {
+                clientX = event.clientX;
+                clientY = event.clientY;
+            }
+
+            // Hitung posisi gelombang
+            circle.style.width = circle.style.height = `${diameter}px`;
+            circle.style.left = `${clientX - rect.left - radius}px`;
+            circle.style.top = `${clientY - rect.top - radius}px`;
+            circle.classList.add('ripple');
+
+            // Hapus ripple lama jika ada (jika ditekan cepat berkali-kali)
+            const existingRipple = button.querySelector('.ripple');
+            if (existingRipple) {
+                existingRipple.remove();
+            }
+
+            button.appendChild(circle);
+
+            // Bersihkan elemen span setelah animasi memudar
+            setTimeout(() => {
+                circle.remove();
+            }, 600);
+        }
+
+        // --- FUNGSI EFEK 3D TILT & SPOTLIGHT ---
+        function handleMouseMove(e) {
+            apply3DEffect(e.currentTarget, e.clientX, e.clientY);
+        }
+
+        function handleTouchMove(e) {
+            // Biarkan kartu merespons posisi jari saat di-swipe (layar sentuh)
+            const touch = e.touches[0];
+            apply3DEffect(e.currentTarget, touch.clientX, touch.clientY);
+            e.currentTarget.classList.add('active-hover'); // Paksa trigger hover CSS
+        }
+
+        function apply3DEffect(card, clientX, clientY) {
+            const pill = card.querySelector('.menu-pill');
+            if (!pill) return;
+
+            const rect = card.getBoundingClientRect();
+            // Hitung posisi kursor relatif terhadap elemen
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+
+            // Hitung rotasi 3D (Maksimal miring 15 derajat)
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            const rotateX = ((y - centerY) / centerY) * -15; 
+            const rotateY = ((x - centerX) / centerX) * 15;
+
+            // Terapkan efek kedalaman 3D dan Tilt
+            pill.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
+            
+            // Terapkan posisi Spotlight (Cahaya senter) agar mengikuti kursor
+            pill.style.setProperty('--mouse-x', `${x}px`);
+            pill.style.setProperty('--mouse-y', `${y}px`);
+        }
+
+        function handleMouseLeave(e) {
+            const card = e.currentTarget;
+            const pill = card.querySelector('.menu-pill');
+            card.classList.remove('active-hover');
+            
+            if (!pill) return;
+
+            // Kembalikan kotak ke posisi datar sempurna dengan sangat mulus
+            pill.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+        }
+    </script>
+
+</body>
+</html>
