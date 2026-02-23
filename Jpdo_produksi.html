@@ -5,296 +5,506 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Produksi - AKG Maintenance</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    <!-- Supabase JS Library -->
+    <!-- Dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
+        /* --- THEME VARIABLES (Light Mode AKG) --- */
         :root {
-            --primary: #DC2626;
-            --primary-dark: #991B1B;
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --accent: #dc2626;
+            --accent-soft: #ffebeb;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #ef4444;
             
-            --bg-dark: #050505;
-            --bg-card: #121212; 
-            --text-white: #FFFFFF;
-            --text-gray: #A3A3A3;
-            --border-light: rgba(255,255,255,0.1);
+            --bg-body: #f4f6f8;
+            --bg-card: #ffffff; 
+            --bg-input: #ffffff;
+            
+            --text-main: #333333;
+            --text-muted: #6b7280;
+            --text-soft: #9ca3af;
+            
+            --border: #e5e7eb;
+            --border-red: rgba(201, 25, 25, 0.3);
+            
             --radius: 16px;
-            --nav-height: 70px;
+            --sidebar-width: 280px; 
+            --header-height: 70px;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-
-        body {
-            background: var(--bg-dark);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background: var(--bg-body); 
+            color: var(--text-main); 
+            min-height: 100vh; 
+            display: block; 
             overflow-x: hidden;
-            color: var(--text-white);
-            padding-bottom: 120px;
+            padding-bottom: 40px;
         }
 
-        /* Background Animation */
-        .bg-animation { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; background: #000; }
-        .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4; }
-        .orb-1 { width: 300px; height: 300px; background: radial-gradient(circle, var(--primary) 0%, transparent 70%); top: -100px; left: -100px; }
-        .orb-2 { width: 200px; height: 200px; background: radial-gradient(circle, #7F1D1D 0%, transparent 70%); bottom: 20%; right: -50px; }
-        .grid-pattern { position: absolute; width: 100%; height: 100%; background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 40px 40px; opacity: 0.3; }
+        /* --- Background Animation --- */
+        .bg-glow {
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(201, 25, 25, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
 
-        .app-container {
+        .hidden { display: none !important; }
+
+        /* --- PROFESSIONAL HEADER BAR (TOMBOL GARIS 3) --- */
+        .main-header {
+            position: fixed;
+            top: 0;
+            left: 0; 
+            right: 0;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+
+        .header-content-wrapper {
             width: 100%;
-            max-width: 600px;
-            padding: 24px 20px;
+            max-width: 600px; 
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        .hamburger-menu {
+            font-size: 26px;
+            color: var(--primary);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            transition: transform 0.2s;
+            z-index: 2;
+        }
+        .hamburger-menu:active { transform: scale(0.9); }
+
+        .header-title-pill {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 30px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1);
+            white-space: nowrap;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+
+        .side-nav {
+            position: fixed;
+            top: 0; left: -100%;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+
+        .side-nav.active { left: 0; }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-title { font-weight: 800; color: var(--primary); font-size: 20px; }
+        .sidebar-close { font-size: 24px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: var(--text-muted);
+            background: white; width: 100%; padding: 14px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: 600;
+        }
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 20px; color: var(--primary); }
+
+        /* --- APP CONTAINER (CENTERED) --- */
+        .app-shell {
+            width: 100%;
             position: relative;
             z-index: 1;
         }
 
-        /* Header & Search */
-        .header {
-            margin-bottom: 20px;
-            border-bottom: 1px solid var(--border-light);
-            padding-bottom: 16px;
+        .app-container {
+            width: 100%; 
+            max-width: 600px; 
+            margin: 0 auto;
+            padding: 20px 24px 60px 24px; 
+            padding-top: calc(var(--header-height) + 30px);
+            min-height: 100vh;
         }
-        .header h1 { font-size: 20px; color: var(--primary); font-weight: 700; margin-bottom: 4px; }
 
+        /* --- SECTIONS & TITLES --- */
+        .section-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-left: 12px; border-left: 4px solid var(--primary);
+        }
+        .section-title {
+            font-size: 14px; font-weight: 800; color: var(--text-main);
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        /* --- SEARCH / FILTER BOX --- */
         .search-box {
-            margin-top: 16px;
             background: var(--bg-card);
-            padding: 16px;
+            padding: 20px;
             border-radius: var(--radius);
-            border: 1px solid var(--border-light);
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            margin-bottom: 24px;
         }
-        .search-label { font-size: 12px; color: var(--text-gray); margin-bottom: 8px; display: block; }
+        .search-label {
+            font-size: 11px; font-weight: 800; color: var(--text-muted);
+            margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.5px;
+        }
         .month-input {
-            width: 100%;
-            background: #1a1a1a;
-            border: 1px solid var(--border-light);
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            outline: none;
-            color-scheme: dark;
+            width: 100%; padding: 14px 16px;
+            background: var(--bg-input); border: 1px solid var(--border);
+            color: var(--text-main); font-size: 14px; font-weight: 600;
+            border-radius: 12px; outline: none; transition: 0.3s;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            font-family: inherit;
         }
-        .month-input:focus { border-color: var(--primary); }
+        .month-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--accent-soft); background: #fff;}
 
-        /* Report List (Simplified) */
+        /* --- LIST CONTAINER --- */
         .list-container {
-            margin-top: 20px;
-            max-height: 400px;
+            margin-top: 10px;
+            max-height: 450px;
             overflow-y: auto;
-            padding-right: 4px;
+            padding-right: 5px;
         }
         
         .list-item {
-            background: var(--bg-card);
-            border-bottom: 1px solid var(--border-light);
-            padding: 14px 0;
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
             display: flex;
             align-items: flex-start;
-            gap: 12px;
+            gap: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+            transition: all 0.2s;
         }
-        .list-item:first-child { border-top: 1px solid var(--border-light); }
+        .list-item:hover { border-color: var(--border-red); box-shadow: 0 4px 12px rgba(201, 25, 25, 0.08); }
 
         .item-date {
-            min-width: 50px;
+            min-width: 55px;
             text-align: center;
-            background: rgba(255,255,255,0.05);
-            border-radius: 8px;
-            padding: 8px 4px;
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 4px;
         }
-        .date-day { font-size: 16px; font-weight: 700; display: block; color: var(--text-white); }
-        .date-month { font-size: 10px; color: var(--text-gray); text-transform: uppercase; }
+        .date-day { font-size: 18px; font-weight: 900; display: block; color: var(--primary); }
+        .date-month { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
 
         .item-content { flex: 1; }
-        .item-spv { font-size: 14px; font-weight: 600; color: var(--text-white); margin-bottom: 4px; }
-        .item-note { font-size: 12px; color: #aaa; font-style: italic; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .item-status-libur { color: #555; font-size: 12px; font-style: italic; }
+        .item-spv { font-size: 14px; font-weight: 800; color: var(--text-main); margin-bottom: 6px; }
+        .item-note { font-size: 12px; color: var(--text-muted); font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .item-status-libur { color: var(--warning); font-size: 12px; font-style: italic; font-weight: 600;}
 
-        /* Approval Section */
+        /* --- APPROVAL SECTION --- */
         .approval-section {
-            margin-top: 30px;
             background: var(--bg-card);
-            border: 1px solid var(--primary);
+            border: 1px solid var(--border);
+            border-top: 4px solid var(--primary);
             border-radius: var(--radius);
-            padding: 20px;
-            box-shadow: 0 0 20px rgba(220, 38, 38, 0.1);
+            padding: 24px;
+            margin-top: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            animation: fadeIn 0.5s ease-out;
         }
-        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
         .approval-header {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--primary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 16px;
-            border-bottom: 1px solid rgba(220, 38, 38, 0.2);
-            padding-bottom: 8px;
+            font-size: 14px; font-weight: 900; color: var(--primary);
+            text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 20px; border-bottom: 1px dashed var(--border); padding-bottom: 12px;
         }
 
         .form-group { margin-bottom: 16px; }
-        .form-label { display: block; font-size: 12px; color: var(--text-gray); margin-bottom: 6px; }
+        .form-label { display: block; font-size: 11px; font-weight: 800; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;}
+        
         .form-input, .form-textarea {
-            width: 100%; background: #1a1a1a; border: 1px solid var(--border-light);
-            color: white; padding: 10px; border-radius: 8px; font-size: 14px;
+            width: 100%; background: var(--bg-input); border: 1px solid var(--border);
+            color: var(--text-main); padding: 14px 16px; border-radius: 12px; font-size: 14px; font-weight: 600;
+            outline: none; transition: 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); font-family: inherit;
         }
+        .form-input:focus, .form-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--accent-soft); background: #fff; }
+        .form-textarea { resize: vertical; min-height: 80px; }
 
         /* Signature Canvas */
         .signature-pad-container {
-            width: 100%;
-            height: 150px;
-            background: #FFFFFF; /* White Background */
-            border: 2px dashed var(--text-gray);
-            border-radius: 8px;
-            position: relative;
-            touch-action: none;
+            width: 100%; height: 160px; background: #f8f9fa; 
+            border: 2px dashed var(--border-red); border-radius: 12px;
+            position: relative; touch-action: none; overflow: hidden; transition: border-color 0.3s;
         }
-        canvas { display: block; width: 100%; height: 100%; }
+        .signature-pad-container:hover { border-color: var(--primary-light); }
+        canvas { display: block; width: 100%; height: 100%; cursor: crosshair;}
         
         .clear-sig-btn {
-            margin-top: 6px; font-size: 11px; color: var(--text-gray);
-            background: transparent; border: 1px solid var(--border-light);
-            padding: 4px 10px; border-radius: 6px; cursor: pointer;
+            margin-top: 8px; font-size: 10px; color: var(--primary); background: transparent; 
+            border: 1px solid var(--primary); padding: 6px 14px; border-radius: 6px; 
+            cursor: pointer; font-weight: 800; text-transform: uppercase; float: right; transition: 0.3s;
         }
+        .clear-sig-btn:hover { background: var(--primary); color: white; }
 
         .btn-approve {
-            width: 100%; padding: 14px; background: var(--primary);
-            color: white; border: none; border-radius: 12px;
-            font-size: 14px; font-weight: 700; margin-top: 20px;
-            cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
-            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+            width: 100%; padding: 18px; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; border: none; border-radius: 14px; font-size: 15px; font-weight: 800; 
+            margin-top: 30px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 8px 24px rgba(201, 25, 25, 0.3); transition: transform 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-        .btn-approve:disabled { background: #333; color: #777; cursor: not-allowed; box-shadow: none; }
+        .btn-approve:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 4px 12px rgba(201, 25, 25, 0.3); }
+        .btn-approve:disabled { background: #d1d5db; box-shadow: none; color: #9ca3af; cursor: not-allowed; }
 
-        .empty-state { text-align: center; padding: 30px; color: var(--text-gray); font-size: 13px; }
-        .hidden { display: none !important; }
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; font-weight: 600; }
+        
+        /* SweetAlert Light Theme Overrides */
+        div:where(.swal2-container) { z-index: 9999 !important; }
+        div:where(.swal2-container) div:where(.swal2-popup) { background: #ffffff !important; border: 1px solid var(--border); color: var(--text-main) !important; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        div:where(.swal2-confirm) { background-color: var(--primary) !important; border-radius: 10px; font-weight: bold; }
 
-        /* Bottom Nav */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-            width: 100%; max-width: 600px;
-            background: rgba(10, 10, 10, 0.95);
-            backdrop-filter: blur(20px); border-top: 1px solid var(--border-light);
-            display: flex; justify-content: space-around; align-items: center;
-            padding: 12px 0; height: var(--nav-height); z-index: 100;
-        }
-        .nav-item { color: #555; display: flex; flex-direction: column; align-items: center; text-decoration: none; width: 56px; }
-        .nav-item.active { color: var(--primary); }
-        .nav-item svg { width: 22px; height: 22px; }
     </style>
 </head>
-<body>
+<body class="pb-24">
 
-    <div class="bg-animation">
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="grid-pattern"></div>
-    </div>
+    <div class="bg-glow"></div>
 
-    <div class="app-container">
-        
-        <div class="header">
-            <div>
-                <h1>Approval Bulanan</h1>
+    <!-- HEADER UTAMA (TOMBOL GARIS 3) -->
+    <header class="main-header">
+        <div class="header-content-wrapper">
+            <div class="hamburger-menu" onclick="toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+            <div class="header-title-pill">APPROVAL PRODUKSI</div>
+        </div>
+    </header>
+
+    <!-- OVERLAY & SIDEBAR -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
             </div>
         </div>
 
-        <!-- 1. Pilih Bulan -->
-        <div class="search-box">
-            <label class="search-label">Pilih Periode Laporan</label>
-            <input type="month" id="month-picker" class="month-input" onchange="loadDataByMonth()">
-        </div>
-
-        <!-- 2. List Ringkas Data -->
-        <div id="list-container" class="list-container">
-            <div class="empty-state">Silakan pilih bulan terlebih dahulu.</div>
-        </div>
-
-        <!-- 3. Form Approval Produksi -->
-        <div id="approval-area" class="approval-section hidden">
-            
-            <!-- A. TAMPILAN JIKA SUDAH APPROVE (Clean Text) -->
-            <div id="already-approved-msg" class="hidden" style="text-align: center; padding: 40px 20px;">
-                <h3 style="color: #10B981; font-size: 18px; font-weight: 700; margin-bottom: 8px;">SUDAH DISETUJUI</h3>
-                <p id="approved-by-info" style="color: #aaa; font-size: 13px; line-height: 1.5;"></p>
-            </div>
-
-            <!-- B. TAMPILAN FORM (Jika Belum Approve) -->
-            <div id="approval-form-wrapper">
-                <div class="approval-header">
-                    Form Pengesahan
-                </div>
-                
-                <form id="approvalForm">
-                    <div class="form-group">
-                        <label class="form-label">Nama Staff Produksi</label>
-                        <input type="text" id="prod-name" class="form-input" placeholder="Masukkan Nama Lengkap">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Catatan Produksi</label>
-                        <textarea id="prod-note" class="form-textarea" rows="2" placeholder="Catatan untuk bulan ini..."></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Tanda Tangan</label>
-                        <div class="signature-pad-container">
-                            <canvas id="signature-canvas"></canvas>
-                        </div>
-                        <button type="button" class="clear-sig-btn" onclick="clearSignature()">Hapus Tanda Tangan</button>
-                    </div>
-
-                    <button type="button" id="btn-approve" class="btn-approve" onclick="submitApproval()">
-                        Approve Bulan Ini
-                    </button>
-                </form>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Bottom Navigation -->
-    <nav class="bottom-nav">
-        <a href="index.html" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
         </a>
-        <a href="menu_utama.html" class="nav-item active">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
         </a>
         <a href="download_data.html" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
         </a>
         <a href="informasi_akun.html" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
         </a>
     </nav>
 
+    <div class="app-shell">
+        <div class="app-container">
+            
+            <!-- 1. Pilih Bulan -->
+            <div class="search-box">
+                <label class="search-label">Pilih Periode Laporan</label>
+                <input type="month" id="month-picker" class="month-input" onchange="loadDataByMonth()">
+            </div>
+
+            <!-- 2. List Ringkas Data -->
+            <div id="list-container" class="list-container">
+                <div class="empty-state">Silakan pilih bulan terlebih dahulu untuk melihat data.</div>
+            </div>
+
+            <!-- 3. Form Approval Produksi -->
+            <div id="approval-area" class="approval-section hidden">
+                
+                <!-- A. TAMPILAN JIKA SUDAH APPROVE -->
+                <div id="already-approved-msg" class="hidden" style="text-align: center; padding: 30px 20px;">
+                    <i class="fa-solid fa-circle-check text-success text-4xl mb-4"></i>
+                    <h3 style="color: var(--success); font-size: 16px; font-weight: 800; margin-bottom: 8px; text-transform: uppercase;">Sudah Disetujui</h3>
+                    <p id="approved-by-info" style="color: var(--text-muted); font-size: 12px; line-height: 1.6; font-weight: 500;"></p>
+                </div>
+
+                <!-- B. TAMPILAN FORM (Jika Belum Approve) -->
+                <div id="approval-form-wrapper">
+                    <div class="approval-header">
+                        Form Pengesahan Produksi
+                    </div>
+                    
+                    <form id="approvalForm">
+                        <div class="form-group">
+                            <label class="form-label">Nama Staff Produksi</label>
+                            <input type="text" id="prod-name" class="form-input" placeholder="Ketik Nama Lengkap">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Catatan Produksi (Opsional)</label>
+                            <textarea id="prod-note" class="form-textarea" placeholder="Berikan catatan evaluasi untuk bulan ini..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Paraf Digital</label>
+                            <div class="signature-pad-container">
+                                <canvas id="signature-canvas"></canvas>
+                            </div>
+                            <button type="button" class="clear-sig-btn" onclick="clearSignature()">Ulangi</button>
+                            <div style="clear:both;"></div>
+                        </div>
+
+                        <button type="button" id="btn-approve" class="btn-approve" onclick="submitApproval()">
+                            <i class="fa-solid fa-check-double"></i> APPROVE BULAN INI
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
     <script>
-        // --- 1. SETUP SUPABASE ---
-        var SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
-        var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E'; 
-        
-        let supabaseClient = null;
-        try {
-            if (window.supabase) {
-                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            }
-        } catch (e) {
-            console.error("Supabase gagal diinit:", e);
+        // Fungsi Sidebar & Navigasi Pintar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
         }
 
+        // --- 1. SETUP SUPABASE ---
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E'; 
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         let currentMonth = null;
+        let isDrawing = false;
+        let lastX = 0; let lastY = 0;
+        const canvas = document.getElementById('signature-canvas');
+        const ctx = canvas.getContext('2d');
+
+        window.onload = () => {
+            setupDynamicNavigation();
+            window.addEventListener('resize', resizeCanvas);
+        };
+
+        // Routing Navigasi Dinamis
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session) return;
+
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('jabatan')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+
+                    let homeLink = 'index.html';
+                    let menuLink = 'menu_utama.html';
+
+                    if (jabatan.includes('OPERATOR')) {
+                        homeLink = 'OPERATOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_OPERATOR.html';
+                    } else if (jabatan.includes('SUPERVISOR')) {
+                        homeLink = 'SUPERVISOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                    } else if (jabatan.includes('SUPERINTENDENT')) {
+                        homeLink = 'SUPERINTENDENT_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                    } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                        homeLink = 'MANAGER_HOME.html';
+                        menuLink = 'MENU_UTAMA_MANAGER.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                        homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                        homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                    }
+
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) {
+                console.error("Gagal mengatur navigasi dinamis:", err);
+            }
+        }
 
         // --- 2. LOAD DATA BY MONTH ---
         async function loadDataByMonth() {
-            if (!supabaseClient) {
-                alert("Koneksi Database Gagal. Periksa internet atau script.");
-                return;
-            }
-
             const picker = document.getElementById('month-picker');
             const container = document.getElementById('list-container');
             const approvalArea = document.getElementById('approval-area');
@@ -305,12 +515,12 @@
             if (!picker.value) return;
             
             currentMonth = picker.value; // Format YYYY-MM
-            container.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</div>';
+            container.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin text-primary text-2xl mb-2"></i><br>Memuat data...</div>';
             
             const startDate = `${currentMonth}-01`;
             
             try {
-                // 1. CEK STATUS APPROVAL DULU
+                // 1. CEK STATUS APPROVAL PRODUKSI DULU
                 const { data: approvalData, error: approvalError } = await supabaseClient
                     .from('jpdo_approval_produksi')
                     .select('*')
@@ -319,7 +529,7 @@
 
                 if (approvalError) throw approvalError;
 
-                // 2. Fetch Data Log
+                // 2. Fetch Data Log Supervisor
                 const { data: logData, error: logError } = await supabaseClient
                     .from('jpdo_log')
                     .select('tanggal, nama_supervisor, catatan_supervisor, status_hari')
@@ -332,7 +542,7 @@
                 // 3. Render List
                 container.innerHTML = '';
                 if (!logData || logData.length === 0) {
-                    container.innerHTML = '<div class="empty-state">Tidak ada laporan pada bulan ini.</div>';
+                    container.innerHTML = '<div class="empty-state">Tidak ada laporan tersimpan pada bulan ini.</div>';
                     approvalArea.classList.add('hidden');
                 } else {
                     renderList(logData);
@@ -340,22 +550,19 @@
 
                     // 4. Logic Tampilan Approval
                     if (approvalData) {
-                        // SUDAH DI-APPROVE -> FORM HILANG, TAMPILKAN PESAN CLEAN
                         formWrapper.classList.add('hidden');
                         successMsg.classList.remove('hidden');
-                        approvedInfo.innerHTML = `Disetujui oleh: <b>${approvalData.nama_produksi}</b><br>Pada: ${new Date(approvalData.created_at).toLocaleString('id-ID')}`;
+                        approvedInfo.innerHTML = `Disetujui oleh: <b style="color:var(--text-main);">${approvalData.nama_produksi}</b><br>Pada: ${new Date(approvalData.created_at).toLocaleString('id-ID')}`;
                     } else {
-                        // BELUM DI-APPROVE -> TAMPILKAN FORM
                         formWrapper.classList.remove('hidden');
                         successMsg.classList.add('hidden');
-                        // Resize canvas
                         setTimeout(resizeCanvas, 100);
                     }
                 }
 
             } catch (err) {
                 console.error(err);
-                container.innerHTML = `<div class="empty-state" style="color:#ef4444">Gagal memuat: ${err.message}</div>`;
+                container.innerHTML = `<div class="empty-state" style="color:var(--danger)">Gagal memuat: ${err.message}</div>`;
                 approvalArea.classList.add('hidden');
             }
         }
@@ -387,9 +594,9 @@
                         <span class="date-month">${month}</span>
                     </div>
                     <div class="item-content">
-                        <div class="item-spv">${item.nama_supervisor}</div>
+                        <div class="item-spv"><i class="fa-solid fa-user-check text-primary opacity-80 mr-1"></i> ${item.nama_supervisor}</div>
                         <div class="item-note ${!isKerja ? 'item-status-libur' : ''}">
-                            ${note}
+                            "${note}"
                         </div>
                     </div>
                 `;
@@ -398,17 +605,12 @@
         }
 
         // --- 3. LOGIKA TANDA TANGAN (Canvas) ---
-        const canvas = document.getElementById('signature-canvas');
-        const ctx = canvas.getContext('2d');
-        let isDrawing = false;
-        let lastX = 0; let lastY = 0;
-
         function resizeCanvas() {
             const container = canvas.parentElement;
             canvas.width = container.clientWidth;
             canvas.height = container.clientHeight;
-            ctx.strokeStyle = '#000000'; // Tinta Hitam
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#000000'; // Tinta Hitam di background terang
+            ctx.lineWidth = 2.5;
             ctx.lineCap = 'round';
         }
 
@@ -417,6 +619,7 @@
         canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', () => isDrawing = false);
         canvas.addEventListener('mouseout', () => isDrawing = false);
+        
         canvas.addEventListener('touchstart', (e) => {
             isDrawing = true;
             const rect = canvas.getBoundingClientRect();
@@ -424,6 +627,7 @@
             lastY = e.touches[0].clientY - rect.top;
             e.preventDefault();
         }, { passive: false });
+        
         canvas.addEventListener('touchmove', (e) => {
             if (!isDrawing) return;
             const rect = canvas.getBoundingClientRect();
@@ -433,6 +637,7 @@
             lastX = x; lastY = y;
             e.preventDefault();
         }, { passive: false });
+        
         canvas.addEventListener('touchend', () => isDrawing = false);
 
         function draw(e) { if (!isDrawing) return; drawLine(lastX, lastY, e.offsetX, e.offsetY); lastX = e.offsetX; lastY = e.offsetY; }
@@ -445,21 +650,20 @@
 
         // --- 4. SUBMIT APPROVAL (PRODUKSI) ---
         async function submitApproval() {
-            console.log("Tombol ditekan"); 
-            
-            if (!supabaseClient) {
-                alert("Koneksi Database Gagal. Cek konfigurasi.");
-                return;
-            }
-
             const btn = document.getElementById('btn-approve');
             const name = document.getElementById('prod-name').value;
             const note = document.getElementById('prod-note').value;
 
-            if (!name) { alert("Nama Staff Produksi wajib diisi!"); return; }
-            if (isCanvasBlank()) { alert("Mohon tanda tangan terlebih dahulu!"); return; }
+            // Setup Tema Terang untuk SweetAlert
+            const swalLightStyle = {
+                background: '#ffffff', color: '#333333', confirmButtonColor: '#c91919', cancelButtonColor: '#e5e7eb'
+            };
 
-            btn.innerHTML = 'Menyimpan...';
+            if (!name) { Swal.fire({...swalLightStyle, icon:'warning', title:'Data Kurang', text:"Nama Staff Produksi wajib diisi!"}); return; }
+            if (isCanvasBlank()) { Swal.fire({...swalLightStyle, icon:'warning', title:'Tanda Tangan Kosong', text:"Mohon tanda tangan terlebih dahulu!"}); return; }
+
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Menyimpan...';
             btn.disabled = true;
 
             const signatureData = canvas.toDataURL(); // Base64
@@ -477,18 +681,21 @@
 
                 if (error) throw error;
 
-                alert("Approval Produksi Berhasil Disimpan!");
-                // Reload halaman agar tampilan berubah jadi "Sudah Disetujui"
-                window.location.reload();
+                Swal.fire({
+                    ...swalLightStyle,
+                    icon: 'success', title: 'Berhasil!', text: 'Approval Produksi Berhasil Disimpan!',
+                    showConfirmButton: false, timer: 1500
+                }).then(() => {
+                    window.location.reload();
+                });
 
             } catch (err) {
                 console.error(err);
-                alert("Gagal menyimpan: " + err.message + "\n\nPastikan tabel 'jpdo_approval_produksi' sudah dibuat.");
-                btn.innerHTML = 'Approve Bulan Ini';
+                Swal.fire({...swalLightStyle, icon:'error', title:'Gagal', text:"Gagal menyimpan: " + err.message});
+                btn.innerHTML = originalText;
                 btn.disabled = false;
             }
         }
     </script>
-
 </body>
 </html>
