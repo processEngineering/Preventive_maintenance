@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Data Laporan - AKG Maintenance</title>
+    <title>Data Laporan LKMR - AKG Maintenance</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <!-- Library jsPDF & AutoTable untuk Export PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -13,303 +17,387 @@
 
     <style>
         :root {
-            /* Tema Merah Hitam */
-            --primary: #DC2626;
-            --primary-dark: #991B1B;
+            /* TEMA WARNA AKG UI (Light Mode) */
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --border: #e5e7eb;
+            --text-main: #333333;
+            --text-muted: #6b7280;
+            --bg-body: #f4f6f8;
+            --bg-card: #ffffff;
+            --bg-input: #f8f9fa;
+            --sidebar-width: 280px; 
             --success: #10B981;
-            
-            --bg-dark: #050505;
-            --bg-card: #121212;
-            
-            --text-white: #FFFFFF;
-            --text-gray: #A3A3A3;
-            
-            --border-light: rgba(255,255,255,0.1);
-            --nav-height: 70px;
+            --warning: #F59E0B;
+            --danger: #EF4444;
         }
 
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
-            font-family: 'Inter', sans-serif; 
-            -webkit-tap-highlight-color: transparent; 
-        }
-
+        /* === GLOBAL RESET === */
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; -webkit-tap-highlight-color: transparent; }
+        
         body {
-            background: var(--bg-dark);
-            min-height: 100vh;
-            color: var(--text-white);
-            display: flex;
-            flex-direction: column;
-            padding-bottom: var(--nav-height);
+            margin: 0; padding: 0;
+            background: var(--bg-body);
+            font-family: 'Inter', sans-serif;
+            font-size: 7pt;
+            padding-bottom: 40px;
+            overflow: auto; 
+            color: var(--text-main);
         }
 
-        .header-fixed {
-            position: fixed;
+        /* --- TOP ACTION BAR (GARIS TIGA + KONTROL HORIZONTAL) --- */
+        .top-bar {
+            position: sticky;
             top: 0;
             left: 0;
             right: 0;
-            background: var(--bg-dark);
-            padding: 20px;
-            border-bottom: 1px solid var(--border-light);
-            z-index: 50;
+            background: #1e293b; /* Warna gelap profesional */
+            padding: 10px 20px;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start; /* Posisi ke Kiri */
             align-items: center;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            gap: 25px; 
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            flex-wrap: wrap; 
         }
 
-        .header-title h1 {
-            font-size: 20px;
-            font-weight: 800;
-            color: var(--primary);
-            text-transform: uppercase;
-            letter-spacing: -0.5px;
-            margin: 0; /* Pastikan margin 0 agar vertikal align bagus */
+        /* Tombol Hamburger di Kiri */
+        .hamburger-btn {
+            width: 42px; height: 42px;
+            background: var(--primary); color: white;
+            border-radius: 8px; display: flex; justify-content: center; align-items: center;
+            font-size: 20px; cursor: pointer; transition: 0.2s;
+            flex-shrink: 0;
         }
+        .hamburger-btn:hover { background: var(--primary-dark); transform: scale(1.05); }
+        .hamburger-btn:active { transform: scale(0.95); }
 
-        /* Span subtitle dihapus karena elemennya dihilangkan di HTML */
-
-        .header-actions {
+        /* Panel Kontrol di sebelah Kanan Garis Tiga */
+        .controls-horizontal {
             display: flex;
+            align-items: center;
             gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
         }
 
-        .btn-action {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid var(--border-light);
-            color: var(--text-white);
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 1px;
+        .controls-horizontal span.ctrl-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: white;
             text-transform: uppercase;
-            transition: all 0.3s;
+            margin-right: 5px;
+            font-family: 'Inter', sans-serif;
         }
 
-        .btn-action:active {
-            background: var(--primary);
-            border-color: var(--primary);
+        .btn-ctrl {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        /* Tombol PDF Spesifik */
-        .btn-pdf {
-            background: rgba(220, 38, 38, 0.15);
-            border-color: rgba(220, 38, 38, 0.4);
-            color: #ffb3b3;
-        }
-        .btn-pdf:hover {
-            background: rgba(220, 38, 38, 0.3);
-        }
+        .btn-show { background: #22c55e; color: white; }
+        .btn-show:hover { background: #16a34a; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
 
-        /* Container Table Horizontal */
-        .table-container {
-            margin-top: 85px; /* Offset header height */
-            padding: 0 20px 20px 20px;
+        .btn-pdf { background: var(--primary); color: white; border: none; }
+        .btn-pdf:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(201,25,25,0.3); }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 2000; opacity: 0; visibility: hidden; transition: 0.3s;
+            backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+        
+        .side-nav {
+            position: fixed; top: 0; left: -400px; width: 320px; height: 100vh;
+            background: white; z-index: 2001; transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+            display: flex; flex-direction: column; padding: 25px; box-shadow: 10px 0 30px rgba(0,0,0,0.3);
+            font-family: 'Inter', sans-serif; 
+        }
+        .side-nav.active { left: 0; }
+
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+        .sidebar-title { font-weight: bold; color: var(--primary); font-size: 24px; }
+        .sidebar-close { font-size: 30px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: #666; 
+            background: white; width: 100%; padding: 18px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: bold; font-size: 16px;
+        }
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 24px; color: var(--primary); }
+
+        /* --- APP CONTAINER --- */
+        .app-container {
             width: 100%;
-            overflow-x: auto; /* Scroll horizontal jika layar kecil */
-            -webkit-overflow-scrolling: touch;
+            padding: 20px;
+        }
+
+        /* --- TABEL DATA --- */
+        .table-wrapper {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            border: 1px solid var(--border);
+            overflow-x: auto;
+            margin-top: 10px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            white-space: nowrap; /* Mencegah text turun ke bawah */
             font-size: 13px;
+            white-space: nowrap;
         }
 
         thead {
-            background: var(--bg-card);
+            background: #f8f9fa;
         }
 
         th {
-            padding: 15px 20px;
+            padding: 16px 20px;
             text-align: left;
-            color: var(--primary);
+            color: var(--text-muted);
             font-weight: 800;
             text-transform: uppercase;
             font-size: 11px;
-            letter-spacing: 1px;
-            border-bottom: 2px solid var(--border-light);
-            position: sticky;
-            top: 0;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--primary);
         }
 
         td {
-            padding: 15px 20px;
-            border-bottom: 1px solid var(--border-light);
-            color: var(--text-gray);
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-main);
+            vertical-align: top;
+            font-weight: 500;
+        }
+
+        tr:hover td {
+            background-color: #fafafa;
         }
 
         /* Highlight Columns */
         td.highlight-pic {
-            color: var(--text-white);
-            font-weight: 700;
+            color: var(--primary);
+            font-weight: 800;
         }
 
         td.highlight-mesin {
-            color: #60A5FA; /* Biru muda */
+            font-weight: 700;
         }
 
         /* Status Badge */
         .status-badge {
             display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
+            padding: 6px 12px;
+            border-radius: 6px;
             font-size: 10px;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        /* APPROVED JADI PUTIH */
         .status-badge.approved {
-            background: rgba(255, 255, 255, 0.1);
-            color: #FFFFFF;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: #dcfce7;
+            color: var(--success);
+            border: 1px solid #a7f3d0;
         }
 
         .status-badge.pending {
-            background: rgba(220, 38, 38, 0.1);
-            color: var(--primary);
-            border: 1px solid rgba(220, 38, 38, 0.3);
+            background: #fee2e2;
+            color: var(--danger);
+            border: 1px solid #fca5a5;
         }
 
-        /* Feedback Text - Normal Font Style */
+        /* Feedback Text */
         .feedback-text {
-            color: #E5E7EB;
-            font-style: normal; /* Tidak miring */
+            color: var(--text-muted);
+            font-style: italic;
             font-size: 12px;
             max-width: 300px;
-            overflow: hidden;
-            text-overflow: ellipsis;
             white-space: normal;
+            line-height: 1.4;
         }
 
         .loading-state, .empty-state {
-            padding: 40px;
+            padding: 60px 20px;
             text-align: center;
-            color: var(--text-gray);
+            color: var(--text-muted);
             font-size: 13px;
+            font-weight: 700;
             letter-spacing: 1px;
             text-transform: uppercase;
         }
 
-        /* Bottom Nav */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100%;
-            max-width: 100%; 
-            background: #000000;
-            border-top: 1px solid var(--primary-dark);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding: 12px 0;
-            height: var(--nav-height);
-            z-index: 100;
-            box-shadow: 0 -5px 20px rgba(220, 38, 38, 0.1);
-        }
-
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            color: #555;
-            width: 56px;
-            height: 44px;
-            transition: all 0.3s ease;
-        }
-
-        .nav-item svg { width: 24px; height: 24px; stroke-width: 2; }
-        .nav-item.active { color: var(--primary); }
-        .nav-item:hover { color: var(--text-white); }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { height: 6px; width: 6px; }
-        ::-webkit-scrollbar-track { background: #050505; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+        /* Custom Scrollbar untuk Tabel */
+        .table-wrapper::-webkit-scrollbar { height: 8px; }
+        .table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .table-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .table-wrapper::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
     </style>
 </head>
 <body>
 
-    <!-- Header Fixed -->
-    <header class="header-fixed">
-        <div class="header-title">
-            <!-- Tulisan AKG Maintenance Dihapus -->
-            <h1>DATA LAPORAN</h1>
+    <!-- TOP ACTION BAR (Horizontal Control Panel & Hamburger) -->
+    <div class="top-bar no-print">
+        <!-- Tombol Navigasi Garis 3 di sebelah KIRI -->
+        <div class="hamburger-btn" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
         </div>
-        <div class="header-actions">
-            <button class="btn-action btn-pdf" onclick="exportPDF()">
-                EKSPOR PDF
-            </button>
-            <button class="btn-action" onclick="fetchData()">
-                REFRESH
-            </button>
-        </div>
-    </header>
 
-    <!-- Table Container -->
-    <div class="table-container">
-        <table id="dataTable">
-            <thead>
-                <tr>
-                    <th>TANGGAL</th>
-                    <th>SHIFT</th>
-                    <th>PIC</th>
-                    <th>MESIN</th>
-                    <th>JENIS PROBLEM</th>
-                    <th>DESKRIPSI MASALAH</th>
-                    <th>WAKTU MULAI</th>
-                    <th>WAKTU SELESAI</th>
-                    <th>TARGET WAKTU PM</th>
-                    <th>STATUS</th>
-                    <th>FEEDBACK SPV</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody">
-                <!-- Data Rows Rendered Here -->
-            </tbody>
-        </table>
-        
-        <div id="loading" class="loading-state">MEMUAT DATA...</div>
-        <div id="empty" class="empty-state" style="display: none;">TIDAK ADA DATA.</div>
+        <!-- Panel Kontrol Horizontal di sebelahnya -->
+        <div class="controls-horizontal">
+            <span class="ctrl-title"><i class="fa-solid fa-table"></i> DATA LKMR</span>
+            <button onclick="fetchData()" class="btn-ctrl btn-show"><i class="fa-solid fa-rotate-right"></i> REFRESH</button>
+            <button onclick="exportPDF()" class="btn-ctrl btn-pdf"><i class="fa-solid fa-file-pdf"></i> EKSPOR PDF</button>
+        </div>
     </div>
 
-    <!-- Bottom Nav -->
-    <nav class="bottom-nav">
-        <a href="index.html" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+    <!-- OVERLAY & SIDEBAR (NO-PRINT) -->
+    <div class="sidebar-overlay no-print" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <nav class="side-nav no-print" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
         </a>
-        <a href="menu_utama.html" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
         </a>
-        <a href="download_data.html" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <a href="download_data.html" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
         </a>
         <a href="informasi_akun.html" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
         </a>
     </nav>
 
-    <!-- Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- CONTENT CONTAINER -->
+    <div class="app-container">
+        <!-- Table Container -->
+        <div class="table-wrapper">
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>TANGGAL</th>
+                        <th>SHIFT</th>
+                        <th>PIC</th>
+                        <th>MESIN</th>
+                        <th>JENIS PROBLEM</th>
+                        <th>DESKRIPSI MASALAH</th>
+                        <th>WAKTU MULAI</th>
+                        <th>WAKTU SELESAI</th>
+                        <th>TARGET WAKTU PM</th>
+                        <th>STATUS</th>
+                        <th>FEEDBACK SPV</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Data Rows Rendered Here -->
+                </tbody>
+            </table>
+            
+            <div id="loading" class="loading-state">
+                <i class="fa-solid fa-circle-notch fa-spin text-primary" style="font-size: 24px; margin-bottom: 10px; color: var(--primary);"></i><br>
+                MEMUAT DATA...
+            </div>
+            <div id="empty" class="empty-state" style="display: none;">
+                <i class="fa-regular fa-folder-open" style="font-size: 32px; margin-bottom: 10px; color: #cbd5e1;"></i><br>
+                TIDAK ADA DATA.
+            </div>
+        </div>
+    </div>
 
+    <!-- LOGIKA JAVASCRIPT (TIDAK DIUBAH FUNGSINYA) -->
     <script>
+        // Fungsi Buka Tutup Sidebar & Navigasi Pintar
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
         // Setup Supabase
         const supabaseUrl = 'https://dsyvlavphvrdidmodokd.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         const client = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
+
+        window.onload = () => {
+            setupDynamicNavigation();
+            fetchData();
+        };
+
+        // Routing Navigasi Dinamis
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await client.auth.getSession();
+                if (!session) return;
+
+                const { data: profile } = await client
+                    .from('profiles')
+                    .select('jabatan')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+
+                    let homeLink = 'index.html';
+                    let menuLink = 'menu_utama.html';
+
+                    if (jabatan.includes('OPERATOR')) {
+                        homeLink = 'OPERATOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_OPERATOR.html';
+                    } else if (jabatan.includes('SUPERVISOR')) {
+                        homeLink = 'SUPERVISOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                    } else if (jabatan.includes('SUPERINTENDENT')) {
+                        homeLink = 'SUPERINTENDENT_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                    } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                        homeLink = 'MANAGER_HOME.html';
+                        menuLink = 'MENU_UTAMA_MANAGER.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                        homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                        homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                    }
+
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) {
+                console.error("Gagal mengatur navigasi dinamis:", err);
+            }
+        }
 
         // FETCH DATA
         async function fetchData() {
@@ -358,10 +446,10 @@
 
                     // Feedback Logic (TANPA NAMA SUPERINTENDENT)
                     const feedback = item.feedback 
-                        ? `<div class="feedback-text">${item.feedback}</div>` 
+                        ? `<div class="feedback-text">"${item.feedback}"</div>` 
                         : '-';
 
-                    // Urutan Kolom Baru
+                    // Urutan Kolom
                     const row = `
                         <tr>
                             <td>${formattedDate}</td>
@@ -386,7 +474,7 @@
             }
         }
 
-        // EXPORT PDF FUNCTION
+        // EXPORT PDF FUNCTION MENGGUNAKAN JSPDF AUTOTABLE
         async function exportPDF() {
             const { jsPDF } = window.jspdf;
             
@@ -405,14 +493,14 @@
                 startY: 28,
                 theme: 'grid',
                 headStyles: { 
-                    fillColor: [220, 38, 38], // Merah Header
+                    fillColor: [201, 25, 25], // Merah Header (Theme Primary)
                     textColor: [255, 255, 255], // Putih Text
                     fontStyle: 'bold'
                 },
                 styles: { 
                     fontSize: 8, 
                     cellPadding: 3,
-                    textColor: [0, 0, 0] // Hitam untuk isi agar jelas di kertas putih
+                    textColor: [51, 51, 51] // Hitam/Abu gelap untuk isi
                 },
                 columnStyles: {
                     5: { cellWidth: 50 }, // Deskripsi lebih lebar
@@ -429,11 +517,8 @@
             });
 
             // Simpan File
-            doc.save('Laporan_Maintenance_AKG.pdf');
+            doc.save(`Laporan_LKMR_${new Date().toISOString().slice(0,10)}.pdf`);
         }
-
-        // Auto load on open
-        fetchData();
     </script>
 </body>
 </html>
