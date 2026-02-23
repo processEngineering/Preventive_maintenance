@@ -8,49 +8,155 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- Font & Icons untuk UI Bar & Sidebar -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <style>
-        /* --- RESET & BASIC (ISO STANDARD) --- */
-        * { 
-            box-sizing: border-box; 
-            -webkit-print-color-adjust: exact; 
-            print-color-adjust: exact; 
-        }
-        body { 
-            margin: 0; 
-            padding: 0; 
-            background-color: #525659; 
-            font-family: Arial, sans-serif; /* HANYA ARIAL */
+        :root {
+            /* TEMA WARNA AKG UI */
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --border: #e5e7eb;
+            --text-main: #333333;
+            --sidebar-width: 280px; 
         }
 
-        /* --- UI CONTROLS --- */
-        .ui-controls {
-            position: fixed; top: 0; left: 0; right: 0;
-            background: #333; color: white; padding: 10px;
-            display: flex; justify-content: center; gap: 10px; z-index: 9999;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
-        .ui-controls input, .ui-controls button { padding: 8px 12px; border-radius: 4px; border: none; font-size: 14px; }
-        .ui-controls button { background: #DC2626; color: white; font-weight: bold; cursor: pointer; }
-
-        /* --- CONTAINER UTAMA --- */
-        .page-container {
-            display: flex; justify-content: center;
-            padding-top: 60px; padding-bottom: 40px;
-            overflow: auto;
+        /* === GLOBAL RESET === */
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        
+        body {
+            margin: 0; padding: 0;
+            background: #525659;
+            font-family: Arial, sans-serif;
+            font-size: 7pt;
+            /* Padding atas dihapus karena sudah di-handle oleh top-bar sticky */
+            padding-bottom: 40px;
+            overflow: auto; 
         }
 
-        /* --- KERTAS A4 (FISIK) --- */
-        .page-a4 {
-            width: 210mm; 
-            height: 297mm; 
-            padding: 10mm; 
-            background: white; color: black;
-            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        /* --- TOP ACTION BAR (GARIS TIGA + KONTROL HORIZONTAL) --- */
+        .top-bar {
+            position: sticky;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #1e293b; /* Warna gelap agar kontras */
+            padding: 10px 20px;
+            display: flex;
+            justify-content: flex-start; /* Posisi ke Kiri */
+            align-items: center;
+            gap: 25px; /* Jarak antara Garis 3 dan Panel Kontrol */
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            flex-wrap: wrap;
+        }
+
+        /* Tombol Hamburger di Kiri */
+        .hamburger-btn {
+            width: 42px; height: 42px;
+            background: var(--primary); color: white;
+            border-radius: 8px; display: flex; justify-content: center; align-items: center;
+            font-size: 20px; cursor: pointer; transition: 0.2s;
+            flex-shrink: 0;
+        }
+        .hamburger-btn:hover { background: var(--primary-dark); transform: scale(1.05); }
+        .hamburger-btn:active { transform: scale(0.95); }
+
+        /* Panel Kontrol di sebelah Kanan Garis Tiga */
+        .controls-horizontal {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+        }
+
+        .controls-horizontal span.ctrl-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: white;
+            text-transform: uppercase;
+            margin-right: 5px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .input-ctrl, .btn-ctrl {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .input-ctrl { background: #f8f9fa; color: #333; }
+        .input-ctrl:focus { border-color: var(--primary); outline: 2px solid var(--primary); }
+
+        .btn-show { background: #22c55e; color: white; border: none; }
+        .btn-show:hover { background: #16a34a; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+        .btn-print { background: var(--primary); color: white; border: none; }
+        .btn-print:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(201,25,25,0.3); }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 2000; opacity: 0; visibility: hidden; transition: 0.3s;
+            backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+        
+        .side-nav {
+            position: fixed; top: 0; left: -400px; width: 320px; height: 100vh;
+            background: white; z-index: 2001; transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+            display: flex; flex-direction: column; padding: 25px; box-shadow: 10px 0 30px rgba(0,0,0,0.3);
+            font-family: 'Inter', sans-serif; 
+        }
+        .side-nav.active { left: 0; }
+
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+        .sidebar-title { font-weight: bold; color: var(--primary); font-size: 24px; }
+        .sidebar-close { font-size: 30px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: #666; 
+            background: white; width: 100%; padding: 18px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: bold; font-size: 16px;
+        }
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 24px; color: var(--primary); }
+
+        /* === WADAH KERTAS (A4 PORTRAIT) === */
+        .sheet-container {
+            width: 100%; overflow-x: auto; display: flex; justify-content: flex-start; 
+            padding: 30px 15px; box-sizing: border-box; -webkit-overflow-scrolling: touch; 
+            position: relative; z-index: 1;
+        }
+
+        @media (min-width: 820px) {
+            .sheet-container { justify-content: center; }
+        }
+
+        .sheet {
+            background: white;
+            width: 794px; /* Lebar A4 Portrait di 96 DPI */
+            min-width: 794px;
+            min-height: 1122px; /* Tinggi A4 Portrait di 96 DPI */
+            margin: 0 auto;
+            padding: 10mm; /* Sesuai file original */
             position: relative;
-            font-size: 8pt; 
-            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            border-radius: 4px;
+            color: black;
+            font-size: 8pt;
+            box-sizing: border-box;
         }
 
         /* =========================================
@@ -58,11 +164,11 @@
            ========================================= */
         table.iso-header {
             width: 100%;
-            height: 26mm; /* TINGGI MATI */
+            height: 26mm; 
             border-collapse: collapse;
             border: 1px solid #000;
             margin-bottom: 2mm;
-            table-layout: fixed; /* WAJIB */
+            table-layout: fixed; 
             font-family: Arial, sans-serif;
         }
 
@@ -70,7 +176,8 @@
             padding: 0 5px;
             vertical-align: middle;
             overflow: hidden;
-            border-right: 1px solid #000; /* Garis pemisah kolom */
+            border-right: 1px solid #000;
+            color: black;
         }
         
         table.iso-header td:last-child {
@@ -80,59 +187,38 @@
         /* KOLOM 1: IDENTITAS (45%) */
         .h-col-1 { width: 45%; }
         
-        /* Layout Logo & Teks menggunakan Table nested untuk presisi */
         table.h-identity {
-            width: 100%;
-            border: none;
-            border-collapse: collapse;
+            width: 100%; border: none; border-collapse: collapse;
         }
-        table.h-identity td { border: none; padding: 0; vertical-align: middle; }
+        table.h-identity td { border: none; padding: 0; vertical-align: middle; color: black; }
         
-        /* Perbaikan Logo dan Teks agar sejajar */
         .h-logo { width: 20mm; text-align: center; padding-right: 2mm !important; }
         .h-logo img { height: 18mm; width: auto; display: block; margin: 0 auto; }
         
         .h-text { 
-            font-weight: 900; 
-            color: black; 
-            text-align: left; 
-            line-height: 1.2;
-            vertical-align: middle;
+            font-weight: 900; color: black; text-align: left; 
+            line-height: 1.2; vertical-align: middle;
         }
-        /* Hapus AKG, sisakan PT... */
         .company-name { font-size: 11pt; display: block; font-weight: bold; }
 
         /* KOLOM 2: JUDUL (30%) */
         .h-col-2 { width: 30%; text-align: center; }
         .h-title {
-            font-weight: 900;
-            font-size: 12pt;
-            text-decoration: underline;
-            line-height: 1.2;
-            text-transform: uppercase;
-            display: block;
+            font-weight: 900; font-size: 12pt; text-decoration: underline;
+            line-height: 1.2; text-transform: uppercase; display: block;
         }
 
         /* KOLOM 3: META (25%) */
         .h-col-3 { width: 25%; padding: 2px !important; }
         
-        /* Nested Table untuk Meta Data - GARIS & JARAK PRESISI */
         table.h-meta-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 7pt;
-            line-height: 1.3;
+            width: 100%; border-collapse: collapse; font-size: 7pt; line-height: 1.3;
         }
-        table.h-meta-table td {
-            border: none !important;
-            padding: 0;
-            vertical-align: top;
-        }
+        table.h-meta-table td { border: none !important; padding: 0; vertical-align: top; color: black;}
         
         .hm-label { width: 28mm; font-weight: bold; white-space: nowrap; }
         .hm-sep   { width: 2mm; text-align: center; font-weight: bold; }
         .hm-val   { font-weight: normal; white-space: nowrap; }
-
 
         /* --- INFO AREA --- */
         .info-section { display: flex; width: 100%; margin-bottom: 2mm; font-size: 8pt; }
@@ -145,18 +231,13 @@
         /* --- TABEL UTAMA (FIXED LAYOUT) --- */
         .main-table {
             width: 100%; border-collapse: collapse; font-size: 7pt;
-            table-layout: fixed;
-            border: 1px solid black;
+            table-layout: fixed; border: 1px solid black;
         }
         .main-table th, .main-table td {
-            border: 1px solid black;
-            padding: 0 2px;
-            vertical-align: middle;
-            overflow: hidden;
+            border: 1px solid black; padding: 0 2px; vertical-align: middle; overflow: hidden; color: black;
         }
         .main-table th {
-            height: 7mm; background: white; font-weight: 900;
-            text-align: center; text-transform: uppercase;
+            height: 7mm; background: white; font-weight: 900; text-align: center; text-transform: uppercase;
         }
         .main-table tr { height: 5.5mm; }
         .main-table td { height: 5.5mm; max-height: 5.5mm; }
@@ -174,43 +255,30 @@
 
         /* --- CHECKBOX LANDSCAPE --- */
         .cb-container {
-            display: flex; flex-direction: row; 
-            flex-wrap: nowrap;
-            gap: 1.5mm;
-            justify-content: flex-start;
-            align-items: center; 
-            width: 100%;
-            white-space: nowrap;
-            overflow: hidden; 
+            display: flex; flex-direction: row; flex-wrap: nowrap; gap: 1.5mm;
+            justify-content: flex-start; align-items: center; width: 100%;
+            white-space: nowrap; overflow: hidden; 
         }
         .cb-item { 
-            display: flex; align-items: center; gap: 0.5mm; 
-            font-size: 5.5pt;
-            line-height: 1; 
+            display: flex; align-items: center; gap: 0.5mm; font-size: 5.5pt; line-height: 1; 
         }
         .sq-box {
             width: 2.5mm; height: 2.5mm; border: 1px solid black;
             display: flex; align-items: center; justify-content: center;
-            font-size: 5pt; font-weight: bold;
-            flex-shrink: 0;
+            font-size: 5pt; font-weight: bold; flex-shrink: 0;
         }
 
         .item-text, .ft-item-cell { 
-            font-weight: normal; 
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
+            font-weight: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
         }
         .ft-item-cell { padding-left: 2mm !important; }
 
         /* --- KONDISI MOULD (KANAN) --- */
         .mould-note-cell {
-            vertical-align: top !important; 
-            padding: 2mm !important;
+            vertical-align: top !important; padding: 2mm !important;
         }
         .mn-title {
-            font-weight: 900; text-decoration: underline; margin-bottom: 2mm;
-            font-size: 8pt; display: block;
+            font-weight: 900; text-decoration: underline; margin-bottom: 2mm; font-size: 8pt; display: block;
         }
         .mn-content {
             font-weight: normal; font-size: 8pt; white-space: pre-wrap; line-height: 1.2;
@@ -221,15 +289,13 @@
         .sig-box { flex: 1; border-right: 1px solid black; display: flex; flex-direction: column; }
         .sig-box:last-child { border-right: none; }
         .sig-title {
-            border-bottom: 1px solid black; height: 8mm;
-            display: flex; align-items: center; justify-content: center;
+            border-bottom: 1px solid black; height: 8mm; display: flex; align-items: center; justify-content: center;
             font-weight: bold; font-size: 7pt; text-align: center;
         }
         .sig-space { height: 14mm; display: flex; align-items: center; justify-content: center; }
-        .sig-img { max-height: 12mm; max-width: 90%; }
+        .sig-img { max-height: 12mm; max-width: 90%; filter: invert(1) brightness(0); /* Filter agar hitam pekat */ }
         .sig-name {
-            border-top: 1px solid black; height: 6mm;
-            display: flex; align-items: center; justify-content: center;
+            border-top: 1px solid black; height: 6mm; display: flex; align-items: center; justify-content: center;
             font-weight: bold; font-size: 8pt; text-transform: uppercase;
         }
 
@@ -240,9 +306,14 @@
             justify-content: center; align-items: center; flex-direction: column; color: white; z-index: 10000;
         }
 
-        @media screen and (max-width: 800px) {
-            .page-container { justify-content: flex-start; padding-left: 10px; padding-right: 10px; }
-            .page-a4 { transform: none; margin: 0; flex-shrink: 0; }
+        /* === PENGATURAN CETAK === */
+        @media print {
+            @page { size: A4 portrait; margin: 0; }
+            body { background: white; margin: 0; padding: 0; zoom: 95%; }
+            .no-print, .top-bar, .sidebar-overlay, .side-nav { display: none !important; }
+            .sheet-container { padding: 0; justify-content: center; overflow: hidden; }
+            .sheet { margin: 0; box-shadow: none; border: none; width: 100%; padding: 5mm; page-break-inside: avoid; }
+            .section-header td { background-color: #E0E0E0 !important; }
         }
     </style>
 </head>
@@ -250,19 +321,55 @@
 
     <div id="loading-overlay">
         <i class="fa fa-spinner fa-spin fa-3x"></i>
-        <p style="margin-top:15px; font-weight:bold;">Memproses...</p>
+        <p style="margin-top:15px; font-weight:bold; font-family:'Inter', sans-serif;">Memproses...</p>
     </div>
 
-    <!-- CONTROLS -->
-    <div class="ui-controls">
-        <input type="date" id="searchDate" onchange="fetchReports()">
-        <button onclick="fetchReports()"><i class="fa fa-search"></i> Cari Data</button>
-        <span style="border-right:1px solid #777;"></span>
-        <button onclick="downloadPDF()"><i class="fa fa-file-pdf"></i> Download PDF</button>
+    <!-- TOP ACTION BAR (Horizontal Control Panel & Hamburger) -->
+    <div class="top-bar no-print">
+        <!-- Tombol Navigasi Garis 3 di sebelah KIRI -->
+        <div class="hamburger-btn" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+        </div>
+
+        <!-- Panel Kontrol Horizontal di sebelahnya -->
+        <div class="controls-horizontal">
+            <span class="ctrl-title"><i class="fa-solid fa-print"></i> KONTROL:</span>
+            <input type="date" id="searchDate" class="input-ctrl">
+            <button class="btn-ctrl btn-show" onclick="fetchReports()"><i class="fa-solid fa-search"></i> CARI DATA</button>
+            <button class="btn-ctrl btn-print" onclick="downloadPDF()"><i class="fa-solid fa-file-pdf"></i> CETAK PDF</button>
+        </div>
     </div>
 
-    <div class="page-container">
-        <div class="page-a4" id="contentToPrint">
+    <!-- OVERLAY & SIDEBAR (NO-PRINT) -->
+    <div class="sidebar-overlay no-print" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <nav class="side-nav no-print" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <!-- CONTAINER KERTAS A4 (DOCUMENT PRINT) -->
+    <div class="sheet-container">
+        <div class="sheet" id="contentToPrint">
             
             <!-- HEADER ISO STRICT (TABLE) -->
             <table class="iso-header">
@@ -362,7 +469,7 @@
                 </thead>
                 <tbody id="paperBody">
                     <!-- Placeholder -->
-                    <tr><td colspan="5" style="text-align:center; height:10mm;">Silakan Pilih Tanggal...</td></tr>
+                    <tr><td colspan="5" style="text-align:center; height:10mm;">Silakan Pilih Tanggal dan Klik Cari Data...</td></tr>
                 </tbody>
             </table>
 
@@ -388,7 +495,13 @@
         </div>
     </div>
 
+    <!-- LOGIKA JAVASCRIPT (TIDAK DIUBAH FUNGSINYA) -->
     <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
         const APP_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
         const APP_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         const supabaseClient = window.supabase.createClient(APP_URL, APP_KEY);
@@ -398,9 +511,53 @@
         let GLOBAL_BASE64_LOGO = "";
 
         window.onload = async function() {
+            setupDynamicNavigation();
             await fetchItemsDef();
             await preloadLogo();
         };
+
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session) return;
+
+                const { data: profile } = await supabaseClient.from('profiles').select('jabatan').eq('id', session.user.id).single();
+
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+
+                    let homeLink = 'index.html';
+                    let menuLink = 'menu_utama.html';
+
+                    if (jabatan.includes('OPERATOR')) {
+                        homeLink = 'OPERATOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_OPERATOR.html';
+                    } else if (jabatan.includes('SUPERVISOR')) {
+                        homeLink = 'SUPERVISOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                    } else if (jabatan.includes('SUPERINTENDENT')) {
+                        homeLink = 'SUPERINTENDENT_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                    } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                        homeLink = 'MANAGER_HOME.html';
+                        menuLink = 'MENU_UTAMA_MANAGER.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                        homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                        homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                    }
+
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) {
+                console.error("Gagal mengatur navigasi dinamis:", err);
+            }
+        }
 
         // --- CORE LOGIC ---
         async function fetchImageAsBase64(url) {
@@ -471,7 +628,7 @@
 
             if(GLOBAL_BASE64_LOGO) {
                 const imgEl = document.getElementById('logoImg');
-                if(imgEl) imgEl.src = GLOBAL_BASE64_LOGO;
+                if(imgEl && imgEl.tagName === 'IMG') imgEl.src = GLOBAL_BASE64_LOGO;
             }
             
             // Fill Info
@@ -567,7 +724,7 @@
             const element = document.getElementById('contentToPrint');
             const imgLogo = document.getElementById('logoImg');
             
-            // Scaling Safety check
+            // Scaling Safety check (DO NOT MODIFY LOGIC)
             const originalHeight = element.scrollHeight;
             const A4_HEIGHT_PX = 1123; 
             
