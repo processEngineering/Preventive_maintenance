@@ -2,105 +2,172 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Laporan POHM - ISO Format</title>
+    <!-- VIEWPORT WAJIB AGAR RESPONSIF DI HP -->
+    <meta name="viewport" content="width=device-width, initial-scale=0.5, user-scalable=yes">
+    <title>AF.SP 05.01.Rev-00 - REPORT POHM</title>
     
+    <!-- Libraries -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
     <style>
-        /* ==================== GLOBAL & UI (DARK MODE) ==================== */
-        * { box-sizing: border-box; }
+        :root {
+            /* TEMA WARNA AKG UI */
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --border: #e5e7eb;
+            --text-main: #333333;
+            --sidebar-width: 280px; 
+        }
+
+        /* === GLOBAL RESET === */
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         
-        body { 
-            background: #000000; 
-            margin: 0; padding: 0; 
+        body {
+            margin: 0; padding: 0;
+            background: #525659;
             font-family: 'Inter', sans-serif;
-            color: #E5E7EB;
-            padding-bottom: 80px; /* Space for Bottom Nav */
-            min-height: 100vh;
+            font-size: 7pt;
+            padding-bottom: 80px;
+            overflow: auto; 
         }
 
-        /* CONTROL BAR (Sticky Header) */
-        .control-bar {
-            background: rgba(15, 15, 15, 0.95);
-            border-bottom: 2px solid #DC2626;
-            padding: 16px; 
-            position: sticky; top: 0; z-index: 100; 
-            display: flex; flex-direction: column; gap: 12px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+        /* --- TOP ACTION BAR (GARIS TIGA + KONTROL HORIZONTAL) --- */
+        .top-bar {
+            position: sticky;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #1e293b; /* Warna gelap profesional */
+            padding: 10px 20px;
+            display: flex;
+            justify-content: flex-start; 
+            align-items: center;
+            gap: 25px; 
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            flex-wrap: wrap; 
         }
 
-        .filter-group {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+        /* Tombol Hamburger di Kiri */
+        .hamburger-btn {
+            width: 42px; height: 42px;
+            background: var(--primary); color: white;
+            border-radius: 8px; display: flex; justify-content: center; align-items: center;
+            font-size: 20px; cursor: pointer; transition: 0.2s;
+            flex-shrink: 0;
         }
+        .hamburger-btn:hover { background: var(--primary-dark); transform: scale(1.05); }
+        .hamburger-btn:active { transform: scale(0.95); }
+
+        /* Panel Kontrol di sebelah Kanan Garis Tiga */
+        .controls-horizontal {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+        }
+
+        .controls-horizontal span.ctrl-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: white;
+            text-transform: uppercase;
+            margin-right: 5px;
+        }
+
+        .input-ctrl, .btn-ctrl {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 12px;
+            font-weight: bold;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .input-ctrl { background: #f8f9fa; color: #333; }
+        .input-ctrl:focus { border-color: var(--primary); outline: 2px solid var(--primary); }
+
+        .btn-show { background: #22c55e; color: white; }
+        .btn-show:hover { background: #16a34a; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+        .btn-pdf { background: var(--primary); color: white; border: none; }
+        .btn-pdf:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(201,25,25,0.3); }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 2000; opacity: 0; visibility: hidden; transition: 0.3s;
+            backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
         
-        .control-bar select {
-            background: #111; color: white; border: 1px solid #333;
-            padding: 10px; border-radius: 8px; font-size: 14px;
-            width: 100%; outline: none;
+        .side-nav {
+            position: fixed; top: 0; left: -400px; width: 320px; height: 100vh;
+            background: white; z-index: 2001; transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+            display: flex; flex-direction: column; padding: 25px; box-shadow: 10px 0 30px rgba(0,0,0,0.3);
         }
-        .control-bar select:focus { border-color: #DC2626; }
+        .side-nav.active { left: 0; }
 
-        .btn-group { display: flex; gap: 10px; }
-        
-        .btn {
-            flex: 1;
-            padding: 12px; border-radius: 8px; border: none; font-size: 14px; font-weight: 700;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; 
-            transition: 0.2s; text-decoration: none;
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+        .sidebar-title { font-weight: bold; color: var(--primary); font-size: 24px; }
+        .sidebar-close { font-size: 30px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: #666; 
+            background: white; width: 100%; padding: 18px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: bold; font-size: 16px;
         }
-        .btn-show { background: #DC2626; color: white; }
-        .btn-show:hover { background: #b91c1c; box-shadow: 0 0 15px rgba(220, 38, 38, 0.4); }
-        .btn-pdf { background: white; color: #DC2626; border: 1px solid #DC2626; }
-        .btn-pdf:hover { background: #f0f0f0; }
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 24px; color: var(--primary); }
 
         /* LOADING OVERLAY */
         #loadingOverlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 20000;
+            background: rgba(0,0,0,0.85); z-index: 20000;
             display: none; justify-content: center; align-items: center; flex-direction: column;
-            color: white; font-size: 16px; text-align: center;
+            color: white; font-size: 18px; text-align: center;
         }
 
-        /* ==================== PREVIEW CONTAINER (SCROLLABLE) ==================== */
-        .preview-wrapper {
-            width: 100%;
-            overflow: auto; /* Bisa digeser horizontal di HP */
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            background: #111; /* Latar belakang area preview */
-            min-height: calc(100vh - 150px);
+        /* ==================== WADAH KERTAS A4 PORTRAIT ==================== */
+        .sheet-container {
+            width: 100%; overflow-x: auto; display: flex; justify-content: flex-start; 
+            padding: 30px 15px; box-sizing: border-box; -webkit-overflow-scrolling: touch; 
+            position: relative; z-index: 1;
         }
 
-        /* ==================== KERTAS A4 (TETAP PUTIH - JANGAN UBAH) ==================== */
+        @media (min-width: 820px) {
+            .sheet-container { justify-content: center; }
+        }
+
         .page {
-            /* Ukuran Pasti A4 Portrait */
+            background: white; color: black;
             width: 210mm; 
             min-height: 297mm; 
-            background: white; 
+            min-width: 210mm; 
             padding: 10mm; 
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
-            display: flex; flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            margin: 0 auto; 
             position: relative;
-            color: black; /* Tinta Hitam */
+            display: flex; flex-direction: column;
             font-family: Arial, sans-serif;
             font-size: 10pt;
-            /* Agar tidak mengecil di HP */
-            min-width: 210mm; 
             box-sizing: border-box;
+            border-radius: 4px;
         }
 
         /* --- STYLING DALAM KERTAS (ISO STANDARD) --- */
         .iso-bold { font-weight: bold !important; }
-        
         table { width: 100%; border-collapse: collapse; border-spacing: 0; }
-        td, th { border: 1px solid black; padding: 4px 6px; vertical-align: middle; text-align: left; }
+        td, th { border: 1px solid black; padding: 4px 6px; vertical-align: middle; text-align: left; color: black; }
 
         /* HEADER LAPORAN */
         .header-main td { border: 1px solid black; }
@@ -109,7 +176,7 @@
         .col-doc { width: 30%; padding: 0 !important; vertical-align: top; }
         .logo-img { max-width: 90px; max-height: 60px; display: block; margin: auto; }
         
-        .tbl-doc td { border: none; border-bottom: 1px solid black; font-size: 8pt; padding: 2px 4px; }
+        .tbl-doc td { border: none; border-bottom: 1px solid black; font-size: 8pt; padding: 2px 4px; color: black;}
         .tbl-doc tr:last-child td { border-bottom: none; }
 
         .box-title { 
@@ -119,148 +186,54 @@
         .title-main { font-size: 12pt; } 
         .title-sub { font-size: 10pt; margin-top: 2px; }
 
-        .tbl-identity td { border: none; padding: 2px; }
+        .tbl-identity td { border: none; padding: 2px; color: black;}
         .chk-large { font-size: 12pt; vertical-align: middle; }
 
         .box-section { border: 1px solid black; margin-bottom: 10px; }
-        .sec-header { border-bottom: 1px solid black; padding: 5px; background: #f2f2f2; font-size: 10pt; }
+        .sec-header { border-bottom: 1px solid black; padding: 5px; background: #f2f2f2; font-size: 10pt; color: black;}
 
         /* GRID CHECKBOX */
         .tbl-grid td { 
             border: 1px dotted black; height: 24px; width: 50%; 
-            vertical-align: bottom; font-size: 10pt; padding-left: 5px; 
+            vertical-align: bottom; font-size: 10pt; padding-left: 5px; color: black;
         }
         .tbl-grid tr:last-child td { border-bottom: none; }
         .tbl-grid tr td:last-child { border-right: none; }
         .tbl-grid tr td:first-child { border-left: none; }
 
         /* TABLE PARTS */
-        .tbl-parts th { background: #f2f2f2; text-align: center; font-weight: bold; font-size: 9pt; }
-        .tbl-parts td { height: 20px; font-size: 9pt; }
+        .tbl-parts th { background: #f2f2f2; text-align: center; font-weight: bold; font-size: 9pt; color: black;}
+        .tbl-parts td { height: 20px; font-size: 9pt; color: black;}
 
-        .tbl-rec td { border: none; border-bottom: 1px dotted black; height: 22px; }
+        .tbl-rec td { border: none; border-bottom: 1px dotted black; height: 22px; color: black;}
         .tbl-rec tr:last-child td { border-bottom: none; }
 
-        /* FOOTER TTD - PROPORTIONAL & CENTERED */
+        /* FOOTER TTD */
         .tbl-sig { 
-            margin-top: 10px; 
-            text-align: center; 
-            border: 1px solid black; 
-            width: 100%; 
-            table-layout: fixed; /* Kunci: Membagi kolom sama rata */
+            margin-top: 10px; text-align: center; border: 1px solid black; width: 100%; table-layout: fixed; 
         }
-        .tbl-sig td { 
-            width: 33.33%; 
-            vertical-align: top; 
-            padding: 0; 
-            border-right: 1px solid black; 
-        }
+        .tbl-sig td { width: 33.33%; vertical-align: top; padding: 0; border-right: 1px solid black; color: black;}
         .tbl-sig td:last-child { border-right: none; }
         
-        .sig-label { 
-            border-bottom: 1px solid black; 
-            background: #f2f2f2; 
-            padding: 5px; 
-            font-size: 9pt; 
-            font-weight: bold; 
-            text-align: center; 
-        }
+        .sig-label { border-bottom: 1px solid black; background: #f2f2f2; padding: 5px; font-size: 9pt; font-weight: bold; text-align: center; color: black;}
+        .sig-area { height: 90px; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 5px; background: white; }
         
-        .sig-area { 
-            height: 90px; 
-            position: relative; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: flex-end; 
-            align-items: center; 
-            padding-bottom: 5px; 
-        }
-        
-        /* IMAGE FILTER: Agar Tinta Putih jadi Hitam di Kertas Putih (Preview Only) */
         .sig-img { 
-            max-height: 55px; 
-            max-width: 100px; 
-            margin-bottom: 2px; 
-            filter: brightness(0); /* Force Black for Preview */
+            max-height: 55px; max-width: 100px; margin-bottom: 2px; 
+            background: white !important; /* Paksa BG Putih */
         }
-        
-        .sig-name-text { 
-            font-size: 9pt; 
-            font-weight: bold; 
-            text-decoration: underline; 
-            margin-top: 2px; 
-            min-height: 15px;
-            text-align: center;
-            width: 100%;
-        }
-        
-        .sig-role { 
-            border-top: 1px solid black; 
-            padding: 5px; 
-            font-size: 9pt; 
-            text-align: center; 
-        }
+        .sig-name-text { font-size: 9pt; font-weight: bold; text-decoration: underline; margin-top: 2px; min-height: 15px; text-align: center; width: 100%; color: black;}
+        .sig-role { border-top: 1px solid black; padding: 5px; font-size: 9pt; text-align: center; color: black;}
 
-        /* ==================== BOTTOM NAV (Mobile App Style) ==================== */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 600px;
-            height: 70px; background-color: #000000; border-top: 1px solid #333;
-            display: flex; justify-content: space-around; align-items: center; z-index: 1000;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.8); 
-        }
-        .nav-item {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: #444; text-decoration: none; font-size: 20px; width: 25%; height: 100%; transition: 0.3s;
-        }
-        .nav-item.active { color: #DC2626; text-shadow: 0 0 10px rgba(220, 38, 38, 0.6); }
-        .nav-item:hover { color: #DC2626; }
-
-        /* ==================== EXPORT CONTAINER (FINAL PERFECT FIX) ==================== */
-        #export-container {
-            /* Gunakan FIXED agar tidak terpengaruh scroll parent */
-            position: fixed; 
-            top: 0; 
-            left: 0;
-            z-index: 99999;
-            background: white; 
-            
-            /* HARDCODE ukuran A4 agar mobile browser tidak bingung */
-            width: 794px; 
-            height: 100vh;
-            
-            /* Penting: Izinkan overflow agar konten panjang tetap ter-render */
-            overflow: auto; 
-            
-            display: none; /* Default hidden */
-            
-            /* Pastikan alignment ke kiri atas */
-            align-items: flex-start;
-            justify-content: flex-start;
-        }
-
-        /* Kelas untuk clone di dalam export container */
-        .print-clone {
-            margin: 0 !important;
-            box-shadow: none !important;
-            transform: none !important;
-            
-            /* KUNCI: Paksa lebar 794px (A4 width @ 96dpi) */
-            width: 794px !important;
-            min-width: 794px !important;
-            max-width: 794px !important;
-            
-            /* Tinggi auto agar bisa memanjang sesuai konten */
-            height: auto !important; 
-            min-height: 1123px !important; /* A4 height */
-            
-            padding: 20px !important;
-            background: white !important;
-        }
+        /* EXPORT CLONE STYLE */
+        #export-container { position: fixed; top: 0; left: 0; z-index: 99999; background: white; width: 794px; height: 100vh; overflow: auto; display: none; align-items: flex-start; justify-content: flex-start; }
+        .print-clone { margin: 0 !important; box-shadow: none !important; transform: none !important; width: 794px !important; min-width: 794px !important; max-width: 794px !important; height: auto !important; min-height: 1123px !important; padding: 20px !important; background: white !important; }
 
         @media print {
-            body { background: white; -webkit-print-color-adjust: exact; }
-            .control-bar, .bottom-nav, #loadingOverlay { display: none !important; }
-            .preview-wrapper { display: none; } 
+            body { background: white; }
+            .no-print, .top-bar, .sidebar-overlay, .side-nav { display: none !important; }
+            .sheet-container { padding: 0; justify-content: center; overflow: hidden; }
+            .page { margin: 0; box-shadow: none; border: none; width: 100%; padding: 5mm; }
         }
     </style>
 </head>
@@ -268,34 +241,62 @@
 
     <div id="loadingOverlay">
         <i class="fa-solid fa-spinner fa-spin fa-3x"></i>
-        <p style="margin-top:15px;">Menyiapkan Dokumen PDF...</p>
+        <p style="margin-top:15px; font-family:'Inter', sans-serif; font-weight: 700;">Menyiapkan Dokumen PDF...</p>
     </div>
 
     <!-- WADAH KHUSUS UNTUK PROSES EXPORT -->
     <div id="export-container"></div>
 
-    <!-- UI CONTROL (Sticky Top) -->
-    <div class="control-bar">
-        <select id="filter_mesin"><option value="">-- Pilih Mesin --</option></select>
-        <div class="filter-group">
-            <select id="filter_bulan">
+    <!-- TOP ACTION BAR (GARIS TIGA + KONTROL HORIZONTAL) -->
+    <div class="top-bar no-print">
+        <div class="hamburger-btn" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+        </div>
+
+        <div class="controls-horizontal">
+            <span class="ctrl-title">KONTROL:</span>
+            <select id="filter_mesin" class="input-ctrl"><option value="">-- Pilih Mesin --</option></select>
+            <select id="filter_bulan" class="input-ctrl">
                 <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
                 <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
                 <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
                 <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
             </select>
-            <select id="filter_tahun">
-                <option value="2026">2026</option><option value="2025">2025</option>
-            </select>
-        </div>
-        <div class="btn-group">
-            <button onclick="fetchData()" class="btn btn-show"><i class="fa-solid fa-search"></i> Cari</button>
-            <button onclick="exportPDF()" class="btn btn-pdf"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+            <select id="filter_tahun" class="input-ctrl"><option value="2026">2026</option><option value="2025">2025</option></select>
+            <button onclick="fetchData()" class="btn-ctrl btn-show"><i class="fa-solid fa-search"></i> CARI</button>
+            <button onclick="exportPDF()" class="btn-ctrl btn-pdf"><i class="fa-solid fa-file-pdf"></i> DOWNLOAD PDF</button>
         </div>
     </div>
 
-    <!-- PREVIEW AREA (Scrollable) -->
-    <div class="preview-wrapper">
+    <!-- OVERLAY & SIDEBAR (NO-PRINT) -->
+    <div class="sidebar-overlay no-print" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <nav class="side-nav no-print" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <!-- KERTAS LAPORAN -->
+    <div class="sheet-container">
         <div class="page" id="printArea">
             <!-- 1. HEADER -->
             <table class="header-main">
@@ -396,28 +397,42 @@
         </div>
     </div>
 
-    <!-- BOTTOM NAV -->
-    <nav class="bottom-nav">
-        <a href="index.html" class="nav-item">
-            <i class="fa-solid fa-house"></i>
-        </a>
-        <a href="menu_utama.html" class="nav-item active">
-            <i class="fa-solid fa-bars"></i>
-        </a>
-        <a href="download_data.html" class="nav-item">
-            <i class="fa-solid fa-download"></i>
-        </a>
-        <a href="informasi_akun.html" class="nav-item">
-            <i class="fa-solid fa-circle-user"></i>
-        </a>
-    </nav>
-
     <script>
+        // --- UI NAVIGATION ---
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
         const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // Routing Navigasi Dinamis
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await db.auth.getSession();
+                if (!session) return;
+                const { data: profile } = await db.from('profiles').select('jabatan').eq('id', session.user.id).single();
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+                    let homeLink = 'index.html', menuLink = 'menu_utama.html';
+                    if (jabatan.includes('OPERATOR')) { homeLink = 'OPERATOR_HOME.html'; menuLink = 'MENU_UTAMA_OPERATOR.html'; }
+                    else if (jabatan.includes('SUPERVISOR')) { homeLink = 'SUPERVISOR_HOME.html'; menuLink = 'MENU_UTAMA_SUPERVISOR.html'; }
+                    else if (jabatan.includes('SUPERINTENDENT')) { homeLink = 'SUPERINTENDENT_HOME.html'; menuLink = 'MENU_UTAMA_SUPERINTENDENT.html'; }
+                    else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) { homeLink = 'MANAGER_HOME.html'; menuLink = 'MENU_UTAMA_MANAGER.html'; }
+                    else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) { homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html'; menuLink = 'MENU_UTAMA_JM_PRODUKSI.html'; }
+                    else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) { homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html'; menuLink = 'MENU_UTAMA_JM_PPIC.html'; }
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) { console.error(err); }
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
+            setupDynamicNavigation();
             document.getElementById('filter_tahun').value = new Date().getFullYear();
             const { data } = await db.from('pohm_machine').select('name').order('name');
             if(data) {
@@ -429,15 +444,17 @@
         });
 
         async function fetchData() {
-            const mesin = document.getElementById('filter_mesin').value;
-            const bln = document.getElementById('filter_bulan').value;
-            const thn = document.getElementById('filter_tahun').value;
-            if(!mesin) { alert('Pilih Mesin!'); return; }
-
-            const start = new Date(thn, bln - 1, 1).toISOString();
-            const end = new Date(thn, bln, 0, 23, 59, 59).toISOString();
-
             try {
+                const mesin = document.getElementById('filter_mesin').value;
+                const bln = document.getElementById('filter_bulan').value;
+                const thn = document.getElementById('filter_tahun').value;
+                
+                if(!mesin) { alert('Pilih Mesin!'); return; }
+                if(!bln) { alert('Pilih Bulan!'); return; }
+
+                const start = new Date(parseInt(thn), parseInt(bln) - 1, 1).toISOString();
+                const end = new Date(parseInt(thn), parseInt(bln), 0, 23, 59, 59).toISOString();
+
                 const { data, error } = await db.from('pohm_items')
                     .select('*').eq('machine_name', mesin)
                     .gte('start_time', start).lte('start_time', end)
@@ -445,7 +462,10 @@
 
                 if(error || !data) { alert('Data tidak ditemukan!'); resetForm(); }
                 else { renderData(data); }
-            } catch(e) { console.error(e); alert('Error ambil data.'); }
+            } catch(e) { 
+                console.error(e); 
+                alert('Error ambil data. Pastikan filter terisi dengan benar.'); 
+            }
         }
 
         function renderData(d) {
@@ -453,7 +473,12 @@
             document.getElementById('chk_perawatan').innerHTML = d.work_type === 'Perawatan' ? '&#9745;' : '&#9744;';
             document.getElementById('chk_overhaul').innerHTML = d.work_type === 'Over Haul' ? '&#9745;' : '&#9744;';
             
-            const fmt = s => s ? new Date(s).toLocaleString('id-ID', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}).replace(',', '') : '-';
+            const fmt = s => {
+                if(!s) return '-';
+                try {
+                    return new Date(s).toLocaleString('id-ID', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}).replace(',', '');
+                } catch(e) { return '-'; }
+            };
             document.getElementById('val_mulai').textContent = fmt(d.start_time);
             document.getElementById('val_selesai').textContent = fmt(d.end_time);
 
@@ -473,9 +498,7 @@
             const recTbl = document.getElementById('tbl_rekomendasi');
             recTbl.innerHTML = '';
             const recLines = (d.recommendations || '').split('\n');
-            for(let i=0; i<3; i++) {
-                recTbl.innerHTML += `<tr><td>${recLines[i] || ''}</td></tr>`;
-            }
+            for(let i=0; i<3; i++) { recTbl.innerHTML += `<tr><td>${recLines[i] || ''}</td></tr>`; }
 
             showSig('img_sig_eng', d.engineer_signature);
             showSig('img_sig_spv', d.spv_signature);
@@ -509,18 +532,16 @@
             document.getElementById('name_eng').textContent = '';
             document.getElementById('name_spv').textContent = '';
             document.getElementById('name_mgr').textContent = '';
+            document.getElementById('report-view').style.display = 'none';
         }
 
-        // --- FUNGSI MENGHITAMKAN PIKSEL GAMBAR ---
         function blackenImage(img) {
             return new Promise((resolve) => {
                 if (!img.src || img.src.length < 100 || img.style.display === 'none') return resolve();
-                
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 const tempImg = new Image();
                 tempImg.crossOrigin = "Anonymous";
-                
                 tempImg.onload = function() {
                     canvas.width = tempImg.width; canvas.height = tempImg.height;
                     ctx.drawImage(tempImg, 0, 0);
@@ -528,83 +549,60 @@
                     const data = imgData.data;
                     for (let i = 0; i < data.length; i += 4) {
                         const alpha = data[i + 3];
-                        if (alpha > 50) { 
-                            data[i] = 0; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 255; 
-                        }
+                        if (alpha > 50) { data[i] = 0; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 255; }
                     }
                     ctx.putImageData(imgData, 0, 0);
-                    img.src = canvas.toDataURL(); 
-                    resolve();
+                    img.src = canvas.toDataURL(); resolve();
                 };
-                
-                tempImg.onerror = resolve; 
+                tempImg.onerror = () => { console.warn("Failed to process signature image."); resolve(); };
                 tempImg.src = img.src;
             });
         }
 
-        // --- EXPORT PDF FINAL VERSION (MOBILE/TABLET SAFE) ---
         async function exportPDF() {
             const overlay = document.getElementById('loadingOverlay');
             const exportContainer = document.getElementById('export-container');
+            const originalElement = document.getElementById('printArea');
             
+            if(document.getElementById('val_mesin').textContent === '-') {
+                alert("Tampilkan data terlebih dahulu!");
+                return;
+            }
+
             overlay.style.display = 'flex';
             window.scrollTo(0,0);
 
-            // 1. CLONE KE CONTAINER 'FIXED WIDTH'
-            const originalElement = document.getElementById('printArea');
-            const clone = originalElement.cloneNode(true);
-            
-            clone.classList.add('print-clone');
-            
-            // Container tampil sebagai layer di atas UI
-            exportContainer.style.display = 'block';
-            exportContainer.innerHTML = '';
-            exportContainer.appendChild(clone);
-
-            // 2. HITAMKAN TANDA TANGAN
-            const sigImages = clone.querySelectorAll('.sig-img');
-            const promises = [];
-            for (let img of sigImages) {
-                promises.push(blackenImage(img));
-            }
-            await Promise.all(promises);
-
-            // 3. JEDA RENDERING
-            await new Promise(r => setTimeout(r, 800));
-
-            // 4. KONFIGURASI ABSOLUT A4
-            const opt = {
-                margin: 0,
-                filename: `POHM_${document.getElementById('val_mesin').innerText}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { 
-                    scale: 2, 
-                    useCORS: true,
-                    // PENTING: Reset scroll saat capture
-                    scrollX: 0,
-                    scrollY: 0,
-                    x: 0, 
-                    y: 0,
-                    // PAKSA WIDTH ke 794px (A4 @ 96dpi)
-                    width: 794,
-                    // WINDOW WIDTH 800px agar layout dianggap Desktop, bukan Mobile
-                    windowWidth: 800, 
-                },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            // 5. EKSEKUSI
-            html2pdf().set(opt).from(clone).save().then(() => {
+            try {
+                const clone = originalElement.cloneNode(true);
+                clone.classList.add('print-clone');
+                exportContainer.style.display = 'block';
                 exportContainer.innerHTML = '';
-                exportContainer.style.display = 'none';
-                overlay.style.display = 'none';
-            }).catch(err => {
+                exportContainer.appendChild(clone);
+
+                const sigImages = clone.querySelectorAll('.sig-img');
+                const promises = [];
+                for (let img of sigImages) { promises.push(blackenImage(img)); }
+                await Promise.all(promises);
+
+                await new Promise(r => setTimeout(r, 800));
+
+                const opt = {
+                    margin: 0,
+                    filename: `POHM_${document.getElementById('val_mesin').innerText.replace(/\//g, '_')}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0, x: 0, y: 0, width: 794, windowWidth: 800 },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                await html2pdf().set(opt).from(clone).save();
+            } catch (err) {
                 console.error(err);
+                alert('Gagal export PDF.');
+            } finally {
                 exportContainer.innerHTML = '';
                 exportContainer.style.display = 'none';
                 overlay.style.display = 'none';
-                alert('Gagal export PDF. Silakan coba lagi.');
-            });
+            }
         }
     </script>
 </body>
