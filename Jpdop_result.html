@@ -2,299 +2,333 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- VIEWPORT UNTUK RESPONSIF -->
+    <meta name="viewport" content="width=device-width, initial-scale=0.5, user-scalable=yes">
     <title>Laporan Bulanan - AKG Maintenance</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- HTML2PDF JS (Stable) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- LIBRARIES KHUSUS TEKNIK SCREENSHOT MANUAL -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         :root {
-            --primary: #DC2626; 
-            --bg-dark: #050505; 
-            --bg-card: #121212; 
-            --text-white: #FFFFFF;
-            --nav-height: 70px;
-            /* Dimensi A4 Landscape Mutlak (96 DPI) */
-            --a4-width: 1123px; 
-            --a4-height: 794px; 
+            /* TEMA WARNA AKG UI */
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --border: #e5e7eb;
+            --text-main: #333333;
+            --sidebar-width: 280px; 
+            
+            /* UKURAN KERTAS A4 LANDSCAPE */
+            --a4-w: 1123px;
+            --a4-h: 794px;
         }
 
-        * { box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-print-color-adjust: exact; }
-
-        body {
-            background: var(--bg-dark);
-            color: var(--text-white);
-            margin: 0;
-            padding: 20px;
-            padding-bottom: calc(var(--nav-height) + 40px);
-            display: flex;
-            flex-direction: column;
-            align-items: center; /* Default Centered untuk User View */
-            overflow-x: hidden; 
-        }
-
-        /* --- UI CONTROLS --- */
-        .controls {
-            background: var(--bg-card);
-            padding: 10px;
-            border-radius: 12px;
-            border: 1px solid rgba(220, 38, 38, 0.3);
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            width: 100%;
-            max-width: 1100px;
-            color: white;
-            position: sticky; top: 10px; z-index: 500;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            flex-wrap: wrap;
-        }
-
-        .btn-print {
-            background: var(--primary); color: white; border: none; padding: 10px 20px;
-            border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 14px;
-            margin-left: auto; white-space: nowrap;
-        }
+        /* === GLOBAL RESET === */
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         
-        .btn-back, .btn-refresh {
-            background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); 
-            padding: 8px; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block;
+        body {
+            margin: 0; padding: 0;
+            background: #525659;
+            font-family: 'Inter', sans-serif;
+            font-size: 7pt;
+            padding-bottom: 80px;
+            overflow: auto; 
         }
 
-        input[type="month"] {
-            background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2);
-            color: white; padding: 8px; border-radius: 8px; color-scheme: dark;
-        }
-
-        /* --- PREVIEW CONTAINER --- */
-        .preview-container {
-            width: 100%;
+        /* --- TOP ACTION BAR (GARIS TIGA + KONTROL HORIZONTAL) --- */
+        .top-bar {
+            position: sticky;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #1e293b; /* Warna gelap profesional */
+            padding: 10px 20px;
             display: flex;
-            flex-direction: column;
-            align-items: center; /* Normal: Centered */
-            transform-origin: top center;
-            transition: transform 0.2s ease;
+            justify-content: flex-start; 
+            align-items: center;
+            gap: 25px; 
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            flex-wrap: wrap; 
         }
 
-        /* --- WADAH LAPORAN --- */
+        /* Tombol Hamburger di Kiri */
+        .hamburger-btn {
+            width: 42px; height: 42px;
+            background: var(--primary); color: white;
+            border-radius: 8px; display: flex; justify-content: center; align-items: center;
+            font-size: 20px; cursor: pointer; transition: 0.2s;
+            flex-shrink: 0;
+        }
+        .hamburger-btn:hover { background: var(--primary-dark); transform: scale(1.05); }
+        .hamburger-btn:active { transform: scale(0.95); }
+
+        /* Panel Kontrol di sebelah Kanan Garis Tiga */
+        .controls-horizontal {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+        }
+
+        .controls-horizontal span.ctrl-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: white;
+            text-transform: uppercase;
+            margin-right: 5px;
+        }
+
+        .input-ctrl, .btn-ctrl {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .input-ctrl { background: #f8f9fa; color: #333; }
+        .input-ctrl:focus { border-color: var(--primary); outline: 2px solid var(--primary); }
+
+        .btn-show { background: #22c55e; color: white; }
+        .btn-show:hover { background: #16a34a; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+        .btn-pdf { background: var(--primary); color: white; border: none; }
+        .btn-pdf:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(201,25,25,0.3); }
+
+        #loading-text-ui { font-size: 12px; font-weight: 700; margin-left: 10px; color: #fca5a5; }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 2000; opacity: 0; visibility: hidden; transition: 0.3s;
+            backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+        
+        .side-nav {
+            position: fixed; top: 0; left: -400px; width: 320px; height: 100vh;
+            background: white; z-index: 2001; transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+            display: flex; flex-direction: column; padding: 25px; box-shadow: 10px 0 30px rgba(0,0,0,0.3);
+        }
+        .side-nav.active { left: 0; }
+
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+        .sidebar-title { font-weight: bold; color: var(--primary); font-size: 24px; }
+        .sidebar-close { font-size: 30px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: #666; 
+            background: white; width: 100%; padding: 18px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: bold; font-size: 16px;
+        }
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 24px; color: var(--primary); }
+
+        /* LOADING OVERLAY */
+        #loading {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 20000;
+            display: none; justify-content: center; align-items: center; flex-direction: column;
+            color: white; font-size: 18px; text-align: center;
+        }
+
+        /* ==================== WADAH KERTAS A4 LANDSCAPE ==================== */
+        .preview-container {
+            width: 100%; overflow-x: auto; display: flex; justify-content: flex-start; 
+            padding: 30px 15px; box-sizing: border-box; -webkit-overflow-scrolling: touch; 
+            position: relative; z-index: 1;
+        }
+
+        @media (min-width: 1140px) {
+            .preview-container { justify-content: center; }
+        }
+
         #report-wrapper {
-            width: var(--a4-width);
+            width: var(--a4-w);
             display: flex;
             flex-direction: column;
             align-items: center;
+            background: transparent;
         }
 
-        /* --- TAMPILAN HALAMAN --- */
         .page {
             background: white;
-            width: var(--a4-width);
-            height: 209mm; 
-            padding: 10mm 12mm; 
+            width: var(--a4-w);
+            height: var(--a4-h); 
+            padding: 10mm; 
             margin-bottom: 30px;
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
             position: relative;
             color: black;
             overflow: hidden; 
             display: flex;
             flex-direction: column;
-            page-break-after: always;
+            border-radius: 4px;
         }
         
-        .page:last-child {
-            page-break-after: auto;
-            margin-bottom: 0;
-        }
+        .page:last-child { margin-bottom: 0; }
 
-        /* --- MODE PRINT (SOLUSI FINAL) --- */
-        /* Kita manipulasi body agar rata kiri saat print */
-        body.print-mode {
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            overflow: visible !important;
-            background: white !important;
-            display: block !important; /* Ubah dari flex ke block agar normal flow */
-        }
+        /* --- STYLING DALAM KERTAS (ISO STANDARD) --- */
+        .page table { width: 100%; border-collapse: collapse; table-layout: fixed; color: black; }
+        .page td, .page th { border: 1px solid black; padding: 2px 4px; font-size: 7px; vertical-align: middle; color: black; }
 
-        body.print-mode .controls, 
-        body.print-mode .bottom-nav {
-            display: none !important; 
-        }
+        /* --- MODE SCREENSHOT PROSES --- */
+        body.screenshot-mode { width: 1200px !important; margin: 0 !important; padding: 0 !important; background: white !important; overflow: visible !important; display: block !important; position: absolute; top: 0; left: 0; }
+        body.screenshot-mode .top-bar, body.screenshot-mode .sidebar-overlay, body.screenshot-mode .side-nav, body.screenshot-mode #loading { display: none !important; }
+        body.screenshot-mode .preview-container { transform: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; display: block !important; }
+        body.screenshot-mode .page { margin: 0 auto !important; margin-bottom: 0 !important; box-shadow: none !important; border: none !important; }
 
-        body.print-mode .preview-container {
-            transform: none !important; /* Matikan Zoom Scale */
-            width: 1123px !important;   /* Lebar Fix A4 */
-            margin: 0 !important;
-            padding: 0 !important;
-            display: block !important;
-        }
-
-        body.print-mode #report-wrapper {
-            margin: 0 !important;
-            transform: none !important;
-        }
-
-        body.print-mode .page {
-            margin: 0 !important;
-            box-shadow: none !important;
-            border: none !important;
-            page-break-after: always;
-        }
-
-        /* HEADER TABEL */
-        .report-header-table {
-            width: 100%; border-collapse: collapse; border: 0.8px solid #000; margin-bottom: 5px;
-        }
+        /* HEADER TABEL KERTAS */
+        .report-header-table { width: 100%; border-collapse: collapse; border: 0.8px solid #000; margin-bottom: 5px; }
         .report-header-table td { border: 0.5px solid #000; padding: 3px; vertical-align: middle; }
-
         .header-brand-container { display: flex; align-items: center; gap: 10px; }
         .header-logo { width: 70px; height: auto; object-fit: contain; } 
         .header-company-name { font-size: 10px; font-weight: 900; text-transform: uppercase; line-height: 1.1; }
         .header-title { font-size: 16px; font-weight: 900; text-transform: uppercase; text-align: center; margin: 0; }
-
         .header-meta-table { width: 100%; border-collapse: collapse; font-size: 8px; }
         .header-meta-table td { border: none; border-bottom: 0.5px solid #000; padding: 1px 4px; }
         .meta-label { font-weight: 700; width: 35%; border-right: 0.5px solid #000 !important; }
         .meta-value { width: 65%; padding-left: 4px; }
+        .period-display { text-align: center; font-weight: 700; font-size: 10px; margin: 2px 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        .period-display { 
-            text-align: center; font-weight: 700; font-size: 10px; margin: 2px 0 5px 0; 
-            text-transform: uppercase; letter-spacing: 0.5px; 
-        }
-
-        /* TABEL DATA */
-        .schedule-table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            font-size: 7px;
-            table-layout: fixed; 
-            margin-bottom: 0;
-        }
-        .schedule-table th, .schedule-table td { 
-            border: 0.4px solid #000; 
-            padding: 0; 
-            text-align: center; 
-            vertical-align: middle; 
-            height: 11px;
-            line-height: 11px;
-            overflow: hidden;
-        }
+        /* TABEL DATA KERTAS */
+        .schedule-table { width: 100%; border-collapse: collapse; font-size: 7px; table-layout: fixed; }
+        .schedule-table th, .schedule-table td { border: 0.4px solid #000; padding: 0; text-align: center; vertical-align: middle; height: 11px; line-height: 11px; }
         .schedule-table th { background: #eee; font-weight: 700; height: 16px; padding: 1px; }
+        .col-no { width: 15px; }
+        .col-machine { width: 170px; text-align: left !important; padding-left: 3px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 7px; }
+        .col-type { width: 25px; font-weight: 700; font-size: 6px; }
+        .col-pic { width: 40px; font-size: 6px; padding: 0 1px !important; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
-        /* Kolom */
-        .col-no { width: 18px; }
-        .col-machine { 
-            width: 180px; text-align: left !important; padding-left: 3px !important; 
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            font-weight: 600; font-size: 7px;
-        }
-        .col-type { width: 28px; font-weight: 700; font-size: 6px; }
-        .col-pic { width: 45px; font-size: 6px; padding: 0 1px !important; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-
-        /* Warna Cell */
-        .bg-plan { background-color: #007bff !important; -webkit-print-color-adjust: exact; }
-        .bg-actual { background-color: #28a745 !important; -webkit-print-color-adjust: exact; }
-        .bg-miss { background-color: #D30000 !important; -webkit-print-color-adjust: exact; }
-        .bg-holiday { background-color: #D30000 !important; color: white; -webkit-print-color-adjust: exact; }
-        .bg-grey { background-color: #ddd !important; -webkit-print-color-adjust: exact; }
+        .bg-plan { background-color: #007bff !important; }
+        .bg-actual { background-color: #28a745 !important; }
+        .bg-miss { background-color: #D30000 !important; }
+        .bg-holiday { background-color: #D30000 !important; color: white; }
+        .bg-grey { background-color: #ddd !important; }
         .cell-fill { width: 100%; height: 100%; display: block; min-height: 11px; }
 
-        /* TANDA TANGAN */
-        .signature-section { 
-            margin-top: 15px;
-            display: flex; justify-content: space-between; gap: 5px; 
-        }
+        .signature-section { margin-top: 15px; display: flex; justify-content: space-between; gap: 5px; width: 100%; }
         .sig-box { flex: 1; border: none; text-align: center; }
         .sig-header { font-size: 8px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
-        .sig-body { 
-            height: 40px; 
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-end; 
-        }
-        .sig-img { max-height: 35px; max-width: 100%; margin-bottom: 2px; }
-        .sig-name { 
-            font-size: 8px; font-weight: 700; text-decoration: underline; text-transform: uppercase; 
-            margin-bottom: 2px;
-        }
+        .sig-body { height: 40px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; background: white; }
+        .sig-img { max-height: 35px; max-width: 100%; margin-bottom: 2px; background: white !important; }
+        .sig-name { font-size: 8px; font-weight: 700; text-decoration: underline; text-transform: uppercase; margin-bottom: 2px; }
         .sig-role { font-size: 7px; font-weight: 600; text-transform: uppercase; }
 
-        /* Loading Overlay */
-        #loading {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 100000;
-            display: none;
-            justify-content: center; align-items: center;
-            font-size: 20px; font-weight: 600; color: var(--primary);
-            flex-direction: column; gap: 10px;
-        }
-
-        /* BOTTOM NAV */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-            width: 100%; max-width: 600px;
-            background: rgba(18, 18, 18, 0.95); backdrop-filter: blur(10px);
-            border-top: 1px solid var(--primary); display: flex; justify-content: space-around;
-            padding: 0; height: var(--nav-height); z-index: 1000;
-            border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(220, 38, 38, 0.15);
-        }
-        .nav-item { color: #666; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; text-decoration: none; }
-        .nav-item.active { color: var(--primary); }
-        .nav-item svg { width: 28px; height: 28px; }
-
-        @media print {
-            body { background: white; padding: 0; margin: 0; display: block; }
-            .controls, .bottom-nav, #loading { display: none !important; }
-            .preview-container { transform: none !important; width: 100%; }
-            #report-wrapper { margin: 0; width: 100%; }
-            .page { margin: 0; box-shadow: none; border: none; page-break-after: always; }
-        }
+        /* SweetAlert Light Theme Overrides */
+        div:where(.swal2-container) { z-index: 9999 !important; }
+        div:where(.swal2-container) div:where(.swal2-popup) { background: #ffffff !important; border: 1px solid var(--border); color: var(--text-main) !important; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        div:where(.swal2-confirm) { background-color: var(--primary) !important; border-radius: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
 
+    <!-- LOADING OVERLAY -->
     <div id="loading">
         <i class="fa-solid fa-spinner fa-spin fa-2x"></i> 
-        <span id="loading-text">Menyiapkan Sistem...</span>
+        <span id="loading-text" style="font-family:'Inter', sans-serif; font-weight:700; margin-top:15px;">Menyiapkan Sistem...</span>
     </div>
 
-    <!-- UI Controls -->
-    <div class="controls">
-        <a href="download_data.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
-        <div style="flex: 1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <label style="font-weight: 500; font-size: 14px;">Periode:</label>
-            <input type="month" id="month-picker" onchange="fetchReport()">
-            <button onclick="fetchReport()" class="btn-refresh"><i class="fa-solid fa-rotate-right"></i></button>
+    <!-- TOP ACTION BAR (Horizontal Control Panel & Hamburger) -->
+    <div class="top-bar no-print">
+        <!-- Tombol Navigasi Garis 3 di sebelah KIRI -->
+        <div class="hamburger-btn" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
         </div>
-        <button onclick="downloadPDF()" class="btn-print"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+
+        <!-- Panel Kontrol Horizontal di sebelahnya -->
+        <div class="controls-horizontal">
+            <span class="ctrl-title"><i class="fa-solid fa-print"></i> KONTROL:</span>
+            <input type="month" id="month-picker" class="input-ctrl" onchange="fetchReport()">
+            <button onclick="fetchReport()" class="btn-ctrl btn-show"><i class="fa-solid fa-search"></i> TAMPILKAN</button>
+            <button onclick="downloadPDF()" class="btn-ctrl btn-pdf"><i class="fa-solid fa-file-pdf"></i> CETAK PDF</button>
+            <span id="loading-text-ui"></span>
+        </div>
     </div>
 
-    <!-- Container Preview -->
-    <div class="preview-container" id="preview-container">
-        <!-- Wadah Laporan (Ini yang akan difoto html2pdf) -->
-        <div id="report-wrapper"></div>
-    </div>
-
-    <!-- Navigation -->
-    <nav class="bottom-nav">
-        <a href="index.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></a>
-        <a href="menu_utama.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></a>
-        <a href="download_data.html" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></a>
-        <a href="informasi_akun.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></a>
+    <!-- OVERLAY & SIDEBAR (NO-PRINT) -->
+    <div class="sidebar-overlay no-print" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <nav class="side-nav no-print" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
     </nav>
 
-    <script>
-        var SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
-        var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E'; 
-        
-        if (!window.supabaseClient) { window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
+    <!-- AREA KERTAS A4 LANDSCAPE -->
+    <div class="preview-container" id="preview-container">
+        <div id="report-wrapper">
+             <div style="color:white; text-align:center; padding:100px; font-weight:800; text-transform:uppercase; letter-spacing:2px; opacity:0.3;">Pilih Periode di Atas</div>
+        </div>
+    </div>
 
-        // --- DEFINISI MESIN ---
+    <script>
+        // --- UI NAVIGATION LOGIC ---
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E'; 
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await db.auth.getSession();
+                if (!session) return;
+                const { data: profile } = await db.from('profiles').select('jabatan').eq('id', session.user.id).single();
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+                    let homeLink = 'index.html', menuLink = 'menu_utama.html';
+                    if (jabatan.includes('OPERATOR')) { homeLink = 'OPERATOR_HOME.html'; menuLink = 'MENU_UTAMA_OPERATOR.html'; }
+                    else if (jabatan.includes('SUPERVISOR')) { homeLink = 'SUPERVISOR_HOME.html'; menuLink = 'MENU_UTAMA_SUPERVISOR.html'; }
+                    else if (jabatan.includes('SUPERINTENDENT')) { homeLink = 'SUPERINTENDENT_HOME.html'; menuLink = 'MENU_UTAMA_SUPERINTENDENT.html'; }
+                    else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) { homeLink = 'MANAGER_HOME.html'; menuLink = 'MENU_UTAMA_MANAGER.html'; }
+                    else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) { homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html'; menuLink = 'MENU_UTAMA_JM_PRODUKSI.html'; }
+                    else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) { homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html'; menuLink = 'MENU_UTAMA_JM_PPIC.html'; }
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) { console.error("Gagal mengatur navigasi dinamis:", err); }
+        }
+
+        // --- DATA MESIN (DIAMBIL DARI FILE ORIGINAL) ---
         const machinesPage1 = [
             { no: 1, id: "INJECT BLOW LIANXIN IBM30H", label: "Inject Blow Lianxin IBM30H" },
             { no: 2, id: "TM EXPRESS 270/2250", label: "TM Express 270/2250 (+ Robot Wittmann 822)" },
@@ -314,7 +348,7 @@
             { no: 16, id: "ENGEL 280 T", label: "ENGEL 280 T (Doctor Strange) + Robot Wittmann W833 Pro (Fallen)" },
             { no: 31, id: "FCS 100 T (ANTMAN)", label: "FCS 100 T (Antman)" },
             { no: 32, id: "NPC 160 T (WASP)", label: "NPC 160 T (Wasp) + Robot Wittmann W818 (Grimlock)" },
-            { no: 33, id: "NPC 160 T (WONG)", label: "NPC 160 T (Wong) + Robot Wittmann W818 (Grimlock)" },
+            { no: 33, id: "NPC 160 T (WONG)", label: "NPC 160 T (WONG) + Robot Wittmann W818 (Grimlock)" },
             { no: 34, id: "FCS 150 T (ROCKET)", label: "FCS 150 T (Rocket)" },
             { no: 35, id: "FCS 150 T (MANTIS)", label: "FCS 150 T (Mantis)" },
             { no: 36, id: "NPC 160 T (SHANCHI)", label: "NPC 160 T (Shanchi) + Robot Wittmann W818 (Grimlock)" }
@@ -334,205 +368,73 @@
         ];
 
         const allMachinesData = [...machinesPage1, ...machinesPage2];
+        const LOGO_URL_ASLI = "https://amarilyskg.co.id/bootstrap/img/logo.png";
         let logoBase64 = "";
 
-        // --- IMAGE LOADER ---
-        async function prepareLogo() {
-            const logoUrl = "https://amarilyskg.co.id/bootstrap/img/logo.png";
-            const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(logoUrl)}&output=png`;
-            try {
-                const response = await fetch(proxyUrl);
-                const blob = await response.blob();
-                const reader = new FileReader();
-                reader.onloadend = function() { logoBase64 = reader.result; }
-                reader.readAsDataURL(blob);
-            } catch (e) { console.warn("Logo proxy failed"); }
+        // --- PENANGANAN GAMBAR DENGAN PROXY ANTI CORS ---
+        async function fetchImageAsBase64(url) {
+            const proxies = [
+                'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url),
+                'https://corsproxy.io/?' + encodeURIComponent(url),
+                'https://api.allorigins.win/raw?url=' + encodeURIComponent(url)
+            ];
+            for (let proxyUrl of proxies) {
+                try {
+                    const response = await fetch(proxyUrl);
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        return new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result);
+                            reader.readAsDataURL(blob);
+                        });
+                    }
+                } catch (e) { console.warn("Proxy error:", e); }
+            }
+            return null;
         }
 
-        // --- AUTO SCALER (UNTUK VIEW HP/LAPTOP) ---
-        function autoScalePreview() {
-            // Jangan jalankan jika sedang mode print
-            if (document.body.classList.contains('print-mode')) return;
+        async function prepareLogo() {
+            const base64 = await fetchImageAsBase64(LOGO_URL_ASLI);
+            if(base64) logoBase64 = base64;
+        }
 
+        // --- AUTO SCALER (VIEW MODE) ---
+        function autoScalePreview() {
+            if (document.body.classList.contains('screenshot-mode')) return;
             const container = document.getElementById('preview-container');
             const targetWidth = 1123; 
             const screenWidth = window.innerWidth - 30;
-
-            let scale = 1;
-            if (screenWidth < targetWidth) {
-                scale = screenWidth / targetWidth;
-            }
+            let scale = screenWidth < targetWidth ? screenWidth / targetWidth : 1;
             if (scale < 0.3) scale = 0.3;
-
             container.style.transform = `scale(${scale})`;
-            
             const wrapper = document.getElementById('report-wrapper');
-            if(wrapper) {
-                const height = wrapper.offsetHeight * scale;
-                container.style.height = `${height}px`;
-            }
+            if(wrapper) container.style.height = `${wrapper.offsetHeight * scale}px`;
         }
 
         window.addEventListener('resize', autoScalePreview);
 
-        window.onload = function() {
+        // --- INISIALISASI ---
+        window.onload = async function() {
             const now = new Date();
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const picker = document.getElementById('month-picker');
             if (picker) picker.value = `${year}-${month}`;
-            prepareLogo();
-            if (typeof fetchReport === 'function') fetchReport();
+            
+            // JANGAN JALANKAN SECARA BERSAMAAN. TUNGGU LOGO SELESAI DULU.
+            setupDynamicNavigation();
+            await prepareLogo(); 
+            await fetchReport(); 
         }
 
-        // --- GENERATE PDF DENGAN TEKNIK "RESET & SNAP" (FIX UTAMA) ---
-        async function downloadPDF() {
-            const loading = document.getElementById('loading');
-            const wrapper = document.getElementById('report-wrapper');
-            
-            if(!wrapper.innerHTML) {
-                alert("Data belum dimuat!");
-                return;
-            }
-
-            loading.style.display = 'flex';
-            document.getElementById('loading-text').innerText = "Menyiapkan PDF...";
-
-            // 1. MASUK MODE PRINT: Paksa body jadi block & width 100% (reset center)
-            document.body.classList.add('print-mode');
-            
-            // 2. SCROLL KE POJOK KIRI ATAS: Agar kamera html2canvas mulai dari 0,0
-            window.scrollTo(0, 0);
-
-            // 3. TUNGGU SEBENTAR (Wajib agar browser render ulang)
-            await new Promise(resolve => setTimeout(resolve, 800));
-
-            const opt = {
-                margin: 0, 
-                filename: 'Laporan_Perawatan_AKG.pdf',
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { 
-                    scale: 2,           
-                    useCORS: true, 
-                    scrollY: 0,
-                    scrollX: 0,       // KUNCI: Paksa titik 0 X
-                    width: 1123,      // Lebar Fix Canvas (A4)
-                    windowWidth: 1200, // Lebar Window "Pura-pura" Desktop
-                    x: 0,
-                    y: 0
-                },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-                pagebreak: { mode: ['css', 'legacy'] }
-            };
-            
-            try {
-                // Generate langsung dari elemen wrapper yang sekarang sudah ada di pojok kiri
-                await html2pdf().set(opt).from(wrapper).save();
-            } catch(err) {
-                alert("Gagal PDF: " + err.message);
-            } finally {
-                // 4. KEMBALIKAN KE MODE NORMAL
-                document.body.classList.remove('print-mode');
-                autoScalePreview(); // Hitung ulang zoom HP
-                
-                loading.style.display = 'none';
-                document.getElementById('loading-text').innerText = "Mengambil Data...";
-            }
-        }
-
-        function createTableHTML(machineList, daysInMonth, dataMap, holidayMap, headerText, pageNum) {
-            const logoSrc = logoBase64 || "https://amarilyskg.co.id/bootstrap/img/logo.png";
-            
-            let html = `
-            <div class="page">
-                <table class="report-header-table">
-                    <tr>
-                        <td class="header-left">
-                            <div class="header-brand-container">
-                                <img src="${logoSrc}" class="header-logo" crossorigin="anonymous">
-                                <span class="header-company-name">PT. AMARILYS<br>KARISMA<br>GEMILANG</span>
-                            </div>
-                        </td>
-                        <td class="header-center">
-                            <h1 class="header-title">JADWAL PERAWATAN DAN OVERHAUL</h1>
-                        </td>
-                        <td class="header-right">
-                            <table class="header-meta-table">
-                                <tr><td class="meta-label">No Dokumen</td><td class="meta-value">: AF.SP 05.05.Rev-00</td></tr>
-                                <tr><td class="meta-label">Tanggal Terbit</td><td class="meta-value">: 02 Agustus 2024</td></tr>
-                                <tr><td class="meta-label">Halaman</td><td class="meta-value">: ${pageNum}/2</td></tr>
-                                <tr><td class="meta-label">Tanggal Revisi</td><td class="meta-value">: -</td></tr>
-                            </table>
-                        </td>
-                    </tr>
-                </table>
-
-                <div class="period-display">${headerText}</div>
-
-                <table class="schedule-table">
-                    <thead>
-                        <tr>
-                            <th rowspan="2" class="col-no">NO</th>
-                            <th rowspan="2" class="col-machine">NAMA MESIN / TOOL / EQUIPMENT</th>
-                            <th rowspan="2" class="col-type">STS</th>
-                            <th colspan="31">TANGGAL</th>
-                            <th rowspan="2" class="col-pic">PIC</th>
-                        </tr>
-                        <tr>`;
-            
-            for (let i = 1; i <= 31; i++) {
-                if (i <= daysInMonth) html += `<th>${i}</th>`;
-                else html += `<th class="bg-grey"></th>`;
-            }
-            html += `</tr></thead><tbody>`;
-
-            machineList.forEach(m => {
-                let rowP = `<tr><td rowspan="2">${m.no}</td><td rowspan="2" class="col-machine">${m.label}</td><td class="col-type">PLN</td>`;
-                let rowA = `<tr><td class="col-type">ACT</td>`;
-                
-                for(let d=1; d<=31; d++) {
-                    let clsP='', clsA='', style='';
-                    if(d > daysInMonth) style='bg-grey';
-                    else if(holidayMap[d]) style='bg-holiday';
-
-                    if(dataMap[m.id] && dataMap[m.id][d]) {
-                        const e = dataMap[m.id][d];
-                        if(e.plan === 'YA') clsP = 'bg-plan';
-                        if(e.actual === 'YA') clsA = 'bg-actual';
-                        else if(e.plan === 'YA' && e.actual === 'TIDAK') clsA = 'bg-miss';
-                    }
-                    rowP += `<td class="${clsP || style}"><div class="cell-fill"></div></td>`;
-                    rowA += `<td class="${clsA || style}"><div class="cell-fill"></div></td>`;
-                }
-                
-                rowP += `<td rowspan="2" class="col-pic" id="pic-${m.id}-${pageNum}"></td>`; // ID Unik per page
-
-                html += rowP + "</tr>" + rowA + "</tr>";
-            });
-
-            html += `</tbody></table>`;
-            
-            // Signature on Page 2
-            if (pageNum === 2) {
-                html += `
-                <div class="signature-section">
-                    <div class="sig-box"><div class="sig-header">DIBUAT OLEH :</div><div class="sig-body" id="sig-spv-p2"></div><div class="sig-role">SUPERVISOR</div></div>
-                    <div class="sig-box"><div class="sig-header">DIPERIKSA :</div><div class="sig-body" id="sig-supt-p2"></div><div class="sig-role">SUPERINTENDENT</div></div>
-                    <div class="sig-box"><div class="sig-header">MENGETAHUI :</div><div class="sig-body" id="sig-prod-p2"></div><div class="sig-role">PRODUKSI</div></div>
-                    <div class="sig-box"><div class="sig-header">MENGETAHUI :</div><div class="sig-body" id="sig-ppc-p2"></div><div class="sig-role">PPC</div></div>
-                    <div class="sig-box"><div class="sig-header">MENYETUJUI :</div><div class="sig-body" id="sig-mgr-p2"></div><div class="sig-role">MANAGER ENGINEERING</div></div>
-                </div>`;
-            }
-
-            html += `</div>`; 
-            return html;
-        }
-
+        // --- 1. AMBIL DATA DARI SUPABASE ---
         window.fetchReport = async function() {
             const picker = document.getElementById('month-picker');
             if (!picker.value) return;
 
             document.getElementById('loading').style.display = 'flex';
+            document.getElementById('loading-text').innerText = "Mengambil Data...";
             
             const [year, month] = picker.value.split('-');
             const daysInMonth = new Date(year, month, 0).getDate(); 
@@ -545,7 +447,7 @@
             const endDate = `${nextY}-${String(nextM).padStart(2,'0')}-01`;
 
             try {
-                const { data: logs, error: logError } = await window.supabaseClient
+                const { data: logs, error: logError } = await db
                     .from('jpdo_log')
                     .select('tanggal, nama_supervisor, tanda_tangan, nama_mesin, status_hari, nama_pic, jpdo_result(plan_status, actual_status)')
                     .gte('tanggal', startDate).lt('tanggal', endDate)
@@ -553,10 +455,10 @@
 
                 if (logError) throw logError;
 
-                const { data: appSupt } = await window.supabaseClient.from('jpdo_approval').select('*').eq('bulan', picker.value).maybeSingle();
-                const { data: appProd } = await window.supabaseClient.from('jpdo_approval_produksi').select('*').eq('bulan', picker.value).maybeSingle();
-                const { data: appPPC } = await window.supabaseClient.from('jpdo_approval_ppc').select('*').eq('bulan', picker.value).maybeSingle();
-                const { data: appMgr } = await window.supabaseClient.from('jpdo_approval_manager').select('*').eq('bulan', picker.value).maybeSingle();
+                const { data: appSupt } = await db.from('jpdo_approval').select('*').eq('bulan', picker.value).maybeSingle();
+                const { data: appProd } = await db.from('jpdo_approval_produksi').select('*').eq('bulan', picker.value).maybeSingle();
+                const { data: appPPC } = await db.from('jpdo_approval_ppc').select('*').eq('bulan', picker.value).maybeSingle();
+                const { data: appMgr } = await db.from('jpdo_approval_manager').select('*').eq('bulan', picker.value).maybeSingle();
 
                 const dataMap = {}, holidayMap = {}, picMap = {};
                 let spvData = null;
@@ -591,18 +493,14 @@
                 container.innerHTML += createTableHTML(machinesPage1, daysInMonth, dataMap, holidayMap, periodText, 1);
                 container.innerHTML += createTableHTML(machinesPage2, daysInMonth, dataMap, holidayMap, periodText, 2);
 
-                // --- FILL PIC DATA ---
                 allMachinesData.forEach(m => {
-                    // Cek page 1 dan 2
                     let cell = document.getElementById(`pic-${m.id}-1`);
                     if(!cell) cell = document.getElementById(`pic-${m.id}-2`);
-                    
                     if(cell && picMap[m.id]) {
                         cell.innerText = Array.from(picMap[m.id]).join(', ');
                     }
                 });
 
-                // --- RENDER SIGNATURES ---
                 if(document.getElementById('sig-supt-p2')) {
                     const elSpv = document.getElementById('sig-spv-p2');
                     if(spvData) elSpv.innerHTML = `<img src="${spvData.ttd}" class="sig-img"><div class="sig-name">${spvData.nama}</div>`;
@@ -629,6 +527,118 @@
                 el.innerHTML = `<img src="${data[sigField]}" class="sig-img"><div class="sig-name">${data[nameField]}</div>`;
             } else {
                 el.innerHTML = `<span style="color:#ccc; font-size:9px;">(Belum ada)</span>`;
+            }
+        }
+
+        function createTableHTML(machineList, daysInMonth, dataMap, holidayMap, headerText, pageNum) {
+            // Gunakan logoBase64 yang sudah diprepare
+            const logoSrc = logoBase64 || "https://amarilyskg.co.id/bootstrap/img/logo.png";
+            let html = `
+            <div class="page">
+                <table class="report-header-table">
+                    <tr>
+                        <td class="box-logo"><div class="header-brand-container"><img src="${logoSrc}" class="header-logo" crossorigin="anonymous"><span class="header-company-name">PT. AMARILYS<br>KARISMA GEMILANG</span></div></td>
+                        <td class="box-title"><h1 class="header-title">JADWAL PERAWATAN DAN OVERHAUL</h1></td>
+                        <td class="box-meta">
+                            <table class="header-meta-table">
+                                <tr><td class="meta-label">No Dokumen</td><td class="meta-value">: AF.SP 05.05.Rev-00</td></tr>
+                                <tr><td class="meta-label">Tanggal Terbit</td><td class="meta-value">: 02 Agustus 2024</td></tr>
+                                <tr><td class="meta-label">Halaman</td><td class="meta-value">: ${pageNum}/2</td></tr>
+                                <tr><td class="meta-label">Tanggal Revisi</td><td class="meta-value">: -</td></tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+                <div class="period-display">${headerText}</div>
+                <table class="schedule-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="col-no">NO</th>
+                            <th rowspan="2" class="col-machine">NAMA MESIN / TOOL / EQUIPMENT</th>
+                            <th rowspan="2" class="col-type">STS</th>
+                            <th colspan="31">TANGGAL</th>
+                            <th rowspan="2" class="col-pic">PIC</th>
+                        </tr>
+                        <tr>`;
+            for (let i = 1; i <= 31; i++) {
+                if (i <= daysInMonth) html += `<th>${i}</th>`;
+                else html += `<th class="bg-grey"></th>`;
+            }
+            html += `</tr></thead><tbody>`;
+            machineList.forEach(m => {
+                let rowP = `<tr><td rowspan="2">${m.no}</td><td rowspan="2" class="col-machine">${m.label}</td><td class="col-type">PLN</td>`;
+                let rowA = `<tr><td class="col-type">ACT</td>`;
+                for(let d=1; d<=31; d++) {
+                    let clsP='', clsA='', style='';
+                    if(d > daysInMonth) style='bg-grey'; else if(holidayMap[d]) style='bg-holiday';
+                    if(dataMap[m.id] && dataMap[m.id][d]) {
+                        const e = dataMap[m.id][d];
+                        if(e.plan === 'YA') clsP = 'bg-plan';
+                        if(e.actual === 'YA') clsA = 'bg-actual';
+                        else if(e.plan === 'YA' && e.actual === 'TIDAK') clsA = 'bg-miss';
+                    }
+                    rowP += `<td class="${clsP || style}"><div class="cell-fill"></div></td>`;
+                    rowA += `<td class="${clsA || style}"><div class="cell-fill"></div></td>`;
+                }
+                rowP += `<td rowspan="2" class="col-pic" id="pic-${m.id}-${pageNum}"></td>`;
+                html += rowP + "</tr>" + rowA + "</tr>";
+            });
+            html += `</tbody></table>`;
+            if (pageNum === 2) {
+                html += `
+                <div class="signature-section">
+                    <div class="sig-box"><div class="sig-header">DIBUAT OLEH :</div><div class="sig-body" id="sig-spv-p2"></div><div class="sig-role">SUPERVISOR</div></div>
+                    <div class="sig-box"><div class="sig-header">DIPERIKSA :</div><div class="sig-body" id="sig-supt-p2"></div><div class="sig-role">SUPERINTENDENT</div></div>
+                    <div class="sig-box"><div class="sig-header">MENGETAHUI :</div><div class="sig-body" id="sig-prod-p2"></div><div class="sig-role">PRODUKSI</div></div>
+                    <div class="sig-box"><div class="sig-header">MENGETAHUI :</div><div class="sig-body" id="sig-ppc-p2"></div><div class="sig-role">PPC</div></div>
+                    <div class="sig-box"><div class="sig-header">MENYETUJUI :</div><div class="sig-body" id="sig-mgr-p2"></div><div class="sig-role">MANAGER ENGINEERING</div></div>
+                </div>`;
+            }
+            html += `</div>`; return html;
+        }
+
+        // --- 2. SCREENSHOT & EXPORT PDF ---
+        async function downloadPDF() {
+            const loading = document.getElementById('loading');
+            const wrapper = document.getElementById('report-wrapper');
+            if(!wrapper.innerHTML || wrapper.innerText.includes('Pilih Periode')) { alert("Data belum dimuat!"); return; }
+
+            loading.style.display = 'flex';
+            document.getElementById('loading-text').innerText = "Memproses Screenshot Halaman...";
+            
+            document.body.classList.add('screenshot-mode');
+            window.scrollTo(0, 0);
+            
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('l', 'mm', 'a4');
+                const pages = document.querySelectorAll('.page');
+
+                for (let i = 0; i < pages.length; i++) {
+                    const canvas = await html2canvas(pages[i], { 
+                        scale: 2, 
+                        useCORS: true, 
+                        allowTaint: false, 
+                        scrollY: 0, 
+                        scrollX: 0, 
+                        width: 1123,
+                        windowWidth: 1200 
+                    });
+                    
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    if (i > 0) pdf.addPage();
+                    pdf.addImage(imgData, 'JPEG', 0, 0, 297, 210);
+                }
+                pdf.save(`Jadwal_Perawatan_AKG_${document.getElementById('month-picker').value}.pdf`);
+            } catch (err) {
+                alert("Gagal PDF: " + err.message);
+                console.error(err);
+            } finally {
+                document.body.classList.remove('screenshot-mode');
+                autoScalePreview();
+                loading.style.display = 'none';
             }
         }
     </script>
