@@ -2,8 +2,9 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Laporan Maintenance - FULL PAGE WYSIWYG</title>
+    <!-- VIEWPORT WAJIB AGAR RESPONSIF DI HP -->
+    <meta name="viewport" content="width=device-width, initial-scale=0.5, user-scalable=yes">
+    <title>AF.SP 05.07.Rev-00 - REPORT PMI</title>
     
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -12,130 +13,178 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
+    <!-- Font & Icons untuk UI Bar & Sidebar -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <style>
-        /* =========================================
-           1. RESET & UI (App Interface)
-           ========================================= */
         :root {
-            --primary: #DC2626;        
-            --bg-body: #1a1a1a;        
-            --text-app: #FFF;       
-            /* UKURAN KERTAS: A4 PORTRAIT */
-            --paper-width: 210mm; 
-            --paper-height: 297mm;
-            --navbar-height: 60px;
+            /* TEMA WARNA AKG UI */
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --border: #e5e7eb;
+            --text-main: #333333;
+            --sidebar-width: 280px; 
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        /* === GLOBAL RESET === */
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; -webkit-tap-highlight-color: transparent; }
         
-        body { 
-            font-family: "Arial Narrow", Arial, sans-serif; 
-            background: var(--bg-body);
+        body {
             margin: 0; padding: 0;
-            color: var(--text-app);
-            height: 100vh;
+            background: #525659;
+            font-family: "Arial Narrow", Arial, sans-serif;
+            font-size: 7pt;
+            padding-bottom: 80px;
+            overflow: auto; 
+        }
+
+        /* --- TOP ACTION BAR (GARIS TIGA + KONTROL HORIZONTAL) --- */
+        .top-bar {
+            position: sticky;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #1e293b; /* Warna gelap profesional */
+            padding: 10px 20px;
             display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            justify-content: flex-start; /* Posisi ke Kiri */
+            align-items: center;
+            gap: 25px; 
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            flex-wrap: wrap; 
         }
 
-        /* UI: Filter Box */
-        .filter-container {
-            flex: 0 0 auto;
-            width: 100%; 
-            background: #222; 
-            border-bottom: 1px solid #444;
-            padding: 10px; 
-            z-index: 999;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        /* Tombol Hamburger di Kiri */
+        .hamburger-btn {
+            width: 42px; height: 42px;
+            background: var(--primary); color: white;
+            border-radius: 8px; display: flex; justify-content: center; align-items: center;
+            font-size: 20px; cursor: pointer; transition: 0.2s;
+            flex-shrink: 0;
         }
+        .hamburger-btn:hover { background: var(--primary-dark); transform: scale(1.05); }
+        .hamburger-btn:active { transform: scale(0.95); }
 
-        .filter-box {
-            display: grid;
-            grid-template-columns: 1fr 1fr 80px 80px;
-            gap: 8px; 
-            width: 100%; 
-            max-width: 800px; 
-            margin: 0 auto;
-        }
-
-        select, button { 
-            padding: 10px; font-weight: bold; border-radius: 6px; 
-            border: 1px solid #444; background: #333; color: white; 
-            font-size: 13px; outline: none;
-            width: 100%; height: 40px;
-        }
-        select:focus { border-color: var(--primary); }
-
-        .btn-search { background: var(--primary); color: white; border: none; cursor: pointer;}
-        .btn-download { background: #fff; color: black; border: none; cursor: pointer;}
-        
-        #sel-mesin { grid-column: span 2; }
-        
-        .info-status {
-            text-align: center; font-size: 12px; color: #aaa; 
-            padding: 5px 0; background: #222;
-        }
-
-        /* UI: Paper Wrapper */
-        .paper-wrapper {
-            flex: 1;
-            width: 100%;
-            overflow: auto;
-            background: #111;
-            padding: 20px;
+        /* Panel Kontrol di sebelah Kanan Garis Tiga */
+        .controls-horizontal {
             display: flex;
-            justify-content: center; /* Center saat preview */
-            align-items: flex-start;
-            -webkit-overflow-scrolling: touch;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+        }
+
+        .controls-horizontal span.ctrl-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: white;
+            text-transform: uppercase;
+            margin-right: 5px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .input-ctrl, .btn-ctrl {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .input-ctrl { background: #f8f9fa; color: #333; }
+        .input-ctrl:focus { border-color: var(--primary); outline: 2px solid var(--primary); }
+
+        .btn-show { background: #22c55e; color: white; }
+        .btn-show:hover { background: #16a34a; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+        .btn-print { background: var(--primary); color: white; border: none; }
+        .btn-print:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(201,25,25,0.3); }
+
+        #status-text { font-size: 12px; font-weight: 700; margin-left: 10px; font-family: 'Inter', sans-serif; color: #fca5a5; }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 2000; opacity: 0; visibility: hidden; transition: 0.3s;
+            backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+        
+        .side-nav {
+            position: fixed; top: 0; left: -400px; width: 320px; height: 100vh;
+            background: white; z-index: 2001; transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+            display: flex; flex-direction: column; padding: 25px; box-shadow: 10px 0 30px rgba(0,0,0,0.3);
+            font-family: 'Inter', sans-serif; 
+        }
+        .side-nav.active { left: 0; }
+
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+        .sidebar-title { font-weight: bold; color: var(--primary); font-size: 24px; }
+        .sidebar-close { font-size: 30px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: #666; 
+            background: white; width: 100%; padding: 18px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: bold; font-size: 16px;
+        }
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 24px; color: var(--primary); }
+
+        /* LOADING OVERLAY */
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 20000;
+            display: none; justify-content: center; align-items: center; flex-direction: column;
+            color: white; font-size: 18px; font-family: 'Inter', sans-serif;
         }
 
         /* =========================================
            2. KERTAS LAPORAN (PORTRAIT STYLE)
            ========================================= */
-        .paper {
-            background: #FFF;
-            color: #000;
-            width: var(--paper-width);
-            min-height: var(--paper-height); 
-            min-width: var(--paper-width); 
+        .sheet-container {
+            width: 100%; overflow-x: auto; display: flex; justify-content: flex-start; 
+            padding: 30px 15px; box-sizing: border-box; -webkit-overflow-scrolling: touch; 
+            position: relative; z-index: 1;
+        }
+
+        @media (min-width: 820px) {
+            .sheet-container { justify-content: center; }
+        }
+
+        .sheet {
+            background: #FFF; color: #000;
+            width: 794px; /* Lebar A4 Portrait @ 96dpi */
+            min-width: 794px; 
+            min-height: 1122px; 
             padding: 10mm 10mm; 
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
             margin: 0 auto; 
-            position: relative;
-            overflow: visible; 
-            font-size: 7.5pt; 
-            line-height: 1.1;
-            transform-origin: top center; 
+            position: relative; overflow: visible; 
+            font-size: 7.5pt; line-height: 1.1;
+            box-sizing: border-box; border-radius: 4px;
         }
 
         table { width: 100%; border-collapse: collapse; margin-bottom: 2px; }
-        td, th { border: 1px solid #000; padding: 1px 3px; vertical-align: middle; }
+        td, th { border: 1px solid #000; padding: 1px 3px; vertical-align: middle; color: #000; }
         
-        /* HEADER */
-        .header-tbl { margin-bottom: 5px; }
-        .header-tbl td { text-align: center; padding: 2px; }
-        
-        /* LOGO CONTAINER */
-        .logo-container {
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 45px; 
-            margin-bottom: 2px;
-        }
+        /* LOGO */
+        .logo-container { width: 100%; display: flex; justify-content: center; align-items: center; height: 45px; margin-bottom: 2px; }
         .logo-img { height: 100%; width: auto; display: block; object-fit: contain; }
         .logo-canvas { height: 45px !important; width: auto !important; display: block !important; margin: 0 auto !important; }
         
         .company-name { font-size: 8pt; font-weight: bold; display: block; text-align: center; line-height: 1.2; }
-        .doc-title { font-size: 11pt; font-weight: bold; text-decoration: underline; margin-top: 2px; }
+        .doc-title { font-size: 11pt; font-weight: bold; text-decoration: underline; margin-top: 2px; text-align: center; }
         
         .doc-ctrl { width: 100%; font-size: 6.5pt; text-align: left; border: none; }
         .doc-ctrl td { border: none; padding: 0 2px; }
-        .doc-ctrl tr td:first-child { width: 40%; font-weight: bold; } 
 
         /* INFO MESIN */
         .info-tbl { font-size: 7.5pt; margin-bottom: 5px; }
@@ -143,12 +192,8 @@
         .lbl { font-weight: bold; width: 18%; }
         .val { width: 32%; padding-left: 5px; }
         
-        /* DATA TABLE - Full Width Ratio */
-        .main-tbl th { 
-            background: #ddd; font-weight: bold; font-size: 7pt; height: 16px; 
-            border: 1px solid #000;
-            text-align: center;
-        }
+        /* DATA TABLE */
+        .main-tbl th { background: #ddd; font-weight: bold; font-size: 7pt; height: 16px; border: 1px solid #000; text-align: center; }
         .main-tbl td { font-size: 7pt; height: 12px; } 
         
         .col-no { width: 5%; text-align: center; }
@@ -169,12 +214,23 @@
         .act-stack .act-item { flex: 1 1 auto; width: 100%; border-bottom: 1px solid #000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1px 0; background: #fff; }
         .act-stack .act-item:last-child { border-bottom: none; }
 
-        .mini-lbl { font-size: 5pt; color: #444; font-weight: bold; line-height: 1; margin-bottom: 1px; text-transform: uppercase; }
-        .act-item { font-size: 7pt; }
         .st-ok { color: black; font-weight: bold; }
         .st-ng { color: red; font-weight: bold; }
 
-        /* HEADER VALVE */
+        /* SIGNATURE (BACKGROUND DIPAKSA PUTIH) */
+        .sig-container { margin-top: 10px; border: 1px solid #000; page-break-inside: avoid; }
+        .sig-tbl { width: 100%; border: none; }
+        .sig-tbl td { width: 33.33%; text-align: center; vertical-align: top; padding: 0; border-right: 1px solid #000; }
+        .sig-tbl td:last-child { border-right: none; }
+        .sig-head { background: #eee; font-size: 7pt; font-weight: bold; border-bottom: 1px solid #000; padding: 2px 0; }
+        
+        .sig-box { height: 45px; display: flex; align-items: flex-end; justify-content: center; background-color: #ffffff !important; }
+        .sig-img { max-height: 40px; max-width: 80%; background-color: #ffffff !important; object-fit: contain; } 
+        
+        .sig-name { border-top: 1px solid #000; display: block; width: 90%; margin: 0 auto 3px auto; font-size: 7.5pt; font-weight: bold; padding-top: 2px;}
+        .sig-role { font-size: 7pt; margin-bottom: 3px;}
+
+        /* VALVE / GRID UTILS */
         .valve-wrapper { display: flex; flex-direction: column; width: 100%; height: 100%; }
         .valve-title { background: #e8e8e8; font-size: 6pt; font-weight: bold; text-align: center; border-bottom: 1px solid #000; padding: 2px 0; width: 100%; display: block; }
         .valve-values { display: flex; flex: 1; width: 100%; background: #fafafa; }
@@ -182,37 +238,12 @@
         .valve-val-item:last-child { border-right: none; }
         .sub-header-row td { padding: 0 !important; height: auto; border-top: 1px solid #000; }
 
-        /* SIGNATURE */
-        .sig-container { margin-top: 10px; border: 1px solid #000; page-break-inside: avoid; }
-        .sig-tbl { width: 100%; border: none; }
-        .sig-tbl td { width: 33.33%; text-align: center; vertical-align: top; padding: 0; border-right: 1px solid #000; }
-        .sig-tbl td:last-child { border-right: none; }
-        .sig-head { background: #eee; font-size: 7pt; font-weight: bold; border-bottom: 1px solid #000; padding: 2px 0; }
-        .sig-box { height: 45px; display: flex; align-items: flex-end; justify-content: center; }
-        .sig-img { max-height: 40px; max-width: 80%; }
-        .sig-name { border-top: 1px solid #000; display: block; width: 90%; margin: 0 auto 3px auto; font-size: 7.5pt; font-weight: bold; padding-top: 2px;}
-        .sig-role { font-size: 7pt; margin-bottom: 3px;}
-
-        /* BOTTOM NAV */
-        .bottom-nav { flex: 0 0 auto; background: #000; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #333; z-index: 1000; height: var(--navbar-height); }
-        .nav-item { color: #666; text-decoration: none; font-size: 10px; display: flex; flex-direction: column; align-items: center; }
-        .nav-item.active { color: var(--primary); }
-        /* Style Ikon Navigasi */
-        .nav-item i { font-size: 20px; margin-bottom: 0; }
-
-        #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); z-index: 2000; display: none; justify-content: center; align-items: center; flex-direction: column; color: white; }
-
-        @media (max-width: 600px) {
-            .filter-box { grid-template-columns: 1fr 1fr; gap: 5px; }
-            #sel-mesin { grid-column: 1 / -1; }
-            .btn-search { grid-column: 1; width: 100%; }
-            .btn-download { grid-column: 2; width: 100%; }
-            .paper-wrapper { padding: 10px; display: block; text-align: center; }
-            .paper { display: inline-block; text-align: left; transform-origin: top left; transform: scale(0.5); }
-        }
-        @media (min-width: 601px) and (max-width: 900px) {
-            .filter-box { grid-template-columns: 2fr 1fr 1fr 80px 80px; }
-            #sel-mesin { grid-column: span 1; }
+        @media print {
+            @page { size: A4 portrait; margin: 0; }
+            body { background: white; margin: 0; padding: 0; zoom: 95%; }
+            .no-print, .top-bar, .sidebar-overlay, .side-nav { display: none !important; }
+            .sheet-container { padding: 0; justify-content: center; overflow: hidden; }
+            .sheet { margin: 0; box-shadow: none; border: none; width: 100%; padding: 5mm; page-break-inside: avoid; }
         }
     </style>
 </head>
@@ -223,27 +254,60 @@
         <p style="margin-top:10px;" id="loading-text">Memproses PDF...</p>
     </div>
 
-    <!-- FILTER SECTION -->
-    <div class="filter-container">
-        <div class="filter-box">
-            <select id="sel-mesin"><option>Loading...</option></select>
-            <select id="sel-bulan">
+    <!-- TOP ACTION BAR -->
+    <div class="top-bar no-print">
+        <div class="hamburger-btn" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+        </div>
+
+        <div class="controls-horizontal">
+            <span class="ctrl-title"><i class="fa-solid fa-print"></i> KONTROL:</span>
+            <select id="sel-mesin" class="input-ctrl"><option>Loading...</option></select>
+            <select id="sel-bulan" class="input-ctrl">
                 <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
                 <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
                 <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
                 <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
             </select>
-            <select id="sel-tahun"><option value="2025">2025</option><option value="2026" selected>2026</option></select>
-            <button class="btn-search" onclick="cariLaporan()"><i class="fa fa-search"></i></button>
-            <button class="btn-download" onclick="downloadPDF()"><i class="fa fa-file-pdf"></i></button>
+            <select id="sel-tahun" class="input-ctrl">
+                <option value="2025">2025</option><option value="2026" selected>2026</option>
+            </select>
+            <button class="btn-ctrl btn-show" onclick="cariLaporan()"><i class="fa-solid fa-search"></i> CARI DATA</button>
+            <button class="btn-ctrl btn-print" onclick="downloadPDF()"><i class="fa-solid fa-file-pdf"></i> CETAK PDF</button>
+            <span id="status-text">Pilih Mesin & Cari Data</span>
         </div>
     </div>
 
-    <div class="info-status" id="status-text">Silahkan Pilih Mesin & Cari Data</div>
+    <!-- SIDEBAR -->
+    <div class="sidebar-overlay no-print" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <nav class="side-nav no-print" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
 
-    <!-- REPORT PREVIEW -->
-    <div class="paper-wrapper">
-        <div class="paper" id="report-view" style="display:none;">
+    <!-- KERTAS LAPORAN -->
+    <div class="sheet-container">
+        <div class="sheet" id="report-view" style="display:none;">
             <!-- HEADER -->
             <table class="header-tbl">
                 <tr>
@@ -258,7 +322,6 @@
                          FORM PREVENTIF MESIN INJECTION<br>
                          (CLAMPING UNIT)
                        </div>
-
                     </td>
                     <td width="30%">
                         <table class="doc-ctrl">
@@ -302,9 +365,7 @@
                         <th class="col-ket">KET</th>
                     </tr>
                 </thead>
-                <tbody id="tbl-body">
-                    <!-- Data injeksi via JS -->
-                </tbody>
+                <tbody id="tbl-body"></tbody>
             </table>
 
             <!-- SIGNATURE -->
@@ -335,291 +396,280 @@
         </div> 
     </div>
 
-    <!-- NAVIGATION BARU -->
-    <nav class="bottom-nav">
-        <a href="index.html" class="nav-item">
-            <i class="fa-solid fa-house"></i>
-        </a>
-        <a href="menu_utama.html" class="nav-item">
-            <i class="fa-solid fa-bars"></i>
-        </a>
-        <a href="download_data.html" class="nav-item active">
-            <i class="fa-solid fa-download"></i>
-        </a>
-        <a href="informasi_akun.html" class="nav-item">
-            <i class="fa-solid fa-circle-user"></i>
-        </a>
-    </nav>
+<script>
+    // --- UI NAVIGATION LOGIC ---
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('active');
+        document.getElementById('sidebarOverlay').classList.toggle('active');
+    }
 
-    <!-- SCRIPT -->
-    <script>
-        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
-        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
-        const _sb = supabase.createClient(SB_URL, SB_KEY);
+    const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+    const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-        const LOGO_URL_ASLI = "https://amarilyskg.co.id/bootstrap/img/logo.png";
-        let GLOBAL_BASE64_LOGO = "";
+    const LOGO_URL_ASLI = "https://amarilyskg.co.id/bootstrap/img/logo.png";
+    let GLOBAL_BASE64_LOGO = "";
 
-        window.onload = async () => {
-            const { data } = await _sb.from('pmi_machines').select('id, nama_mesin').order('nama_mesin');
-            const sel = document.getElementById('sel-mesin');
-            sel.innerHTML = '<option value="">-- PILIH MESIN --</option>';
-            if(data) data.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.nama_mesin}</option>`);
+    window.onload = async () => {
+        setupDynamicNavigation();
+        const { data } = await _sb.from('pmi_machines').select('id, nama_mesin').order('nama_mesin');
+        const sel = document.getElementById('sel-mesin');
+        sel.innerHTML = '<option value="">-- PILIH MESIN --</option>';
+        if(data) data.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.nama_mesin}</option>`);
 
-            await preloadLogo();
-        };
+        await preloadLogo();
+    };
 
-        // Proxy yang lebih reliable
-        async function fetchImageAsBase64(url) {
-            const proxies = [
-                'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url), 
-                'https://corsproxy.io/?' + encodeURIComponent(url),
-                'https://api.allorigins.win/raw?url=' + encodeURIComponent(url)
-            ];
-            
-            for (let proxyUrl of proxies) {
-                try {
-                    const response = await fetch(proxyUrl);
-                    if (response.ok) {
-                        const blob = await response.blob();
-                        return new Promise((resolve) => {
-                            const reader = new FileReader();
-                            reader.onloadend = () => resolve(reader.result);
-                            reader.readAsDataURL(blob);
-                        });
-                    }
-                } catch (e) { console.warn("Proxy error:", e); }
+    async function setupDynamicNavigation() {
+        try {
+            const { data: { session } } = await _sb.auth.getSession();
+            if (!session) return;
+            const { data: profile } = await _sb.from('profiles').select('jabatan').eq('id', session.user.id).single();
+            if (profile) {
+                const jabatan = profile.jabatan.toUpperCase();
+                const navHome = document.getElementById('nav-home');
+                const navMenu = document.getElementById('nav-menu');
+                let homeLink = 'index.html'; let menuLink = 'menu_utama.html';
+                if (jabatan.includes('OPERATOR')) { homeLink = 'OPERATOR_HOME.html'; menuLink = 'MENU_UTAMA_OPERATOR.html'; }
+                else if (jabatan.includes('SUPERVISOR')) { homeLink = 'SUPERVISOR_HOME.html'; menuLink = 'MENU_UTAMA_SUPERVISOR.html'; }
+                else if (jabatan.includes('SUPERINTENDENT')) { homeLink = 'SUPERINTENDENT_HOME.html'; menuLink = 'MENU_UTAMA_SUPERINTENDENT.html'; }
+                else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) { homeLink = 'MANAGER_HOME.html'; menuLink = 'MENU_UTAMA_MANAGER.html'; }
+                else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) { homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html'; menuLink = 'MENU_UTAMA_JM_PRODUKSI.html'; }
+                else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) { homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html'; menuLink = 'MENU_UTAMA_JM_PPIC.html'; }
+                if (navHome) navHome.href = homeLink;
+                if (navMenu) navMenu.href = menuLink;
             }
-            return null;
+        } catch (err) { console.error("Gagal mengatur navigasi dinamis:", err); }
+    }
+
+    async function fetchImageAsBase64(url) {
+        const proxies = [
+            'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url), 
+            'https://corsproxy.io/?' + encodeURIComponent(url),
+            'https://api.allorigins.win/raw?url=' + encodeURIComponent(url)
+        ];
+        for (let proxyUrl of proxies) {
+            try {
+                const response = await fetch(proxyUrl);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    return new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.readAsDataURL(blob);
+                    });
+                }
+            } catch (e) { console.warn("Proxy error:", e); }
         }
+        return null;
+    }
 
-        async function preloadLogo() {
-            const base64 = await fetchImageAsBase64(LOGO_URL_ASLI);
-            if(base64) GLOBAL_BASE64_LOGO = base64;
+    async function preloadLogo() {
+        const base64 = await fetchImageAsBase64(LOGO_URL_ASLI);
+        if(base64) GLOBAL_BASE64_LOGO = base64;
+    }
+
+    async function cariLaporan() {
+        const mid = document.getElementById('sel-mesin').value;
+        const bln = document.getElementById('sel-bulan').value;
+        const thn = document.getElementById('sel-tahun').value;
+        if(!mid) return alert("Pilih Mesin dahulu!");
+
+        document.getElementById('status-text').innerText = "Mencari data...";
+        const mm = bln.toString().padStart(2, '0');
+        const startDate = `${thn}-${mm}-01`;
+        const lastDay = new Date(thn, bln, 0).getDate();
+        const endDate = `${thn}-${mm}-${lastDay}`;
+
+        const { data: headers, error } = await _sb.from('pmi_header').select('*, pmi_machines(nama_mesin, tonage)').eq('machine_id', mid).gte('tanggal', startDate).lte('tanggal', endDate).order('created_at', {ascending:false}).limit(1);
+
+        if(error || !headers || headers.length === 0) {
+            document.getElementById('status-text').innerText = "Data Laporan Tidak Ditemukan.";
+            document.getElementById('report-view').style.display = 'none';
+            return;
         }
+        renderReport(headers[0]);
+    }
 
-        async function cariLaporan() {
-            const mid = document.getElementById('sel-mesin').value;
-            const bln = document.getElementById('sel-bulan').value;
-            const thn = document.getElementById('sel-tahun').value;
-            if(!mid) return alert("Pilih Mesin dahulu!");
+    async function renderReport(head) {
+        document.getElementById('status-text').innerText = "Data dimuat. Siap Export.";
+        document.getElementById('report-view').style.display = 'block';
+        
+        const imgLogo = document.getElementById('logo-header');
+        if (imgLogo) imgLogo.src = GLOBAL_BASE64_LOGO || LOGO_URL_ASLI;
 
-            document.getElementById('status-text').innerText = "Sedang mencari data...";
-            const mm = bln.toString().padStart(2, '0');
-            const startDate = `${thn}-${mm}-01`;
-            const lastDay = new Date(thn, bln, 0).getDate();
-            const endDate = `${thn}-${mm}-${lastDay}`;
+        const m = head.pmi_machines || {};
+        document.getElementById('v_mesin').innerText = m.nama_mesin || '-';
+        document.getElementById('v_ton').innerText = m.tonage || '-';
+        document.getElementById('v_tgl').innerText = head.tanggal;
+        document.getElementById('v_tahun').innerText = head.tanggal ? head.tanggal.split('-')[0] : '-';
+        document.getElementById('v_start').innerText = (head.start_jam||'').substring(0,5);
+        document.getElementById('v_finish').innerText = (head.finish_jam||'').substring(0,5);
+        document.getElementById('v_target').innerText = (head.target_selesai||'').substring(0,5);
+        document.getElementById('v_hm').innerText = head.running_hours;
+        
+        document.getElementById('nm_1').innerText = head.nama_pelaksana || '.......';
+        document.getElementById('nm_2').innerText = head.nama_koordinator || '.......';
+        document.getElementById('nm_3').innerText = head.nama_superintendent || '.......';
+        
+        const renderSig = (url) => url ? `<img src="${url}" class="sig-img">` : '';
+        document.getElementById('sig_1').innerHTML = renderSig(head.signature_pelaksana);
+        document.getElementById('sig_2').innerHTML = renderSig(head.signature_koordinator);
+        document.getElementById('sig_3').innerHTML = renderSig(head.signature_superintendent);
 
-            const { data: headers, error } = await _sb.from('pmi_header').select('*, pmi_machines(nama_mesin, tonage)').eq('machine_id', mid).gte('tanggal', startDate).lte('tanggal', endDate).order('created_at', {ascending:false}).limit(1);
+        const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
+        const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
+        const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', head.id);
 
-            if(error || !headers || headers.length === 0) {
-                document.getElementById('status-text').innerText = "Data Laporan Tidak Ditemukan.";
-                document.getElementById('report-view').style.display = 'none';
-                return;
-            }
-            renderReport(headers[0]);
-        }
+        let resMap = {}; let noteMap = {};
+        if(results) { results.forEach(r => { resMap[`${r.pmi_item_id}_${r.pmi_item_field_id}`] = r; if(r.keterangan) noteMap[r.pmi_item_id] = r.keterangan; }); }
 
-        async function renderReport(head) {
-            document.getElementById('status-text').innerText = "Data dimuat. Siap Export.";
-            document.getElementById('report-view').style.display = 'block';
-            
-            const imgLogo = document.getElementById('logo-header');
-            imgLogo.src = GLOBAL_BASE64_LOGO || LOGO_URL_ASLI;
+        const tbody = document.getElementById('tbl-body'); tbody.innerHTML = '';
+        let lastCat = ''; let no = 1; let printedHeaders = {}; 
 
-            const m = head.pmi_machines || {};
-            document.getElementById('v_mesin').innerText = m.nama_mesin || '-';
-            document.getElementById('v_ton').innerText = m.tonage || '-';
-            document.getElementById('v_tgl').innerText = head.tanggal;
-            
-            if(head.tanggal) {
-                document.getElementById('v_tahun').innerText = head.tanggal.split('-')[0];
-            } else {
-                document.getElementById('v_tahun').innerText = '-';
-            }
-            
-            document.getElementById('v_start').innerText = (head.start_jam||'').substring(0,5);
-            document.getElementById('v_finish').innerText = (head.finish_jam||'').substring(0,5);
-            document.getElementById('v_target').innerText = (head.target_selesai||'').substring(0,5);
-            document.getElementById('v_hm').innerText = head.running_hours;
-            
-            document.getElementById('nm_1').innerText = head.nama_pelaksana || '.......';
-            document.getElementById('nm_2').innerText = head.nama_koordinator || '.......';
-            document.getElementById('nm_3').innerText = head.nama_superintendent || '.......';
-            
-            const renderSig = (url) => url ? `<img src="${url}" class="sig-img">` : '';
-            document.getElementById('sig_1').innerHTML = renderSig(head.signature_pelaksana);
-            document.getElementById('sig_2').innerHTML = renderSig(head.signature_koordinator);
-            document.getElementById('sig_3').innerHTML = renderSig(head.signature_superintendent);
-
-            const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
-            const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
-            const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', head.id);
-
-            let resMap = {}; let noteMap = {};
-            if(results) { results.forEach(r => { resMap[`${r.pmi_item_id}_${r.pmi_item_field_id}`] = r; if(r.keterangan) noteMap[r.pmi_item_id] = r.keterangan; }); }
-
-            const tbody = document.getElementById('tbl-body'); tbody.innerHTML = '';
-            let lastCat = ''; let no = 1; let printedHeaders = {}; 
-
-            if(items) {
-                items.forEach(item => {
-                    if(item.kategori !== lastCat) {
-                        lastCat = item.kategori; tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${lastCat}</td></tr>`;
-                        if(lastCat.includes("INJECTION") || lastCat.includes("PUMP")) no = 1;
+        if(items) {
+            items.forEach(item => {
+                if(item.kategori !== lastCat) {
+                    lastCat = item.kategori; tbody.innerHTML += `<tr class="cat-row"><td colspan="5">${lastCat}</td></tr>`;
+                    if(lastCat.includes("INJECTION") || lastCat.includes("PUMP")) no = 1;
+                }
+                let myFields = fields.filter(f => f.pmi_item_id === item.id).map(a => ({...a}));
+                let headerKey = item.kategori;
+                let hasSpecialLabels = myFields.some(f => f.label && f.label !== 'Actual');
+                
+                if(hasSpecialLabels && !printedHeaders[headerKey]) {
+                    let isValve = myFields.some(f => f.label === '50' || f.label === '200');
+                    if(isValve) {
+                        let subHtml = `<div class="valve-wrapper"><div class="valve-title">VALVE IDLING SETT</div><div class="valve-values">`;
+                        myFields.forEach(f => { subHtml += `<div class="valve-val-item">${f.label||''}</div>`; });
+                        subHtml += `</div></div>`;
+                        tbody.innerHTML += `<tr class="sub-header-row"><td></td><td></td><td></td><td class="col-act">${subHtml}</td><td></td></tr>`;
+                    } else {
+                        let subHtml = `<div class="act-grid">`;
+                        myFields.forEach(f => { subHtml += `<div class="act-item" style="background:#fafafa; font-weight:bold; font-size:6pt;">${f.label||''}</div>`; });
+                        subHtml += `</div>`;
+                        tbody.innerHTML += `<tr class="sub-header-row"><td></td><td></td><td></td><td class="col-act">${subHtml}</td><td></td></tr>`;
                     }
-                    let myFields = fields.filter(f => f.pmi_item_id === item.id).map(a => ({...a}));
-                    let headerKey = item.kategori;
-                    let hasSpecialLabels = myFields.some(f => f.label && f.label !== 'Actual');
-                    
-                    if(hasSpecialLabels && !printedHeaders[headerKey]) {
-                        let isValve = myFields.some(f => f.label === '50' || f.label === '200');
-                        if(isValve) {
-                            let subHtml = `<div class="valve-wrapper"><div class="valve-title">VALVE IDLING SETT</div><div class="valve-values">`;
-                            myFields.forEach(f => { subHtml += `<div class="valve-val-item">${f.label||''}</div>`; });
-                            subHtml += `</div></div>`;
-                            tbody.innerHTML += `<tr class="sub-header-row"><td></td><td></td><td></td><td class="col-act">${subHtml}</td><td></td></tr>`;
-                        } else {
-                            let subHtml = `<div class="act-grid">`;
-                            myFields.forEach(f => { subHtml += `<div class="act-item" style="background:#fafafa; font-weight:bold; font-size:6pt;">${f.label||''}</div>`; });
-                            subHtml += `</div>`;
-                            tbody.innerHTML += `<tr class="sub-header-row"><td></td><td></td><td></td><td class="col-act">${subHtml}</td><td></td></tr>`;
-                        }
-                        printedHeaders[headerKey] = true;
-                    }
+                    printedHeaders[headerKey] = true;
+                }
 
-                    let actHtml = '-';
-                    if(myFields.length > 0) {
-                        let isVertical = item.nama_item.toLowerCase().includes('pressure gauge') && myFields.length === 2;
-                        if(isVertical) { myFields.sort((a, b) => (a.label || '').toLowerCase().includes('display') ? -1 : 1); }
-                        let gridClass = isVertical ? 'act-stack' : 'act-grid';
-                        actHtml = `<div class="${gridClass}">`;
-                        myFields.forEach(f => {
-                            let r = resMap[`${item.id}_${f.id}`]; let val = r ? (r.status || r.nilai_aktual || '-') : '-';
-                            let cls = val === 'OK' ? 'st-ok' : (val === 'NG' ? 'st-ng' : '');
-                            let labelHtml = isVertical ? `<div class="mini-lbl">${f.label.toLowerCase().includes('display') ? 'DISPLAY' : 'GAUGE'}</div>` : '';
-                            actHtml += `<div class="act-item">${labelHtml}<span class="${cls}">${val}</span></div>`;
-                        });
-                        actHtml += `</div>`;
-                    }
+                let actHtml = '-';
+                if(myFields.length > 0) {
+                    let isVertical = item.nama_item.toLowerCase().includes('pressure gauge') && myFields.length === 2;
+                    if(isVertical) { myFields.sort((a, b) => (a.label || '').toLowerCase().includes('display') ? -1 : 1); }
+                    let gridClass = isVertical ? 'act-stack' : 'act-grid';
+                    actHtml = `<div class="${gridClass}">`;
+                    myFields.forEach(f => {
+                        let r = resMap[`${item.id}_${f.id}`]; let val = r ? (r.status || r.nilai_aktual || r.temperature_oli || '-') : '-';
+                        let cls = val === 'OK' ? 'st-ok' : (val === 'NG' ? 'st-ng' : '');
+                        let labelHtml = isVertical ? `<div class="mini-lbl">${f.label.toLowerCase().includes('display') ? 'DISPLAY' : 'GAUGE'}</div>` : '';
+                        actHtml += `<div class="act-item">${labelHtml}<span class="${cls}">${val}</span></div>`;
+                    });
+                    actHtml += `</div>`;
+                }
 
-                    let displayNo = no; let displayName = item.nama_item || ''; let clsRow = ""; let incNo = true;
-                    if(displayName && (displayName.toLowerCase().includes("pressure gauge") || displayName.match(/^[a-z]\./) || displayName.startsWith("Zone"))) {
-                        clsRow = "indent-row"; incNo = false; displayNo = displayName.match(/^[a-z]\./) ? displayName.match(/^([a-z])\./)[1] : "";
-                    }
-                    tbody.innerHTML += `<tr><td class="col-no">${displayNo}</td><td class="col-item ${clsRow}">${displayName}</td><td class="col-std">${item.standard || ''}</td><td class="col-act">${actHtml}</td><td class="col-ket">${noteMap[item.id] || ''}</td></tr>`;
-                    if(incNo) no++;
-                });
-            }
-        }
-
-        async function replaceImgWithCanvas(imgElement, base64Data) {
-            return new Promise((resolve) => {
-                const image = new Image();
-                image.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = image.width;
-                    canvas.height = image.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(image, 0, 0);
-                    
-                    canvas.className = imgElement.className; 
-                    canvas.id = imgElement.id;
-                    canvas.classList.add('logo-canvas');
-                    
-                    imgElement.parentNode.replaceChild(canvas, imgElement);
-                    resolve(canvas);
-                };
-                image.src = base64Data;
+                let displayNo = no; let displayName = item.nama_item || ''; let clsRow = ""; let incNo = true;
+                if(displayName && (displayName.toLowerCase().includes("pressure gauge") || displayName.match(/^[a-z]\./) || displayName.startsWith("Zone"))) {
+                    clsRow = "indent-row"; incNo = false; displayNo = displayName.match(/^[a-z]\./) ? displayName.match(/^([a-z])\./)[1] : "";
+                }
+                tbody.innerHTML += `<tr><td class="col-no">${displayNo}</td><td class="col-item ${clsRow}">${displayName}</td><td class="col-std">${item.standard || ''}</td><td class="col-act">${actHtml}</td><td class="col-ket">${noteMap[item.id] || ''}</td></tr>`;
+                if(incNo) no++;
             });
         }
+    }
 
-        // =========================================================
-        // EXPORT PDF: PORTRAIT (p) + FORCE FIT 1 PAGE (WYSIWYG)
-        // =========================================================
-        async function downloadPDF() {
-            const overlay = document.getElementById('loading-overlay');
-            const loadingText = document.getElementById('loading-text');
-            const element = document.getElementById('report-view');
-            const logoContainer = document.getElementById('logo-container');
-            const imgLogo = document.getElementById('logo-header');
-            
-            overlay.style.display = 'flex';
-            loadingText.innerText = "Mengamankan Logo...";
-            
-            let originalImgClone = null;
+    async function replaceImgWithCanvas(imgElement, base64Data) {
+        return new Promise(resolve => {
+            const image = new Image();
+            image.onload = function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(image, 0, 0);
+                canvas.className = imgElement.className; canvas.id = imgElement.id;
+                canvas.classList.add('logo-canvas');
+                imgElement.parentNode.replaceChild(canvas, imgElement);
+                resolve(canvas);
+            };
+            image.src = base64Data;
+        });
+    }
 
-            try {
-                if (imgLogo && imgLogo.tagName === 'IMG') {
-                    originalImgClone = imgLogo.cloneNode(true);
-                    
-                    let dataToUse = GLOBAL_BASE64_LOGO;
-                    if (!dataToUse) dataToUse = await fetchImageAsBase64(LOGO_URL_ASLI);
-                    
-                    if (dataToUse) {
-                        await replaceImgWithCanvas(imgLogo, dataToUse);
-                    } else {
-                        alert("Gagal memproses logo. PDF mungkin tanpa logo.");
-                    }
-                }
-            } catch (e) { console.error("Swap error:", e); }
-
-            await new Promise(r => setTimeout(r, 200));
-
-            window.scrollTo(0, 0);
-            
-            // JANGAN UBAH MIN-HEIGHT AGAR TETAP FULL PAPER
-            const originalShadow = element.style.boxShadow;
-            const originalMargin = element.style.margin;
-            element.style.boxShadow = 'none';
-            element.style.margin = '0'; 
-
-            try {
-                loadingText.innerText = "Mengambil Gambar...";
-
-                const canvas = await html2canvas(element, {
-                    scale: 2,                   
-                    useCORS: true,              
-                    allowTaint: false,
-                    backgroundColor: "#ffffff", 
-                    windowWidth: element.scrollWidth,
-                    // windowHeight tidak diset agar capture seluruh kertas (termasuk putih bawah)
-                    scrollY: 0,
-                    logging: false
-                });
-
-                const imgData = canvas.toDataURL('image/jpeg', 0.98);
-
-                loadingText.innerText = "Membuat PDF Portrait...";
-                const { jsPDF } = window.jspdf;
-                
-                // 1. SET PORTRAIT A4
-                const pdf = new jsPDF('p', 'mm', 'a4'); 
-                const pdfWidth = 210; 
-                const pdfHeight = 297; 
-                
-                // 2. FORCE FIT A4 (MEMENUHI KERTAS 1:1)
-                // Karena CSS .paper sudah kita set fix A4, maka hasil canvasnya juga A4.
-                // Kita tempel langsung dengan ukuran 210x297 agar pas.
-                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-
-                const mesin = document.getElementById('v_mesin').innerText.replace(/[^a-zA-Z0-9]/g, '_');
-                const tgl = document.getElementById('v_tgl').innerText;
-                pdf.save(`MAINT_P_${mesin}_${tgl}.pdf`);
-
-            } catch (err) {
-                console.error(err);
-                alert("Gagal Export PDF: " + err.message);
-            } finally {
-                if (originalImgClone && logoContainer) {
-                    logoContainer.innerHTML = '';
-                    logoContainer.appendChild(originalImgClone);
-                }
-                element.style.boxShadow = originalShadow;
-                element.style.margin = originalMargin;
-                overlay.style.display = 'none';
+    async function downloadPDF() {
+        const overlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
+        const element = document.getElementById('report-view');
+        const logoContainer = document.getElementById('logo-container');
+        const imgLogo = document.getElementById('logo-header');
+        
+        overlay.style.display = 'flex';
+        loadingText.innerText = "Mengamankan Logo...";
+        
+        let originalImgClone = null;
+        try {
+            if (imgLogo && imgLogo.tagName === 'IMG') {
+                originalImgClone = imgLogo.cloneNode(true);
+                let dataToUse = GLOBAL_BASE64_LOGO || await fetchImageAsBase64(LOGO_URL_ASLI);
+                if (dataToUse) await replaceImgWithCanvas(imgLogo, dataToUse);
             }
+        } catch (e) { console.error("Swap error:", e); }
+
+        await new Promise(r => setTimeout(r, 200));
+        window.scrollTo(0, 0);
+
+        try {
+            loadingText.innerText = "Mengambil Gambar...";
+            const A4_WIDTH_PX = 794; // A4 Portrait 96 DPI
+            const A4_HEIGHT_PX = 1122;
+
+            const clonedElement = element.cloneNode(true);
+            clonedElement.style.margin = '0';
+            clonedElement.style.padding = '10mm 10mm'; 
+            clonedElement.style.width = `${A4_WIDTH_PX}px`;
+            clonedElement.style.minHeight = `${A4_HEIGHT_PX}px`;
+            clonedElement.style.height = 'auto'; 
+            clonedElement.style.boxSizing = 'border-box';
+            clonedElement.style.background = 'white';
+            clonedElement.style.position = 'relative';
+            clonedElement.style.transform = 'none';
+            clonedElement.style.left = 'auto';
+            clonedElement.style.top = 'auto';
+            clonedElement.style.boxShadow = 'none';
+
+            const container = document.createElement('div');
+            container.id = 'pdf-export-container';
+            container.style.position = 'fixed'; container.style.top = '0'; container.style.left = '-10000px'; 
+            container.style.width = `${A4_WIDTH_PX}px`; container.style.zIndex = '-9999';
+            container.appendChild(clonedElement);
+            document.body.appendChild(container);
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            const canvas = await html2canvas(clonedElement, {
+                scale: 2, useCORS: true, allowTaint: false, backgroundColor: "#ffffff", 
+                width: A4_WIDTH_PX, windowWidth: A4_WIDTH_PX, scrollX: 0, scrollY: 0, x: 0, y: 0, logging: false
+            });
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.98);
+            loadingText.innerText = "Membuat PDF Portrait...";
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4'); 
+            pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+            const mesin = document.getElementById('v_mesin').innerText.replace(/[^a-zA-Z0-9]/g, '_');
+            const tgl = document.getElementById('v_tgl').innerText;
+            pdf.save(`MAINT_P_${mesin}_${tgl}.pdf`);
+            document.body.removeChild(container);
+        } catch (err) {
+            console.error(err);
+            alert("Gagal Export PDF: " + err.message);
+        } finally {
+            if (originalImgClone && logoContainer) {
+                logoContainer.innerHTML = '';
+                logoContainer.appendChild(originalImgClone);
+            }
+            overlay.style.display = 'none';
         }
-    </script>
+    }
+</script>
 </body>
 </html>
