@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Statistik PRSLB - AKG Maintenance</title>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary: #c91919; 
+            --primary-dark: #a50e0e;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+
+            /* Status Colors */
+            --success: #10b981; /* OK */
+            --danger: #ef4444;  /* NG */
+            --warning: #f59e0b; /* MN / MT */
+            --gray: #94a3b8;    /* NA */
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            margin: 0; padding: 0;
+            background: var(--bg-body);
+            font-family: 'Inter', sans-serif;
+            font-size: 9pt;
+            color: var(--text-main);
+        }
+
+        .top-bar {
+            position: sticky; top: 0; left: 0; right: 0;
+            background: #1e293b; padding: 12px 20px;
+            display: flex; justify-content: flex-start; align-items: center; gap: 15px; 
+            z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.2); flex-wrap: wrap; 
+        }
+
+        .back-btn {
+            color: white; text-decoration: none; font-size: 18px; margin-right: 10px;
+            transition: 0.2s; display: flex; align-items: center; justify-content: center;
+            width: 32px; height: 32px; border-radius: 6px; background: rgba(255,255,255,0.1);
+        }
+        .back-btn:hover { background: var(--primary); transform: scale(1.05); }
+
+        .ctrl-title { font-size: 11px; font-weight: 900; color: white; text-transform: uppercase; }
+        
+        .input-ctrl { 
+            padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); 
+            background: rgba(255,255,255,0.05); color: white; font-weight: bold; outline: none;
+        }
+        .input-ctrl option { background: #1e293b; color: white; }
+
+        .btn-show { 
+            background: var(--primary); color: white; border: none; padding: 8px 16px; 
+            border-radius: 6px; font-weight: 800; cursor: pointer; transition: 0.2s;
+        }
+        .btn-show:hover { background: var(--primary-dark); transform: scale(1.02); }
+
+        .app-container { width: 100%; max-width: 1240px; margin: 0 auto; padding: 20px; }
+
+        .chart-section {
+            background: var(--bg-card); border-radius: 16px; padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid var(--border);
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        .chart-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; border-left: 5px solid var(--primary); padding-left: 15px;
+        }
+
+        .chart-title { font-size: 16px; font-weight: 900; text-transform: uppercase; color: var(--text-main); }
+
+        .chart-container { 
+            width: 100%; 
+            min-width: 1000px; /* Lebar minimum agar 27 mesin tidak berhimpitan */
+            height: 500px; /* Disesuaikan untuk grafik vertikal */
+            position: relative; 
+        }
+
+        .summary-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;
+            margin-top: 10px;
+        }
+
+        .summary-card {
+            background: white; border-radius: 12px; padding: 15px; border: 1px solid var(--border);
+            position: relative; overflow: hidden;
+        }
+        .summary-card::before { content: ''; position: absolute; left: 0; top: 0; height: 100%; width: 4px; }
+        .card-ok::before { background: var(--success); }
+        .card-ng::before { background: var(--danger); }
+        .card-mn::before { background: var(--warning); }
+        .card-total::before { background: var(--primary); }
+
+        .summary-label { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; }
+        .summary-val { font-size: 24px; font-weight: 900; margin-top: 5px; }
+
+        .loading-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9); display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <a href="MENU_UTAMA_MANAGER.html" class="back-btn" title="Kembali"><i class="fa-solid fa-arrow-left"></i></a>
+        <span class="ctrl-title">Periode:</span>
+        <select id="f-bulan" class="input-ctrl">
+            <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+            <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+            <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+            <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+        </select>
+        <select id="f-tahun" class="input-ctrl">
+            <option value="2025">2025</option><option value="2026" selected>2026</option>
+        </select>
+        <button onclick="loadData()" class="btn-show"><i class="fa-solid fa-sync"></i> ANALISA DATA</button>
+    </div>
+
+    <div class="app-container">
+        
+        <div class="chart-section">
+            <div class="chart-header">
+                <div class="chart-title" id="main-title">Statistik Preventif Robot & Stand Label (PRSLB)</div>
+                <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">X: Nama Mesin | Y: Jumlah Status</div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="prslbChart"></canvas>
+                <div id="loading" class="loading-overlay">
+                    <i class="fa-solid fa-circle-notch fa-spin" style="font-size:35px; color:var(--primary);"></i>
+                    <p style="font-weight:900; margin-top:10px; letter-spacing: 1px;">MENGHITUNG DATA...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="summary-grid">
+            <div class="summary-card card-total"><div class="summary-label">Total Item Dicek</div><div class="summary-val" id="total-cek">0</div></div>
+            <div class="summary-card card-ok"><div class="summary-label">Normal (OK)</div><div class="summary-val" id="total-ok">0</div></div>
+            <div class="summary-card card-ng"><div class="summary-label">Temuan (NG)</div><div class="summary-val" id="total-ng">0</div></div>
+            <div class="summary-card card-mn"><div class="summary-label">Perbaikan (MT/MN)</div><div class="summary-val" id="total-mn">0</div></div>
+        </div>
+
+    </div>
+
+    <script>
+        // Setup Supabase
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let chartInstance = null;
+
+        window.onload = () => {
+            const now = new Date();
+            document.getElementById('f-bulan').value = now.getMonth() + 1;
+            loadData();
+        };
+
+        async function loadData() {
+            const bulan = document.getElementById('f-bulan').value;
+            const tahun = document.getElementById('f-tahun').value;
+            
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('main-title').innerText = `Statistik PRSLB - ${document.getElementById('f-bulan').options[bulan-1].text} ${tahun}`;
+
+            try {
+                // Konversi Bulan & Tahun menjadi rentang created_at (Awal bulan s/d Akhir bulan)
+                const monthPadded = bulan.toString().padStart(2, '0');
+                const startDate = `${tahun}-${monthPadded}-01T00:00:00.000Z`;
+                const lastDay = new Date(tahun, bulan, 0).getDate();
+                const endDate = `${tahun}-${monthPadded}-${lastDay}T23:59:59.999Z`;
+
+                // 1. Ambil Header (prslb_log) untuk mendapatkan ID Log dan Nama Mesin (mesin_id)
+                const { data: logs, error: lErr } = await supabaseClient
+                    .from('prslb_log')
+                    .select('id, mesin_id')
+                    .gte('created_at', startDate)
+                    .lte('created_at', endDate);
+
+                if (lErr) throw lErr;
+
+                if (!logs || logs.length === 0) {
+                    resetUI();
+                    return;
+                }
+
+                // 2. Ambil data status dari tabel prslb_result berdasarkan ID log
+                const logIds = logs.map(l => l.id);
+                const { data: results, error: rErr } = await supabaseClient
+                    .from('prslb_result')
+                    .select('log_id, status')
+                    .in('log_id', logIds);
+
+                if (rErr) throw rErr;
+
+                // 3. Agregasi Data Per Mesin
+                const stats = {}; 
+                let gTotal = 0, gOK = 0, gNG = 0, gMN = 0;
+
+                // Siapkan struktur untuk semua mesin yang ada di log
+                logs.forEach(l => {
+                    if (!stats[l.mesin_id]) {
+                        stats[l.mesin_id] = { ok: 0, ng: 0, mn: 0, na: 0 };
+                    }
+                });
+
+                // Hitung status
+                results.forEach(res => {
+                    const log = logs.find(l => l.id === res.log_id);
+                    if (!log) return;
+                    
+                    const machineName = log.mesin_id || 'Unknown Machine';
+
+                    // Normalisasi Status agar bersih
+                    let s = (res.status || 'NA').trim().toUpperCase();
+                    if (['OK', 'NORMAL', 'BAIK', 'AMAN', 'GOOD', 'V', 'TRUE'].includes(s)) s = 'OK';
+                    else if (['NG', 'NOT OK', 'RUSAK', 'ABNORMAL', 'TEMUAN', 'X', 'FALSE'].includes(s)) s = 'NG';
+                    else if (['MN', 'MT', 'MAINTENANCE', 'PERBAIKAN', 'REPAIR'].includes(s)) s = 'MN';
+                    else s = 'NA';
+
+                    if (s === 'OK') { stats[machineName].ok++; gOK++; }
+                    else if (s === 'NG') { stats[machineName].ng++; gNG++; }
+                    else if (s === 'MN') { stats[machineName].mn++; gMN++; }
+                    else { stats[machineName].na++; }
+                    
+                    gTotal++;
+                });
+
+                // Update Ringkasan Angka
+                document.getElementById('total-cek').innerText = gTotal.toLocaleString();
+                document.getElementById('total-ok').innerText = gOK.toLocaleString();
+                document.getElementById('total-ng').innerText = gNG.toLocaleString();
+                document.getElementById('total-mn').innerText = gMN.toLocaleString();
+
+                // 4. Render Grafik Batang Vertikal
+                renderChart(stats);
+
+            } catch (err) {
+                console.error("Fetch Error:", err);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function renderChart(stats) {
+            const ctx = document.getElementById('prslbChart').getContext('2d');
+            
+            // Urutkan Nama Mesin berdasarkan Abjad
+            const labels = Object.keys(stats).sort();
+            const dataOK = labels.map(l => stats[l].ok);
+            const dataNG = labels.map(l => stats[l].ng);
+            const dataMN = labels.map(l => stats[l].mn);
+            const dataNA = labels.map(l => stats[l].na);
+
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Normal (OK)', data: dataOK, backgroundColor: '#10B981' },
+                        { label: 'Temuan (NG)', data: dataNG, backgroundColor: '#EF4444' },
+                        { label: 'Perbaikan (MT/MN)', data: dataMN, backgroundColor: '#F59E0B' },
+                        { label: 'Kosong (NA)', data: dataNA, backgroundColor: '#94a3b8' }
+                    ]
+                },
+                options: {
+                    indexAxis: 'x', // X = NAMA MESIN (Vertikal)
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            position: 'top', 
+                            labels: { font: { weight: 'bold', size: 11 }, usePointStyle: true } 
+                        },
+                        tooltip: { 
+                            mode: 'index', 
+                            intersect: false,
+                            backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' }
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            stacked: true, 
+                            grid: { display: false },
+                            ticks: { 
+                                font: { weight: '800', size: 9 }, 
+                                color: '#1e293b',
+                                maxRotation: 45,
+                                minRotation: 45
+                            } 
+                        },
+                        y: { 
+                            stacked: true, 
+                            grid: { color: '#f1f5f9' },
+                            title: { display: true, text: 'Jumlah Status', font: { weight: '900' } } 
+                        }
+                    }
+                }
+            });
+        }
+
+        function resetUI() {
+            document.getElementById('total-cek').innerText = '0';
+            document.getElementById('total-ok').innerText = '0';
+            document.getElementById('total-ng').innerText = '0';
+            document.getElementById('total-mn').innerText = '0';
+            if (chartInstance) chartInstance.destroy();
+        }
+    </script>
+</body>
+</html>
