@@ -5,269 +5,361 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Laporan Maintenance & Repair - AKG</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- SweetAlert2 untuk Popup Cantik -->
-    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+    
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
+        /* --- THEME VARIABLES (Light Mode AKG) --- */
         :root {
-            --primary: #DC2626;
-            --primary-dark: #991B1B;
-            --bg-dark: #050505;
-            --bg-card: #121212; 
-            --text-white: #FFFFFF;
-            --text-gray: #A3A3A3;
-            --border-light: rgba(255,255,255,0.1);
-            --radius: 12px;
-            --nav-height: 70px;
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --accent: #dc2626;
+            --accent-soft: #ffebeb;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #ef4444;
+            
+            --bg-body: #f4f6f8;
+            --bg-card: #ffffff; 
+            --bg-input: #ffffff;
+            
+            --text-main: #333333;
+            --text-muted: #6b7280;
+            --text-soft: #9ca3af;
+            
+            --border: #e5e7eb;
+            --border-red: rgba(201, 25, 25, 0.3);
+            
+            --radius: 16px;
+            --sidebar-width: 280px; 
+            --header-height: 70px;
         }
 
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
-            font-family: 'Inter', sans-serif; 
-            -webkit-tap-highlight-color: transparent; 
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background: var(--bg-body); 
+            color: var(--text-main); 
+            min-height: 100vh; 
+            display: block; 
+            overflow-x: hidden;
+            padding-bottom: 40px;
         }
 
-        body {
-            background: var(--bg-dark);
-            min-height: 100vh;
-            color: var(--text-white);
+        /* --- Background Animation --- */
+        .bg-glow {
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(201, 25, 25, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* --- PROFESSIONAL HEADER BAR (TOMBOL GARIS 3) --- */
+        .main-header {
+            position: fixed;
+            top: 0;
+            left: 0; 
+            right: 0;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
             display: flex;
-            justify-content: center;
-            padding-bottom: var(--nav-height);
+            align-items: center;
+            justify-content: center; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
         }
 
-        .app-container {
+        .header-content-wrapper {
             width: 100%;
-            max-width: 600px;
-            padding: 20px;
+            max-width: 600px; 
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
             position: relative;
         }
 
-        /* Header Simple (Updated: Centered Title, No Back Button) */
-        .header-simple {
+        .hamburger-menu {
+            font-size: 26px;
+            color: var(--primary);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
             display: flex;
             align-items: center;
-            justify-content: center; /* Judul di tengah */
-            padding: 15px 0 25px 0;
-            border-bottom: 1px solid var(--border-light);
-            margin-bottom: 25px;
-            text-align: center;
+            justify-content: flex-start;
+            transition: transform 0.2s;
+            z-index: 2;
         }
+        .hamburger-menu:active { transform: scale(0.9); }
 
-        .page-title {
-            font-size: 20px;
-            font-weight: 800;
+        .header-title-pill {
+            border: 2px solid var(--primary);
             color: var(--primary);
+            padding: 8px 30px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 14px;
             text-transform: uppercase;
             letter-spacing: 1px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1);
+            white-space: nowrap;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
         }
 
-        /* Form Styling */
-        .form-container {
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+
+        .side-nav {
+            position: fixed;
+            top: 0; left: -100%;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+
+        .side-nav.active { left: 0; }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-title { font-weight: 800; color: var(--primary); font-size: 20px; }
+        .sidebar-close { font-size: 24px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: var(--text-muted);
+            background: white; width: 100%; padding: 14px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: 600;
+        }
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 20px; color: var(--primary); }
+
+        /* --- APP CONTAINER (CENTERED) --- */
+        .app-shell {
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .app-container {
+            width: 100%; 
+            max-width: 600px; 
+            margin: 0 auto;
+            padding: 20px 24px 60px 24px; 
+            padding-top: calc(var(--header-height) + 30px);
+            min-height: 100vh;
+        }
+
+        /* --- FORM CARDS (LIGHT THEME) --- */
+        .card-3d {
             background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-bottom: 4px solid var(--primary-dark);
             border-radius: var(--radius);
-            padding: 24px;
-            border: 1px solid var(--border-light);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            padding: 24px; margin-bottom: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            animation: fadeIn 0.5s ease-out;
         }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-label {
-            display: block;
-            color: var(--text-gray);
-            font-size: 13px;
-            font-weight: 500;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        /* Form Elements */
+        .form-group { margin-bottom: 20px; }
+        .form-label { 
+            display: block; font-size: 11px; color: var(--text-muted); 
+            margin-bottom: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
         }
 
         .form-input, .form-select, .form-textarea {
-            width: 100%;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid var(--border-light);
-            border-radius: 8px;
-            padding: 12px 15px;
-            color: var(--text-white);
-            font-size: 15px;
-            transition: all 0.3s;
-            outline: none;
+            width: 100%; padding: 14px 16px;
+            background: var(--bg-input); border: 1px solid var(--border);
+            border-radius: 12px; color: var(--text-main);
+            font-size: 14px; font-weight: 600; outline: none; transition: 0.3s;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            font-family: inherit;
         }
-
         .form-input:focus, .form-select:focus, .form-textarea:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+            border-color: var(--primary); box-shadow: 0 0 0 3px var(--accent-soft); background: #fff;
+        }
+        .form-input::placeholder, .form-textarea::placeholder { color: #cbd5e1; font-weight: 400; }
+        
+        .form-input:read-only { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; cursor: not-allowed;}
+        .form-textarea { min-height: 100px; resize: vertical; }
+
+        select.form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c91919' stroke-width='3'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat; background-position: right 1rem center; background-size: 1em; cursor: pointer;
         }
 
-        /* Styling option dropdown agar terlihat bagus di dark mode */
-        .form-select option {
-            background-color: var(--bg-card);
-            color: var(--text-white);
-        }
+        .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
-        /* Date Input Dark Mode Fix */
-        ::-webkit-calendar-picker-indicator {
-            filter: invert(1);
-            opacity: 0.6;
-        }
+        /* Date Input Indicator Fix */
+        ::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; transition: 0.2s; }
+        ::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 
-        .form-textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-
-        .row-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
+        /* --- SUBMIT BUTTON --- */
         .btn-submit {
-            width: 100%;
-            padding: 16px;
+            width: 100%; 
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
-            transition: all 0.3s;
+            color: white; border: none; padding: 18px; border-radius: 14px;
+            font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 8px 24px rgba(201, 25, 25, 0.3); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
             margin-top: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
         }
-
-        .btn-submit:active {
-            transform: scale(0.98);
-        }
-
-        .btn-submit:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-            filter: grayscale(1);
-        }
-
-        /* Spinner */
+        .btn-submit:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 4px 12px rgba(201, 25, 25, 0.3); }
+        .btn-submit:disabled { background: #d1d5db; box-shadow: none; color: #9ca3af; cursor: not-allowed; transform: none; }
+        
         .spinner {
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
+            width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: #fff; border-radius: 50%; animation: spin 1s infinite;
             display: none;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Bottom Nav (Consistent) */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100%;
-            max-width: 600px;
-            background: rgba(10, 10, 10, 0.95);
-            backdrop-filter: blur(20px);
-            border-top: 1px solid var(--border-light);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding: 12px 0;
-            height: var(--nav-height);
-            z-index: 100;
-        }
-
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            color: #555;
-            width: 56px;
-            height: 44px;
-        }
-
-        .nav-item svg { width: 22px; height: 22px; }
-        .nav-item.active { color: var(--primary); }
+        /* SweetAlert Light Theme Overrides */
+        div:where(.swal2-container) { z-index: 9999 !important; }
+        div:where(.swal2-container) div:where(.swal2-popup) { background: #ffffff !important; border: 1px solid var(--border); color: var(--text-main) !important; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        div:where(.swal2-confirm) { background-color: var(--primary) !important; border-radius: 10px; font-weight: bold; }
 
     </style>
 </head>
 <body>
 
-    <div class="app-container">
-        <!-- Header (Tombol Back dihapus) -->
-        <header class="header-simple">
-            <h1 class="page-title">Input Laporan Maintenance</h1>
-        </header>
+    <div class="bg-glow"></div>
 
-        <!-- Form Input -->
-        <form id="lkmrForm" class="form-container">
-            
-            <!-- Tanggal & Bulan -->
-            <div class="row-2">
-                <div class="form-group">
-                    <label class="form-label">Tanggal</label>
-                    <input type="date" id="tanggal" class="form-input" required>
+    <!-- HEADER UTAMA (TOMBOL GARIS 3) -->
+    <header class="main-header">
+        <div class="header-content-wrapper">
+            <div class="hamburger-menu" onclick="toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+            <div class="header-title-pill">INPUT LAPORAN MAINTENANCE</div>
+        </div>
+    </header>
+
+    <!-- OVERLAY & SIDEBAR -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <div class="app-shell">
+        <div class="app-container">
+
+            <form id="lkmrForm" class="card-3d">
+                
+                <!-- Tanggal & Bulan -->
+                <div class="row-2">
+                    <div class="form-group">
+                        <label class="form-label">Tanggal Pelaksanaan</label>
+                        <input type="date" id="tanggal" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Bulan</label>
+                        <input type="text" id="bulan" class="form-input" readonly placeholder="Terisi Otomatis">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Bulan</label>
-                    <input type="text" id="bulan" class="form-input" readonly placeholder="Auto">
+
+                <!-- Shift & PIC -->
+                <div class="row-2">
+                    <div class="form-group">
+                        <label class="form-label">Shift Kerja</label>
+                        <select id="shift" class="form-select" required>
+                            <option value="">Pilih Shift</option>
+                            <option value="NON SHIFT">NON SHIFT</option>
+                            <option value="PAGI">PAGI</option>
+                            <option value="SIANG">SIANG</option>
+                            <option value="MALAM">MALAM</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">PIC (Teknisi)</label>
+                        <select id="pic" class="form-select" required>
+                            <option value="">Pilih Nama Teknisi</option>
+                            <option value="DEDE ILYAS">DEDE ILYAS</option>
+                            <option value="VACANT">VACANT</option>
+                            <option value="AHMAD AINUL YAQIN">AHMAD AINUL YAQIN</option>
+                            <option value="ANGGA PRASETIANA">ANGGA PRASETIANA</option>
+                            <option value="AGUS SETIAWAN">AGUS SETIAWAN</option>
+                            <option value="RIZQI IRFAN ARIYANTO">RIZQI IRFAN ARIYANTO</option>
+                            <option value="M. TAUFIK ANDRIAN">M. TAUFIK ANDRIAN</option>
+                            <option value="ABDUL AZIZ">ABDUL AZIZ</option>
+                            <option value="AHMAD MAHMUDIN">AHMAD MAHMUDIN</option>
+                            <option value="ARBA NUR MAHBUB R.">ARBA NUR MAHBUB R.</option>
+                            <option value="MIFTAH SETIADI">MIFTAH SETIADI</option>
+                            <option value="ABDUL KARIM">ABDUL KARIM</option>
+                            <option value="ABDUL KHARIS AFRONI">ABDUL KHARIS AFRONI</option>
+                            <option value="IBNU ABI MANYU SAPUTRA">IBNU ABI MANYU SAPUTRA</option>
+                            <option value="MOHAMMAD FARIZAL">MOHAMMAD FARIZAL</option>
+                        </select>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Shift -->
-            <div class="form-group">
-                <label class="form-label">Shift</label>
-                <select id="shift" class="form-select" required>
-                    <option value="">Pilih Shift</option>
-                    <option value="NON SHIFT">NON SHIFT</option>
-                    <option value="PAGI">PAGI</option>
-                    <option value="SIANG">SIANG</option>
-                    <option value="MALAM">MALAM</option>
-                </select>
-            </div>
-
-            <!-- PIC (Teknisi) -->
-            <div class="form-group">
-                <label class="form-label">PIC (Teknisi)</label>
-                <select id="pic" class="form-select" required>
-                    <option value="">Pilih Nama Teknisi</option>
-                    <option value="DEDE ILYAS">DEDE ILYAS</option>
-                    <option value="VACANT">VACANT</option>
-                    <option value="AHMAD AINUL YAQIN">AHMAD AINUL YAQIN</option>
-                    <option value="ANGGA PRASETIANA">ANGGA PRASETIANA</option>
-                    <option value="AGUS SETIAWAN">AGUS SETIAWAN</option>
-                    <option value="RIZQI IRFAN ARIYANTO">RIZQI IRFAN ARIYANTO</option>
-                    <option value="M. TAUFIK ANDRIAN">M. TAUFIK ANDRIAN</option>
-                    <option value="ABDUL AZIZ">ABDUL AZIZ</option>
-                    <option value="AHMAD MAHMUDIN">AHMAD MAHMUDIN</option>
-                    <option value="ARBA NUR MAHBUB R.">ARBA NUR MAHBUB R.</option>
-                    <option value="MIFTAH SETIADI">MIFTAH SETIADI</option>
-                    <option value="ABDUL KARIM">ABDUL KARIM</option>
-                    <option value="ABDUL KHARIS AFRONI">ABDUL KHARIS AFRONI</option>
-                    <option value="IBNU ABI MANYU SAPUTRA">IBNU ABI MANYU SAPUTRA</option>
-                     <option value="IBNU ABI MANYU SAPUTRA">MOHAMMAD FARIZAL</option>
-                </select>
-            </div>
-
-            <!-- Nama Mesin & Jenis Problem (BARU) -->
-            <div class="row-2">
+                <!-- Nama Mesin -->
                 <div class="form-group">
                     <label class="form-label">Nama Mesin / Area</label>
                     <select id="nama_mesin" class="form-select" required>
@@ -280,40 +372,43 @@
                         <option value="PRINTING 1 DAN 2">PRINTING 1 DAN 2</option>
                         <option value="PRINTING">PRINTING</option>
                         <option value="PEMBAKAR TUTUP FRESHCARE">PEMBAKAR TUTUP FRESHCARE</option>
-                        <!-- Daftar Mesin Injection -->
-                        <option value="INJECT BLOW LIANXIN IBM 30 H (01)/TOAD">INJECT BLOW LIANXIN IBM 30 H (01)/TOAD</option>
-                        <option value="TM-EXPRESS 270/2250 (02) /NEBULA">TM-EXPRESS 270/2250 (02) /NEBULA</option>
-                        <option value="ECO POWER 240/750 (3) /SPIDERMAN">ECO POWER 240/750 (3) /SPIDERMAN</option>
-                        <option value="ECO POWER 210 T(4)/ THOR">ECO POWER 210 T(4)/ THOR</option>
-                        <option value="TM- EXPRESS 350 /3400 (5) / IRON MAN">TM- EXPRESS 350 /3400 (5) / IRON MAN</option>
-                        <option value="ARBURG 320 T (06) /STARLORD">ARBURG 320 T (06) /STARLORD</option>
-                        <option value="ECO POWER EXPRESS 500/3300 (07) / STEVE ROGERS">ECO POWER EXPRESS 500/3300 (07) / STEVE ROGERS</option>
-                        <option value="ECO POWER EXPRESS 500/3300 (08) / THANOS">ECO POWER EXPRESS 500/3300 (08) / THANOS</option>
-                        <option value="FCS CT-220 SE (09) /BLACK WIDOW">FCS CT-220 SE (09) /BLACK WIDOW</option>
-                        <option value="NPC 260 T (10) / HAWK EYE">NPC 260 T (10) / HAWK EYE</option>
-                        <option value="ARBURG 200 (11) /GAMORA">ARBURG 200 (11) /GAMORA</option>
-                        <option value="FCS SA 3800 H (12) / LOKI">FCS SA 3800 H (12) / LOKI</option>
-                        <option value="EMAC 220 PRO (13) / DEADPOOL">EMAC 220 PRO (13) / DEADPOOL</option>
-                        <option value="ENGEL 380 T (14) /HULK">ENGEL 380 T (14) /HULK</option>
-                        <option value="NPC 400 H (15) / WANDA">NPC 400 H (15) / WANDA</option>
-                        <option value="ENGEL 280 (16) /DOCTOR STRANGE">ENGEL 280 (16) /DOCTOR STRANGE</option>
-                        <option value="FCS HT -100 SV (31) / ANT-MAN">FCS HT -100 SV (31) / ANT-MAN</option>
-                        <option value="NPC 160 T (32) /WASP">NPC 160 T (32) /WASP</option>
-                        <option value="NPC 160 T (33) /WONG">NPC 160 T (33) /WONG</option>
-                        <option value="FCS HT-150 SV (34) /ROCKET">FCS HT-150 SV (34) /ROCKET</option>
-                        <option value="FCS HT-150 SV (35) / MANTIS">FCS HT-150 SV (35) / MANTIS</option>
-                        <option value="NPC 160 T (36) / SHANG CHI">NPC 160 T (36) / SHANG CHI</option>
-                        <option value="NPC 260 T (37) / VISION">NPC 260 T (37) / VISION</option>
-                        <option value="NPC 200 T (38) / MAGNETO">NPC 200 T (38) / MAGNETO</option>
-                        <option value="FCS HT-100 SV (39) / NICK FURY">FCS HT-100 SV (39) / NICK FURY</option>
-                        <option value="FCS AF250 (40) / WOLVERINE">FCS AF250 (40) / WOLVERINE</option>
-                        <option value="NPC 260 T (41) / HAWKEYE">NPC 260 T (41) / HAWKEYE</option>
+                        <optgroup label="Daftar Mesin Injection">
+                            <option value="INJECT BLOW LIANXIN IBM 30 H (01)/TOAD">INJECT BLOW LIANXIN IBM 30 H (01)/TOAD</option>
+                            <option value="TM-EXPRESS 270/2250 (02) /NEBULA">TM-EXPRESS 270/2250 (02) /NEBULA</option>
+                            <option value="ECO POWER 240/750 (3) /SPIDERMAN">ECO POWER 240/750 (3) /SPIDERMAN</option>
+                            <option value="ECO POWER 210 T(4)/ THOR">ECO POWER 210 T(4)/ THOR</option>
+                            <option value="TM- EXPRESS 350 /3400 (5) / IRON MAN">TM- EXPRESS 350 /3400 (5) / IRON MAN</option>
+                            <option value="ARBURG 320 T (06) /STARLORD">ARBURG 320 T (06) /STARLORD</option>
+                            <option value="ECO POWER EXPRESS 500/3300 (07) / STEVE ROGERS">ECO POWER EXPRESS 500/3300 (07) / STEVE ROGERS</option>
+                            <option value="ECO POWER EXPRESS 500/3300 (08) / THANOS">ECO POWER EXPRESS 500/3300 (08) / THANOS</option>
+                            <option value="FCS CT-220 SE (09) /BLACK WIDOW">FCS CT-220 SE (09) /BLACK WIDOW</option>
+                            <option value="NPC 260 T (10) / HAWK EYE">NPC 260 T (10) / HAWK EYE</option>
+                            <option value="ARBURG 200 (11) /GAMORA">ARBURG 200 (11) /GAMORA</option>
+                            <option value="FCS SA 3800 H (12) / LOKI">FCS SA 3800 H (12) / LOKI</option>
+                            <option value="EMAC 220 PRO (13) / DEADPOOL">EMAC 220 PRO (13) / DEADPOOL</option>
+                            <option value="ENGEL 380 T (14) /HULK">ENGEL 380 T (14) /HULK</option>
+                            <option value="NPC 400 H (15) / WANDA">NPC 400 H (15) / WANDA</option>
+                            <option value="ENGEL 280 (16) /DOCTOR STRANGE">ENGEL 280 (16) /DOCTOR STRANGE</option>
+                            <option value="FCS HT -100 SV (31) / ANT-MAN">FCS HT -100 SV (31) / ANT-MAN</option>
+                            <option value="NPC 160 T (32) /WASP">NPC 160 T (32) /WASP</option>
+                            <option value="NPC 160 T (33) /WONG">NPC 160 T (33) /WONG</option>
+                            <option value="FCS HT-150 SV (34) /ROCKET">FCS HT-150 SV (34) /ROCKET</option>
+                            <option value="FCS HT-150 SV (35) / MANTIS">FCS HT-150 SV (35) / MANTIS</option>
+                            <option value="NPC 160 T (36) / SHANG CHI">NPC 160 T (36) / SHANG CHI</option>
+                            <option value="NPC 260 T (37) / VISION">NPC 260 T (37) / VISION</option>
+                            <option value="NPC 200 T (38) / MAGNETO">NPC 200 T (38) / MAGNETO</option>
+                            <option value="FCS HT-100 SV (39) / NICK FURY">FCS HT-100 SV (39) / NICK FURY</option>
+                            <option value="FCS AF250 (40) / WOLVERINE">FCS AF250 (40) / WOLVERINE</option>
+                            <option value="NPC 260 T (41) / HAWKEYE">NPC 260 T (41) / HAWKEYE</option>
+                        </optgroup>
                     </select>
                 </div>
+
+                <!-- Jenis Problem -->
                 <div class="form-group">
                     <label class="form-label">Jenis Problem</label>
                     <select id="jenis_problem" class="form-select" required>
-                        <option value="">Pilih Kategori</option>
+                        <option value="">Pilih Kategori Problem</option>
                         <option value="MESIN">MESIN</option>
                         <option value="MOLD">MOLD</option>
                         <option value="ROBOT">ROBOT</option>
@@ -325,74 +420,113 @@
                         <option value="PREVENTIF MESIN">PREVENTIF MESIN</option>
                     </select>
                 </div>
-            </div>
 
-            <!-- Deskripsi Masalah -->
-            <div class="form-group">
-                <label class="form-label">Deskripsi Masalah / Pekerjaan</label>
-                <textarea id="deskripsi_masalah" class="form-textarea" placeholder="Jelaskan detail masalah atau perbaikan yang dilakukan..." required></textarea>
-            </div>
-
-            <!-- Waktu -->
-            <div class="row-2">
+                <!-- Deskripsi Masalah -->
                 <div class="form-group">
-                    <label class="form-label">Waktu Mulai</label>
-                    <input type="time" id="waktu_mulai" class="form-input" required>
+                    <label class="form-label">Deskripsi Masalah / Pekerjaan</label>
+                    <textarea id="deskripsi_masalah" class="form-textarea" placeholder="Jelaskan detail masalah atau perbaikan yang dilakukan..." required></textarea>
                 </div>
+
+                <!-- Waktu -->
+                <div class="row-2">
+                    <div class="form-group">
+                        <label class="form-label">Waktu Mulai</label>
+                        <input type="time" id="waktu_mulai" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Waktu Selesai</label>
+                        <input type="time" id="waktu_selesai" class="form-input" required>
+                    </div>
+                </div>
+
+                <!-- Target Waktu -->
                 <div class="form-group">
-                    <label class="form-label">Waktu Selesai</label>
-                    <input type="time" id="waktu_selesai" class="form-input" required>
+                    <label class="form-label">Target Waktu PM</label>
+                    <input type="text" id="target_waktu_pm" class="form-input" placeholder="Contoh: 30 Menit / 1 Jam" required>
                 </div>
-            </div>
 
-            <!-- Target Waktu -->
-            <div class="form-group">
-                <label class="form-label">Target Waktu PM</label>
-                <input type="text" id="target_waktu_pm" class="form-input" placeholder="Contoh: 30 Menit / 1 Jam" required>
-            </div>
+                <!-- Submit Button -->
+                <button type="submit" id="btnSubmit" class="btn-submit">
+                    <div class="spinner" id="spinner"></div>
+                    <i class="fa-solid fa-paper-plane mr-2" id="icon-submit"></i>
+                    <span id="btnText">KIRIM LAPORAN</span>
+                </button>
+            </form>
 
-            <!-- Submit Button -->
-            <button type="submit" id="btnSubmit" class="btn-submit">
-                <div class="spinner" id="spinner"></div>
-                <span id="btnText">KIRIM LAPORAN</span>
-            </button>
-        </form>
+        </div>
     </div>
 
-    <!-- Bottom Nav -->
-    <nav class="bottom-nav">
-        <a href="index.html" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-        </a>
-        <a href="menu_utama.html" class="nav-item active">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-        </a>
-        <a href="download_data.html" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-        </a>
-        <a href="informasi_akun.html" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-        </a>
-    </nav>
-
-    <!-- Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- SweetAlert2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
+    <!-- LOGIKA JAVASCRIPT (TIDAK DIUBAH FUNGSINYA) -->
     <script>
+        // --- NAVIGASI PINTAR ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
         // 1. Inisialisasi Supabase
         const supabaseUrl = 'https://dsyvlavphvrdidmodokd.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         
-        // Handle global variable conflict if using UMD build
-        const client = window.supabase 
-            ? window.supabase.createClient(supabaseUrl, supabaseKey) 
-            : null;
-
+        const client = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
         if (!client) {
             console.error("Supabase client failed to initialize.");
         }
+
+        // Routing Navigasi Dinamis
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await client.auth.getSession();
+                if (!session) return;
+
+                const { data: profile } = await client
+                    .from('profiles')
+                    .select('jabatan')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+
+                    let homeLink = 'index.html';
+                    let menuLink = 'menu_utama.html';
+
+                    if (jabatan.includes('OPERATOR')) {
+                        homeLink = 'OPERATOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_OPERATOR.html';
+                    } else if (jabatan.includes('SUPERVISOR')) {
+                        homeLink = 'SUPERVISOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                    } else if (jabatan.includes('SUPERINTENDENT')) {
+                        homeLink = 'SUPERINTENDENT_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                    } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                        homeLink = 'MANAGER_HOME.html';
+                        menuLink = 'MENU_UTAMA_MANAGER.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                        homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                        homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                    }
+
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) {
+                console.error("Gagal mengatur navigasi dinamis:", err);
+            }
+        }
+
+        // Jalankan saat load
+        window.onload = () => {
+            setupDynamicNavigation();
+        };
 
         // 2. Logic Auto-Fill Bulan
         const tanggalInput = document.getElementById('tanggal');
@@ -413,18 +547,25 @@
         const btnSubmit = document.getElementById('btnSubmit');
         const spinner = document.getElementById('spinner');
         const btnText = document.getElementById('btnText');
+        const iconSub = document.getElementById('icon-submit');
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            // Setup Tema Terang untuk SweetAlert
+            const swalLightStyle = {
+                background: '#ffffff', color: '#333333', confirmButtonColor: '#c91919'
+            };
+
             if (!client) {
-                Swal.fire('Error', 'Gagal terhubung ke database.', 'error');
+                Swal.fire({ ...swalLightStyle, title: 'Error', text: 'Gagal terhubung ke database.', icon: 'error' });
                 return;
             }
 
             // Tampilkan Loading
             btnSubmit.disabled = true;
             spinner.style.display = 'block';
+            if(iconSub) iconSub.style.display = 'none';
             btnText.textContent = 'Menyimpan...';
 
             // Ambil data dari form
@@ -433,7 +574,7 @@
                 bulan: document.getElementById('bulan').value,
                 shift: document.getElementById('shift').value,
                 pic: document.getElementById('pic').value,
-                nama_mesin: document.getElementById('nama_mesin').value, // Ditambahkan
+                nama_mesin: document.getElementById('nama_mesin').value,
                 jenis_problem: document.getElementById('jenis_problem').value,
                 deskripsi_masalah: document.getElementById('deskripsi_masalah').value,
                 waktu_mulai: document.getElementById('waktu_mulai').value,
@@ -452,15 +593,16 @@
 
                 // Sukses
                 Swal.fire({
+                    ...swalLightStyle,
                     title: 'Berhasil!',
                     text: 'Laporan Maintenance telah tersimpan.',
                     icon: 'success',
-                    background: '#121212',
-                    color: '#fff',
-                    confirmButtonColor: '#DC2626'
+                    showConfirmButton: false,
+                    timer: 2000
                 }).then(() => {
-                    // Redirect otomatis setelah tutup alert
-                    window.location.href = 'Lkmr.html';
+                    // Redirect cerdas ke menu yang sesuai jabatan
+                    const menuLink = document.getElementById('nav-menu') ? document.getElementById('nav-menu').href : 'menu_utama.html';
+                    window.location.href = menuLink;
                 });
 
                 // Reset Form
@@ -475,17 +617,16 @@
                 }
 
                 Swal.fire({
+                    ...swalLightStyle,
                     title: 'Gagal!',
                     text: 'Terjadi kesalahan: ' + errorMsg,
-                    icon: 'error',
-                    background: '#121212',
-                    color: '#fff',
-                    confirmButtonColor: '#DC2626'
+                    icon: 'error'
                 });
             } finally {
                 // Kembalikan tombol ke semula
                 btnSubmit.disabled = false;
                 spinner.style.display = 'none';
+                if(iconSub) iconSub.style.display = 'inline-block';
                 btnText.textContent = 'KIRIM LAPORAN';
             }
         });
