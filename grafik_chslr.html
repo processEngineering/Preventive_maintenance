@@ -448,7 +448,7 @@
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
             content.innerHTML = '<div class="ai-loading"><i class="fa-solid fa-circle-notch fa-spin text-primary"></i> AI sedang menganalisa tren data mesin...</div>';
 
-            const apiKey = "AIzaSyCdaZd4xpm-eV-i6b44te3AgYiTCCJZvZw"; // API Key disuntikkan dari gambar
+            const apiKey = "AIzaSyCdaZd4xpm-eV-i6b44te3AgYiTCCJZvZw"; // API Key dari gambar
 
             const prompt = `Kamu adalah Ahli Maintenance Mesin Industri (Superintendent). Analisa data "Checklist Harian Standlabel & Robot" berikut secara profesional, singkat, dan tajam.
             
@@ -462,13 +462,15 @@
             3. Rekomendasi Tindakan (2-3 poin logis)`;
 
             try {
-                // Implementasi Exponential Backoff (Coba ulang jika gagal)
+                // Implementasi Exponential Backoff
                 let retries = 5;
                 let delay = 1000;
                 let response;
+                let errorDetails = "";
                 
                 while (retries > 0) {
-                    response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    // MENGGUNAKAN MODEL GEMINI-1.5-FLASH YANG DI DUKUNG PENUH OLEH API KEY PUBLIK
+                    response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -478,12 +480,17 @@
                     });
                     
                     if (response.ok) break;
+                    
+                    // Simpan detail error jika gagal
+                    errorDetails = await response.text();
                     retries--;
                     await new Promise(r => setTimeout(r, delay));
                     delay *= 2;
                 }
 
-                if (!response || !response.ok) throw new Error('API request failed after retries');
+                if (!response || !response.ok) {
+                    throw new Error(errorDetails || 'API request failed');
+                }
                 
                 const data = await response.json();
                 const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "Gagal mendapatkan analisa dari AI.";
@@ -491,8 +498,19 @@
                 content.innerHTML = text;
 
             } catch (error) {
-                console.error("AI Error:", error);
-                content.innerHTML = `<span style="color:var(--danger); font-weight:bold;"><i class="fa-solid fa-triangle-exclamation"></i> Gagal terhubung ke layanan AI. Kemungkinan API Key tidak valid atau limit tercapai.</span>`;
+                console.error("AI Error Lengkap:", error);
+                
+                // Menampilkan error secara spesifik agar mudah didiagnosa
+                let errorMsg = "Gagal terhubung ke layanan AI. Pastikan perangkat memiliki koneksi internet.";
+                if (error.message.includes("API key not valid")) {
+                    errorMsg = "API Key tidak valid. Silakan periksa kembali API Key Anda.";
+                } else if (error.message.includes("quota") || error.message.includes("429")) {
+                    errorMsg = "Limit/Kuota API Key AI telah tercapai.";
+                } else if (error.message.includes("403")) {
+                    errorMsg = "Akses ditolak oleh Google. Mungkin API Key belum mengaktifkan layanan Generative Language API.";
+                }
+                
+                content.innerHTML = `<span style="color:var(--danger); font-weight:bold;"><i class="fa-solid fa-triangle-exclamation"></i> ${errorMsg} <br><br><small style="color:gray;">Cek (Inspect -> Console) untuk detail error.</small></span>`;
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Minta Analisa';
