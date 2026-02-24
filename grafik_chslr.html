@@ -434,7 +434,7 @@
             document.getElementById('ai-content').innerHTML = '<p style="color: var(--text-muted); font-style: italic; font-size: 12px; margin: 0;">Silakan "Tampilkan Grafik" terlebih dahulu, lalu klik tombol di atas untuk mendapatkan analisa tren otomatis dari AI.</p>';
         }
 
-        // --- FUNGSI ANALISA AI (GEMINI) ---
+        // --- FUNGSI ANALISA AI (GEMINI) DENGAN AUTO-HUNTER ---
         async function generateAIAnalysis() {
             const btn = document.getElementById('btn-ai');
             const content = document.getElementById('ai-content');
@@ -448,9 +448,9 @@
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
             content.innerHTML = '<div class="ai-loading"><i class="fa-solid fa-circle-notch fa-spin text-primary"></i> AI sedang menganalisa tren data mesin...</div>';
 
-            const apiKey = "AIzaSyCdaZd4xpm-eV-i6b44te3AgYiTCCJZvZw"; // API Key dari gambar
+            const apiKey = "AIzaSyCdaZd4xpm-eV-i6b44te3AgYiTCCJZvZw"; // API Key dari gambar Anda
 
-            // Memasukkan System Instruction langsung ke dalam Prompt agar didukung SEMUA model Gemini
+            // Memasukkan System Instruction langsung ke dalam Prompt agar didukung SEMUA versi model Gemini
             const prompt = `[INSTRUKSI SISTEM: Gunakan bahasa Indonesia profesional, proaktif, dan analitis.]
             
             Kamu adalah Ahli Maintenance Mesin Industri (Superintendent). Analisa data "Checklist Harian Standlabel & Robot" berikut secara profesional, singkat, dan tajam.
@@ -465,14 +465,20 @@
             3. Rekomendasi Tindakan (2-3 poin logis)`;
 
             try {
-                // Implementasi Exponential Backoff & Auto-Fallback
-                let retries = 3;
-                let delay = 1000;
+                // Kumpulan model yang akan dicoba satu per satu secara otomatis
+                const modelsToTry = [
+                    "gemini-1.5-flash", 
+                    "gemini-1.5-pro", 
+                    "gemini-1.0-pro", 
+                    "gemini-pro"
+                ];
+                
                 let response;
                 let errorDetails = "";
-                let modelName = "gemini-1.5-flash-latest"; // Default dicoba
+                let isSuccess = false;
                 
-                while (retries > 0) {
+                for (const modelName of modelsToTry) {
+                    console.log(`Mencoba model AI: ${modelName}...`);
                     response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -481,23 +487,21 @@
                         })
                     });
                     
-                    if (response.ok) break;
-                    
-                    // Simpan detail error jika gagal
-                    errorDetails = await response.text();
-                    
-                    // Jika Model Not Found (404), otomatis ganti ke model yang lebih lama (gemini-pro)
-                    if (response.status === 404) {
-                        console.warn(`Model ${modelName} gagal, mencoba gemini-pro...`);
-                        modelName = "gemini-pro"; 
+                    if (response.ok) {
+                        isSuccess = true;
+                        console.log(`Berhasil menggunakan model: ${modelName}`);
+                        break; // Berhenti mencari jika sudah menemukan yang cocok
                     }
                     
-                    retries--;
-                    await new Promise(r => setTimeout(r, delay));
-                    delay *= 2;
+                    errorDetails = await response.text();
+                    
+                    // Jika errornya bukan 404 (misal 403 izin ditolak / 429 kuota habis), berhenti mencari.
+                    if (response.status !== 404) {
+                        break;
+                    }
                 }
 
-                if (!response || !response.ok) {
+                if (!isSuccess) {
                     throw new Error(errorDetails || 'API request failed');
                 }
                 
@@ -509,16 +513,16 @@
             } catch (error) {
                 console.error("AI Error Lengkap:", error);
                 
-                // Menampilkan error secara spesifik agar mudah didiagnosa
+                // Menampilkan error secara spesifik
                 let errorMsg = "Gagal terhubung ke layanan AI. Pastikan perangkat memiliki koneksi internet.";
                 if (error.message.includes("API key not valid")) {
                     errorMsg = "API Key tidak valid. Silakan periksa kembali API Key Anda.";
                 } else if (error.message.includes("quota") || error.message.includes("429")) {
                     errorMsg = "Limit/Kuota API Key AI telah tercapai.";
                 } else if (error.message.includes("403")) {
-                    errorMsg = "Akses ditolak oleh Google. Mungkin API Key belum mengaktifkan layanan Generative Language API.";
+                    errorMsg = "Akses ditolak oleh Google. Layanan Generative API belum aktif untuk API Key ini.";
                 } else if (error.message.includes("404")) {
-                    errorMsg = "Versi model AI tidak ditemukan di akun Google Cloud Anda.";
+                    errorMsg = "Versi model AI sama sekali tidak ditemukan di akun Anda.";
                 }
                 
                 content.innerHTML = `<span style="color:var(--danger); font-weight:bold;"><i class="fa-solid fa-triangle-exclamation"></i> ${errorMsg} <br><br><small style="color:gray;">Cek (Inspect -> Console) untuk detail error.</small></span>`;
