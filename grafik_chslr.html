@@ -450,7 +450,10 @@
 
             const apiKey = "AIzaSyCdaZd4xpm-eV-i6b44te3AgYiTCCJZvZw"; // API Key dari gambar
 
-            const prompt = `Kamu adalah Ahli Maintenance Mesin Industri (Superintendent). Analisa data "Checklist Harian Standlabel & Robot" berikut secara profesional, singkat, dan tajam.
+            // Memasukkan System Instruction langsung ke dalam Prompt agar didukung SEMUA model Gemini
+            const prompt = `[INSTRUKSI SISTEM: Gunakan bahasa Indonesia profesional, proaktif, dan analitis.]
+            
+            Kamu adalah Ahli Maintenance Mesin Industri (Superintendent). Analisa data "Checklist Harian Standlabel & Robot" berikut secara profesional, singkat, dan tajam.
             
             Data:
             ${currentStatsText}
@@ -462,20 +465,19 @@
             3. Rekomendasi Tindakan (2-3 poin logis)`;
 
             try {
-                // Implementasi Exponential Backoff
-                let retries = 5;
+                // Implementasi Exponential Backoff & Auto-Fallback
+                let retries = 3;
                 let delay = 1000;
                 let response;
                 let errorDetails = "";
+                let modelName = "gemini-1.5-flash-latest"; // Default dicoba
                 
                 while (retries > 0) {
-                    // MENGGUNAKAN MODEL GEMINI-1.5-FLASH YANG DI DUKUNG PENUH OLEH API KEY PUBLIK
-                    response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                    response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            contents: [{ parts: [{ text: prompt }] }],
-                            systemInstruction: { parts: [{ text: "Gunakan bahasa Indonesia profesional, proaktif, dan analitis." }] }
+                            contents: [{ parts: [{ text: prompt }] }]
                         })
                     });
                     
@@ -483,6 +485,13 @@
                     
                     // Simpan detail error jika gagal
                     errorDetails = await response.text();
+                    
+                    // Jika Model Not Found (404), otomatis ganti ke model yang lebih lama (gemini-pro)
+                    if (response.status === 404) {
+                        console.warn(`Model ${modelName} gagal, mencoba gemini-pro...`);
+                        modelName = "gemini-pro"; 
+                    }
+                    
                     retries--;
                     await new Promise(r => setTimeout(r, delay));
                     delay *= 2;
@@ -508,6 +517,8 @@
                     errorMsg = "Limit/Kuota API Key AI telah tercapai.";
                 } else if (error.message.includes("403")) {
                     errorMsg = "Akses ditolak oleh Google. Mungkin API Key belum mengaktifkan layanan Generative Language API.";
+                } else if (error.message.includes("404")) {
+                    errorMsg = "Versi model AI tidak ditemukan di akun Google Cloud Anda.";
                 }
                 
                 content.innerHTML = `<span style="color:var(--danger); font-weight:bold;"><i class="fa-solid fa-triangle-exclamation"></i> ${errorMsg} <br><br><small style="color:gray;">Cek (Inspect -> Console) untuk detail error.</small></span>`;
