@@ -417,6 +417,7 @@
         };
     }
 
+    // --- LOGIC PENARIKAN DATA DIPERBARUI ---
     window.loadData = async function() {
         var start = document.getElementById('dateStart').value;
         var end = document.getElementById('dateEnd').value;
@@ -426,13 +427,15 @@
 
         tableBody.innerHTML = '<tr><td colspan="12">Sedang memproses data...</td></tr>';
 
+        // 1. Dihapus filter `status_approval` yang memblokir penarikan data
+        // 2. Ditambahkan suffix 23:59:59 pada endDate agar mencakup waktu full di hari tersebut
         const { data, error } = await db
             .from('ppw_log')
             .select('*')
-            .eq('status_approval', 'Approved')
             .gte('tanggal', start)
-            .lte('tanggal', end)
-            .order('tanggal', { ascending: true });
+            .lte('tanggal', end + ' 23:59:59')
+            .order('tanggal', { ascending: true })
+            .order('created_at', { ascending: true }); // Tambahan sorting 
 
         if (error) {
             tableBody.innerHTML = `<tr><td colspan="12" style="color:red">Gagal: ${error.message}</td></tr>`;
@@ -440,7 +443,7 @@
         }
 
         if (!data || data.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="12">Tidak ada data yang ditemukan.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="12">Tidak ada data yang ditemukan pada rentang tanggal tersebut.</td></tr>';
             resetSigns();
             return;
         }
@@ -464,9 +467,7 @@
                     <td style="font-weight:bold;">${ok}</td>
                     <td style="font-weight:bold; color:red;">${nok}</td>
                     <td>${item.nama_operator || ''}</td>
-                    <td>
-                         ${item.ttd_spv ? `<img src="${item.ttd_spv}" style="height:25px; background:white;" crossorigin="anonymous">` : ''}
-                    </td>
+                    <td></td>
                 </tr>
             `;
         });
@@ -480,12 +481,11 @@
 
         tableBody.innerHTML = html;
 
+        // Tampilkan signature berdasarkan data log paling terakhir di rentang tanggal tersebut
         const last = data[data.length - 1];
         if (last) {
             document.getElementById('nameSpv').innerText = (last.nama_spv || '').toUpperCase();
             document.getElementById('signSpv').innerHTML = last.ttd_spv ? `<img src="${last.ttd_spv}" class="sign-img" style="background:white;" crossorigin="anonymous">` : '';
-            document.getElementById('nameSupt').innerText = (last.nama_superintendent || '').toUpperCase();
-            document.getElementById('signSupt').innerHTML = last.ttd_superintendent ? `<img src="${last.ttd_superintendent}" class="sign-img" style="background:white;" crossorigin="anonymous">` : '';
         }
     };
 
