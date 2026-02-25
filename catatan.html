@@ -2,340 +2,317 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viewer Catatan Superintendent</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Viewer Catatan Superintendent - AKG</title>
+    
+    <!-- Fonts & Icons -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        :root {
+            --primary: #c91919; 
+            --primary-dark: #a50e0e;
+            --border: #e2e8f0;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --header-height: 70px;
+            --sidebar-width: 280px;
+            --blue-dark: #1e3a8a;
+            --blue-darker: #172554;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        
         body { 
-            background-color: #0d0d0d; 
-            color: #fff; 
-            padding-bottom: 100px; 
-            background-image: 
-                radial-gradient(ellipse at top left, rgba(220, 38, 38, 0.15) 0%, transparent 50%),
-                radial-gradient(ellipse at bottom right, rgba(220, 38, 38, 0.1) 0%, transparent 50%);
+            background-color: var(--bg-body); 
+            color: var(--text-dark); 
             min-height: 100vh;
+            padding-top: var(--header-height);
         }
 
-        .header-box {
-            text-align: center; margin: 30px auto;
-            border: 2px solid #dc2626; border-radius: 50px;
-            padding: 15px 40px; width: fit-content;
-            font-weight: 800; font-size: 18px;
-            box-shadow: 4px 4px 0px #dc2626, 8px 8px 20px rgba(220, 38, 38, 0.3); 
-            background: #fff;
-            color: #000;
-            transition: all 0.3s ease;
-        }
-        .header-box:hover {
-            box-shadow: 6px 6px 0px #dc2626, 10px 10px 30px rgba(220, 38, 38, 0.5);
-            transform: translate(-2px, -2px);
+        /* --- PROFESSIONAL HEADER BAR --- */
+        .main-header {
+            position: fixed; top: 0; left: 0; right: 0;
+            height: var(--header-height);
+            background: white;
+            z-index: 1000;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+            border-bottom: 1px solid var(--border);
         }
 
-        .container { padding: 20px; max-width: 650px; margin: 0 auto; }
+        .hamburger-btn {
+            width: 40px; height: 40px; background: var(--blue-dark); color: white;
+            border-radius: 8px; display: flex; justify-content: center; align-items: center;
+            font-size: 18px; cursor: pointer; transition: 0.2s;
+        }
+        .hamburger-btn:hover { background: var(--blue-darker); }
 
-        /* KARTU UTAMA */
+        .header-title-pill {
+            border: 2px solid var(--primary); color: var(--primary);
+            padding: 6px 20px; border-radius: 50px;
+            font-weight: 800; font-size: 12px;
+            text-transform: uppercase; letter-spacing: 1px;
+            background: white;
+        }
+
+        /* --- FILTER BAR --- */
+        .filter-bar {
+            background: white;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            position: sticky;
+            top: var(--header-height);
+            z-index: 900;
+            flex-wrap: wrap;
+        }
+
+        .input-ctrl { 
+            padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); 
+            background: #f1f5f9; color: var(--text-dark); font-weight: 700; outline: none;
+            cursor: pointer; font-size: 13px;
+        }
+
+        .btn-refresh {
+            background: var(--primary); color: white; border: none; padding: 8px 16px;
+            border-radius: 8px; font-weight: 800; cursor: pointer; transition: 0.2s;
+            font-size: 12px; display: flex; align-items: center; gap: 8px;
+        }
+        .btn-refresh:hover { background: var(--primary-dark); transform: scale(1.05); }
+
+        /* --- SIDEBAR NAV --- */
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+            z-index: 2000; opacity: 0; visibility: hidden; transition: 0.3s; backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+        
+        .side-nav {
+            position: fixed; top: 0; left: -100%; width: var(--sidebar-width); height: 100vh; background: white;
+            z-index: 2001; transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+            display: flex; flex-direction: column; padding: 20px; box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+        .side-nav.active { left: 0; }
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+        .sidebar-title { font-weight: 800; color: var(--primary); font-size: 20px; }
+        .sidebar-close { font-size: 24px; color: #888; cursor: pointer; transition: 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: #444; 
+            background: white; width: 100%; padding: 14px 20px; margin-bottom: 12px;
+            border: 1px solid var(--border); border-radius: 12px; transition: all 0.2s; font-weight: 600;
+        }
+        .nav-item:hover { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 28px; margin-right: 15px; font-size: 18px; color: var(--primary); }
+
+        /* --- CONTENT VIEWER --- */
+        .container { padding: 20px; max-width: 800px; margin: 0 auto; }
+
         .main-card {
             background: #ffffff; 
-            border: 3px solid #dc2626; 
+            border: 1px solid var(--border); 
             border-radius: 20px;
-            margin-bottom: 35px; 
-            padding: 25px; 
-            box-shadow: 8px 8px 0px #dc2626, 12px 12px 30px rgba(220, 38, 38, 0.25);
-            transition: all 0.3s ease;
-        }
-        .main-card:hover {
-            box-shadow: 10px 10px 0px #dc2626, 16px 16px 40px rgba(220, 38, 38, 0.4);
-            transform: translate(-2px, -2px);
+            margin-bottom: 25px; 
+            padding: 20px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+            transition: transform 0.3s ease;
         }
 
         .type-badge {
-            background: #dc2626; 
+            background: var(--blue-dark); 
             color: #fff; 
-            padding: 5px 15px; 
-            border-radius: 10px;
-            font-size: 11px; 
+            padding: 4px 12px; 
+            border-radius: 6px;
+            font-size: 10px; 
             font-weight: 800; 
             text-transform: uppercase; 
             margin-bottom: 15px; 
             display: inline-block;
-            box-shadow: 2px 2px 0px #7f1d1d;
         }
 
         .machine-header {
             display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 2px solid #fecaca; padding-bottom: 10px; margin-bottom: 20px;
+            border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 15px;
         }
-        .machine-name { font-weight: 800; font-size: 16px; color: #000; }
-        .report-date { font-size: 12px; color: #666; font-weight: 600; }
+        .machine-name { font-weight: 800; font-size: 16px; color: #1e293b; }
+        .report-date { font-size: 11px; color: var(--text-muted); font-weight: 600; }
 
-        /* BOX CATATAN 3 LEVEL */
         .note-section { 
-            margin-bottom: 15px; 
+            margin-bottom: 12px; 
             padding: 12px; 
             border-radius: 12px; 
-            border: 1px solid #fecaca; 
-            background: #fff;
-            transition: all 0.3s ease;
-        }
-        .note-section:hover {
-            border-color: #dc2626;
-            box-shadow: 0 0 15px rgba(220, 38, 38, 0.15);
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
         }
         
         .label-group { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-        .label-group i { font-size: 14px; }
-        .label-text { font-size: 11px; font-weight: 800; text-transform: uppercase; }
-        
-        .real-note { font-size: 13px; font-weight: 500; line-height: 1.5; color: #333; }
-        .author-name { font-size: 11px; font-weight: 600; color: #888; margin-top: 5px; display: block; }
+        .label-text { font-size: 10px; font-weight: 800; text-transform: uppercase; }
+        .real-note { font-size: 13px; font-weight: 500; line-height: 1.5; color: #334155; }
+        .author-name { font-size: 11px; font-weight: 600; color: #94a3b8; margin-top: 5px; display: block; }
 
-        /* WARNA KHUSUS - Updated dengan aksen merah */
-        .bg-pelaksana { border-left: 5px solid #dc2626; background: #fef2f2; }
-        .bg-koordinator { border-left: 5px solid #b91c1c; background: #fff5f5; }
-        .bg-superintendent { border-left: 5px solid #7f1d1d; background: #fdf2f2; }
+        .bg-pelaksana { border-left: 4px solid var(--primary); }
+        .bg-koordinator { border-left: 4px solid #f59e0b; }
+        .bg-superintendent { border-left: 4px solid var(--blue-dark); }
 
-        /* BOTTOM NAV */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: #ffffff; 
-            border-top: 3px solid #dc2626;
-            display: flex; justify-content: space-around; padding: 15px 0; z-index: 99;
-            box-shadow: 0 -5px 20px rgba(220, 38, 38, 0.2);
-        }
-        .nav-item { 
-            font-size: 24px; 
-            color: #000; 
-            cursor: pointer; 
-            text-decoration: none; 
-            opacity: 0.5; 
-            transition: all 0.3s ease;
-        }
-        .nav-item:hover {
-            opacity: 1;
-            color: #dc2626;
-            transform: scale(1.15);
-        }
-        .nav-item.active { 
-            opacity: 1; 
-            transform: scale(1.1); 
-            color: #dc2626;
-        }
-
-        .loading { text-align: center; margin-top: 50px; font-style: italic; color: #dc2626; }
-        .empty { text-align: center; margin-top: 50px; font-weight: 600; color: #dc2626; }
-
-        /* Scrollbar styling */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #1a1a1a; }
-        ::-webkit-scrollbar-thumb { background: #dc2626; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #b91c1c; }
+        .loading { text-align: center; padding: 50px; font-weight: 700; color: var(--text-muted); }
+        .empty-state { text-align: center; padding: 100px 20px; color: var(--text-muted); }
+        .empty-state i { font-size: 40px; margin-bottom: 15px; display: block; }
     </style>
 </head>
 <body>
 
-    <div class="header-box">CATATAN LAPORAN REAL</div>
+    <!-- SIDEBAR & OVERLAY -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Menu Utama</span>
+            <div class="sidebar-close" onclick="toggleSidebar()"><i class="fa-solid fa-xmark"></i></div>
+        </div>
+        <a href="index.html" class="nav-item" id="nav-home"><div class="nav-icon-box"><i class="fa-solid fa-house"></i></div><span>Home</span></a>
+        <a href="menu_utama.html" class="nav-item" id="nav-menu"><div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div><span>Dashboard</span></a>
+        <a href="download_data.html" class="nav-item"><div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div><span>Unduh Data</span></a>
+        <a href="informasi_akun.html" class="nav-item"><div class="nav-icon-box"><i class="fa-solid fa-user"></i></div><span>Akun</span></a>
+    </nav>
 
-    <div class="container" id="content-viewer">
-        <div class="loading">Menghubungkan ke database...</div>
+    <!-- HEADER -->
+    <header class="main-header">
+        <div class="hamburger-btn" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+        </div>
+        <div class="header-title-pill">Catatan Laporan Real</div>
+        <div style="width: 40px;"></div> <!-- Spacer -->
+    </header>
+
+    <!-- FILTER PERIODE & MESIN -->
+    <div class="filter-bar">
+        <select id="f-bulan" class="input-ctrl">
+            <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+            <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+            <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+            <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+        </select>
+        <select id="f-tahun" class="input-ctrl">
+            <option value="2025">2025</option><option value="2026">2026</option>
+        </select>
+        <!-- Filter Mesin Baru -->
+        <select id="f-mesin" class="input-ctrl" onchange="filterLocalData()">
+            <option value="ALL">Semua Mesin</option>
+        </select>
+        <button class="btn-refresh" onclick="fetchAllNotes()">
+            <i class="fa-solid fa-rotate"></i> TARIK DATA
+        </button>
     </div>
 
-    <nav class="bottom-nav">
-        <a href="home_akg.html" class="nav-item"><i class="fa-solid fa-house"></i></a>
-        <a href="menu_utama.html" class="nav-item"><i class="fa-solid fa-bars"></i></a>
-        <a href="download_data.html" class="nav-item"><i class="fa-solid fa-download"></i></a>
-        <a href="informasi_akun.html" class="nav-item active"><i class="fa-solid fa-circle-user"></i></a>
-    </nav>
+    <div class="container" id="content-viewer">
+        <div class="loading"><i class="fa-solid fa-circle-notch fa-spin"></i> Memuat Data...</div>
+    </div>
 
     <script>
         const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        let masterDataRaw = [];
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await client.auth.getSession();
+                if (!session) return;
+                const { data: profile } = await client.from('profiles').select('jabatan').eq('id', session.user.id).single();
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home'), navMenu = document.getElementById('nav-menu');
+                    let homeLink = 'index.html', menuLink = 'menu_utama.html';
+                    if (jabatan.includes('OPERATOR')) { homeLink = 'OPERATOR_HOME.html'; menuLink = 'MENU_UTAMA_OPERATOR.html'; }
+                    else if (jabatan.includes('SUPERVISOR')) { homeLink = 'SUPERVISOR_HOME.html'; menuLink = 'MENU_UTAMA_SUPERVISOR.html'; }
+                    else if (jabatan.includes('SUPERINTENDENT')) { homeLink = 'SUPERINTENDENT_HOME.html'; menuLink = 'MENU_UTAMA_SUPERINTENDENT.html'; }
+                    else if (jabatan.includes('MANAGER')) { homeLink = 'MANAGER_HOME.html'; menuLink = 'MENU_UTAMA_MANAGER.html'; }
+                    if (navHome) navHome.href = homeLink; if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) { console.error(err); }
+        }
+
         async function fetchAllNotes() {
             const container = document.getElementById('content-viewer');
-            let masterData = [];
+            container.innerHTML = '<div class="loading"><i class="fa-solid fa-circle-notch fa-spin"></i> Menarik Data...</div>';
+            
+            const bln = document.getElementById('f-bulan').value, thn = document.getElementById('f-tahun').value;
+            const monthPadded = bln.padStart(2, '0'), lastDay = new Date(thn, bln, 0).getDate();
+            const startRange = `${thn}-${monthPadded}-01T00:00:00.000Z`, endRange = `${thn}-${monthPadded}-${lastDay}T23:59:59.999Z`;
+            const startSimple = `${thn}-${monthPadded}-01`, endSimple = `${thn}-${monthPadded}-${lastDay}`;
+
+            masterDataRaw = [];
 
             try {
-                // -----------------------------------------------------------
-                // 1. CHSLR_LOG (Robot & Standlabel)
-                // Logic: Jika catatan_pelaksana kosong -> Ambil chslr_result.keterangan
-                // -----------------------------------------------------------
-                let { data: chslr } = await client
-                    .from('chslr_log')
-                    .select('*, chslr_result(keterangan)')
-                    .order('created_at', { ascending: false });
+                const [chslrRes, clhmiRes, pmiRes, prslbRes] = await Promise.all([
+                    client.from('chslr_log').select('*, chslr_result(keterangan)').gte('created_at', startRange).lte('created_at', endRange),
+                    client.from('clhmi').select('*').eq('bulan', bln).eq('tahun', thn),
+                    client.from('pmi_header').select('*, pmi_results(keterangan)').gte('tanggal', startSimple).lte('tanggal', endSimple),
+                    client.from('prslb_log').select('*, prslb_result(status, keterangan)').gte('created_at', startRange).lte('created_at', endRange)
+                ]);
 
-                if(chslr) chslr.forEach(d => {
-                    let noteFinal = d.catatan_pelaksana;
-                    if (!noteFinal || noteFinal.trim() === "") {
-                        noteFinal = (d.chslr_result || [])
-                            .map(r => r.keterangan)
-                            .filter(k => k)
-                            .join(", ");
-                    }
-
-                    masterData.push({
-                        type: 'Robot & Standlabel',
-                        machine: d.mesin_id,
-                        date: d.created_at,
-                        pelaksana: { name: (d.pelaksana_names || []).join(', '), note: noteFinal || '-' },
-                        koordinator: { name: d.koordinator_nama, note: d.remark_koordinator },
-                        superintendent: { name: d.superintendent_nama, note: d.remark_superintendent }
-                    });
+                if(chslrRes.data) chslrRes.data.forEach(d => masterDataRaw.push({ type: 'Robot & Standlabel', machine: d.mesin_id, date: d.created_at, pelaksana: { name: (d.pelaksana_names || []).join(', '), note: d.catatan_pelaksana || (d.chslr_result || []).map(r => r.keterangan).filter(k => k).join(", ") }, koordinator: { name: d.koordinator_nama, note: d.remark_koordinator }, superintendent: { name: d.superintendent_nama, note: d.remark_superintendent } }));
+                if(clhmiRes.data) clhmiRes.data.forEach(d => masterDataRaw.push({ type: 'Injection Molding', machine: (d.merk_mesin || '') + ' ' + (d.tonage || ''), date: d.tanggal_isi, pelaksana: { name: d.pelaksana, note: d.catatan_pelaksana }, koordinator: { name: d.approved_by, note: d.catatan_umum }, superintendent: { name: d.verified_by, note: d.catatan_super } }));
+                if(pmiRes.data) pmiRes.data.forEach(d => masterDataRaw.push({ type: 'Preventif Clamping', machine: d.machine_id, date: d.tanggal, pelaksana: { name: d.nama_pelaksana, note: d.catatan_pelaksana || (d.pmi_results || []).map(r => r.keterangan).filter(k => k).join(", ") }, koordinator: { name: d.nama_koordinator, note: d.catatan_koordinator }, superintendent: { name: d.nama_superintendent, note: d.catatan_superintendent } }));
+                if(prslbRes.data) prslbRes.data.forEach(d => {
+                    let nf = "Semua Kondisi OK", rs = d.prslb_result || [];
+                    const kn = rs.filter(r => r.status === 'NG').map(r => r.keterangan).filter(k => k).join(", ");
+                    if (kn) nf = kn; else if (rs.some(r => r.status === 'NG')) nf = "Ada item NG (Tanpa Keterangan)";
+                    masterDataRaw.push({ type: 'Preventif Robot', machine: d.mesin_id, date: d.created_at, pelaksana: { name: d.pelaksana_nama, note: nf }, koordinator: { name: d.koordinator_nama, note: d.koordinator_note }, superintendent: { name: d.superintendent_nama, note: d.superintendent_note } });
                 });
 
-                // -----------------------------------------------------------
-                // 2. CLHMI (Injection Molding)
-                // Logic: Langsung dari kolom catatan_pelaksana
-                // -----------------------------------------------------------
-                let { data: clhmi } = await client.from('clhmi').select('*').order('tanggal_isi', { ascending: false });
-                if(clhmi) clhmi.forEach(d => {
-                    masterData.push({
-                        type: 'Injection Molding',
-                        machine: (d.merk_mesin || '') + ' ' + (d.tonage || ''),
-                        date: d.tanggal_isi,
-                        pelaksana: { name: d.pelaksana, note: d.catatan_pelaksana },
-                        koordinator: { name: d.approved_by, note: d.catatan_umum },
-                        superintendent: { name: d.verified_by, note: d.catatan_super }
-                    });
-                });
+                populateMachineDropdown(masterDataRaw);
+                filterLocalData();
+            } catch (e) { container.innerHTML = '<div class="loading">Gagal mengambil data.</div>'; }
+        }
 
-                // -----------------------------------------------------------
-                // 3. PMI_HEADER (Preventif Clamping)
-                // Logic: Jika catatan_pelaksana kosong -> Ambil pmi_results.keterangan
-                // -----------------------------------------------------------
-                let { data: pmi } = await client
-                    .from('pmi_header')
-                    .select('*, pmi_results(keterangan)')
-                    .order('tanggal', { ascending: false });
+        function populateMachineDropdown(data) {
+            const msnSel = document.getElementById('f-mesin');
+            const uniqueMsns = [...new Set(data.map(d => (d.machine || 'N/A').trim()))].sort();
+            msnSel.innerHTML = '<option value="ALL">Semua Mesin</option>';
+            uniqueMsns.forEach(m => msnSel.innerHTML += `<option value="${m}">${m}</option>`);
+        }
 
-                if(pmi) pmi.forEach(d => {
-                    let noteFinal = d.catatan_pelaksana;
-                    if (!noteFinal || noteFinal.trim() === "") {
-                        noteFinal = (d.pmi_results || [])
-                            .map(r => r.keterangan)
-                            .filter(k => k)
-                            .join(", ");
-                    }
-
-                    masterData.push({
-                        type: 'Preventif Clamping',
-                        machine: 'ID: ' + d.machine_id,
-                        date: d.tanggal,
-                        pelaksana: { name: d.nama_pelaksana, note: noteFinal || '-' },
-                        koordinator: { name: d.nama_koordinator, note: d.catatan_koordinator },
-                        superintendent: { name: d.nama_superintendent, note: d.catatan_superintendent }
-                    });
-                });
-
-                // -----------------------------------------------------------
-                // 4. PRSLB_LOG (Preventif Robot)
-                // Logic BARU:
-                // - Cek prslb_result.status
-                // - Jika semua "OK" -> Tulis "Semua Kondisi OK"
-                // - Jika ada "NG" -> Ambil prslb_result.keterangan yang NG
-                // -----------------------------------------------------------
-                let { data: prslb } = await client
-                    .from('prslb_log')
-                    .select('*, prslb_result(status, keterangan)') // Ambil status & keterangan
-                    .order('created_at', { ascending: false });
-
-                if(prslb) prslb.forEach(d => {
-                    let noteFinal = "Semua Kondisi OK"; // Default kalau semua OK
-                    const results = d.prslb_result || [];
-                    
-                    // Cek apakah ada yang NG?
-                    const adaNG = results.some(r => r.status === 'NG');
-
-                    if (adaNG) {
-                        // Kalau ada NG, ambil keterangannya
-                        const keteranganNG = results
-                            .filter(r => r.status === 'NG')
-                            .map(r => r.keterangan)
-                            .filter(k => k) // Hapus yang kosong
-                            .join(", ");
-                        
-                        // Jika keterangan kosong tapi status NG, kasih info default
-                        noteFinal = keteranganNG || "Ada item NG (Tanpa Keterangan)";
-                    }
-
-                    masterData.push({
-                        type: 'Preventif Robot',
-                        machine: d.mesin_id,
-                        date: d.created_at,
-                        pelaksana: { name: d.pelaksana_nama, note: noteFinal },
-                        koordinator: { name: d.koordinator_nama, note: d.koordinator_note },
-                        superintendent: { name: d.superintendent_nama, note: d.superintendent_note }
-                    });
-                });
-
-                renderUI(masterData);
-
-            } catch (e) {
-                console.error(e);
-                container.innerHTML = '<div class="loading">Gagal mengambil data.</div>';
-            }
+        function filterLocalData() {
+            const selMsn = document.getElementById('f-mesin').value;
+            let filtered = masterDataRaw;
+            if (selMsn !== 'ALL') filtered = masterDataRaw.filter(d => (d.machine || 'N/A').trim() === selMsn);
+            renderUI(filtered);
         }
 
         function renderUI(data) {
             const container = document.getElementById('content-viewer');
             container.innerHTML = '';
-
-            if(data.length === 0) {
-                container.innerHTML = '<div class="empty">Tidak ada data ditemukan.</div>';
-                return;
-            }
-
-            // Urutkan data berdasarkan tanggal terbaru
+            if(data.length === 0) { container.innerHTML = `<div class="empty-state"><i class="fa-regular fa-folder-open"></i><p>Tidak ada catatan ditemukan.</p></div>`; return; }
             data.sort((a, b) => new Date(b.date) - new Date(a.date));
-
             data.forEach(item => {
                 const dateStr = new Date(item.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-                
-                let card = `
-                <div class="main-card">
-                    <span class="type-badge">${item.type}</span>
-                    <div class="machine-header">
-                        <div class="machine-name">${item.machine || 'N/A'}</div>
-                        <div class="report-date">${dateStr}</div>
-                    </div>
-
-                    <div class="note-section bg-pelaksana">
-                        <div class="label-group" style="color:#dc2626;">
-                            <i class="fa fa-user-gear"></i>
-                            <span class="label-text">Catatan Pelaksana</span>
-                        </div>
-                        <div class="real-note">${item.pelaksana.note || '-'}</div>
-                        <span class="author-name">Oleh: ${item.pelaksana.name || 'N/A'}</span>
-                    </div>
-
-                    <div class="note-section bg-koordinator">
-                        <div class="label-group" style="color:#b91c1c;">
-                            <i class="fa fa-user-check"></i>
-                            <span class="label-text">Catatan Koordinator</span>
-                        </div>
-                        <div class="real-note">${item.koordinator.note || '-'}</div>
-                        <span class="author-name">Oleh: ${item.koordinator.name || 'N/A'}</span>
-                    </div>
-
-                    <div class="note-section bg-superintendent">
-                        <div class="label-group" style="color:#7f1d1d;">
-                            <i class="fa fa-pen-nib"></i>
-                            <span class="label-text">Catatan Superintendent</span>
-                        </div>
-                        <div class="real-note">${item.superintendent.note || '-'}</div>
-                        <span class="author-name">Oleh: ${item.superintendent.name || 'N/A'}</span>
-                    </div>
-                </div>`;
-                container.innerHTML += card;
+                container.innerHTML += `<div class="main-card"><span class="type-badge">${item.type}</span><div class="machine-header"><div class="machine-name">${item.machine || 'N/A'}</div><div class="report-date">${dateStr}</div></div><div class="note-section bg-pelaksana"><div class="label-group" style="color:var(--primary);"><i class="fa fa-user-gear"></i><span class="label-text">Pelaksana</span></div><div class="real-note">${item.pelaksana.note || '-'}</div><span class="author-name">Oleh: ${item.pelaksana.name || 'N/A'}</span></div><div class="note-section bg-koordinator"><div class="label-group" style="color:#f59e0b;"><i class="fa fa-user-check"></i><span class="label-text">Koordinator</span></div><div class="real-note">${item.koordinator.note || '-'}</div><span class="author-name">Oleh: ${item.koordinator.name || 'N/A'}</span></div><div class="note-section bg-superintendent"><div class="label-group" style="color:var(--blue-dark);"><i class="fa fa-pen-nib"></i><span class="label-text">Superintendent</span></div><div class="real-note">${item.superintendent.note || '-'}</div><span class="author-name">Oleh: ${item.superintendent.name || 'N/A'}</span></div></div>`;
             });
         }
 
-        fetchAllNotes();
+        window.onload = () => {
+            const now = new Date();
+            document.getElementById('f-bulan').value = now.getMonth() + 1;
+            document.getElementById('f-tahun').value = now.getFullYear();
+            setupDynamicNavigation();
+            fetchAllNotes();
+        };
     </script>
 </body>
 </html>
