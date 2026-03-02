@@ -449,11 +449,11 @@
         </div>
 
         <!-- DITAMBAHKAN ID PADA LINK UNTUK DYNAMIC ROUTING -->
-        <a href="index.html" id="nav-home" class="nav-item">
+        <a href="#" id="nav-home" class="nav-item">
             <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
             <span>Home</span>
         </a>
-        <a href="menu_utama.html" id="nav-menu" class="nav-item">
+        <a href="#" id="nav-menu" class="nav-item">
             <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
             <span>Menu Utama</span>
         </a>
@@ -557,6 +557,13 @@
                     </div>
                 </a>
 
+                <!-- Item 11 -->
+                <a href="pmw_result.html" class="menu-card">
+                    <div class="menu-pill">
+                        <h2>Data Preventive Mesin<br>Workshop</h2>
+                    </div>
+                </a>
+
             </div>
 
         </div>
@@ -586,64 +593,78 @@
         // Supabase Initialization
         const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
-        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // Fungsi Cek Jabatan & Update Link Navigasi
         async function setupDynamicNavigation() {
             try {
                 // Ambil sesi user saat ini
-                const { data: { session } } = await client.auth.getSession();
+                const { data: { session }, error: sessionError } = await client.auth.getSession();
                 
-                // Jika tidak ada user login, lempar ke halaman login
-                if (!session) {
-                    window.location.href = 'index.html';
+                // Jika tidak ada user login, kembalikan rute ke index
+                if (sessionError || !session) {
+                    console.log("No valid session found, defaulting links.");
+                    setFallbackLinks();
                     return;
                 }
 
                 // Ambil data profil (jabatan) dari tabel profiles
-                const { data: profile, error } = await client
+                const { data: profile, error: profileError } = await client
                     .from('profiles')
                     .select('jabatan')
                     .eq('id', session.user.id)
                     .single();
 
-                if (profile) {
-                    const jabatan = profile.jabatan.toUpperCase();
-                    const navHome = document.getElementById('nav-home');
-                    const navMenu = document.getElementById('nav-menu');
-
-                    // Set default jika entah bagaimana jabatan tidak terdaftar (fallback)
-                    let homeLink = 'index.html';
-                    let menuLink = 'menu_utama.html';
-
-                    // Cek jabatan dan sesuaikan rute link
-                    if (jabatan.includes('OPERATOR')) {
-                        homeLink = 'OPERATOR_HOME.html';
-                        menuLink = 'MENU_UTAMA_OPERATOR.html';
-                    } else if (jabatan.includes('SUPERVISOR')) {
-                        homeLink = 'SUPERVISOR_HOME.html';
-                        menuLink = 'MENU_UTAMA_SUPERVISOR.html';
-                    } else if (jabatan.includes('SUPERINTENDENT')) {
-                        homeLink = 'SUPERINTENDENT_HOME.html';
-                        menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
-                    } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
-                        homeLink = 'MANAGER_HOME.html';
-                        menuLink = 'MENU_UTAMA_MANAGER.html';
-                    } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
-                        homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
-                        menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
-                    } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
-                        homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
-                        menuLink = 'MENU_UTAMA_JM_PPIC.html';
-                    }
-
-                    // Terapkan ke elemen HTML
-                    if (navHome) navHome.href = homeLink;
-                    if (navMenu) navMenu.href = menuLink;
+                if (profileError || !profile) {
+                    console.error("Failed to load profile:", profileError);
+                    setFallbackLinks();
+                    return;
                 }
+
+                const jabatan = profile.jabatan.toUpperCase();
+                const navHome = document.getElementById('nav-home');
+                const navMenu = document.getElementById('nav-menu');
+
+                // Set default jika entah bagaimana jabatan tidak terdaftar (fallback)
+                let homeLink = 'index.html';
+                let menuLink = 'menu_utama.html';
+
+                // Cek jabatan dan sesuaikan rute link
+                if (jabatan.includes('OPERATOR')) {
+                    homeLink = 'OPERATOR_HOME.html';
+                    menuLink = 'MENU_UTAMA_OPERATOR.html';
+                } else if (jabatan.includes('SUPERVISOR')) {
+                    homeLink = 'SUPERVISOR_HOME.html';
+                    menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                } else if (jabatan.includes('SUPERINTENDENT')) {
+                    homeLink = 'SUPERINTENDENT_HOME.html';
+                    menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                    homeLink = 'MANAGER_HOME.html';
+                    menuLink = 'MENU_UTAMA_MANAGER.html';
+                } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                    homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                    menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                    homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                    menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                }
+
+                // Terapkan ke elemen HTML. Hanya set jika nilainya bukan string kosong atau sekadar '#'.
+                if (navHome) navHome.href = homeLink;
+                if (navMenu) navMenu.href = menuLink;
+                
             } catch (err) {
-                console.error("Gagal mengatur navigasi dinamis:", err);
+                console.error("Kesalahan kritis di setup navigasi:", err);
+                setFallbackLinks();
             }
+        }
+        
+        function setFallbackLinks() {
+            const navHome = document.getElementById('nav-home');
+            const navMenu = document.getElementById('nav-menu');
+            if (navHome) navHome.href = 'index.html';
+            if (navMenu) navMenu.href = 'menu_utama.html';
         }
 
         // Sidebar Toggle
