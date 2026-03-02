@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Data Preventive Mesin Workshop</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --primary: #c91919;
+            --primary-dark: #a50e0e;
+            --bg-body: #f4f6f8;
+            --text-dark: #333333;
+            --border-color: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0; padding: 0; box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-dark);
+            padding-bottom: 50px;
+        }
+
+        /* Header */
+        .top-header {
+            background: #fff;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Judul di tengah */
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-title {
+            font-weight: 800;
+            font-size: 15px;
+            color: var(--primary);
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 2000;
+            opacity: 0; visibility: hidden; transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+        
+        .side-nav {
+            position: fixed; top: 0; left: -100%; width: 280px; height: 100vh;
+            background: white; z-index: 2001; transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex; flex-direction: column; padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+        .side-nav.active { left: 0; }
+        
+        .sidebar-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid #eee;
+        }
+        .sidebar-title { font-weight: 800; color: var(--primary); font-size: 20px; }
+        .sidebar-close { font-size: 24px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+        
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: var(--primary);
+            background: white; width: 100%; padding: 14px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s;
+        }
+        .nav-item:hover, .nav-item:active {
+            border-color: var(--primary); background: #fff5f5; transform: translateX(5px);
+        }
+        .nav-icon-box {
+            display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+            margin-right: 15px; font-size: 20px; color: var(--primary);
+        }
+        .nav-item span { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .hamburger-menu {
+            position: absolute; left: 20px;
+            font-size: 24px; color: var(--primary); cursor: pointer; transition: transform 0.2s;
+        }
+        .hamburger-menu:active { transform: scale(0.9); }
+
+        /* Container */
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 0 15px;
+        }
+
+        /* Loading State */
+        .loading-state {
+            text-align: center;
+            padding: 50px;
+            color: #64748b;
+            font-weight: 600;
+        }
+        .loading-state i {
+            font-size: 30px;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        /* Report Cards */
+        .log-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+        @media(min-width: 600px) {
+            .log-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media(min-width: 900px) {
+            .log-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        .log-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            border-left: 5px solid var(--primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+        }
+        .log-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        }
+        
+        /* Status Badge on Card */
+        .status-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 50px;
+            font-weight: 700;
+        }
+        .status-pending { background: #fef3c7; color: #b45309; }
+        .status-approved { background: #dcfce7; color: #047857; }
+
+        .log-header {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        .log-date {
+            font-size: 12px;
+            font-weight: 700;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .log-machine {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-top: 5px;
+        }
+        .log-pic {
+            font-size: 13px;
+            color: #475569;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .log-pic i { color: var(--primary); }
+
+        /* Modal Fullscreen */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 2000;
+            display: none; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+            padding: 15px;
+        }
+        .modal-overlay.active { display: flex; }
+        
+        .modal-box {
+            background: white; border-radius: 16px;
+            width: 100%; max-width: 900px; max-height: 95vh;
+            display: flex; flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            padding: 15px 20px;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h3 { font-size: 16px; font-weight: 700; }
+        .modal-close {
+            background: rgba(255,255,255,0.2); border: none; color: white;
+            width: 30px; height: 30px; border-radius: 50%;
+            cursor: pointer; transition: 0.2s; display: flex;
+            align-items: center; justify-content: center;
+        }
+        .modal-close:hover { background: rgba(255,255,255,0.4); }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        /* --- KOTAK ABU-ABU UNTUK LAPORAN OPERATOR (READ-ONLY) --- */
+        .report-readonly-box {
+            background: #f1f5f9; /* Warna abu-abu terang */
+            border: 2px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            pointer-events: none; /* Membuat isi didalamnya tidak bisa diklik sama sekali */
+        }
+        .report-readonly-title {
+            font-size: 12px;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+            border-bottom: 1px dashed #cbd5e1;
+            padding-bottom: 5px;
+        }
+
+        .info-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            background: #e2e8f0; /* Diubah menjadi abu-abu agar terlihat terkunci */
+            padding: 15px; border-radius: 8px;
+            margin-bottom: 20px; border: 1px solid #cbd5e1;
+        }
+        .info-item { display: flex; flex-direction: column; }
+        .info-label { font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; }
+        .info-val { font-size: 14px; color: var(--text-dark); font-weight: 800; }
+
+        /* Table */
+        .table-responsive { width: 100%; overflow-x: auto; background: #e2e8f0; border-radius: 8px; border: 1px solid #cbd5e1; }
+        table { width: 100%; border-collapse: collapse; min-width: 700px; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #cbd5e1; font-size: 12px; }
+        th { background: #cbd5e1; color: #333; font-weight: 700; text-transform: uppercase; font-size: 11px; }
+        td.prosedur { font-weight: 700; color: #1e293b; }
+        
+        .badge {
+            padding: 4px 8px; border-radius: 4px; font-weight: 700; color: white;
+            font-size: 11px; display: inline-block; text-align: center; min-width: 30px;
+        }
+        .badge-B { background: var(--success); }
+        .badge-C { background: var(--warning); }
+        .badge-K { background: var(--danger); }
+
+        /* --- FORM SUPERVISOR --- */
+        .supervisor-action-box {
+            background: #fff;
+            border: 2px solid var(--primary);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 10px;
+        }
+        .supervisor-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--primary);
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        .input-group label { font-size: 12px; font-weight: 700; color: #475569; }
+        .input-group input {
+            padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 8px;
+            font-size: 14px; outline: none; background: #f8fafc;
+        }
+        .input-group input:focus { border-color: var(--primary); background: #fff; }
+
+        .signature-canvas-container {
+            border: 2px dashed #cbd5e1; border-radius: 8px; background: #f8fafc;
+            overflow: hidden; touch-action: none;
+        }
+        canvas#spvSignaturePad { width: 100%; height: 150px; display: block; cursor: crosshair; touch-action: none; }
+        
+        .btn-action-group {
+            display: flex; justify-content: space-between; align-items: center; margin-top: 15px;
+        }
+        .btn-clear {
+            background: #e2e8f0; color: #475569; border: none; padding: 8px 15px;
+            border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;
+        }
+        .btn-submit {
+            background: var(--success); color: white; border: none; padding: 12px 25px;
+            border-radius: 50px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px;
+        }
+        .btn-submit:active { transform: scale(0.95); }
+        .btn-submit:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+        /* Approval Preview (Jika sudah disetujui) */
+        .approved-preview {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 20px; background: #dcfce7; border: 2px dashed #10b981;
+            border-radius: 12px; text-align: center;
+        }
+        .approved-preview i { font-size: 40px; color: #10b981; margin-bottom: 10px; }
+        .approved-preview img { max-width: 200px; height: auto; border-bottom: 1px solid #047857; margin-bottom: 10px; }
+        .approved-preview h4 { margin: 0; font-size: 16px; color: #065f46; }
+
+    </style>
+</head>
+<body>
+
+    <!-- OVERLAY & SIDEBAR -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+
+        <a href="index.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="MENU_UTAMA_SUPERVISOR.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <!-- Header -->
+    <div class="top-header">
+        <div class="hamburger-menu" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+        </div>
+        <div class="header-title">Data Preventive Mesin Workshop</div>
+    </div>
+
+    <div class="container">
+        <div id="loading" class="loading-state">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <p>Memuat Data Laporan...</p>
+        </div>
+
+        <div id="logContainer" class="log-grid" style="display: none;">
+            <!-- Kartu Laporan akan dimuat di sini -->
+        </div>
+    </div>
+
+    <!-- MODAL DETAIL LAPORAN -->
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Detail & Pengesahan</h3>
+                <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="modal-body" id="modalBody">
+                <div id="modalLoading" class="loading-state">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    <p>Menarik detail rincian...</p>
+                </div>
+
+                <div id="modalContent" style="display: none;">
+                    
+                    <!-- KOTAK ABU-ABU (LAPORAN OPERATOR) -->
+                    <div class="report-readonly-box">
+                        <div class="report-readonly-title"><i class="fa-solid fa-lock"></i> Data Laporan Operator (Read-Only)</div>
+                        
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Nama Mesin</span>
+                                <span class="info-val" id="dtMesin">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Tanggal</span>
+                                <span class="info-val" id="dtTanggal">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Departemen</span>
+                                <span class="info-val">WORKSHOP</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">PIC / Operator</span>
+                                <span class="info-val" id="dtPic">-</span>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th width="5%">No</th>
+                                        <th width="30%">Prosedur</th>
+                                        <th width="20%">Standart</th>
+                                        <th width="10%">Kondisi</th>
+                                        <th width="15%">Action</th>
+                                        <th width="20%">Catatan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detailTableBody">
+                                    <!-- Baris Detail di sini -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- KOTAK PENGESAHAN SUPERVISOR -->
+                    <!-- Bagian Form Input (Tampil jika belum disetujui) -->
+                    <div id="spvFormSection" class="supervisor-action-box" style="display: none;">
+                        <div class="supervisor-title"><i class="fa-solid fa-pen-nib"></i> Form Pengesahan Supervisor</div>
+                        
+                        <div class="input-group">
+                            <label>Nama Supervisor</label>
+                            <input type="text" id="spvNameInput" placeholder="Masukkan nama Anda..." required>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Tanda Tangan</label>
+                            <div class="signature-canvas-container">
+                                <canvas id="spvSignaturePad"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="btn-action-group">
+                            <button type="button" class="btn-clear" onclick="clearSignature()"><i class="fa-solid fa-eraser"></i> Hapus Coretan</button>
+                            <button type="button" class="btn-submit" id="btnSubmitApprove" onclick="submitApproval()"><i class="fa-solid fa-check-double"></i> Setujui Laporan</button>
+                        </div>
+                    </div>
+
+                    <!-- Bagian Preview Approved (Tampil jika SUDAH disetujui) -->
+                    <div id="spvApprovedSection" class="approved-preview" style="display: none;">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <p style="color: #065f46; font-size: 13px; margin-bottom: 10px; font-weight: 700;">Telah Diperiksa & Disetujui Oleh:</p>
+                        <img id="spvSigImg" src="" alt="Tanda Tangan SPV">
+                        <h4 id="spvNameTxt">Nama SPV</h4>
+                        <span style="font-size: 11px; color: #047857;">Supervisor</span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. SETUP SUPABASE ---
+        const supabaseUrl = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // State & Variabel Global
+        let currentLogId = null;
+        const canvas = document.getElementById('spvSignaturePad');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let hasSignature = false;
+
+        // Utility: Format Tanggal
+        function formatDate(dateStr) {
+            if(!dateStr) return "-";
+            const options = { day: 'numeric', month: 'short', year: 'numeric' };
+            return new Date(dateStr).toLocaleDateString('id-ID', options);
+        }
+
+        // --- 2. LOAD DATA LOG (KARTU) ---
+        async function loadLogs() {
+            const loading = document.getElementById('loading');
+            const container = document.getElementById('logContainer');
+
+            try {
+                // Tarik data log laporan yang BELUM DI-APPROVE (spv_name masih null)
+                const { data: logs, error } = await supabaseClient
+                    .from('pmw_log')
+                    .select('*')
+                    .is('spv_name', null)
+                    .order('tanggal', { ascending: false })
+                    .order('id', { ascending: false });
+
+                if (error) throw error;
+
+                loading.style.display = 'none';
+                container.style.display = 'grid';
+                container.innerHTML = '';
+
+                if (logs.length === 0) {
+                    container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 30px; color:#64748b;">Tidak ada laporan pending yang butuh approval.</div>`;
+                    return;
+                }
+
+                // Render Kartu per Log
+                logs.forEach(log => {
+                    const isApproved = !!log.spv_name; 
+                    const statusHtml = isApproved 
+                        ? `<span class="status-badge status-approved"><i class="fa-solid fa-check"></i> Approved</span>`
+                        : `<span class="status-badge status-pending"><i class="fa-regular fa-clock"></i> Menunggu SPV</span>`;
+
+                    const card = document.createElement('div');
+                    card.className = 'log-card';
+                    card.onclick = () => openDetail(log);
+                    
+                    card.innerHTML = `
+                        ${statusHtml}
+                        <div class="log-header">
+                            <span class="log-date"><i class="fa-regular fa-calendar"></i> ${formatDate(log.tanggal)}</span>
+                        </div>
+                        <div class="log-machine">${log.mesin}</div>
+                        <div class="log-pic"><i class="fa-solid fa-user-gear"></i> ${log.pic}</div>
+                    `;
+                    container.appendChild(card);
+                });
+
+            } catch (err) {
+                console.error(err);
+                loading.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:var(--danger)"></i><p>Gagal memuat data!</p>`;
+            }
+        }
+
+        // --- 3. BUKA MODAL DETAIL ---
+        async function openDetail(logData) {
+            currentLogId = logData.id; // Simpan ID untuk update nanti
+
+            const modal = document.getElementById('detailModal');
+            const modalLoading = document.getElementById('modalLoading');
+            const modalContent = document.getElementById('modalContent');
+            const tableBody = document.getElementById('detailTableBody');
+
+            // Reset UI Modal
+            modalLoading.style.display = 'block';
+            modalContent.style.display = 'none';
+            tableBody.innerHTML = '';
+            modal.classList.add('active');
+
+            // Isi Info Area Abu-abu
+            document.getElementById('dtMesin').innerText = logData.mesin;
+            document.getElementById('dtTanggal').innerText = formatDate(logData.tanggal);
+            document.getElementById('dtPic').innerText = logData.pic;
+
+            // Atur Visibilitas Area Supervisor
+            const spvForm = document.getElementById('spvFormSection');
+            const spvApproved = document.getElementById('spvApprovedSection');
+
+            if (logData.spv_name) {
+                // SUDAH DISETUJUI
+                spvForm.style.display = 'none';
+                spvApproved.style.display = 'flex';
+                document.getElementById('spvNameTxt').innerText = logData.spv_name;
+                document.getElementById('spvSigImg').src = logData.ttd_spv;
+            } else {
+                // BELUM DISETUJUI -> Munculkan form
+                spvApproved.style.display = 'none';
+                spvForm.style.display = 'block';
+                document.getElementById('spvNameInput').value = '';
+                clearSignature();
+                // Resize canvas DITUNDA sampai animasi modal selesai agar lebar kanvas terbaca akurat
+                setTimeout(resizeCanvas, 350); 
+            }
+
+            try {
+                // Tarik rincian checklist
+                const { data: reports, error } = await supabaseClient
+                    .from('pmw_reports')
+                    .select('*')
+                    .eq('tanggal', logData.tanggal)
+                    .eq('mesin', logData.mesin)
+                    .order('id', { ascending: true });
+
+                if (error) throw error;
+
+                if (reports.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center;">Data rincian tidak ditemukan</td></tr>`;
+                } else {
+                    reports.forEach((rep, idx) => {
+                        let badgeClass = 'badge-B';
+                        if(rep.kondisi === 'C') badgeClass = 'badge-C';
+                        if(rep.kondisi === 'K') badgeClass = 'badge-K';
+
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${idx + 1}</td>
+                            <td class="prosedur">${rep.prosedur_preventive}</td>
+                            <td>${rep.standart}</td>
+                            <td><span class="badge ${badgeClass}">${rep.kondisi}</span></td>
+                            <td style="font-weight: 600; color:#0369a1;">${rep.action_text || '-'}</td>
+                            <td style="color:#64748b; font-style:italic;">${rep.catatan || '-'}</td>
+                        `;
+                        tableBody.appendChild(tr);
+                    });
+                }
+
+                modalLoading.style.display = 'none';
+                modalContent.style.display = 'block';
+
+            } catch(err) {
+                console.error("Error memuat detail", err);
+                modalLoading.innerHTML = `<p style="color:var(--danger)">Gagal menarik detail laporan!</p>`;
+            }
+        }
+
+        // --- 4. LOGIKA PENGESAHAN (SUBMIT) ---
+        async function submitApproval() {
+            const spvName = document.getElementById('spvNameInput').value.trim();
+            const btnSubmit = document.getElementById('btnSubmitApprove');
+
+            if (!spvName) {
+                alert("Mohon isi Nama Supervisor!");
+                return;
+            }
+            if (!hasSignature) {
+                alert("Mohon isi Tanda Tangan Anda!");
+                return;
+            }
+
+            // Ambil gambar TTD
+            const signatureData = canvas.toDataURL('image/png');
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
+
+            try {
+                // Update tabel pmw_log
+                const { error } = await supabaseClient
+                    .from('pmw_log')
+                    .update({ 
+                        spv_name: spvName,
+                        ttd_spv: signatureData
+                    })
+                    .eq('id', currentLogId);
+
+                if (error) throw error;
+
+                alert("Laporan berhasil disetujui!");
+                closeModal();
+                loadLogs(); // Refresh daftar supaya yang sudah approve hilang
+
+            } catch(err) {
+                console.error("Gagal update", err);
+                alert("Gagal menyetujui laporan: " + err.message);
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="fa-solid fa-check-double"></i> Setujui Laporan';
+            }
+        }
+
+
+        // --- 5. LOGIKA SIGNATURE PAD (UPGRADED - LEBIH SMOOTH & ANTI BURAM) ---
+        let lastX = 0;
+        let lastY = 0;
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const targetWidth = container.clientWidth || window.innerWidth - 80;
+            const targetHeight = 150; 
+            
+            // Fix agar garis tajam dan tidak pecah/buram di layar HP (High DPI)
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            
+            canvas.width = targetWidth * ratio;
+            canvas.height = targetHeight * ratio;
+            canvas.style.width = targetWidth + 'px';
+            canvas.style.height = targetHeight + 'px';
+            
+            ctx.scale(ratio, ratio);
+            
+            // Setelan tinta pulpen
+            ctx.lineWidth = 3;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round"; // Membuat tikungan garis lebih mulus
+            ctx.strokeStyle = "#0f172a";
+            ctx.fillStyle = "#0f172a";
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+            
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            return { 
+                x: clientX - rect.left, 
+                y: clientY - rect.top 
+            };
+        }
+
+        function startDrawing(e) {
+            // Cegah scroll layar jika pakai jari
+            if (e.type.includes('touch')) e.preventDefault(); 
+            
+            isDrawing = true;
+            hasSignature = true;
+            const pos = getMousePos(e);
+            lastX = pos.x;
+            lastY = pos.y;
+            
+            // Buat titik tinta bulat jika hanya diklik/di-tap
+            ctx.beginPath();
+            ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Mulai garis untuk ditarik
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            if (e.type.includes('touch')) e.preventDefault();
+            
+            const pos = getMousePos(e);
+            
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            
+            lastX = pos.x;
+            lastY = pos.y;
+        }
+
+        function stopDrawing() { 
+            isDrawing = false; 
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        canvas.addEventListener('touchstart', startDrawing, {passive: false});
+        canvas.addEventListener('touchmove', draw, {passive: false});
+        canvas.addEventListener('touchend', stopDrawing);
+
+        function clearSignature() {
+            // Reset kanvas dengan aman mengingat adanya DPI scaling
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.restore();
+            
+            hasSignature = false;
+            
+            // Pastikan tinta kembali di set
+            ctx.lineWidth = 3;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.strokeStyle = "#0f172a";
+            ctx.fillStyle = "#0f172a";
+        }
+
+        // --- 6. TUTUP MODAL & SIDEBAR ---
+        function closeModal() {
+            document.getElementById('detailModal').classList.remove('active');
+        }
+
+        document.getElementById('detailModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        // Auto load
+        window.onload = loadLogs;
+    </script>
+
+</body>
+</html>
