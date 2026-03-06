@@ -11,6 +11,7 @@
     
     <!-- Dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Library Tanda Tangan (Signature Pad) -->
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -319,6 +320,14 @@
         div:where(.swal2-container) div:where(.swal2-popup) { background: #ffffff !important; border: 1px solid var(--border); color: var(--text-main) !important; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         div:where(.swal2-confirm) { background-color: var(--primary) !important; border-radius: 10px; font-weight: bold; }
         div:where(.swal2-cancel) { color: var(--text-main) !important; font-weight: bold; background: #f1f5f9 !important; }
+        
+        /* Utility */
+        .flex { display: flex; }
+        .justify-between { justify-content: space-between; }
+        .items-center { align-items: center; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mb-0 { margin-bottom: 0; }
+        .mr-2 { margin-right: 0.5rem; }
 
     </style>
 </head>
@@ -523,78 +532,48 @@
             "MESIN EXTRUDER", "MESIN WORKSHOP", "MESIN SRINK", "HOIST CRANE"
         ];
 
-        // SIGNATURE PAD
+        // --- SIGNATURE PAD (MENGGUNAKAN LIBRARY) ---
         const canvas = document.getElementById('signaturePad');
-        const ctx = canvas.getContext('2d');
-        let isDrawing = false;
-        let lastWidth = window.innerWidth;
-
-        function initCanvas() {
-            const wrapper = document.querySelector('.sig-wrapper');
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = wrapper.offsetWidth * ratio;
-            canvas.height = wrapper.offsetHeight * ratio;
-            ctx.scale(ratio, ratio);
-            canvas.style.width = "100%";
-            canvas.style.height = "100%";
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = '#000000'; // Tinta Hitam
-        }
-
-        setTimeout(initCanvas, 500);
-        window.addEventListener("resize", () => {
-            if (Math.abs(window.innerWidth - lastWidth) > 50) {
-                lastWidth = window.innerWidth;
-                initCanvas(); 
-            }
+        
+        // Inisialisasi SignaturePad dengan settingan smooth
+        const signaturePad = new SignaturePad(canvas, {
+            penColor: "rgb(0, 0, 0)", // Tinta hitam
+            backgroundColor: "rgba(0, 0, 0, 0)" // Background transparan
         });
 
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            let cx = e.clientX, cy = e.clientY;
-            if (e.touches && e.touches.length > 0) {
-                cx = e.touches[0].clientX; cy = e.touches[0].clientY;
+        // Fungsi resize canvas biar resolusi tetep tajam (HD) 
+        // dan coretan GAK HILANG pas keyboard HP muncul
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            
+            // Simpan data coretan sementara
+            const data = signaturePad.toData(); 
+            
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+            
+            signaturePad.clear();
+            
+            // Balikin coretannya kalau sebelumnya udah ada isinya
+            if (data && data.length > 0) {
+                signaturePad.fromData(data);
             }
-            return { x: cx - rect.left, y: cy - rect.top };
         }
 
-        function startDraw(e) {
-            if (e.type === 'touchstart') e.preventDefault();
-            isDrawing = true;
-            const pos = getPos(e);
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y);
-        }
-
-        function draw(e) {
-            if (!isDrawing) return;
-            if (e.type === 'touchmove') e.preventDefault();
-            const pos = getPos(e);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
-        }
-
-        function endDraw() { isDrawing = false; ctx.beginPath(); }
-
-        canvas.addEventListener('mousedown', startDraw);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', endDraw);
-        canvas.addEventListener('mouseout', endDraw);
-        canvas.addEventListener('touchstart', startDraw, { passive: false });
-        canvas.addEventListener('touchmove', draw, { passive: false });
-        canvas.addEventListener('touchend', endDraw);
-
-        function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.beginPath(); }
+        // Panggil saat pertama kali load dan tiap window di-resize
+        window.addEventListener("resize", resizeCanvas);
         
-        function isCanvasBlank() {
-            const pixelBuffer = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
-            return !pixelBuffer.some(color => color !== 0);
+        // Tombol Ulangi
+        function clearSignature() {
+            signaturePad.clear();
         }
 
         // INIT & LOGIC
         document.addEventListener('DOMContentLoaded', async () => {
             setupDynamicNavigation();
+            setTimeout(resizeCanvas, 300); // init canvas
+            
             const select = document.getElementById('machine_name');
             select.innerHTML = '<option value="">-- Pilih Mesin --</option>';
             machineList.forEach(m => {
@@ -635,9 +614,10 @@
             if(!machine) { Swal.fire({ ...swalLightStyle, icon: 'warning', title: 'Pilih Mesin' }); return; }
             if(!picName) { Swal.fire({ ...swalLightStyle, icon: 'warning', title: 'Isi Nama PIC' }); return; }
             
+            // Pengecekan Canvas Tanda Tangan
             let signatureData = null;
-            if(!isCanvasBlank()) {
-                signatureData = canvas.toDataURL();
+            if(!signaturePad.isEmpty()) {
+                signatureData = signaturePad.toDataURL('image/png'); // Format PNG
             } else {
                 const conf = await Swal.fire({
                     ...swalLightStyle,
@@ -689,6 +669,7 @@
             btn.disabled = true; spinner.style.display = 'block'; btnText.textContent = 'Menyimpan...';
 
             try {
+                // Proses penyimpanan data ke tabel Supabase
                 const { error } = await db.from('kartu_riwayat_items').insert(dataToInsert);
                 if(error) throw error;
 
