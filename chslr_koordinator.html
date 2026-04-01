@@ -502,10 +502,15 @@
                 <div class="input-group">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                         <label class="label-input" style="margin:0;">Paraf Koordinator</label>
-                        <button onclick="clearPad()" style="background:none; border:none; color:var(--primary); font-size:11px; font-weight:800; cursor:pointer;">HAPUS</button>
+                        <button onclick="clearPad()" id="btn-clear-sig-koor" style="background:none; border:none; color:var(--primary); font-size:11px; font-weight:800; cursor:pointer;">HAPUS</button>
                     </div>
-                    <div class="sig-wrapper">
+                    <div class="sig-wrapper" id="sig-wrapper-koor">
                         <canvas id="signature-pad-koor"></canvas>
+                    </div>
+                    <!-- Notifikasi TTD Otomatis -->
+                    <div id="sig-status-koor" class="hidden mt-2 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                        <i class="fa-solid fa-circle-check text-green-600"></i>
+                        <span class="text-xs text-green-700 font-bold">Tanda Tangan otomatis diambil dari Database.</span>
                     </div>
                 </div>
 
@@ -534,6 +539,7 @@
         let activeLog = null;
         let scanner = null;
         let sigPadKoor = null;
+        let existingSignatureKoorFile = null; // Variabel penyimpan nama file TTD dari database
 
         window.onload = function() {
             setupDynamicNavigation();
@@ -553,7 +559,58 @@
             resizeCanvas();
             // PenColor tetap hitam karena background canvas putih 
             sigPadKoor = new SignaturePad(canvas, { minWidth: 1, maxWidth: 2.5, penColor: 'black' });
+
+            // Event listener: Cek DB begitu koordinator selesai ngetik namanya
+            document.getElementById('koor-name').addEventListener('blur', checkExistingKoorSignature);
         };
+
+        // --- FUNGSI PINTAR: DETEKSI TTD DARI DATABASE ---
+        async function checkExistingKoorSignature() {
+            const nameInput = document.getElementById('koor-name').value.trim();
+            if (!nameInput) return;
+
+            try {
+                // Cari log terakhir di mana koordinator ini udah pernah ttd
+                const { data: logs } = await _sb.from('chslr_log')
+                    .select('signature_koordinator')
+                    .ilike('koordinator_nama', nameInput)
+                    .not('signature_koordinator', 'is', null)
+                    .neq('signature_koordinator', '')
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                if (logs && logs.length > 0 && logs[0].signature_koordinator.includes('.png')) {
+                    // BBOOM! TTD ketemu di database.
+                    existingSignatureKoorFile = logs[0].signature_koordinator;
+
+                    // Update UI: Sembunyikan kanvas, munculin notif hijau
+                    document.getElementById('sig-wrapper-koor').style.display = 'none';
+                    document.getElementById('sig-status-koor').classList.remove('hidden');
+                    document.getElementById('btn-clear-sig-koor').innerText = 'BUAT BARU';
+                }
+            } catch(e) { console.log("Gagal auto-detect TTD Koordinator:", e); }
+        }
+
+        // Fungsi Reset (Kalau user mau ganti TTD)
+        function clearPad() {
+            if (existingSignatureKoorFile) {
+                // Batalkan auto-TTD, paksa user gambar manual
+                existingSignatureKoorFile = null;
+                document.getElementById('sig-wrapper-koor').style.display = 'block';
+                document.getElementById('sig-status-koor').classList.add('hidden');
+                document.getElementById('btn-clear-sig-koor').innerText = 'HAPUS';
+            }
+            if (sigPadKoor) sigPadKoor.clear();
+        }
+
+        // --- FUNGSI HELPER: UBAH BASE64 JADI FILE GAMBAR (BLOB) ---
+        function dataURLtoBlob(dataurl) {
+            let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1];
+            let bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+            while(n--){ u8arr[n] = bstr.charCodeAt(n); }
+            return new Blob([u8arr], {type:mime});
+        }
+
 
         // Fungsi Cek Jabatan & Update Link Navigasi (Navigasi Pintar)
         async function setupDynamicNavigation() {
@@ -602,8 +659,6 @@
                 console.error("Gagal mengatur navigasi dinamis:", err);
             }
         }
-
-        function clearPad() { if(sigPadKoor) sigPadKoor.clear(); }
 
         function switchView(viewId) {
             ['view-list', 'view-scanner', 'view-form'].forEach(id => {
@@ -725,7 +780,7 @@
                 canvas.height = canvas.offsetHeight * ratio;
                 canvas.getContext("2d").scale(ratio, ratio);
             }
-            sigPadKoor.clear();
+            clearPad(); // Reset canvas + Notif saat form dibuka
             
             const reviewContainer = document.getElementById('checklist-review');
             reviewContainer.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin text-primary text-2xl mb-2"></i><br><span class="text-xs font-bold uppercase tracking-widest">Memuat detail...</span></div>';
@@ -786,16 +841,40 @@
                 alert("Error: Data Log hilang."); return;
             }
             if(!name) { document.getElementById('koor-name').focus(); return alert("⚠️ Nama Koordinator wajib diisi!"); }
-            if(sigPadKoor.isEmpty()) return alert("⚠️ Harap tanda tangan dulu!");
+            
+            // MODIFIKASI: Cek existingSignatureKoorFile dulu
+            if(!existingSignatureKoorFile && sigPadKoor.isEmpty()) return alert("⚠️ Harap tanda tangan dulu!");
 
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> MENYIMPAN...'; 
             btn.disabled = true;
 
             try {
+                // --- PROSES UPLOAD TANDA TANGAN KE BUCKET ---
+                let sigFileName = existingSignatureKoorFile; // Pakai yang dari database kalau ada
+
+                // Kalau user bikin TTD baru (gak otomatis dari DB), baru kita upload ke Bucket!
+                if (!existingSignatureKoorFile) {
+                    sigFileName = `sig_koor_${Date.now()}_${Math.floor(Math.random()*1000)}.png`;
+                    const sigBlob = dataURLtoBlob(sigPadKoor.toDataURL('image/png'));
+                    
+                    const { error: uploadError } = await _sb.storage
+                        .from('signatures')
+                        .upload(sigFileName, sigBlob, {
+                            contentType: 'image/png',
+                            upsert: false
+                        });
+                        
+                    if (uploadError) {
+                        throw new Error("Gagal mengunggah Tanda Tangan: " + uploadError.message);
+                    }
+                }
+                // --- SELESAI UPLOAD ---
+
+
                 const { data, error } = await _sb.from('chslr_log').update({
                     koordinator_nama: name,
-                    signature_koordinator: sigPadKoor.toDataURL(),
+                    signature_koordinator: sigFileName, // <- UBAH JADI NAMA FILE
                     status_verifikasi: true,
                     remark_koordinator: remark
                 }).eq('id', activeLog.id).select();
