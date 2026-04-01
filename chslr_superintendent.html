@@ -480,10 +480,15 @@
                 <div class="input-group">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                         <label class="label-input" style="margin:0;">Paraf Digital</label>
-                        <button onclick="clearPad()" style="background:none; border:none; color:var(--primary); font-size:11px; font-weight: 800; cursor:pointer;">HAPUS</button>
+                        <button onclick="clearPad()" id="btn-clear-sig-super" style="background:none; border:none; color:var(--primary); font-size:11px; font-weight: 800; cursor:pointer;">HAPUS</button>
                     </div>
-                    <div class="sig-wrapper">
+                    <div class="sig-wrapper" id="sig-wrapper-super">
                         <canvas id="signature-pad"></canvas>
+                    </div>
+                    <!-- Notifikasi TTD Otomatis -->
+                    <div id="sig-status-super" class="hidden mt-2 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                        <i class="fa-solid fa-circle-check text-green-600"></i>
+                        <span class="text-xs text-green-700 font-bold">Tanda Tangan otomatis diambil dari Database.</span>
                     </div>
                 </div>
 
@@ -496,7 +501,7 @@
         </div>
     </div>
 
-    <!-- LOGIC JS (Fungsi Tetap Aman) -->
+    <!-- LOGIC JS -->
     <script>
         // Fungsi Sidebar & Navigasi Pintar
         function toggleSidebar() {
@@ -511,6 +516,7 @@
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
         let sigPad, activeLog = null;
+        let existingSignatureSuperFile = null; // Variabel penyimpan nama file TTD dari database
 
         window.onload = function() {
             setupDynamicNavigation();
@@ -530,7 +536,58 @@
             resizeCanvas();
             // Pen hitam di atas background form terang
             sigPad = new SignaturePad(canvas, { minWidth: 1, maxWidth: 2.5, penColor: 'black' });
+
+            // Event listener: Cek DB begitu Superintendent selesai ngetik namanya
+            document.getElementById('super-name').addEventListener('blur', checkExistingSuperSignature);
         };
+
+        // --- FUNGSI PINTAR: DETEKSI TTD DARI DATABASE ---
+        async function checkExistingSuperSignature() {
+            const nameInput = document.getElementById('super-name').value.trim();
+            if (!nameInput) return;
+
+            try {
+                // Cari log terakhir di mana superintendent ini udah pernah ttd
+                const { data: logs } = await _sb.from('chslr_log')
+                    .select('signature_superintendent')
+                    .ilike('superintendent_nama', nameInput)
+                    .not('signature_superintendent', 'is', null)
+                    .neq('signature_superintendent', '')
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                if (logs && logs.length > 0 && logs[0].signature_superintendent.includes('.png')) {
+                    // BBOOM! TTD ketemu di database.
+                    existingSignatureSuperFile = logs[0].signature_superintendent;
+
+                    // Update UI: Sembunyikan kanvas, munculin notif hijau
+                    document.getElementById('sig-wrapper-super').style.display = 'none';
+                    document.getElementById('sig-status-super').classList.remove('hidden');
+                    document.getElementById('btn-clear-sig-super').innerText = 'BUAT BARU';
+                }
+            } catch(e) { console.log("Gagal auto-detect TTD Superintendent:", e); }
+        }
+
+        // Fungsi Reset (Kalau user mau ganti TTD)
+        function clearPad() {
+            if (existingSignatureSuperFile) {
+                // Batalkan auto-TTD, paksa user gambar manual
+                existingSignatureSuperFile = null;
+                document.getElementById('sig-wrapper-super').style.display = 'block';
+                document.getElementById('sig-status-super').classList.add('hidden');
+                document.getElementById('btn-clear-sig-super').innerText = 'HAPUS';
+            }
+            if (sigPad) sigPad.clear();
+        }
+
+        // --- FUNGSI HELPER: UBAH BASE64 JADI FILE GAMBAR (BLOB) ---
+        function dataURLtoBlob(dataurl) {
+            let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1];
+            let bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+            while(n--){ u8arr[n] = bstr.charCodeAt(n); }
+            return new Blob([u8arr], {type:mime});
+        }
+
 
         // Fungsi Cek Jabatan & Update Link Navigasi
         async function setupDynamicNavigation() {
@@ -579,8 +636,6 @@
                 console.error("Gagal mengatur navigasi dinamis:", err);
             }
         }
-
-        function clearPad() { if(sigPad) sigPad.clear(); }
 
         function switchView(viewId) {
             const list = document.getElementById('view-list');
@@ -656,14 +711,14 @@
             
             switchView('view-form');
             
-            // Resize canvas safely after visible
+            // Resize canvas safely after visible & Reset Sig Pad
             setTimeout(() => {
                 const canvas = document.getElementById('signature-pad');
                 const ratio = Math.max(window.devicePixelRatio || 1, 1);
                 canvas.width = canvas.offsetWidth * ratio;
                 canvas.height = canvas.offsetHeight * ratio;
                 canvas.getContext("2d").scale(ratio, ratio);
-                sigPad.clear();
+                clearPad(); // Reset canvas + Notif saat form dibuka
             }, 100);
         }
 
@@ -674,7 +729,9 @@
             const btn = document.getElementById('btn-approve');
 
             if (!name) return alert("⚠️ Mohon isi Nama Superintendent!");
-            if (sigPad.isEmpty()) return alert("⚠️ Mohon bubuhkan Paraf!");
+            
+            // MODIFIKASI: Cek existingSignatureSuperFile dulu
+            if (!existingSignatureSuperFile && sigPad.isEmpty()) return alert("⚠️ Mohon bubuhkan Paraf!");
 
             const originalText = btn.innerHTML;
             btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> MEMPROSES...`; 
@@ -682,10 +739,32 @@
             btn.style.opacity = "0.7";
 
             try {
+                // --- PROSES UPLOAD TANDA TANGAN KE BUCKET ---
+                let sigFileName = existingSignatureSuperFile; // Pakai yang dari database kalau ada
+
+                // Kalau user bikin TTD baru (gak otomatis dari DB), baru kita upload ke Bucket!
+                if (!existingSignatureSuperFile) {
+                    sigFileName = `sig_super_${Date.now()}_${Math.floor(Math.random()*1000)}.png`;
+                    const sigBlob = dataURLtoBlob(sigPad.toDataURL('image/png'));
+                    
+                    const { error: uploadError } = await _sb.storage
+                        .from('signatures')
+                        .upload(sigFileName, sigBlob, {
+                            contentType: 'image/png',
+                            upsert: false
+                        });
+                        
+                    if (uploadError) {
+                        throw new Error("Gagal mengunggah Tanda Tangan: " + uploadError.message);
+                    }
+                }
+                // --- SELESAI UPLOAD ---
+
+
                 const { error } = await _sb.from('chslr_log').update({
                     superintendent_nama: name,
                     remark_superintendent: note,
-                    signature_superintendent: sigPad.toDataURL(),
+                    signature_superintendent: sigFileName, // <- UBAH JADI NAMA FILE
                     status_final: true 
                 }).eq('id', activeLog.id);
 
