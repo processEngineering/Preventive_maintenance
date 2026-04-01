@@ -7,6 +7,8 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
@@ -37,6 +39,8 @@
         .action-buttons { display: flex; gap: 12px; margin-top: 5px; }
         .btn-modern { flex: 1; padding: 14px 20px; border-radius: 12px; font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; border: none; }
         .btn-primary { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; box-shadow: 0 6px 15px rgba(201, 25, 25, 0.2); }
+        .btn-outline { background: white; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-outline:hover { background: var(--accent-soft); }
         .sheet-container { width: 100%; overflow-x: auto; display: flex; justify-content: flex-start; padding: 10px 15px; box-sizing: border-box; position: relative; z-index: 1; }
         @media (min-width: 1140px) { .sheet-container { justify-content: center; } }
         .sheet { background: white; color: black; padding: 30px 40px; width: 1122px; min-width: 1122px; min-height: 794px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border-radius: 4px; font-family: 'Arial Narrow', sans-serif; font-size: 7pt; }
@@ -70,8 +74,8 @@
 <div class="sidebar-overlay no-print" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 <nav class="side-nav no-print" id="sidebar">
     <div class="sidebar-header"><span class="sidebar-title">Dashboard</span><div class="sidebar-close" onclick="toggleSidebar()"><i class="fa-solid fa-xmark"></i></div></div>
-    <a href="index.html" class="nav-item"><span>Home</span></a>
-    <a href="download_data.html" class="nav-item active"><span>Unduh Data</span></a>
+    <a href="#" class="nav-item"><span>Home</span></a>
+    <a href="#" class="nav-item active"><span>Unduh Data</span></a>
 </nav>
 
 <div class="no-print filter-card">
@@ -84,13 +88,14 @@
         <button class="btn-modern btn-primary" onclick="loadData()"><i class="fa-solid fa-search"></i> Tampilkan Data</button>
         <button class="btn-modern btn-outline print-btn" onclick="captureAndExportPDF()"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
     </div>
-    <div id="status-msg"></div>
+    <div id="status-msg" style="font-weight: 600; text-align: center; margin-top: 5px;"></div>
 </div>
 
 <div class="sheet-container">
     <div class="sheet" id="sheet-content">
         <table class="header-table">
             <tr>
+                <!-- URL ASLI tanpa atribut crossorigin. Dibiarkan natural. -->
                 <td width="15%"><img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img" id="logo-header" alt="Logo"></td>
                 <td width="60%" class="main-title">CHECK LIST HARIAN MESIN INJECTION</td>
                 <td width="25%" style="font-size: 6pt;">No Dokumen : AF.SP 05.13.Rev-00<br>Tanggal Terbit : 02 Agustus 2024<br>Halaman : 1/1</td>
@@ -141,7 +146,9 @@
         document.getElementById('sidebarOverlay').classList.toggle('active');
     }
 
-    const API_URL = "https://generic-karol-translucently.ngrok-free.dev"; 
+    const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+    const _sb = supabase.createClient(SB_URL, SB_KEY);
 
     const MASTER_ITEMS = [
         {kode:"", kategori:"Mekanikal:", nama:""},
@@ -179,8 +186,8 @@
 
     async function initFilter() {
         try {
-            const res = await fetch(`${API_URL}/api/machines`, { headers: { "ngrok-skip-browser-warning": "6" } });
-            const m = await res.json();
+            const { data: m, error } = await _sb.from('clhmi_machine').select('*').order('merk_mesin');
+            if(error) throw error;
             m?.forEach(x => document.getElementById('machine-select').add(new Option(x.merk_mesin, x.id)));
             
             const mo = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
@@ -190,7 +197,7 @@
             
             let h = ""; for(let i=1; i<=31; i++) h += `<th class="col-date">${i}</th>`;
             document.getElementById('date-row').innerHTML = h;
-        } catch(e) { showStatus("Gagal terhubung ke Mini PC", true); }
+        } catch(e) { console.error(e); showStatus("Gagal terhubung ke Supabase", true); }
     }
 
     async function loadData() {
@@ -208,16 +215,26 @@
         document.getElementById('sig-body').style.display = 'table-row-group';
 
         try {
-            const res = await fetch(`${API_URL}/api/report/monthly?machine_id=${mId}&bulan=${bln}&tahun=${thn}`, {
-                headers: { "ngrok-skip-browser-warning": "6" }
-            });
-            const data = await res.json();
-            if(!data.headers || data.headers.length === 0) {
-                document.getElementById('main-body').innerHTML = `<tr><td colspan="38" style="text-align:center;">DATA KOSONG</td></tr>`;
-                return;
+            const { data: headers, error: errH } = await _sb.from('clhmi')
+                .select('*, clhmi_machine(merk_mesin, serial_no, tonage)')
+                .eq('machine_id', mId)
+                .eq('bulan', bln)
+                .eq('tahun', thn);
+
+            if(errH) throw errH;
+
+            if(!headers || headers.length === 0) {
+                document.getElementById('main-body').innerHTML = `<tr><td colspan="38" style="text-align:center; padding:20px;">DATA KOSONG</td></tr>`;
+                return showStatus("Data tidak ditemukan.", true);
             }
 
-            const headers = data.headers; const details = data.details;
+            const headerIds = headers.map(h => h.id);
+            const { data: details, error: errD } = await _sb.from('clhmi_results')
+                .select('*, clhmi_items(nama_pengecekan)')
+                .in('clhmi_id', headerIds);
+                
+            if(errD) throw errD;
+
             const head = headers[0];
             document.getElementById('out-merk').innerText = head.clhmi_machine?.merk_mesin || '-';
             document.getElementById('out-sn').innerText = head.clhmi_machine?.serial_no || '-';
@@ -232,7 +249,7 @@
                 let row = `<tr><td>${item.kode}</td><td>${item.nama}</td><td style="background:#eee;"></td><td>${item.std}</td><td>${item.met}</td><td></td>`;
                 for(let d=1; d<=31; d++) {
                     const f = details.find(r => {
-                        const tgl = new Date(r.tanggal_cek).getDate();
+                        const tgl = r.tanggal_cek ? parseInt(r.tanggal_cek.split('-')[2]) : 0;
                         return tgl === d && r.clhmi_items?.nama_pengecekan?.trim() === item.nama.trim();
                     });
                     let sym = '';
@@ -247,27 +264,126 @@
                 tbody.innerHTML += row + "</tr>";
             });
 
-            // UPDATE REVISI: Pengisian Paraf dengan PENGAMAN NULL
             headers.forEach(h => {
-                const tgl = new Date(h.tanggal_isi).getDate();
+                const tgl = h.tanggal_isi ? parseInt(h.tanggal_isi.split('-')[2]) : 0;
                 const pBox = document.getElementById(`p-sig-${tgl}`);
                 const kBox = document.getElementById(`k-sig-${tgl}`);
-                if(pBox && h.paraf) pBox.innerHTML = `<img src="${h.paraf}" class="sig-img">`;
-                if(kBox && h.paraf_coord) kBox.innerHTML = `<img src="${h.paraf_coord}" class="sig-img">`;
+                
+                if(pBox && h.paraf) {
+                    const pUrl = h.paraf.includes('.png') ? _sb.storage.from('signatures').getPublicUrl(h.paraf).data.publicUrl : h.paraf;
+                    pBox.innerHTML = `<img src="${pUrl}" class="sig-img" crossorigin="anonymous">`;
+                }
+                if(kBox && h.paraf_coord) {
+                    const kUrl = h.paraf_coord.includes('.png') ? _sb.storage.from('signatures').getPublicUrl(h.paraf_coord).data.publicUrl : h.paraf_coord;
+                    kBox.innerHTML = `<img src="${kUrl}" class="sig-img" crossorigin="anonymous">`;
+                }
             });
 
-            showStatus("Data Berhasil!");
-        } catch (e) { showStatus("Error koneksi!", true); }
+            const fin = headers.find(h => h.status_form === 'closed');
+            const sigBox = document.getElementById('out-sig-super');
+            const nameBox = document.getElementById("out-name-super");
+            if(fin && fin.paraf_super) {
+                const sUrl = fin.paraf_super.includes('.png') ? _sb.storage.from('signatures').getPublicUrl(fin.paraf_super).data.publicUrl : fin.paraf_super;
+                sigBox.innerHTML = `<img src="${sUrl}" style="max-height:35px; max-width:75px; width:auto; object-fit:contain; filter:brightness(0%) contrast(150%);" crossorigin="anonymous">`;
+                nameBox.innerText = (fin.verified_by || '').toUpperCase();
+            } else {
+                sigBox.innerHTML = `<span style="color:#ccc; font-size:6pt;">(Menunggu Pengesahan)</span>`;
+                nameBox.innerText = "";
+            }
+
+            showStatus("Data Berhasil Dimuat!");
+        } catch (e) { console.error(e); showStatus("Error koneksi database!", true); }
     }
 
     async function captureAndExportPDF() {
-        const { jsPDF } = window.jspdf;
-        const sheet = document.getElementById('sheet-content');
-        const canvas = await html2canvas(sheet, { scale: 2 });
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('l', 'mm', 'a4');
-        pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
-        pdf.save("Laporan.pdf");
+        const btn = document.querySelector('.print-btn');
+        const originalText = btn.innerHTML;
+
+        if(document.getElementById('machine-select').value === "") {
+            showStatus("Mohon pilih data dulu sebelum ekspor!", true);
+            return;
+        }
+
+        try {
+            btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Menyiapkan PDF...";
+            const sheet = document.getElementById('sheet-content');
+            
+            // --- TRIK PAMUNGKAS: GANTI LOGO DI LAYAR JADI BASE64 SEBELUM DIPOTRET ---
+            const logoImg = document.getElementById('logo-header');
+            const originalSrc = logoImg.src;
+
+            try {
+                // Cara 1: Ambil langsung dari gambar yang tampil (100% jalan jika web sudah dihosting di server yang sama)
+                let tempCanvas = document.createElement('canvas');
+                tempCanvas.width = logoImg.naturalWidth || 200;
+                tempCanvas.height = logoImg.naturalHeight || 50;
+                let ctx = tempCanvas.getContext('2d');
+                ctx.drawImage(logoImg, 0, 0);
+                logoImg.src = tempCanvas.toDataURL('image/png'); 
+            } catch (err1) {
+                // Cara 2: Jika cara 1 kena block (misal lagi ditest di localhost PC mu), pakai Fetch Proxy
+                try {
+                    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalSrc);
+                    const res = await fetch(proxyUrl);
+                    const blob = await res.blob();
+                    const base64 = await new Promise(r => { 
+                        const reader = new FileReader(); 
+                        reader.onloadend = () => r(reader.result); 
+                        reader.readAsDataURL(blob); 
+                    });
+                    logoImg.src = base64;
+                } catch(err2) {
+                    console.log("Bypass logo gagal, tapi kita tetap coba cetak.");
+                }
+            }
+            
+            // Beri waktu 100ms agar browser merender gambar Base64 yang baru ke layar HTML
+            await new Promise(r => setTimeout(r, 100));
+            // -------------------------------------------------------------------------
+
+            const { jsPDF } = window.jspdf;
+            
+            // Karena src logo di HTML sekarang sudah murni teks Base64, html2canvas TIDAK AKAN hit error "Error loading image..."
+            const canvas = await html2canvas(sheet, { 
+                scale: 2, 
+                useCORS: true, 
+                allowTaint: false
+            });
+            
+            // KEMBALIKAN LOGO KE URL ASLI SECARA DIAM-DIAM AGAR UI TETAP NORMAL
+            logoImg.src = originalSrc;
+
+            const imgData = canvas.toDataURL('image/png');
+            
+            const pdf = new jsPDF('l', 'mm', 'a4');
+            const pdfWidth = 297; 
+            const pdfHeight = 210;
+            const imgProps = pdf.getImageProperties(imgData);
+            
+            let finalWidth = pdfWidth;
+            let finalHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            if(finalHeight > pdfHeight) {
+                finalHeight = pdfHeight;
+                finalWidth = (imgProps.width * pdfHeight) / imgProps.height;
+            }
+            
+            const xPos = (pdfWidth - finalWidth) / 2;
+            const yPos = (pdfHeight - finalHeight) / 2;
+            
+            pdf.addImage(imgData, 'PNG', xPos, yPos, finalWidth, finalHeight);
+            
+            const machineName = document.getElementById('machine-select').selectedOptions[0].text;
+            const bln = document.getElementById('month-select').selectedOptions[0].text;
+            pdf.save(`Laporan_${machineName}_${bln}.pdf`);
+            
+            showStatus("PDF berhasil diunduh!");
+
+        } catch (err) {
+            console.error(err);
+            showStatus("Gagal ekspor PDF: " + err.message, true);
+        } finally {
+            btn.innerHTML = originalText;
+        }
     }
 
     window.onload = initFilter;
