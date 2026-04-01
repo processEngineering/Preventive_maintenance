@@ -468,10 +468,15 @@
                 <div class="card-3d">
                     <div class="flex justify-between items-center mb-2 px-1">
                         <label class="label mb-0">Paraf Pelaksana</label>
-                        <button onclick="sigPad.clear()" class="text-[10px] text-gray-400 hover:text-primary uppercase font-bold">Hapus</button>
+                        <button onclick="resetSignature()" id="btn-clear-sig" class="text-[10px] text-gray-400 hover:text-primary uppercase font-bold">Hapus</button>
                     </div>
-                    <div class="sig-wrapper">
+                    <div class="sig-wrapper" id="sig-wrapper">
                         <canvas id="signature-pad"></canvas>
+                    </div>
+                    <!-- Notifikasi TTD Otomatis -->
+                    <div id="sig-status" class="hidden mt-2 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                        <i class="fa-solid fa-circle-check text-green-600"></i>
+                        <span class="text-xs text-green-700 font-bold">Tanda Tangan otomatis diambil dari Database.</span>
                     </div>
                 </div>
 
@@ -500,11 +505,15 @@
         const _sb = supabase.createClient(SB_URL, SB_KEY);
         
         let scanner, sigPad, currentMachineId;
+        let existingSignatureFile = null; // Variabel penyimpan nama file TTD dari database
 
         window.onload = () => {
             setupDynamicNavigation();
             scanner = new Html5Qrcode("reader");
             scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, onScanSuccess);
+            
+            // Event listener: Cek DB begitu operator selesai ngetik namanya
+            document.getElementById('technician-name').addEventListener('blur', checkExistingSignature);
         };
 
         // Fungsi Cek Jabatan & Update Link Navigasi
@@ -671,6 +680,67 @@
             }
         }
 
+        // --- FUNGSI PINTAR: DETEKSI TTD DARI DATABASE ---
+        async function checkExistingSignature() {
+            const nameInput = document.getElementById('technician-name').value.trim();
+            if (!nameInput) return;
+
+            try {
+                // 1. Cari log terakhir yang pernah dibikin sama orang ini
+                const { data: logs } = await _sb.from('chslr_log')
+                    .select('id, pelaksana_names')
+                    .order('created_at', { ascending: false })
+                    .limit(10); // Tarik 10 data terakhir biar cepat
+
+                if (logs) {
+                    const userLog = logs.find(l => 
+                        l.pelaksana_names && 
+                        l.pelaksana_names.some(n => n.toLowerCase() === nameInput.toLowerCase())
+                    );
+
+                    if (userLog) {
+                        // 2. Kalau ketemu, cari nama file TTD-nya di tabel result
+                        const { data: res } = await _sb.from('chslr_result')
+                            .select('signature')
+                            .eq('log_id', userLog.id)
+                            .not('signature', 'is', null)
+                            .neq('signature', '')
+                            .limit(1);
+
+                        if (res && res.length > 0 && res[0].signature.includes('.png')) {
+                            // BBOOM! TTD ketemu di database.
+                            existingSignatureFile = res[0].signature;
+
+                            // Update UI: Sembunyikan kanvas, munculin notif hijau
+                            document.getElementById('sig-wrapper').style.display = 'none';
+                            document.getElementById('sig-status').classList.remove('hidden');
+                            document.getElementById('btn-clear-sig').innerText = 'Buat Baru';
+                        }
+                    }
+                }
+            } catch(e) { console.log("Gagal auto-detect TTD:", e); }
+        }
+
+        // Fungsi Reset (Kalau user mau ganti TTD)
+        function resetSignature() {
+            if (existingSignatureFile) {
+                // Batalkan auto-TTD, paksa user gambar manual
+                existingSignatureFile = null;
+                document.getElementById('sig-wrapper').style.display = 'block';
+                document.getElementById('sig-status').classList.add('hidden');
+                document.getElementById('btn-clear-sig').innerText = 'Hapus';
+            }
+            if (sigPad) sigPad.clear();
+        }
+
+        // --- FUNGSI HELPER: UBAH BASE64 JADI FILE GAMBAR (BLOB) ---
+        function dataURLtoBlob(dataurl) {
+            let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1];
+            let bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+            while(n--){ u8arr[n] = bstr.charCodeAt(n); }
+            return new Blob([u8arr], {type:mime});
+        }
+
         async function saveAll() {
             const name = document.getElementById('technician-name').value.trim();
             const generalNote = document.getElementById('general-note').value.trim();
@@ -680,7 +750,8 @@
                 document.getElementById('technician-name').focus(); 
                 return; 
             }
-            if(sigPad.isEmpty()) { 
+            // MODIFIKASI: Cek existingSignatureFile dulu
+            if(!existingSignatureFile && sigPad.isEmpty()) { 
                 alert("⚠️ Tanda Tangan Pelaksana wajib diisi."); 
                 return; 
             }
@@ -731,6 +802,28 @@
             const d = now.getDate(), m = now.getMonth()+1, y = now.getFullYear();
 
             try {
+                // --- PROSES UPLOAD TANDA TANGAN KE BUCKET ---
+                let sigFileName = existingSignatureFile; // Pakai yang dari database kalau ada
+
+                // Kalau user bikin TTD baru (gak otomatis dari DB), baru kita upload ke Bucket!
+                if (!existingSignatureFile) {
+                    sigFileName = `sig_chslr_${Date.now()}_${Math.floor(Math.random()*1000)}.png`;
+                    const sigBlob = dataURLtoBlob(sigPad.toDataURL('image/png'));
+                    
+                    const { error: uploadError } = await _sb.storage
+                        .from('signatures')
+                        .upload(sigFileName, sigBlob, {
+                            contentType: 'image/png',
+                            upsert: false
+                        });
+                        
+                    if (uploadError) {
+                        throw new Error("Gagal mengunggah Tanda Tangan: " + uploadError.message);
+                    }
+                }
+                // --- SELESAI UPLOAD ---
+
+
                 let { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', currentMachineId).eq('bulan', m).eq('tahun', y).maybeSingle();
                 
                 if(!log) {
@@ -747,6 +840,8 @@
                     }).eq('id', log.id);
                 }
 
+                // --- UBAH PAYLOAD DATABASE ---
+                // Ganti property signature dengan NAMA FILE, bukan teks Base64 lagi!
                 const payload = results.map(r => ({
                     log_id: log.id,
                     item_id: r.itemId,
@@ -754,7 +849,7 @@
                     status: r.status,
                     input_value: r.valData,
                     keterangan: r.note,
-                    signature: sigPad.toDataURL()
+                    signature: sigFileName // <- KEAJAIBAN TERJADI DI SINI
                 }));
 
                 await _sb.from('chslr_result').delete().eq('log_id', log.id).eq('tanggal', d);
