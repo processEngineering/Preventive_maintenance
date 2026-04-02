@@ -95,7 +95,6 @@
     <div class="sheet" id="sheet-content">
         <table class="header-table">
             <tr>
-                <!-- URL ASLI tanpa atribut crossorigin. Dibiarkan natural. -->
                 <td width="15%"><img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img" id="logo-header" alt="Logo"></td>
                 <td width="60%" class="main-title">CHECK LIST HARIAN MESIN INJECTION</td>
                 <td width="25%" style="font-size: 6pt;">No Dokumen : AF.SP 05.13.Rev-00<br>Tanggal Terbit : 02 Agustus 2024<br>Halaman : 1/1</td>
@@ -178,6 +177,38 @@
         {kode:"b", nama:"Kelengkapan selang angin & air gun", std:"Rapi & lengkap", met:"Visual"}
     ];
 
+    // --- FUNGSI TRIK NINJA (GHOST CONTAINER & BASE64 PRELOADER) ---
+    const LOGO_URL_ASLI = "https://amarilyskg.co.id/bootstrap/img/logo.png";
+    let GLOBAL_BASE64_LOGO = "";
+
+    async function fetchImageAsBase64(url) {
+        const proxies = [
+            'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url),
+            'https://corsproxy.io/?' + encodeURIComponent(url),
+            'https://api.allorigins.win/raw?url=' + encodeURIComponent(url)
+        ];
+        
+        for (let proxyUrl of proxies) {
+            try {
+                const response = await fetch(proxyUrl);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    return new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.readAsDataURL(blob);
+                    });
+                }
+            } catch (e) { console.warn("Proxy error:", e); }
+        }
+        return null;
+    }
+
+    async function preloadLogo() {
+        const base64 = await fetchImageAsBase64(LOGO_URL_ASLI);
+        if(base64) GLOBAL_BASE64_LOGO = base64;
+    }
+
     function showStatus(msg, isError=false) {
         const el = document.getElementById('status-msg');
         el.innerText = msg; el.style.color = isError ? '#dc2626' : '#c91919';
@@ -197,6 +228,9 @@
             
             let h = ""; for(let i=1; i<=31; i++) h += `<th class="col-date">${i}</th>`;
             document.getElementById('date-row').innerHTML = h;
+
+            // Preload logo Base64 di background
+            preloadLogo();
         } catch(e) { console.error(e); showStatus("Gagal terhubung ke Supabase", true); }
     }
 
@@ -291,10 +325,11 @@
                 nameBox.innerText = "";
             }
 
-            showStatus("Data Berhasil Dimuat!");
+            showStatus("Data Berhasil Dimuat!", false);
         } catch (e) { console.error(e); showStatus("Error koneksi database!", true); }
     }
 
+    // --- MESIN CETAK PDF SULTAN (GHOST CONTAINER) ---
     async function captureAndExportPDF() {
         const btn = document.querySelector('.print-btn');
         const originalText = btn.innerHTML;
@@ -305,68 +340,78 @@
         }
 
         try {
-            btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Menyiapkan PDF...";
-            const sheet = document.getElementById('sheet-content');
-            
-            // --- TRIK PAMUNGKAS: GANTI LOGO DI LAYAR JADI BASE64 SEBELUM DIPOTRET ---
-            const logoImg = document.getElementById('logo-header');
-            const originalSrc = logoImg.src;
+            btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Proses...";
 
-            try {
-                // Cara 1: Ambil langsung dari gambar yang tampil (100% jalan jika web sudah dihosting di server yang sama)
-                let tempCanvas = document.createElement('canvas');
-                tempCanvas.width = logoImg.naturalWidth || 200;
-                tempCanvas.height = logoImg.naturalHeight || 50;
-                let ctx = tempCanvas.getContext('2d');
-                ctx.drawImage(logoImg, 0, 0);
-                logoImg.src = tempCanvas.toDataURL('image/png'); 
-            } catch (err1) {
-                // Cara 2: Jika cara 1 kena block (misal lagi ditest di localhost PC mu), pakai Fetch Proxy
-                try {
-                    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalSrc);
-                    const res = await fetch(proxyUrl);
-                    const blob = await res.blob();
-                    const base64 = await new Promise(r => { 
-                        const reader = new FileReader(); 
-                        reader.onloadend = () => r(reader.result); 
-                        reader.readAsDataURL(blob); 
-                    });
-                    logoImg.src = base64;
-                } catch(err2) {
-                    console.log("Bypass logo gagal, tapi kita tetap coba cetak.");
-                }
+            if(!GLOBAL_BASE64_LOGO) await preloadLogo();
+
+            const original = document.getElementById('sheet-content');
+            const clone = original.cloneNode(true);
+
+            const cloneLogo = clone.querySelector('#logo-header'); 
+            if(cloneLogo && GLOBAL_BASE64_LOGO) {
+                cloneLogo.src = GLOBAL_BASE64_LOGO;
+            } else if (cloneLogo) {
+                 const b64 = await fetchImageAsBase64(LOGO_URL_ASLI);
+                 if(b64) cloneLogo.src = b64;
             }
             
-            // Beri waktu 100ms agar browser merender gambar Base64 yang baru ke layar HTML
-            await new Promise(r => setTimeout(r, 100));
-            // -------------------------------------------------------------------------
-
-            const { jsPDF } = window.jspdf;
+            // FIX PDF ALIGNMENT: Lock the exact pixel width equivalent to A4 Landscape at 96 DPI
+            clone.style.margin = '0';
+            clone.style.padding = '30px 40px'; 
+            clone.style.boxShadow = 'none';
+            clone.style.minHeight = '794px';
+            clone.style.width = '1122px'; 
+            clone.style.maxWidth = 'none';
+            clone.style.transform = 'none'; 
             
-            // Karena src logo di HTML sekarang sudah murni teks Base64, html2canvas TIDAK AKAN hit error "Error loading image..."
-            const canvas = await html2canvas(sheet, { 
+            const ghostContainer = document.createElement('div');
+            ghostContainer.style.position = 'absolute'; 
+            ghostContainer.style.top = '-9999px';
+            ghostContainer.style.left = '-9999px';
+            ghostContainer.style.width = '1122px'; 
+            ghostContainer.style.background = '#fff'; 
+            ghostContainer.style.overflow = 'visible'; 
+            
+            ghostContainer.appendChild(clone);
+            document.body.appendChild(ghostContainer);
+
+            await new Promise(r => setTimeout(r, 300));
+
+            btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Rendering...";
+
+            const canvas = await html2canvas(ghostContainer, {
                 scale: 2, 
-                useCORS: true, 
-                allowTaint: false
+                useCORS: true,
+                allowTaint: false,
+                backgroundColor: "#ffffff",
+                logging: false,
+                width: 1122, 
+                windowWidth: 1122 
             });
-            
-            // KEMBALIKAN LOGO KE URL ASLI SECARA DIAM-DIAM AGAR UI TETAP NORMAL
-            logoImg.src = originalSrc;
 
-            const imgData = canvas.toDataURL('image/png');
-            
+            btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Membuat PDF...";
+            const { jsPDF } = window.jspdf;
             const pdf = new jsPDF('l', 'mm', 'a4');
+            
+            const imgData = canvas.toDataURL('image/png'); 
+            
             const pdfWidth = 297; 
-            const pdfHeight = 210;
+            const pdfHeight = 210; 
             const imgProps = pdf.getImageProperties(imgData);
             
-            let finalWidth = pdfWidth;
-            let finalHeight = (imgProps.height * pdfWidth) / imgProps.width;
-            if(finalHeight > pdfHeight) {
+            const imgRatio = imgProps.width / imgProps.height;
+            const pdfRatio = pdfWidth / pdfHeight;
+            let finalWidth, finalHeight;
+            
+            if (imgRatio > pdfRatio) {
+                finalWidth = pdfWidth;
+                finalHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            } else {
                 finalHeight = pdfHeight;
                 finalWidth = (imgProps.width * pdfHeight) / imgProps.height;
             }
             
+            // Rumus posisi ini otomatis membuat layout berada di CENTER Kertas PDF
             const xPos = (pdfWidth - finalWidth) / 2;
             const yPos = (pdfHeight - finalHeight) / 2;
             
@@ -374,15 +419,19 @@
             
             const machineName = document.getElementById('machine-select').selectedOptions[0].text;
             const bln = document.getElementById('month-select').selectedOptions[0].text;
-            pdf.save(`Laporan_${machineName}_${bln}.pdf`);
+            const filename = `Laporan_${machineName}_${bln}.pdf`;
             
-            showStatus("PDF berhasil diunduh!");
+            pdf.save(filename);
+            showStatus("PDF berhasil diunduh!", false);
+
+            document.body.removeChild(ghostContainer);
 
         } catch (err) {
             console.error(err);
             showStatus("Gagal ekspor PDF: " + err.message, true);
         } finally {
             btn.innerHTML = originalText;
+            btn.disabled = false;
         }
     }
 
