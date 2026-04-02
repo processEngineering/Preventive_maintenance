@@ -59,7 +59,6 @@
         /* MAGIC FIX 100% ANTI TEBAL & ANTI BLOK HITAM UNTUK HTML2CANVAS             */
         /* ========================================================================= */
         table { 
-            /* Memisahkan border secara manual agar tidak overlapping (bertumpuk) */
             border-collapse: separate !important; 
             border-spacing: 0 !important; 
             width: 100%; 
@@ -68,7 +67,6 @@
             background-color: #fff;
         }
         
-        /* Memberikan Batas Luar Pada Tabel */
         .header-table, .sub-header-table, .grid-table { 
             border-top: 2px solid #000 !important; 
             border-left: 2px solid #000 !important; 
@@ -76,7 +74,6 @@
             border-bottom: 1px solid #000 !important;
         }
 
-        /* Memberikan Batas Dalam Pada Sel */
         th, td { 
             border-top: none !important;
             border-left: none !important;
@@ -86,7 +83,7 @@
             vertical-align: middle; 
             line-height: 1.05; 
             color: black; 
-            background-clip: padding-box; /* Mencegah warna meleber ke garis */
+            background-clip: padding-box; 
         }
         /* ========================================================================= */
 
@@ -115,7 +112,7 @@
             transform-origin: center center;
         }
 
-        .cat-row { background-color: #d9d9d9 !important; font-weight: bold; height: 16px; }
+        .cat-row { background-color: #d9d9d9 !important; font-weight: bold; height: 16px; text-transform: uppercase; }
         .sig-cell { height: 28px; background: white !important; padding: 0 !important; text-align: center; }
         
         /* WARNA HITAM PEKAT UNTUK TTD AGAR SEPERTI PULPEN ASLI */
@@ -220,7 +217,7 @@
             </div>
             <div class="footer-right">
                 <div style="font-weight:bold; text-decoration:underline;">DIKETAHUI SUPERINTENDENT</div>
-                <div id="out-sig-super" style="height:40px; display:flex; align-items:center;"></div>
+                <div id="out-sig-super" style="height:40px; display:flex; align-items:center; justify-content: center;"></div>
                 <div id="out-name-super" style="font-weight:bold; text-transform:uppercase;"></div>
             </div>
         </div>
@@ -268,14 +265,42 @@
         if(base64) GLOBAL_BASE64_LOGO = base64;
     }
 
+    const MASTER_ITEMS = [
+        {kode:"", kategori:"Mekanikal:", nama:""},
+        {kode:"a", nama:"Nozzle visual", std:"Radius tidak rusak", met:"Visual"},
+        {kode:"b", nama:"Kebersihan Head Nozzle barrel", std:"bersih", met:"Visual"},
+        {kode:"c", nama:"Check level oli mesin", std:"> Level garis tengah", met:"Visual"},
+        {kode:"d", nama:"Check pump central lubrikasi", std:"berfungsi baik", met:"Visual"},
+        {kode:"e", nama:"Check keseluruhan kondisi mesin", std:"Lengkap dan bersih", met:"Visual"},
+        {kode:"f", nama:"Check kondisi lampu indicator", std:"Nyala sesuai fungsi", met:"Visual"},
+        {kode:"g", nama:"Pastikan pintu panel kontrol tertutup", std:"Tertutup", met:"Tangan"},
+        {kode:"h", nama:"Check temperatur oli", std:"40 - 50°C", met:"Display"},
+        {kode:"i", nama:"Running hour (jam)(**)", std:"Sesuai aktual", met:"Visual"},
+        {kode:"", kategori:"Kebersihan debu :", nama:""},
+        {kode:"a", nama:"Pintu Mesin (kaca/acrilric)", std:"Bersih", met:"Lap"},
+        {kode:"b", nama:"Kap mesin", std:"Bersih", met:"Lap"},
+        {kode:"c", nama:"Kap inject unit", std:"Bersih", met:"Lap"},
+        {kode:"d", nama:"Panel mesin", std:"Bersih", met:"Lap"},
+        {kode:"", kategori:"Kebersihan Oli:", nama:""},
+        {kode:"a", nama:"Lantai area mesin", std:"Tidak kotor oli", met:"Lap"},
+        {kode:"b", nama:"Bawah mesin", std:"Tidak kotor oli", met:"Lap"},
+        {kode:"c", nama:"Bawah inject unit", std:"Tidak kotor oli", met:"Lap"},
+        {kode:"", kategori:"Kebersihan Air :", nama:""},
+        {kode:"a", nama:"Pemeriksaan instalasi air", std:"Tidak bocor", met:"Lap"},
+        {kode:"b", nama:"Embun pipa chiller", std:"Dilindungi armaflek", met:"Lap"},
+        {kode:"", kategori:"Kebersihan Area Mesin", nama:""},
+        {kode:"a", nama:"Pemeriksaan alat kerja setelah perbaikan", std:"Bersih", met:"Visual"},
+        {kode:"b", nama:"Kelengkapan selang angin & air gun", std:"Rapi & lengkap", met:"Visual"}
+    ];
+
     async function initFilter() {
         preloadLogo(); 
         try {
-            // MENGGUNAKAN TABEL chslr_mesin
-            const { data: m, error } = await _sb.from('chslr_mesin').select('*').order('nama_mesin');
+            // MENGAMBIL DATA DARI clhmi_machine (SESUAI DATABASE ASLI MESIN INJECTION)
+            const { data: m, error } = await _sb.from('clhmi_machine').select('*').order('merk_mesin');
             if(error) throw error;
-            // Gunakan nama_mesin sebagai value
-            m?.forEach(x => document.getElementById('machine-select').add(new Option(x.nama_mesin, x.nama_mesin)));
+            // Simpan ID sebagai value, tapi teksnya merk mesin
+            m?.forEach(x => document.getElementById('machine-select').add(new Option(x.merk_mesin, x.id)));
             
             const mo = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
             mo.forEach((v, i) => document.getElementById('month-select').add(new Option(v, i+1)));
@@ -295,127 +320,129 @@
     }
 
     async function loadData() {
-        const mName = document.getElementById('machine-select').value;
-        const bln = parseInt(document.getElementById('month-select').value);
-        const thn = parseInt(document.getElementById('year-select').value);
+        const mId = document.getElementById('machine-select').value;
+        const bln = document.getElementById('month-select').value;
+        const thn = document.getElementById('year-select').value;
         
-        if(!mName || !bln || !thn) { showStatus("Lengkapi filter!", true); return; }
+        if(!mId || !bln || !thn) { showStatus("Lengkapi filter!", true); return; }
 
         showStatus("Memuat data...");
         document.getElementById('sig-body').style.display = 'table-row-group';
 
         try {
-            // 1. Data Mesin & Header
-            document.getElementById('out-merk').innerText = mName;
+            // AMBIL HEADER DARI TABEL clhmi
+            const { data: headers, error: errH } = await _sb.from('clhmi')
+                .select('*, clhmi_machine(merk_mesin, serial_no, tonage)')
+                .eq('machine_id', mId)
+                .eq('bulan', bln)
+                .eq('tahun', thn);
+
+            if(errH) throw errH;
+
+            if(!headers || headers.length === 0) {
+                document.getElementById('main-body').innerHTML = `<tr><td colspan="38" style="text-align:center; padding:20px;">DATA KOSONG</td></tr>`;
+                return showStatus("Data tidak ditemukan.", true);
+            }
+
+            const headerIds = headers.map(h => h.id);
+            // AMBIL RESULT DARI clhmi_results
+            const { data: details, error: errD } = await _sb.from('clhmi_results')
+                .select('*, clhmi_items(nama_pengecekan)')
+                .in('clhmi_id', headerIds);
+                
+            if(errD) throw errD;
+
+            const head = headers[0];
+            document.getElementById('out-merk').innerText = head.clhmi_machine?.merk_mesin || '-';
+            document.getElementById('out-sn').innerText = head.clhmi_machine?.serial_no || '-';
+            document.getElementById('out-ton').innerText = (head.clhmi_machine?.tonage || '-') + ' T';
             document.getElementById('out-bln').innerText = document.getElementById('month-select').options[bln-1].text.toUpperCase();
             document.getElementById('out-thn').innerText = thn;
 
-            const { data: mData } = await _sb.from('chslr_mesin').select('tonage, no_seri').eq('nama_mesin', mName).single();
-            document.getElementById('out-ton').innerText = (mData?.tonage || '-') + ' T';
-            document.getElementById('out-sn').innerText = mData?.no_seri || '-';
-
-            // 2. Data Log Utama (Krusial Untuk TTD)
-            const { data: log, error: errLog } = await _sb.from('chslr_log')
-                .select('*')
-                .eq('mesin_id', mName)
-                .eq('bulan', bln)
-                .eq('tahun', thn)
-                .maybeSingle();
-
-            // 3. Data Checkitems dan Result
-            const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
-            const { data: res } = log ? await _sb.from('chslr_result').select('*').eq('log_id', log.id) : { data: [] };
-
             const tbody = document.getElementById('main-body'); 
             tbody.innerHTML = ""; 
-            
-            let curCat = "", rowNum = 1, subIdx = 0;
-            const abjad = "abcdefghijklmnopqrstuvwxyz";
+            let curCat = "";
 
-            items.forEach(item => {
+            MASTER_ITEMS.forEach(item => {
                 if(item.kategori && item.kategori !== curCat) { 
-                    curCat = item.kategori;
-                    subIdx = 0;
-                    tbody.innerHTML += `<tr><td style="text-align: center;">${rowNum}</td><td colspan="36" class="cat-row">${curCat}</td></tr>`; 
-                    rowNum++;
+                    tbody.innerHTML += `<tr><td colspan="38" class="cat-row">${item.kategori}</td></tr>`; 
+                    curCat = item.kategori; 
                 }
+                if(!item.nama) return;
                 
                 let row = `<tr>
-                    <td style="text-align: center;">${abjad[subIdx] || '-'}</td>
-                    <td>${item.item_name}</td>
+                    <td style="text-align: center;">${item.kode}</td>
+                    <td>${item.nama}</td>
                     <td style="background:#eee;"></td>
-                    <td>${item.standard || ''}</td>
-                    <td>${item.metode || 'Visual'}</td>
+                    <td>${item.std}</td>
+                    <td>${item.met}</td>
                     <td></td>`;
                 
                 for(let d=1; d<=31; d++) {
-                    const f = res.find(r => r.item_id === item.id && r.tanggal === d);
+                    const f = details.find(r => {
+                        const tgl = r.tanggal_cek ? parseInt(r.tanggal_cek.split('-')[2]) : 0;
+                        return tgl === d && r.clhmi_items?.nama_pengecekan?.trim() === item.nama.trim();
+                    });
+                    
                     let sym = '';
                     if(f) {
-                        if (item.input_type === 'val') {
-                            sym = `<span class="val-text">${f.input_value || ''}</span>`;
-                        } else {
-                            if(f.status === 'OK') sym = '✓'; 
-                            else if(f.status === 'NG') sym = 'X';
-                            else if(f.status === 'MN') sym = 'O'; 
-                            else if(f.status === 'NA') sym = '-';
-                        }
+                        // LOGIKA PENILAIAN SESUAI CLHMI
+                        if(f.status === 'OK') sym = '✓'; 
+                        else if(f.status === 'NG') sym = 'X';
+                        else if(f.status === 'MT') sym = 'O'; 
+                        else if(f.status === 'NA') sym = '-';
+                        
+                        // Menangkap input dinamis dan diaplikasikan CSS Gepeng val-text (utk 7 digit)
+                        if(item.nama.toLowerCase().includes("hour")) sym = `<span class="val-text">${f.value || ''}</span>`;
+                        if(item.nama.toLowerCase().includes("temp")) sym = `<span class="val-text">${f.temperature_oli || ''}</span>`;
                     }
                     row += `<td class="col-date">${sym}</td>`;
                 }
                 row += `</tr>`;
                 tbody.innerHTML += row;
-                subIdx++;
             });
 
-            // 4. MEMASUKKAN TTD PELAKSANA & KOORDINATOR
+            // LOGIKA PENARIKAN PARAF PELAKSANA & KOOR SESUAI DATABASE clhmi
             const rPel = document.getElementById('row-pel');
             const rCek = document.getElementById('row-cek');
             
-            // Bersihkan sel sebelumnya kecuali judul row
             while(rPel.cells.length > 1) rPel.deleteCell(1);
             while(rCek.cells.length > 1) rCek.deleteCell(1);
 
             for(let d=1; d<=31; d++) {
-                // TTD Pelaksana
-                const dayRes = res.filter(x => x.tanggal === d && x.signature);
                 let cellPel = rPel.insertCell();
                 cellPel.className = "col-date sig-cell";
-                if(dayRes.length > 0) {
-                    let pUrl = dayRes[0].signature;
-                    if(pUrl && pUrl.includes('.png')) {
-                        pUrl = _sb.storage.from('signatures').getPublicUrl(pUrl).data.publicUrl;
-                    }
-                    cellPel.innerHTML = `<img src="${pUrl}" class="sig-img" crossorigin="anonymous">`;
-                }
-
-                // TTD Koordinator
-                const hasData = res.some(x => x.tanggal === d);
+                
                 let cellCek = rCek.insertCell();
                 cellCek.className = "col-date sig-cell";
-                if(hasData && log && log.signature_koordinator) {
-                    let kUrl = log.signature_koordinator;
-                    if(kUrl && kUrl.includes('.png')) {
-                        kUrl = _sb.storage.from('signatures').getPublicUrl(kUrl).data.publicUrl;
+
+                headers.forEach(h => {
+                    const tgl = h.tanggal_isi ? parseInt(h.tanggal_isi.split('-')[2]) : 0;
+                    if(tgl === d) {
+                        if(h.paraf) {
+                            const pUrl = h.paraf.includes('.png') ? _sb.storage.from('signatures').getPublicUrl(h.paraf).data.publicUrl : h.paraf;
+                            cellPel.innerHTML = `<img src="${pUrl}" class="sig-img" crossorigin="anonymous">`;
+                        }
+                        if(h.paraf_coord) {
+                            const kUrl = h.paraf_coord.includes('.png') ? _sb.storage.from('signatures').getPublicUrl(h.paraf_coord).data.publicUrl : h.paraf_coord;
+                            cellCek.innerHTML = `<img src="${kUrl}" class="sig-img" crossorigin="anonymous">`;
+                        }
                     }
-                    cellCek.innerHTML = `<img src="${kUrl}" class="sig-img" crossorigin="anonymous">`;
-                }
+                });
             }
 
-            // 5. TTD SUPERINTENDENT FOOTER
-            const supBox = document.getElementById('out-sig-super');
-            const supName = document.getElementById('out-name-super');
+            // TTD SUPERINTENDENT DARI TABEL clhmi
+            const fin = headers.find(h => h.status_form === 'closed');
+            const sigBox = document.getElementById('out-sig-super');
+            const nameBox = document.getElementById("out-name-super");
             
-            if(log && log.signature_superintendent) {
-                let sUrl = log.signature_superintendent;
-                if(sUrl && sUrl.includes('.png')) {
-                    sUrl = _sb.storage.from('signatures').getPublicUrl(sUrl).data.publicUrl;
-                }
-                supBox.innerHTML = `<img src="${sUrl}" style="max-height:45px; max-width:90px; width:auto; object-fit:contain; filter: invert(1) brightness(0);" crossorigin="anonymous">`;
-                supName.innerText = (log.superintendent_nama || '........................').toUpperCase();
+            if(fin && fin.paraf_super) {
+                const sUrl = fin.paraf_super.includes('.png') ? _sb.storage.from('signatures').getPublicUrl(fin.paraf_super).data.publicUrl : fin.paraf_super;
+                sigBox.innerHTML = `<img src="${sUrl}" style="max-height:45px; max-width:90px; width:auto; object-fit:contain; filter: invert(1) brightness(0);" crossorigin="anonymous">`;
+                nameBox.innerText = (fin.verified_by || '').toUpperCase();
             } else {
-                supBox.innerHTML = `<span style="color:#ccc; font-size:6pt;">(Menunggu Pengesahan)</span>`;
-                supName.innerText = "";
+                sigBox.innerHTML = `<span style="color:#ccc; font-size:6pt;">(Menunggu Pengesahan)</span>`;
+                nameBox.innerText = "";
             }
 
             showStatus("Data Berhasil Dimuat!", false);
@@ -440,17 +467,14 @@
             const logoImg = document.getElementById('logo-header');
             const originalLogoSrc = logoImg.src;
 
-            // Atasi CORS dengan menyuntikkan Base64 logo
             if(GLOBAL_BASE64_LOGO) {
                 logoImg.src = GLOBAL_BASE64_LOGO;
             }
             
-            // Simpan styling UI awal
             const origShadow = sheet.style.boxShadow;
             const origRadius = sheet.style.borderRadius;
             const origMargin = sheet.style.margin;
             
-            // Hapus efek grafis yang mengganggu hasil foto agar bersih seperti dokumen asli
             sheet.style.boxShadow = 'none';
             sheet.style.borderRadius = '0';
             sheet.style.margin = '0';
@@ -459,13 +483,23 @@
 
             btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Memotret HD...";
 
+            const clone = sheet.cloneNode(true);
+            const ghostContainer = document.createElement('div');
+            ghostContainer.style.position = 'absolute'; 
+            ghostContainer.style.top = '-9999px';
+            ghostContainer.style.left = '-9999px';
+            ghostContainer.style.width = '1122px'; 
+            ghostContainer.style.background = '#fff'; 
+            ghostContainer.style.overflow = 'visible'; 
+            
+            ghostContainer.appendChild(clone);
+            document.body.appendChild(ghostContainer);
+
             // ===================================================================
-            // KARENA KITA SUDAH MENGGUNAKAN "BORDER-COLLAPSE: SEPARATE",
-            // KITA BISA DENGAN AMAN MENGGUNAKAN SCALE: 2 (HIGH DEFINITION).
-            // TIDAK AKAN ADA LAGI "BLOK HITAM" ATAU GARIS YANG BERTUMPUK!
+            // SCALE: 2 UNTUK HASIL HIGH DEFINITION, ANTI GARIS GANDA.
             // ===================================================================
-            const canvas = await html2canvas(sheet, {
-                scale: 2, // Resolusi tinggi agar teks tetap tajam (HD) 
+            const canvas = await html2canvas(ghostContainer, {
+                scale: 2, 
                 useCORS: true,
                 allowTaint: false,
                 backgroundColor: "#ffffff",
@@ -474,7 +508,6 @@
                 scrollY: 0
             });
 
-            // Kembalikan UI seperti semula
             sheet.style.boxShadow = origShadow;
             sheet.style.borderRadius = origRadius;
             sheet.style.margin = origMargin;
@@ -495,7 +528,6 @@
             const pdfRatio = pdfWidth / pdfHeight;
             let finalWidth, finalHeight;
             
-            // Kalkulasi Aspect Ratio agar tepat berada di tengah kertas
             if (imgRatio > pdfRatio) {
                 finalWidth = pdfWidth;
                 finalHeight = (imgProps.height * pdfWidth) / imgProps.width;
@@ -511,11 +543,12 @@
             
             const machineName = document.getElementById('machine-select').selectedOptions[0].text;
             const bln = document.getElementById('month-select').selectedOptions[0].text;
-            const filename = `Laporan_${machineName}_${bln}.pdf`;
+            const filename = `Laporan_Injection_${machineName}_${bln}.pdf`;
             
             pdf.save(filename);
             
             showStatus("PDF berhasil diunduh!");
+            document.body.removeChild(ghostContainer);
 
         } catch (err) {
             console.error(err);
