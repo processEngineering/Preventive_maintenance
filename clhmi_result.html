@@ -21,7 +21,6 @@
             --radius: 16px; --sidebar-width: 280px; --header-height: 70px;
         }
         
-        /* KUNCI UTAMA AGAR UKURAN KERTAS TIDAK MEMBENGKAK KARENA PADDING */
         * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         
         body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: var(--bg-body); color: var(--text-main); display: flex; flex-direction: column; align-items: center; padding-top: calc(var(--header-height) + 20px); padding-bottom: 40px; min-height: 100vh; -webkit-tap-highlight-color: transparent; }
@@ -45,17 +44,51 @@
         .btn-primary { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; box-shadow: 0 6px 15px rgba(201, 25, 25, 0.2); }
         .btn-outline { background: white; color: var(--primary); border: 2px solid var(--primary); }
         .btn-outline:hover { background: var(--accent-soft); }
+        
         .sheet-container { width: 100%; overflow-x: auto; display: flex; justify-content: flex-start; padding: 10px 15px; box-sizing: border-box; position: relative; z-index: 1; }
         @media (min-width: 1140px) { .sheet-container { justify-content: center; } }
+        
         .sheet { background: white; color: black; padding: 30px 40px; width: 1122px; min-width: 1122px; min-height: 794px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border-radius: 4px; font-family: 'Arial Narrow', sans-serif; font-size: 7pt; }
-        .sheet table { border-collapse: collapse; width: 100%; table-layout: fixed; margin-bottom: 2px; }
-        .sheet td, .sheet th { border: 1px solid black; padding: 1px 2px; vertical-align: middle; line-height: 1.05; }
-        .header-table { border: 2px solid black !important; }
+        
+        /* ========================================================================= */
+        /* MAGIC FIX: STRATEGI BORDER BARU UNTUK HTML2CANVAS (ANTI GARIS TEBAL)      */
+        /* ========================================================================= */
+        .table-wrapper {
+            /* Kita buat kotak pembungkus dengan ketebalan presisi */
+            border-top: 2px solid black;
+            border-left: 2px solid black;
+            border-right: 1px solid black; /* Digabung dgn kanan tabel = 2px */
+            border-bottom: 1px solid black; /* Digabung dgn bawah tabel = 2px */
+            margin-bottom: 2px;
+            padding: 0;
+        }
+        .table-wrapper table {
+            /* Matikan collapse agar html2canvas tidak menggambar dobel */
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+            table-layout: fixed;
+            margin: 0;
+            border: none; /* Bersihkan border luar */
+        }
+        .table-wrapper td, .table-wrapper th {
+            /* Hanya beri border Kanan dan Bawah, jadi tidak ada penumpukan */
+            border-top: none;
+            border-left: none;
+            border-right: 1px solid black;
+            border-bottom: 1px solid black;
+            padding: 1px 2px;
+            vertical-align: middle;
+            line-height: 1.05;
+            background-clip: padding-box; /* Mencegah warna meluber ke garis */
+        }
+        /* ========================================================================= */
+
         .logo-img { height: 35px; max-width: 100%; display: block; margin: 0 auto; object-fit: contain; }
         .main-title { font-size: 12pt; font-weight: bold; text-align: center; }
         .dot-line { border-bottom: 1px dotted #000; display: inline-block; width: 95%; padding-left: 5px; }
-        .grid-table { border: 2px solid black; }
-        .grid-table th { background-color: #ffffff; text-align: center; font-weight: bold; border: 1px solid black; font-size: 6.5pt; height: 18px; }
+        
+        .grid-table th { background-color: #ffffff; text-align: center; font-weight: bold; font-size: 6.5pt; height: 18px; }
         .col-date { width: 17px; text-align: center; font-size: 7pt; }
         .cat-row { background-color: #d9d9d9 !important; font-weight: bold; height: 16px; }
         .sig-cell { height: 28px; background: white !important; padding: 0 !important; text-align: center; }
@@ -99,39 +132,53 @@
 
 <div class="sheet-container">
     <div class="sheet" id="sheet-content">
-        <table class="header-table">
-            <tr>
-                <td width="15%"><img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img" id="logo-header" alt="Logo"></td>
-                <td width="60%" class="main-title">CHECK LIST HARIAN MESIN INJECTION</td>
-                <td width="25%" style="font-size: 6pt;">No Dokumen : AF.SP 05.13.Rev-00<br>Tanggal Terbit : 02 Agustus 2024<br>Halaman : 1/1</td>
-            </tr>
-        </table>
-        <table style="border: 2px solid black; margin-bottom: 2px;">
-            <tr>
-                <td width="12%">MERK MESIN</td><td width="1%">:</td><td width="30%"><span id="out-merk" class="dot-line"></span></td>
-                <td width="10%">SERIAL NO</td><td width="1%">:</td><td width="25%"><span id="out-sn" class="dot-line"></span></td>
-                <td width="8%">BULAN</td><td width="1%">:</td><td><span id="out-bln" class="dot-line"></span></td>
-            </tr>
-            <tr>
-                <td>TONAGE</td><td>:</td><td><span id="out-ton" class="dot-line"></span></td><td></td><td></td><td></td>
-                <td>TAHUN</td><td>:</td><td><span id="out-thn" class="dot-line"></span></td>
-            </tr>
-        </table>
-        <table class="grid-table">
-            <thead>
+        
+        <!-- WRAPPER 1: TABEL HEADER -->
+        <div class="table-wrapper">
+            <table class="header-table">
                 <tr>
-                    <th rowspan="2" style="width:20px;">No</th><th rowspan="2" style="width:180px;">Jenis pengecekan</th><th rowspan="2" style="width:6px; background:#eee;"></th>
-                    <th rowspan="2" style="width:110px;">Standard</th><th rowspan="2" style="width:50px;">METODE</th><th rowspan="2" style="width:40px;">CATATAN</th>
-                    <th colspan="31">Tanggal</th>
+                    <td width="15%"><img src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img" id="logo-header" alt="Logo"></td>
+                    <td width="60%" class="main-title">CHECK LIST HARIAN MESIN INJECTION</td>
+                    <td width="25%" style="font-size: 6pt;">No Dokumen : AF.SP 05.13.Rev-00<br>Tanggal Terbit : 02 Agustus 2024<br>Halaman : 1/1</td>
                 </tr>
-                <tr id="date-row"></tr>
-            </thead>
-            <tbody id="main-body"><tr><td colspan="38" style="text-align:center; padding:20px;">Pilih Filter...</td></tr></tbody>
-            <tbody id="sig-body" style="display:none;">
-                <tr class="sig-row"><td colspan="6">Paraf Pelaksana</td><script>for(let i=1;i<=31;i++) document.write(`<td class="sig-cell" id="p-sig-${i}"></td>`);</script></tr>
-                <tr class="sig-row"><td colspan="6">Paraf Koordinator</td><script>for(let i=1;i<=31;i++) document.write(`<td class="sig-cell" id="k-sig-${i}"></td>`);</script></tr>
-            </tbody>
-        </table>
+            </table>
+        </div>
+
+        <!-- WRAPPER 2: TABEL IDENTITAS MESIN -->
+        <div class="table-wrapper">
+            <table class="sub-header-table">
+                <tr>
+                    <td width="12%">MERK MESIN</td><td width="1%">:</td><td width="30%"><span id="out-merk" class="dot-line"></span></td>
+                    <td width="10%">SERIAL NO</td><td width="1%">:</td><td width="25%"><span id="out-sn" class="dot-line"></span></td>
+                    <td width="8%">BULAN</td><td width="1%">:</td><td><span id="out-bln" class="dot-line"></span></td>
+                </tr>
+                <tr>
+                    <td>TONAGE</td><td>:</td><td><span id="out-ton" class="dot-line"></span></td><td></td><td></td><td></td>
+                    <td>TAHUN</td><td>:</td><td><span id="out-thn" class="dot-line"></span></td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- WRAPPER 3: TABEL GRID CHECKLIST -->
+        <div class="table-wrapper">
+            <table class="grid-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="width:20px;">No</th><th rowspan="2" style="width:180px;">Jenis pengecekan</th><th rowspan="2" style="width:6px; background:#eee;"></th>
+                        <th rowspan="2" style="width:110px;">Standard</th><th rowspan="2" style="width:50px;">METODE</th><th rowspan="2" style="width:40px;">CATATAN</th>
+                        <th colspan="31">Tanggal</th>
+                    </tr>
+                    <tr id="date-row"></tr>
+                </thead>
+                <tbody id="main-body"><tr><td colspan="38" style="text-align:center; padding:20px;">Pilih Filter...</td></tr></tbody>
+                <tbody id="sig-body" style="display:none;">
+                    <tr class="sig-row"><td colspan="6">Paraf Pelaksana</td><script>for(let i=1;i<=31;i++) document.write(`<td class="sig-cell" id="p-sig-${i}"></td>`);</script></tr>
+                    <tr class="sig-row"><td colspan="6">Paraf Koordinator</td><script>for(let i=1;i<=31;i++) document.write(`<td class="sig-cell" id="k-sig-${i}"></td>`);</script></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- AREA FOOTER -->
         <div class="footer-wrapper">
             <div class="footer-left">
                 <b>Catatan :</b> (✓) OK, (X) NG, (O) Perbaikan, (-) NA
@@ -155,7 +202,7 @@
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
     const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-    // --- FETCH LOGO UNTUK PDF (Metode Lintas CORS) ---
+    // --- FETCH LOGO UNTUK GAMBAR (Metode Lintas CORS) ---
     const LOGO_URL_ASLI = "https://amarilyskg.co.id/bootstrap/img/logo.png";
     let GLOBAL_BASE64_LOGO = "";
 
@@ -346,26 +393,20 @@
         try {
             btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Menyiapkan PDF...";
 
-            // Pastikan Base64 logo sudah siap
             if(!GLOBAL_BASE64_LOGO) await preloadLogo();
 
             const original = document.getElementById('sheet-content');
             
-            // 1. KLONING DOM (Metode ghostContainer murni)
+            // KLONING DOM
             const clone = original.cloneNode(true);
 
-            // 2. TIMPA SRC LOGO KLONINGAN DENGAN BASE64
+            // TIMPA SRC LOGO KLONINGAN DENGAN BASE64
             const cloneLogo = clone.querySelector('#logo-header'); 
             if(cloneLogo && GLOBAL_BASE64_LOGO) {
                 cloneLogo.src = GLOBAL_BASE64_LOGO;
-            } else if (cloneLogo) {
-                // Jaga-jaga kalau Base64 belum ke-load, coba panggil lagi
-                const b64 = await fetchImageAsBase64(LOGO_URL_ASLI);
-                if(b64) cloneLogo.src = b64;
             }
             
-            // 3. SET STYLING KLONINGAN UNTUK UKURAN PDF PRESISI
-            // Memastikan box-sizing diatur agar width 1122px mencakup padding-nya
+            // SET STYLING KLONINGAN (Menghapus shadow agar bersih pinggirnya)
             clone.style.boxSizing = 'border-box';
             clone.style.margin = '0';
             clone.style.padding = '30px 40px'; 
@@ -375,7 +416,7 @@
             clone.style.maxWidth = 'none';
             clone.style.transform = 'none'; 
             
-            // 4. BUAT WADAH TERSEMBUNYI DI LUAR LAYAR
+            // BUAT WADAH TERSEMBUNYI
             const ghostContainer = document.createElement('div');
             ghostContainer.style.position = 'absolute'; 
             ghostContainer.style.top = '-9999px';
@@ -387,14 +428,16 @@
             ghostContainer.appendChild(clone);
             document.body.appendChild(ghostContainer);
 
-            // Beri waktu browser bernafas dan merender elemen ke DOM tersembunyi
             await new Promise(r => setTimeout(r, 300));
 
-            btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Rendering...";
+            btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Memotret HD...";
 
-            // 5. EKSEKUSI HTML2CANVAS (Ditambahkan scrollX/Y agar tidak terpengaruh scrollbar saat render)
+            // ===================================================================
+            // MAGIC FIX TERAKHIR: Kita panggil HTML2CANVAS dengan scale: 2 (Resolusi Tinggi)
+            // Karena BORDER-COLLAPSE diganti metode pemisahan CSS, garis akan tetap tipis natural
+            // ===================================================================
             const canvas = await html2canvas(ghostContainer, {
-                scale: 2, 
+                scale: 2,  
                 useCORS: true,
                 allowTaint: false,
                 backgroundColor: "#ffffff",
@@ -407,11 +450,12 @@
 
             btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Membuat PDF...";
             
-            // 6. GENERATE PDF
+            // Ekstrak gambar HD dari canvas
+            const imgData = canvas.toDataURL('image/png', 1.0); 
+            
+            // Generate PDF menggunakan jsPDF
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF('l', 'mm', 'a4');
-            
-            const imgData = canvas.toDataURL('image/png'); 
             
             const pdfWidth = 297; 
             const pdfHeight = 210; 
@@ -421,6 +465,7 @@
             const pdfRatio = pdfWidth / pdfHeight;
             let finalWidth, finalHeight;
             
+            // Kalkulasi agar gambar pas (Center) di tengah halaman A4 Landscape
             if (imgRatio > pdfRatio) {
                 finalWidth = pdfWidth;
                 finalHeight = (imgProps.height * pdfWidth) / imgProps.width;
@@ -429,19 +474,21 @@
                 finalWidth = (imgProps.width * pdfHeight) / imgProps.height;
             }
             
-            // Letakkan tepat di tengah (Center)
             const xPos = (pdfWidth - finalWidth) / 2;
             const yPos = (pdfHeight - finalHeight) / 2;
             
+            // Masukkan gambar HD ke dalam PDF
             pdf.addImage(imgData, 'PNG', xPos, yPos, finalWidth, finalHeight);
             
             const machineName = document.getElementById('machine-select').selectedOptions[0].text;
             const bln = document.getElementById('month-select').selectedOptions[0].text;
-            pdf.save(`Laporan_${machineName}_${bln}.pdf`);
+            const filename = `Laporan_${machineName}_${bln}.pdf`;
+            
+            pdf.save(filename);
             
             showStatus("PDF berhasil diunduh!");
 
-            // Hapus kontainer sementara
+            // Bersihkan sisa elemen
             document.body.removeChild(ghostContainer);
 
         } catch (err) {
