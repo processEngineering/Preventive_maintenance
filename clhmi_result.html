@@ -265,6 +265,7 @@
         if(base64) GLOBAL_BASE64_LOGO = base64;
     }
 
+    // MASTER_ITEMS dikembalikan seperti file asli Anda agar tidak ada risiko data kosong dari Supabase
     const MASTER_ITEMS = [
         {kode:"", kategori:"Mekanikal:", nama:""},
         {kode:"a", nama:"Nozzle visual", std:"Radius tidak rusak", met:"Visual"},
@@ -352,14 +353,17 @@
             document.getElementById('out-merk').innerText = head.clhmi_machine?.merk_mesin || '-';
             document.getElementById('out-sn').innerText = head.clhmi_machine?.serial_no || '-';
             document.getElementById('out-ton').innerText = (head.clhmi_machine?.tonage || '-') + ' T';
-            document.getElementById('out-bln').innerText = document.getElementById('month-select').options[bln-1].text.toUpperCase();
+            
+            // PERBAIKAN BUG BULAN MENGGESER: Ambil langsung dari opsi dropdown yang diklik (Selected Option)
+            document.getElementById('out-bln').innerText = document.getElementById('month-select').selectedOptions[0].text.toUpperCase();
             document.getElementById('out-thn').innerText = thn;
 
             const tbody = document.getElementById('main-body'); 
             tbody.innerHTML = ""; 
             let curCat = "";
 
-            MASTER_ITEMS.forEach(item => {
+            // Optional chaining digunakan sebagai pelindung ekstra anti-error
+            MASTER_ITEMS?.forEach(item => {
                 if(item.kategori && item.kategori !== curCat) { 
                     tbody.innerHTML += `<tr><td colspan="38" class="cat-row">${item.kategori}</td></tr>`; 
                     curCat = item.kategori; 
@@ -375,7 +379,7 @@
                     <td></td>`;
                 
                 for(let d=1; d<=31; d++) {
-                    const f = details.find(r => {
+                    const f = details?.find(r => {
                         const tgl = r.tanggal_cek ? parseInt(r.tanggal_cek.split('-')[2]) : 0;
                         return tgl === d && r.clhmi_items?.nama_pengecekan?.trim() === item.nama.trim();
                     });
@@ -383,14 +387,14 @@
                     let sym = '';
                     if(f) {
                         if(item.nama.toLowerCase().includes("hour")) {
-                            sym = `<span class="val-text">${f.value || ''}</span>`;
+                             sym = `<span class="val-text">${f.value || ''}</span>`;
                         } else if(item.nama.toLowerCase().includes("temp")) {
-                            sym = `<span class="val-text">${f.temperature_oli || ''}</span>`;
+                             sym = `<span class="val-text">${f.temperature_oli || ''}</span>`;
                         } else {
-                            if(f.status === 'OK') sym = '✓'; 
-                            else if(f.status === 'NG') sym = 'X';
-                            else if(f.status === 'MT') sym = 'O'; 
-                            else if(f.status === 'NA') sym = '-';
+                             if(f.status === 'OK') sym = '✓'; 
+                             else if(f.status === 'NG') sym = 'X';
+                             else if(f.status === 'MT' || f.status === 'MN') sym = 'O'; 
+                             else if(f.status === 'NA') sym = '-';
                         }
                     }
                     row += `<td class="col-date">${sym}</td>`;
@@ -399,7 +403,7 @@
                 tbody.innerHTML += row;
             });
 
-            // LOGIKA PARAF PELAKSANA & KOORDINATOR
+            // LOGIKA PARAF PELAKSANA & KOORDINATOR clhmi
             const rPel = document.getElementById('row-pel');
             const rCek = document.getElementById('row-cek');
             
@@ -413,7 +417,7 @@
                 let cellCek = rCek.insertCell();
                 cellCek.className = "col-date sig-cell";
 
-                headers.forEach(h => {
+                headers?.forEach(h => {
                     const tgl = h.tanggal_isi ? parseInt(h.tanggal_isi.split('-')[2]) : 0;
                     if(tgl === d) {
                         if(h.paraf) {
@@ -428,8 +432,8 @@
                 });
             }
 
-            // TTD SUPERINTENDENT
-            const fin = headers.find(h => h.status_form === 'closed');
+            // TTD SUPERINTENDENT DARI TABEL clhmi
+            const fin = headers?.find(h => h.status_form === 'closed');
             const sigBox = document.getElementById('out-sig-super');
             const nameBox = document.getElementById("out-name-super");
             
