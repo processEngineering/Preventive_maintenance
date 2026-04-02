@@ -115,8 +115,8 @@
         .cat-row { background-color: #d9d9d9 !important; font-weight: bold; height: 16px; text-transform: uppercase; }
         .sig-cell { height: 28px; background: white !important; padding: 0 !important; text-align: center; }
         
-        /* WARNA HITAM PEKAT UNTUK TTD AGAR SEPERTI PULPEN ASLI */
-        .sig-img { width: 100%; height: 100%; object-fit: contain; filter: invert(1) brightness(0); } 
+        /* KEMBALI MURNI: Tidak ada filter invert yang merusak gambar transparan */
+        .sig-img { width: 100%; height: 100%; object-fit: contain; } 
         
         .footer-wrapper { display: flex; border: 2px solid black; margin-top: 3px; height: 75px; }
         .footer-left { flex: 2.2; border-right: 1px solid black; padding: 3px; font-size: 6pt; }
@@ -296,10 +296,8 @@
     async function initFilter() {
         preloadLogo(); 
         try {
-            // MENGAMBIL DATA DARI clhmi_machine (SESUAI DATABASE ASLI MESIN INJECTION)
             const { data: m, error } = await _sb.from('clhmi_machine').select('*').order('merk_mesin');
             if(error) throw error;
-            // Simpan ID sebagai value, tapi teksnya merk mesin
             m?.forEach(x => document.getElementById('machine-select').add(new Option(x.merk_mesin, x.id)));
             
             const mo = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
@@ -330,7 +328,6 @@
         document.getElementById('sig-body').style.display = 'table-row-group';
 
         try {
-            // AMBIL HEADER DARI TABEL clhmi
             const { data: headers, error: errH } = await _sb.from('clhmi')
                 .select('*, clhmi_machine(merk_mesin, serial_no, tonage)')
                 .eq('machine_id', mId)
@@ -345,7 +342,6 @@
             }
 
             const headerIds = headers.map(h => h.id);
-            // AMBIL RESULT DARI clhmi_results
             const { data: details, error: errD } = await _sb.from('clhmi_results')
                 .select('*, clhmi_items(nama_pengecekan)')
                 .in('clhmi_id', headerIds);
@@ -371,7 +367,7 @@
                 if(!item.nama) return;
                 
                 let row = `<tr>
-                    <td style="text-align: center;">${item.kode}</td>
+                    <td style="text-align: center;">${item.kode || ''}</td>
                     <td>${item.nama}</td>
                     <td style="background:#eee;"></td>
                     <td>${item.std}</td>
@@ -386,15 +382,16 @@
                     
                     let sym = '';
                     if(f) {
-                        // LOGIKA PENILAIAN SESUAI CLHMI
-                        if(f.status === 'OK') sym = '✓'; 
-                        else if(f.status === 'NG') sym = 'X';
-                        else if(f.status === 'MT') sym = 'O'; 
-                        else if(f.status === 'NA') sym = '-';
-                        
-                        // Menangkap input dinamis dan diaplikasikan CSS Gepeng val-text (utk 7 digit)
-                        if(item.nama.toLowerCase().includes("hour")) sym = `<span class="val-text">${f.value || ''}</span>`;
-                        if(item.nama.toLowerCase().includes("temp")) sym = `<span class="val-text">${f.temperature_oli || ''}</span>`;
+                        if(item.nama.toLowerCase().includes("hour")) {
+                            sym = `<span class="val-text">${f.value || ''}</span>`;
+                        } else if(item.nama.toLowerCase().includes("temp")) {
+                            sym = `<span class="val-text">${f.temperature_oli || ''}</span>`;
+                        } else {
+                            if(f.status === 'OK') sym = '✓'; 
+                            else if(f.status === 'NG') sym = 'X';
+                            else if(f.status === 'MT') sym = 'O'; 
+                            else if(f.status === 'NA') sym = '-';
+                        }
                     }
                     row += `<td class="col-date">${sym}</td>`;
                 }
@@ -402,7 +399,7 @@
                 tbody.innerHTML += row;
             });
 
-            // LOGIKA PENARIKAN PARAF PELAKSANA & KOOR SESUAI DATABASE clhmi
+            // LOGIKA PARAF PELAKSANA & KOORDINATOR
             const rPel = document.getElementById('row-pel');
             const rCek = document.getElementById('row-cek');
             
@@ -431,14 +428,15 @@
                 });
             }
 
-            // TTD SUPERINTENDENT DARI TABEL clhmi
+            // TTD SUPERINTENDENT
             const fin = headers.find(h => h.status_form === 'closed');
             const sigBox = document.getElementById('out-sig-super');
             const nameBox = document.getElementById("out-name-super");
             
             if(fin && fin.paraf_super) {
                 const sUrl = fin.paraf_super.includes('.png') ? _sb.storage.from('signatures').getPublicUrl(fin.paraf_super).data.publicUrl : fin.paraf_super;
-                sigBox.innerHTML = `<img src="${sUrl}" style="max-height:45px; max-width:90px; width:auto; object-fit:contain; filter: invert(1) brightness(0);" crossorigin="anonymous">`;
+                // Tidak memakai efek invert yang bikin background hitam 
+                sigBox.innerHTML = `<img src="${sUrl}" style="max-height:45px; max-width:90px; width:auto; object-fit:contain;" crossorigin="anonymous">`;
                 nameBox.innerText = (fin.verified_by || '').toUpperCase();
             } else {
                 sigBox.innerHTML = `<span style="color:#ccc; font-size:6pt;">(Menunggu Pengesahan)</span>`;
