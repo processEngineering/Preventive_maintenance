@@ -331,7 +331,7 @@
                     <td colspan="3" style="text-align: right; font-weight: bold; padding-right: 10px;">Paraf Pelaksana</td>
                 </tr>
                 <tr class="sig-row" id="row-cek">
-                    <td colspan="3" style="text-align: right; font-weight: bold; padding-right: 10px;">Paraf Pengecek</td>
+                    <td colspan="3" style="text-align: right; font-weight: bold; padding-right: 10px;">Paraf Koordinator</td>
                 </tr>
             </tbody>
         </table>
@@ -642,7 +642,7 @@
                 subIdx++;
             });
 
-            // --- TANDA TANGAN (BAGIAN KRUSIAL) ---
+            // --- TANDA TANGAN (BAGIAN KRUSIAL - UPDATE LOGIC BUCKET/BASE64) ---
             const rPel = document.getElementById('row-pel');
             const rCek = document.getElementById('row-cek');
             
@@ -655,7 +655,13 @@
                 let cellPel = rPel.insertCell();
                 cellPel.className = "col-date";
                 if(dayRes.length > 0) {
-                    cellPel.innerHTML = `<img src="${dayRes[0].signature}" class="sig-img">`;
+                    let pUrl = dayRes[0].signature;
+                    // Cek kalau nama file berakhiran .png, ambil Public URL-nya dari Supabase
+                    if(pUrl && pUrl.includes('.png')) {
+                        pUrl = _sb.storage.from('signatures').getPublicUrl(pUrl).data.publicUrl;
+                    }
+                    // Tambahkan crossorigin="anonymous" untuk keamanan PDF Download
+                    cellPel.innerHTML = `<img src="${pUrl}" class="sig-img" crossorigin="anonymous">`;
                 }
 
                 // 2. Koordinator
@@ -665,7 +671,12 @@
                 
                 // Pastikan ada data hari itu & ada TTD di database
                 if(hasData && log && log.signature_koordinator) {
-                    cellCek.innerHTML = `<img src="${log.signature_koordinator}" class="sig-img">`;
+                    let kUrl = log.signature_koordinator;
+                    // Cek kalau nama file berakhiran .png, ambil Public URL-nya dari Supabase
+                    if(kUrl && kUrl.includes('.png')) {
+                        kUrl = _sb.storage.from('signatures').getPublicUrl(kUrl).data.publicUrl;
+                    }
+                    cellCek.innerHTML = `<img src="${kUrl}" class="sig-img" crossorigin="anonymous">`;
                 }
             }
 
@@ -675,8 +686,13 @@
             
             // LOGIKA: Jika Log ada DAN kolom signature_superintendent tidak kosong/null
             if(log && log.signature_superintendent) {
+                let sUrl = log.signature_superintendent;
+                // Cek kalau nama file berakhiran .png, ambil Public URL-nya dari Supabase
+                if(sUrl && sUrl.includes('.png')) {
+                    sUrl = _sb.storage.from('signatures').getPublicUrl(sUrl).data.publicUrl;
+                }
                 // Tampilkan gambar dengan class super-img (yang sudah ada filter warnanya)
-                supBox.innerHTML = `<img src="${log.signature_superintendent}" class="super-img">`;
+                supBox.innerHTML = `<img src="${sUrl}" class="super-img" crossorigin="anonymous">`;
                 supName.innerText = `${log.superintendent_nama || '........................'}`;
             } else {
                 supBox.innerHTML = "";
