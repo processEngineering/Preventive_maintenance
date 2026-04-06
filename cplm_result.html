@@ -334,7 +334,8 @@
         <!-- Panel Kontrol Horizontal di sebelahnya -->
         <div class="controls-horizontal">
             <span class="ctrl-title"><i class="fa-solid fa-print"></i> KONTROL:</span>
-            <input type="date" id="searchDate" class="input-ctrl">
+            <!-- Input tipe "month" untuk hanya memilih bulan dan tahun -->
+            <input type="month" id="searchDate" class="input-ctrl">
             <button class="btn-ctrl btn-show" onclick="fetchReports()"><i class="fa-solid fa-search"></i> CARI DATA</button>
             <button class="btn-ctrl btn-print" onclick="downloadPDF()"><i class="fa-solid fa-file-pdf"></i> CETAK PDF</button>
         </div>
@@ -495,7 +496,7 @@
         </div>
     </div>
 
-    <!-- LOGIKA JAVASCRIPT (TIDAK DIUBAH FUNGSINYA) -->
+    <!-- LOGIKA JAVASCRIPT (TIDAK DIUBAH FUNGSINYA KECUALI PENCARIAN BULAN) -->
     <script>
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('active');
@@ -607,18 +608,32 @@
             itemsDefinition = data || [];
         }
 
+        // --- FETCH DATA MODIFIED UNTUK BULAN/TAHUN ---
         window.fetchReports = async function() {
-            const dateVal = document.getElementById('searchDate').value;
-            if(!dateVal) return alert("Pilih tanggal!");
+            const dateVal = document.getElementById('searchDate').value; // Mengambil string YYYY-MM
+            if(!dateVal) return alert("Pilih bulan dan tahun!");
             
             document.getElementById('loading-overlay').style.display = 'flex';
             
-            const { data } = await supabaseClient.from('clpm_log').select('*').eq('tanggal_perawatan', dateVal).order('created_at', {ascending: false});
+            // Buat range pencarian awal bulan sampai akhir bulan
+            const startDate = `${dateVal}-01`;
+            const [year, month] = dateVal.split('-');
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${dateVal}-${lastDay}`;
+            
+            // Mencari data antara tanggal 1 hingga akhir bulan di bulan yang dipilih
+            const { data } = await supabaseClient.from('clpm_log')
+                .select('*')
+                .gte('tanggal_perawatan', startDate)
+                .lte('tanggal_perawatan', endDate)
+                .order('created_at', {ascending: false});
             
             if(!data || !data.length) {
                 document.getElementById('loading-overlay').style.display = 'none';
-                return alert("Tidak ada data.");
+                return alert("Tidak ada data untuk bulan yang dipilih.");
             }
+            
+            // Mengambil hasil terbaru di bulan tersebut
             renderPaper(data[0].id);
         }
 
@@ -764,8 +779,18 @@
                 pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
                 
                 const kode = document.getElementById('p_kode').innerText || 'Mould';
-                const tgl = document.getElementById('p_tgl').innerText || 'Date';
-                pdf.save(`Checklist_${kode}_${tgl}.pdf`);
+                const dateInput = document.getElementById('searchDate').value;
+                let monthStr = 'bulan';
+                let yearStr = 'tahun';
+                
+                if (dateInput) {
+                    const [year, month] = dateInput.split('-');
+                    const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+                    monthStr = monthNames[parseInt(month) - 1];
+                    yearStr = year;
+                }
+                
+                pdf.save(`perawatan mold_ ${kode.trim()}_${monthStr}_${yearStr}.pdf`);
 
             } catch (err) {
                 console.error(err);
