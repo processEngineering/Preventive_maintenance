@@ -297,7 +297,16 @@
 
     <!-- KERTAS LAPORAN -->
     <div class="sheet-container">
-        <div class="page" id="printArea">
+
+        <!-- EMPTY STATE (Peringatan Kosong) -->
+        <div id="empty-state" style="text-align:center; color:#ccc; padding-top:100px;">
+            <i class="fa-solid fa-file-invoice text-4xl mb-4" style="color:#ff0000; opacity:0.5; font-size: 40px;"></i>
+            <h3 style="color:#ff0000; font-family:'Inter'; font-weight:800; text-transform:uppercase;">Sistem Laporan POHM Digital</h3>
+            <p style="font-family:'Inter'; font-weight:500;">Pilih Mesin dan Periode untuk melihat data.</p>
+        </div>
+
+        <!-- AREA DOKUMEN / KERTAS -->
+        <div class="page" id="printArea" style="display:none;">
             <!-- 1. HEADER -->
             <table class="header-main">
                 <tr>
@@ -411,9 +420,13 @@
         // Routing Navigasi Dinamis
         async function setupDynamicNavigation() {
             try {
-                const { data: { session } } = await db.auth.getSession();
+                const { data: { session }, error: sessionError } = await db.auth.getSession();
+                if (sessionError) throw sessionError;
                 if (!session) return;
-                const { data: profile } = await db.from('profiles').select('jabatan').eq('id', session.user.id).single();
+                
+                const { data: profile, error: profileError } = await db.from('profiles').select('jabatan').eq('id', session.user.id).single();
+                if (profileError && profileError.code !== 'PGRST116') throw profileError; // Ignore "not found"
+                
                 if (profile) {
                     const jabatan = profile.jabatan.toUpperCase();
                     const navHome = document.getElementById('nav-home');
@@ -428,18 +441,26 @@
                     if (navHome) navHome.href = homeLink;
                     if (navMenu) navMenu.href = menuLink;
                 }
-            } catch (err) { console.error(err); }
+            } catch (err) { 
+                console.error("Error setting up navigation:", err); 
+            }
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
             setupDynamicNavigation();
             document.getElementById('filter_tahun').value = new Date().getFullYear();
-            const { data } = await db.from('pohm_machine').select('name').order('name');
-            if(data) {
-                const s = document.getElementById('filter_mesin');
-                data.forEach(m => {
-                    let o = document.createElement('option'); o.value = m.name; o.textContent = m.name; s.appendChild(o);
-                });
+            
+            try {
+                const { data, error } = await db.from('pohm_machine').select('name').order('name');
+                if(error) throw error;
+                if(data) {
+                    const s = document.getElementById('filter_mesin');
+                    data.forEach(m => {
+                        let o = document.createElement('option'); o.value = m.name; o.textContent = m.name; s.appendChild(o);
+                    });
+                }
+            } catch (err) {
+                console.error("Error fetching machines:", err);
             }
         });
 
@@ -453,23 +474,37 @@
                 if(!bln) { alert('Pilih Bulan!'); return; }
 
                 const start = new Date(parseInt(thn), parseInt(bln) - 1, 1).toISOString();
-                const end = new Date(parseInt(thn), parseInt(bln), 0, 23, 59, 59).toISOString();
+                // Ensure the end date covers the entire last day
+                const end = new Date(parseInt(thn), parseInt(bln), 0, 23, 59, 59, 999).toISOString();
 
                 const { data, error } = await db.from('pohm_items')
                     .select('*').eq('machine_name', mesin)
                     .gte('start_time', start).lte('start_time', end)
                     .order('start_time', {ascending: false}).limit(1).single();
 
-                if(error || !data) { alert('Data tidak ditemukan!'); resetForm(); }
-                else { renderData(data); }
+                if(error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+                     throw error;
+                }
+
+                if(!data) { 
+                    alert('Data tidak ditemukan!'); 
+                    resetForm(); 
+                }
+                else { 
+                    // REVISI LOGIKA TAMPILKAN
+                    document.getElementById('empty-state').style.display = 'none';
+                    document.getElementById('printArea').style.display = 'flex';
+                    renderData(data); 
+                }
             } catch(e) { 
-                console.error(e); 
+                console.error("Error fetching data:", e); 
                 alert('Error ambil data. Pastikan filter terisi dengan benar.'); 
+                resetForm();
             }
         }
 
         function renderData(d) {
-            document.getElementById('val_mesin').textContent = d.machine_name;
+            document.getElementById('val_mesin').textContent = d.machine_name || '-';
             document.getElementById('chk_perawatan').innerHTML = d.work_type === 'Perawatan' ? '&#9745;' : '&#9744;';
             document.getElementById('chk_overhaul').innerHTML = d.work_type === 'Over Haul' ? '&#9745;' : '&#9744;';
             
@@ -488,7 +523,7 @@
             const tbody = document.getElementById('tbl_parts_body');
             tbody.innerHTML = '';
             for(let i=0; i<5; i++) {
-                const p = d.spare_parts && d.spare_parts[i] ? d.spare_parts[i] : {};
+                const p = (d.spare_parts && Array.isArray(d.spare_parts) && d.spare_parts[i]) ? d.spare_parts[i] : {};
                 let cG = p.action === 'Ganti Baru' ? '&#9745;' : '&#9744;';
                 let cR = p.action === 'Repair' ? '&#9745;' : '&#9744;';
                 if(!p.name) { cG='&#9744;'; cR='&#9744;'; }
@@ -532,7 +567,9 @@
             document.getElementById('name_eng').textContent = '';
             document.getElementById('name_spv').textContent = '';
             document.getElementById('name_mgr').textContent = '';
-            document.getElementById('report-view').style.display = 'none';
+            // REVISI LOGIKA SEMBUNYIKAN KETIKA DATA KOSONG
+            document.getElementById('printArea').style.display = 'none';
+            document.getElementById('empty-state').style.display = 'block';
         }
 
         function blackenImage(img) {
@@ -569,6 +606,15 @@
                 return;
             }
 
+            // REVISI NAMA FILE MENJADI JELAS DAN DINAMIS
+            const elmBulan = document.getElementById('filter_bulan');
+            const namaBulan = elmBulan.options[elmBulan.selectedIndex].text;
+            const tahunPdf = document.getElementById('filter_tahun').value;
+            const mesinPdf = document.getElementById('filter_mesin').value;
+            // Replace '/' dengan '-' agar tidak terjadi error folder-path di sistem operasi saat save file
+            const namaMesinAman = mesinPdf.replace(/[\/\\]/g, '-'); 
+            const pdfFileName = `${namaMesinAman} _ ${namaBulan}_${tahunPdf}.pdf`;
+
             overlay.style.display = 'flex';
             window.scrollTo(0,0);
 
@@ -588,7 +634,7 @@
 
                 const opt = {
                     margin: 0,
-                    filename: `POHM_${document.getElementById('val_mesin').innerText.replace(/\//g, '_')}.pdf`,
+                    filename: pdfFileName,
                     image: { type: 'jpeg', quality: 0.98 },
                     html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0, x: 0, y: 0, width: 794, windowWidth: 800 },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
