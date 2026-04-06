@@ -578,41 +578,30 @@
         }
     }
 
-    async function replaceImgWithCanvas(imgElement, base64Data) {
-        return new Promise(resolve => {
-            const image = new Image();
-            image.onload = function() {
-                const canvas = document.createElement('canvas');
-                canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(image, 0, 0);
-                canvas.className = imgElement.className; canvas.id = imgElement.id;
-                canvas.classList.add('logo-canvas');
-                imgElement.parentNode.replaceChild(canvas, imgElement);
-                resolve(canvas);
-            };
-            image.src = base64Data;
-        });
-    }
-
     async function downloadPDF() {
         const overlay = document.getElementById('loading-overlay');
         const loadingText = document.getElementById('loading-text');
         const element = document.getElementById('report-view');
-        const logoContainer = document.getElementById('logo-container');
         const imgLogo = document.getElementById('logo-header');
         
         overlay.style.display = 'flex';
-        loadingText.innerText = "Mengamankan Logo...";
+        loadingText.innerText = "Mempersiapkan Dokumen...";
         
-        let originalImgClone = null;
+        // Pastikan logo menggunakan format Base64 agar terbaca oleh html2canvas
+        // (Elemen IMG murni dengan source Base64 jauh lebih stabil dibanding diganti ke Canvas)
+        let originalLogoSrc = imgLogo ? imgLogo.src : '';
         try {
-            if (imgLogo && imgLogo.tagName === 'IMG') {
-                originalImgClone = imgLogo.cloneNode(true);
+            if (imgLogo && !imgLogo.src.startsWith('data:image')) {
                 let dataToUse = GLOBAL_BASE64_LOGO || await fetchImageAsBase64(LOGO_URL_ASLI);
-                if (dataToUse) await replaceImgWithCanvas(imgLogo, dataToUse);
+                if (dataToUse) {
+                    await new Promise(resolve => {
+                        imgLogo.onload = resolve;
+                        imgLogo.onerror = resolve;
+                        imgLogo.src = dataToUse;
+                    });
+                }
             }
-        } catch (e) { console.error("Swap error:", e); }
+        } catch (e) { console.error("Gagal memuat base64 logo:", e); }
 
         await new Promise(r => setTimeout(r, 200));
         window.scrollTo(0, 0);
@@ -655,17 +644,27 @@
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF('p', 'mm', 'a4'); 
             pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
-            const mesin = document.getElementById('v_mesin').innerText.replace(/[^a-zA-Z0-9]/g, '_');
-            const tgl = document.getElementById('v_tgl').innerText;
-            pdf.save(`MAINT_P_${mesin}_${tgl}.pdf`);
+            
+            // --- PEMBARUAN PENAMAAN FILE PDF ---
+            const mesinName = document.getElementById('v_mesin').innerText;
+            const selBulan = document.getElementById('sel-bulan');
+            const namaBulan = selBulan.options[selBulan.selectedIndex].text.toLowerCase(); // huruf kecil semua misal: februari
+            const tahun = document.getElementById('sel-tahun').value;
+            
+            // Mengganti karakter terlarang OS dengan underscore (_) agar tidak error (termasuk slash /)
+            const safeMesinName = mesinName.replace(/[\/\\:*?"<>|]/g, '_');
+            
+            // Contoh hasil: Arburg 320 T (06) _ starlord _ februari_2026.pdf
+            pdf.save(`${safeMesinName} _ ${namaBulan}_${tahun}.pdf`);
+            // -----------------------------------
+            
             document.body.removeChild(container);
         } catch (err) {
             console.error(err);
             alert("Gagal Export PDF: " + err.message);
         } finally {
-            if (originalImgClone && logoContainer) {
-                logoContainer.innerHTML = '';
-                logoContainer.appendChild(originalImgClone);
+            if (imgLogo && originalLogoSrc && originalLogoSrc !== imgLogo.src) {
+                imgLogo.src = originalLogoSrc;
             }
             overlay.style.display = 'none';
         }
