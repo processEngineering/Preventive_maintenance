@@ -1,637 +1,654 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <!-- VIEWPORT WAJIB AGAR RESPONSIF DI HP -->
-    <meta name="viewport" content="width=device-width, initial-scale=0.5, user-scalable=yes">
-    <title>AF.SP 05.08.Rev-00 - REPORT PRSLB</title>
-    
-    <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- PDF Generation Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    
-    <!-- Font & Icons untuk UI Bar & Sidebar -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-    <style>
-        :root {
-            /* TEMA WARNA AKG UI */
-            --primary: #c91919; 
-            --primary-light: #e53935;
-            --primary-dark: #a50e0e;
-            --border: #e5e7eb;
-            --text-main: #333333;
-            --sidebar-width: 280px; 
-        }
-
-        /* === GLOBAL RESET === */
-        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <!-- VIEWPORT WAJIB AGAR RESPONSIF DI HP -->
+        <meta name="viewport" content="width=device-width, initial-scale=0.5, user-scalable=yes">
+        <title>AF.SP 05.08.Rev-00 - REPORT PRSLB</title>
         
-        body {
-            margin: 0; padding: 0;
-            background: #525659;
-            font-family: Arial, sans-serif;
-            font-size: 7pt;
-            padding-bottom: 80px;
-            overflow: auto; 
-        }
-
-        /* --- TOP ACTION BAR (GARIS TIGA + KONTROL HORIZONTAL) --- */
-        .top-bar {
-            position: sticky;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: #1e293b; /* Warna gelap profesional */
-            padding: 10px 20px;
-            display: flex;
-            justify-content: flex-start; /* Posisi ke Kiri */
-            align-items: center;
-            gap: 25px; 
-            z-index: 1000;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            flex-wrap: wrap; 
-        }
-
-        /* Tombol Hamburger di Kiri */
-        .hamburger-btn {
-            width: 42px; height: 42px;
-            background: var(--primary); color: white;
-            border-radius: 8px; display: flex; justify-content: center; align-items: center;
-            font-size: 20px; cursor: pointer; transition: 0.2s;
-            flex-shrink: 0;
-        }
-        .hamburger-btn:hover { background: var(--primary-dark); transform: scale(1.05); }
-        .hamburger-btn:active { transform: scale(0.95); }
-
-        /* Panel Kontrol di sebelah Kanan Garis Tiga */
-        .controls-horizontal {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: flex-start;
-        }
-
-        .controls-horizontal span.ctrl-title {
-            font-size: 13px;
-            font-weight: bold;
-            color: white;
-            text-transform: uppercase;
-            margin-right: 5px;
-            font-family: 'Inter', sans-serif;
-        }
-
-        .input-ctrl, .btn-ctrl {
-            padding: 8px 12px;
-            border-radius: 6px;
-            border: none;
-            font-size: 12px;
-            font-weight: bold;
-            font-family: 'Inter', sans-serif;
-            outline: none;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .input-ctrl { background: #f8f9fa; color: #333; }
-        .input-ctrl:focus { border-color: var(--primary); outline: 2px solid var(--primary); }
-
-        .btn-show { background: #22c55e; color: white; }
-        .btn-show:hover { background: #16a34a; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-
-        .btn-print { background: var(--primary); color: white; border: none; }
-        .btn-print:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(201,25,25,0.3); }
-
-        #status-msg { font-size: 12px; font-weight: 700; margin-left: 10px; font-family: 'Inter', sans-serif; color: #fca5a5; }
-
-        /* --- OFF-CANVAS SIDEBAR --- */
-        .sidebar-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); z-index: 2000; opacity: 0; visibility: hidden; transition: 0.3s;
-            backdrop-filter: blur(4px);
-        }
-        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+        <!-- Supabase -->
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         
-        .side-nav {
-            position: fixed; top: 0; left: -400px; width: 320px; height: 100vh;
-            background: white; z-index: 2001; transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
-            display: flex; flex-direction: column; padding: 25px; box-shadow: 10px 0 30px rgba(0,0,0,0.3);
-            font-family: 'Inter', sans-serif; 
-        }
-        .side-nav.active { left: 0; }
-
-        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
-        .sidebar-title { font-weight: bold; color: var(--primary); font-size: 24px; }
-        .sidebar-close { font-size: 30px; color: #888; cursor: pointer; transition: color 0.2s; }
-        .sidebar-close:hover { color: var(--primary); }
-
-        .nav-item {
-            display: flex; align-items: center; text-decoration: none; color: #666; 
-            background: white; width: 100%; padding: 18px 20px; margin-bottom: 15px;
-            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: bold; font-size: 16px;
-        }
-        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
-        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 24px; color: var(--primary); }
-
-        /* LOADING OVERLAY */
-        #loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); z-index: 20000;
-            display: none; justify-content: center; align-items: center; flex-direction: column;
-            color: white; font-size: 18px; font-family: 'Inter', sans-serif;
-        }
-
-        /* ==================== WADAH KERTAS A4 LANDSCAPE ==================== */
-        .sheet-container {
-            width: 100%; overflow-x: auto; display: flex; justify-content: flex-start; 
-            padding: 30px 15px; box-sizing: border-box; -webkit-overflow-scrolling: touch; 
-            position: relative; z-index: 1;
-        }
-
-        @media (min-width: 1140px) {
-            .sheet-container { justify-content: center; }
-        }
-
-        .sheet {
-            background: white;
-            width: 1122px; /* Lebar A4 Landscape dalam px @ 96dpi */
-            min-width: 1122px;
-            min-height: 794px; 
-            margin: 0 auto;
-            padding: 5mm 8mm; 
-            position: relative;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            border-radius: 4px;
-            display: flex; flex-direction: column;
-        }
-
-        /* === UTILS TABEL KERTAS === */
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        td, th { border: 1px solid black; padding: 2px 4px; font-size: 7px; line-height: 1.1; vertical-align: middle; word-wrap: break-word; color: black; }
+        <!-- PDF Generation Libraries -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
         
-        .header-tbl { width: 100%; border: 2px solid black !important; margin-bottom: 5px; }
-        .logo-cell { width: 25%; text-align: center; border-right: 1px solid black; }
-        .logo-container { display: flex; justify-content: center; align-items: center; height: 50px; margin-bottom: 4px; }
-        .logo-img { height: 100%; width: auto; object-fit: contain; }
-        .logo-canvas { height: 50px !important; width: auto !important; margin: 0 auto; display: block; }
-        .company-name { font-size: 9pt; font-weight: bold; text-transform: uppercase; line-height: 1.2; text-align: center;}
+        <!-- Font & Icons untuk UI Bar & Sidebar -->
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-        .title-cell { width: 45%; text-align: center; border-right: 1px solid black; }
-        .doc-title { font-size: 16pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; }
+        <style>
+            :root {
+                /* TEMA WARNA AKG UI */
+                --primary: #c91919; 
+                --primary-light: #e53935;
+                --primary-dark: #a50e0e;
+                --border: #e5e7eb;
+                --text-main: #333333;
+                --sidebar-width: 280px; 
+            }
 
-        .info-cell { width: 30%; padding: 0 !important; vertical-align: top; }
-        .doc-info-tbl { width: 100%; border: none; margin: 0; }
-        .doc-info-tbl td { border: none; border-bottom: 1px solid black; padding: 3px 5px; font-size: 7pt; text-align: left; }
-        .doc-info-tbl tr:last-child td { border-bottom: none; }
-        .info-label { width: 40%; font-weight: bold; border-right: 1px solid black !important; }
+            /* === GLOBAL RESET === */
+            * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            
+            body {
+                margin: 0; padding: 0;
+                background: #525659;
+                font-family: Arial, sans-serif;
+                font-size: 7pt;
+                padding-bottom: 80px;
+                overflow: auto; 
+            }
 
-        .label-bg { background-color: #f0f0f0; font-weight: bold; width: 12%; text-align: left; padding-left: 8px; }
-        .value-center { text-align: left; padding-left: 6px; }
-        .th-bg { background-color: #d9d9d9; text-align: center; font-weight: bold; font-size: 7px; }
-        .cat-bg { background-color: #ececec; font-weight: bold; font-size: 7px; text-align: left; padding-left: 8px; }
+            /* --- TOP ACTION BAR (GARIS TIGA + KONTROL HORIZONTAL) --- */
+            .top-bar {
+                position: sticky;
+                top: 0;
+                left: 0;
+                right: 0;
+                background: #1e293b; /* Warna gelap profesional */
+                padding: 10px 20px;
+                display: flex;
+                justify-content: flex-start; /* Posisi ke Kiri */
+                align-items: center;
+                gap: 25px; 
+                z-index: 1000;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+                flex-wrap: wrap; 
+            }
 
-        .col-no { width: 3%; text-align: center;}
-        .col-item { width: 26%; }
-        .col-std { width: 21%; }
-        .col-p { width: 3%; text-align: center; }
-        .col-ket { width: 40%; }
+            /* Tombol Hamburger di Kiri */
+            .hamburger-btn {
+                width: 42px; height: 42px;
+                background: var(--primary); color: white;
+                border-radius: 8px; display: flex; justify-content: center; align-items: center;
+                font-size: 20px; cursor: pointer; transition: 0.2s;
+                flex-shrink: 0;
+            }
+            .hamburger-btn:hover { background: var(--primary-dark); transform: scale(1.05); }
+            .hamburger-btn:active { transform: scale(0.95); }
 
-        /* SIGNATURE */
-        .sig-container { height: 35px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin: 2px 0; background: white; }
-        .sig-img { max-height: 35px; max-width: 100px; object-fit: contain; background-color: #ffffff !important; } 
-        .name-under { font-weight: bold; text-decoration: underline; display: block; margin-top: 2px; font-size: 7px; text-align: center; }
+            /* Panel Kontrol di sebelah Kanan Garis Tiga */
+            .controls-horizontal {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+                justify-content: flex-start;
+            }
 
-        .note-section { font-size: 7px; margin-top: 3px; border: 1px solid #000; padding: 3px; }
-        .note-row { display: flex; justify-content: space-between; }
-        .note-col { width: 48%; }
+            .controls-horizontal span.ctrl-title {
+                font-size: 13px;
+                font-weight: bold;
+                color: white;
+                text-transform: uppercase;
+                margin-right: 5px;
+                font-family: 'Inter', sans-serif;
+            }
 
-        /* === PENGATURAN CETAK === */
-        @media print {
-            @page { size: A4 landscape; margin: 0; }
-            body { background: white; margin: 0; padding: 0; zoom: 95%; }
-            .no-print, .top-bar, .sidebar-overlay, .side-nav { display: none !important; }
-            .sheet-container { padding: 0; justify-content: center; overflow: hidden; }
-            .sheet { margin: 0; box-shadow: none; border: none; width: 100%; padding: 5mm; page-break-inside: avoid; }
-        }
-    </style>
-</head>
-<body>
+            .input-ctrl, .btn-ctrl {
+                padding: 8px 12px;
+                border-radius: 6px;
+                border: none;
+                font-size: 12px;
+                font-weight: bold;
+                font-family: 'Inter', sans-serif;
+                outline: none;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
 
-    <div id="loading-overlay">
-        <i class="fa-solid fa-spinner fa-spin fa-3x"></i>
-        <p style="margin-top:15px; font-weight:bold; font-family:'Inter', sans-serif;">Memproses PDF...</p>
-    </div>
+            .input-ctrl { background: #f8f9fa; color: #333; }
+            .input-ctrl:focus { border-color: var(--primary); outline: 2px solid var(--primary); }
 
-    <!-- TOP ACTION BAR -->
-    <div class="top-bar no-print">
-        <div class="hamburger-btn" onclick="toggleSidebar()">
-            <i class="fa-solid fa-bars"></i>
+            .btn-show { background: #22c55e; color: white; }
+            .btn-show:hover { background: #16a34a; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+            .btn-print { background: var(--primary); color: white; border: none; }
+            .btn-print:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(201,25,25,0.3); }
+
+            #status-msg { font-size: 12px; font-weight: 700; margin-left: 10px; font-family: 'Inter', sans-serif; color: #fca5a5; }
+
+            /* --- OFF-CANVAS SIDEBAR --- */
+            .sidebar-overlay {
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.7); z-index: 2000; opacity: 0; visibility: hidden; transition: 0.3s;
+                backdrop-filter: blur(4px);
+            }
+            .sidebar-overlay.active { opacity: 1; visibility: visible; }
+            
+            .side-nav {
+                position: fixed; top: 0; left: -400px; width: 320px; height: 100vh;
+                background: white; z-index: 2001; transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+                display: flex; flex-direction: column; padding: 25px; box-shadow: 10px 0 30px rgba(0,0,0,0.3);
+                font-family: 'Inter', sans-serif; 
+            }
+            .side-nav.active { left: 0; }
+
+            .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+            .sidebar-title { font-weight: bold; color: var(--primary); font-size: 24px; }
+            .sidebar-close { font-size: 30px; color: #888; cursor: pointer; transition: color 0.2s; }
+            .sidebar-close:hover { color: var(--primary); }
+
+            .nav-item {
+                display: flex; align-items: center; text-decoration: none; color: #666; 
+                background: white; width: 100%; padding: 18px 20px; margin-bottom: 15px;
+                border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: bold; font-size: 16px;
+            }
+            .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+            .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 24px; color: var(--primary); }
+
+            /* LOADING OVERLAY */
+            #loading-overlay {
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.85); z-index: 20000;
+                display: none; justify-content: center; align-items: center; flex-direction: column;
+                color: white; font-size: 18px; font-family: 'Inter', sans-serif;
+            }
+
+            /* ==================== WADAH KERTAS A4 LANDSCAPE ==================== */
+            .sheet-container {
+                width: 100%; overflow-x: auto; display: flex; justify-content: flex-start; 
+                padding: 30px 15px; box-sizing: border-box; -webkit-overflow-scrolling: touch; 
+                position: relative; z-index: 1;
+            }
+
+            @media (min-width: 1140px) {
+                .sheet-container { justify-content: center; }
+            }
+
+            .sheet {
+                background: white;
+                width: 1122px; /* Lebar A4 Landscape dalam px @ 96dpi */
+                min-width: 1122px;
+                min-height: 794px; 
+                margin: 0 auto;
+                padding: 5mm 8mm; 
+                position: relative;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                border-radius: 4px;
+                display: flex; flex-direction: column;
+            }
+
+            /* === UTILS TABEL KERTAS === */
+            table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+            td, th { border: 1px solid black; padding: 2px 4px; font-size: 7px; line-height: 1.1; vertical-align: middle; word-wrap: break-word; color: black; }
+            
+            .header-tbl { width: 100%; border: 2px solid black !important; margin-bottom: 5px; }
+            .logo-cell { width: 25%; text-align: center; border-right: 1px solid black; }
+            .logo-container { display: flex; justify-content: center; align-items: center; height: 50px; margin-bottom: 4px; }
+            .logo-img { height: 100%; width: auto; object-fit: contain; }
+            .logo-canvas { height: 50px !important; width: auto !important; margin: 0 auto; display: block; }
+            .company-name { font-size: 9pt; font-weight: bold; text-transform: uppercase; line-height: 1.2; text-align: center;}
+
+            .title-cell { width: 45%; text-align: center; border-right: 1px solid black; }
+            .doc-title { font-size: 16pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; }
+
+            .info-cell { width: 30%; padding: 0 !important; vertical-align: top; }
+            .doc-info-tbl { width: 100%; border: none; margin: 0; }
+            .doc-info-tbl td { border: none; border-bottom: 1px solid black; padding: 3px 5px; font-size: 7pt; text-align: left; }
+            .doc-info-tbl tr:last-child td { border-bottom: none; }
+            .info-label { width: 40%; font-weight: bold; border-right: 1px solid black !important; }
+
+            .label-bg { background-color: #f0f0f0; font-weight: bold; width: 12%; text-align: left; padding-left: 8px; }
+            .value-center { text-align: left; padding-left: 6px; }
+            .th-bg { background-color: #d9d9d9; text-align: center; font-weight: bold; font-size: 7px; }
+            .cat-bg { background-color: #ececec; font-weight: bold; font-size: 7px; text-align: left; padding-left: 8px; }
+
+            .col-no { width: 3%; text-align: center;}
+            .col-item { width: 26%; }
+            .col-std { width: 21%; }
+            .col-p { width: 3%; text-align: center; }
+            .col-ket { width: 40%; }
+
+            /* SIGNATURE */
+            .sig-container { height: 35px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin: 2px 0; background: white; }
+            .sig-img { max-height: 35px; max-width: 100px; object-fit: contain; background-color: #ffffff !important; } 
+            .name-under { font-weight: bold; text-decoration: underline; display: block; margin-top: 2px; font-size: 7px; text-align: center; }
+
+            .note-section { font-size: 7px; margin-top: 3px; border: 1px solid #000; padding: 3px; }
+            .note-row { display: flex; justify-content: space-between; }
+            .note-col { width: 48%; }
+
+            /* === PENGATURAN CETAK === */
+            @media print {
+                @page { size: A4 landscape; margin: 0; }
+                body { background: white; margin: 0; padding: 0; zoom: 95%; }
+                .no-print, .top-bar, .sidebar-overlay, .side-nav { display: none !important; }
+                .sheet-container { padding: 0; justify-content: center; overflow: hidden; }
+                .sheet { margin: 0; box-shadow: none; border: none; width: 100%; padding: 5mm; page-break-inside: avoid; }
+            }
+        </style>
+    </head>
+    <body>
+
+        <div id="loading-overlay">
+            <i class="fa-solid fa-spinner fa-spin fa-3x"></i>
+            <p style="margin-top:15px; font-weight:bold; font-family:'Inter', sans-serif;">Memproses PDF...</p>
         </div>
 
-        <div class="controls-horizontal">
-            <span class="ctrl-title"><i class="fa-solid fa-print"></i> KONTROL:</span>
-            <select id="f-mesin" class="input-ctrl"><option value="">-- Memuat Mesin... --</option></select>
-            <select id="f-bulan" class="input-ctrl">
-                <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
-                <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
-                <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
-                <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
-            </select>
-            <select id="f-tahun" class="input-ctrl">
-                <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
-            </select>
-            <button class="btn-ctrl btn-show" onclick="searchReport()"><i class="fa-solid fa-search"></i> TAMPILKAN</button>
-            <button class="btn-ctrl btn-print" onclick="downloadPDF()"><i class="fa-solid fa-file-pdf"></i> CETAK PDF</button>
-            <span id="status-msg"></span>
-        </div>
-    </div>
-
-    <!-- SIDEBAR -->
-    <div class="sidebar-overlay no-print" id="sidebarOverlay" onclick="toggleSidebar()"></div>
-    <nav class="side-nav no-print" id="sidebar">
-        <div class="sidebar-header">
-            <span class="sidebar-title">Dashboard</span>
-            <div class="sidebar-close" onclick="toggleSidebar()">
-                <i class="fa-solid fa-xmark"></i>
-            </div>
-        </div>
-        <a href="index.html" id="nav-home" class="nav-item">
-            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
-            <span>Home</span>
-        </a>
-        <a href="menu_utama.html" id="nav-menu" class="nav-item">
-            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
-            <span>Menu Utama</span>
-        </a>
-        <a href="download_data.html" class="nav-item active">
-            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
-            <span>Unduh Data</span>
-        </a>
-        <a href="informasi_akun.html" class="nav-item">
-            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
-            <span>Akun</span>
-        </a>
-    </nav>
-
-    <!-- KERTAS LAPORAN -->
-    <div class="sheet-container">
-        <div id="empty-state" style="text-align:center; color:#ccc; padding-top:100px;">
-            <i class="fa-solid fa-file-invoice text-4xl mb-4" style="color:#ff0000; opacity:0.5;"></i>
-            <h3 style="color:#ff0000; font-family:'Inter'; font-weight:800; text-transform:uppercase;">Sistem Laporan Preventif Digital</h3>
-            <p style="font-family:'Inter'; font-weight:500;">Pilih Mesin dan Periode untuk melihat data.</p>
-        </div>
-
-        <div class="sheet" id="report-view" style="display:none;">
-            <!-- HEADER -->
-            <table class="header-tbl">
-                <tr>
-                    <td class="logo-cell">
-                        <div class="logo-container" id="logo-container">
-                            <img id="logo-header" src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img" alt="Logo">
-                        </div>
-                        <div class="company-name">PT. AMARILYS KARISMA GEMILANG</div>
-                    </td>
-                    <td class="title-cell">
-                        <div class="doc-title">PREVENTIF ROBOT & STAND LABEL BULANAN</div>
-                    </td>
-                    <td class="info-cell">
-                        <table class="doc-info-tbl">
-                            <tr><td class="info-label">No. Dokumen</td><td class="info-val">: AF.SP 05.08.Rev-00</td></tr>
-                            <tr><td class="info-label">Tanggal Terbit</td><td class="info-val">: 02 Agustus 2024</td></tr>
-                            <tr><td class="info-label">Halaman</td><td class="info-val">: 1 dari 1</td></tr>
-                            <tr><td class="info-label">Tanggal Revisi</td><td class="info-val">: -</td></tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
-
-            <div style="height:4px;"></div>
-
-            <table>
-                <tr>
-                    <td class="label-bg">MERK MESIN</td>
-                    <td id="m-nama" class="value-center" style="font-weight:bold; width:38%;"></td>
-                    <td class="label-bg">TARGET SELESAI</td>
-                    <td id="m-target" class="value-center" style="width:38%;"></td>
-                </tr>
-                <tr>
-                    <td class="label-bg">TONAGE</td>
-                    <td id="m-tonage" class="value-center"></td>
-                    <td class="label-bg">START JAM</td>
-                    <td id="m-start" class="value-center"></td>
-                </tr>
-                <tr>
-                    <td class="label-bg">TANGGAL</td>
-                    <td id="m-tgl" class="value-center"></td>
-                    <td class="label-bg">FINISH JAM</td>
-                    <td id="m-finish" class="value-center"></td>
-                </tr>
-                <tr>
-                    <td class="label-bg">TAHUN</td>
-                    <td id="m-tahun" class="value-center"></td>
-                    <td class="label-bg">RUNNING HOURS</td>
-                    <td id="m-hours" class="value-center"></td>
-                </tr>
-            </table>
-
-            <div style="height:4px;"></div>
-
-            <div style="flex-grow:1;">
-                <table>
-                    <thead>
-                        <tr class="th-bg">
-                            <th class="col-no">NO</th>
-                            <th class="col-item">ITEM</th>
-                            <th class="col-std">STANDARD</th>
-                            <th class="col-p">P1</th>
-                            <th class="col-p">P2</th>
-                            <th class="col-ket">KET/PEMAKAIAN SPAREPART<br>(JIKA TERDAPAT PENGGANTIAN)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="content-body"></tbody>
-                </table>
+        <!-- TOP ACTION BAR -->
+        <div class="top-bar no-print">
+            <div class="hamburger-btn" onclick="toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
             </div>
 
-            <!-- NOTE SECTION -->
-            <div class="note-section">
-                <div class="note-row">
-                    <div class="note-col">
-                        <b>Note :</b><br>
-                        P1 = Pelaksana pekerjaan<br>
-                        P2 = Pelaksana verfikasi pekerjaan (Kasie/kabag)
-                    </div>
-                    <div class="note-col">
-                        <br>
-                        OK = Item sesuai standar<br>
-                        NG = Item bermasalah / Rusak
-                    </div>
+            <div class="controls-horizontal">
+                <span class="ctrl-title"><i class="fa-solid fa-print"></i> KONTROL:</span>
+                <select id="f-mesin" class="input-ctrl"><option value="">-- Memuat Mesin... --</option></select>
+                <select id="f-bulan" class="input-ctrl">
+                    <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+                    <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+                    <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+                    <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+                </select>
+                <select id="f-tahun" class="input-ctrl">
+                    <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
+                </select>
+                <button class="btn-ctrl btn-show" onclick="searchReport()"><i class="fa-solid fa-search"></i> TAMPILKAN</button>
+                <button class="btn-ctrl btn-print" onclick="downloadPDF()"><i class="fa-solid fa-file-pdf"></i> CETAK PDF</button>
+                <span id="status-msg"></span>
+            </div>
+        </div>
+
+        <!-- SIDEBAR -->
+        <div class="sidebar-overlay no-print" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+        <nav class="side-nav no-print" id="sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">Dashboard</span>
+                <div class="sidebar-close" onclick="toggleSidebar()">
+                    <i class="fa-solid fa-xmark"></i>
                 </div>
             </div>
+            <a href="index.html" id="nav-home" class="nav-item">
+                <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+                <span>Home</span>
+            </a>
+            <a href="menu_utama.html" id="nav-menu" class="nav-item">
+                <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+                <span>Menu Utama</span>
+            </a>
+            <a href="download_data.html" class="nav-item active">
+                <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+                <span>Unduh Data</span>
+            </a>
+            <a href="informasi_akun.html" class="nav-item">
+                <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+                <span>Akun</span>
+            </a>
+        </nav>
 
-            <table style="margin-top:4px;">
-                <tr>
-                    <td style="width:34%; text-align:center; padding:4px;">
-                        <b style="font-size:6px;">PENANGGUNG JAWAB<br>MEKANIK NON SHIFT</b><br>
-                        <div class="sig-container"><img id="s1" class="sig-img"></div>
-                        <span id="n1" class="name-under"></span>
-                    </td>
-                    <td style="width:33%; text-align:center; padding:4px;">
-                        <b style="font-size:6px;">DIPERIKSA<br>MECHANIC SUPERVISOR</b><br>
-                        <div class="sig-container"><img id="s2" class="sig-img"></div>
-                        <span id="n2" class="name-under"></span>
-                    </td>
-                    <td style="width:33%; text-align:center; padding:4px;">
-                        <b style="font-size:6px;">DIKETAHUI<br>MECHANIC SUPERINTENDENT</b><br>
-                        <div class="sig-container"><img id="s3" class="sig-img"></div>
-                        <span id="n3" class="name-under"></span>
-                    </td>
-                </tr>
-            </table>
+        <!-- KERTAS LAPORAN -->
+        <div class="sheet-container">
+            <div id="empty-state" style="text-align:center; color:#ccc; padding-top:100px;">
+                <i class="fa-solid fa-file-invoice text-4xl mb-4" style="color:#ff0000; opacity:0.5;"></i>
+                <h3 style="color:#ff0000; font-family:'Inter'; font-weight:800; text-transform:uppercase;">Sistem Laporan Preventif Digital</h3>
+                <p style="font-family:'Inter'; font-weight:500;">Pilih Mesin dan Periode untuk melihat data.</p>
+            </div>
+
+            <div class="sheet" id="report-view" style="display:none;">
+                <!-- HEADER -->
+                <table class="header-tbl">
+                    <tr>
+                        <td class="logo-cell">
+                            <div class="logo-container" id="logo-container">
+                                <img id="logo-header" src="https://amarilyskg.co.id/bootstrap/img/logo.png" class="logo-img" alt="Logo">
+                            </div>
+                            <div class="company-name">PT. AMARILYS KARISMA GEMILANG</div>
+                        </td>
+                        <td class="title-cell">
+                            <div class="doc-title">PREVENTIF ROBOT & STAND LABEL BULANAN</div>
+                        </td>
+                        <td class="info-cell">
+                            <table class="doc-info-tbl">
+                                <tr><td class="info-label">No. Dokumen</td><td class="info-val">: AF.SP 05.08.Rev-00</td></tr>
+                                <tr><td class="info-label">Tanggal Terbit</td><td class="info-val">: 02 Agustus 2024</td></tr>
+                                <tr><td class="info-label">Halaman</td><td class="info-val">: 1 dari 1</td></tr>
+                                <tr><td class="info-label">Tanggal Revisi</td><td class="info-val">: -</td></tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+
+                <div style="height:4px;"></div>
+
+                <table>
+                    <tr>
+                        <td class="label-bg">MERK MESIN</td>
+                        <td id="m-nama" class="value-center" style="font-weight:bold; width:38%;"></td>
+                        <td class="label-bg">TARGET SELESAI</td>
+                        <td id="m-target" class="value-center" style="width:38%;"></td>
+                    </tr>
+                    <tr>
+                        <td class="label-bg">TONAGE</td>
+                        <td id="m-tonage" class="value-center"></td>
+                        <td class="label-bg">START JAM</td>
+                        <td id="m-start" class="value-center"></td>
+                    </tr>
+                    <tr>
+                        <td class="label-bg">TANGGAL</td>
+                        <td id="m-tgl" class="value-center"></td>
+                        <td class="label-bg">FINISH JAM</td>
+                        <td id="m-finish" class="value-center"></td>
+                    </tr>
+                    <tr>
+                        <td class="label-bg">TAHUN</td>
+                        <td id="m-tahun" class="value-center"></td>
+                        <td class="label-bg">RUNNING HOURS</td>
+                        <td id="m-hours" class="value-center"></td>
+                    </tr>
+                </table>
+
+                <div style="height:4px;"></div>
+
+                <div style="flex-grow:1;">
+                    <table>
+                        <thead>
+                            <tr class="th-bg">
+                                <th class="col-no">NO</th>
+                                <th class="col-item">ITEM</th>
+                                <th class="col-std">STANDARD</th>
+                                <th class="col-p">P1</th>
+                                <th class="col-p">P2</th>
+                                <th class="col-ket">KET/PEMAKAIAN SPAREPART<br>(JIKA TERDAPAT PENGGANTIAN)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="content-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- NOTE SECTION -->
+                <div class="note-section">
+                    <div class="note-row">
+                        <div class="note-col">
+                            <b>Note :</b><br>
+                            P1 = Pelaksana pekerjaan<br>
+                            P2 = Pelaksana verfikasi pekerjaan (Kasie/kabag)
+                        </div>
+                        <div class="note-col">
+                            <br>
+                            OK = Item sesuai standar<br>
+                            NG = Item bermasalah / Rusak
+                        </div>
+                    </div>
+                </div>
+
+                <table style="margin-top:4px;">
+                    <tr>
+                        <td style="width:34%; text-align:center; padding:4px;">
+                            <b style="font-size:6px;">PENANGGUNG JAWAB<br>MEKANIK NON SHIFT</b><br>
+                            <div class="sig-container"><img id="s1" class="sig-img"></div>
+                            <span id="n1" class="name-under"></span>
+                        </td>
+                        <td style="width:33%; text-align:center; padding:4px;">
+                            <b style="font-size:6px;">DIPERIKSA<br>MECHANIC SUPERVISOR</b><br>
+                            <div class="sig-container"><img id="s2" class="sig-img"></div>
+                            <span id="n2" class="name-under"></span>
+                        </td>
+                        <td style="width:33%; text-align:center; padding:4px;">
+                            <b style="font-size:6px;">DIKETAHUI<br>MECHANIC SUPERINTENDENT</b><br>
+                            <div class="sig-container"><img id="s3" class="sig-img"></div>
+                            <span id="n3" class="name-under"></span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
         </div>
-    </div>
 
-    <script>
-        // --- UI NAVIGATION LOGIC ---
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
-            document.getElementById('sidebarOverlay').classList.toggle('active');
-        }
-
-        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
-        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
-        const _sb = supabase.createClient(SB_URL, SB_KEY);
-
-        const LOGO_URL_ASLI = "https://amarilyskg.co.id/bootstrap/img/logo.png";
-        let GLOBAL_BASE64_LOGO = "";
-
-        // --- 0. HELPER FUNCTION ---
-        function showStatus(msg, isError=false) {
-            const el = document.getElementById('status-msg');
-            if(el) {
-                el.innerText = msg;
-                el.style.color = isError ? '#ef4444' : '#fbbf24';
-                setTimeout(() => { el.innerText = ''; }, 5000);
+        <script>
+            // --- UI NAVIGATION LOGIC ---
+            function toggleSidebar() {
+                document.getElementById('sidebar').classList.toggle('active');
+                document.getElementById('sidebarOverlay').classList.toggle('active');
             }
-        }
 
-        // --- 1. INITIAL SETUP ---
-        window.onload = async () => {
-            setupDynamicNavigation();
-            
-            const now = new Date();
-            document.getElementById('f-bulan').value = now.getMonth() + 1;
-            document.getElementById('f-tahun').value = now.getFullYear();
+            const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+            const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+            const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-            await preloadLogo(); 
-            
-            // Load Mesin
-            const { data } = await _sb.from('prslb_mesin').select('nama_mesin').order('nama_mesin');
-            const select = document.getElementById('f-mesin');
-            select.innerHTML = '<option value="">-- Pilih Mesin --</option>';
-            data?.forEach(m => {
-                select.innerHTML += `<option value="${m.nama_mesin}">${m.nama_mesin}</option>`;
-            });
-        };
+            const LOGO_URL_ASLI = "https://amarilyskg.co.id/bootstrap/img/logo.png";
+            let GLOBAL_BASE64_LOGO = "";
 
-        // Routing Navigasi Dinamis
-        async function setupDynamicNavigation() {
-            try {
-                const { data: { session } } = await _sb.auth.getSession();
-                if (!session) return;
-                const { data: profile } = await _sb.from('profiles').select('jabatan').eq('id', session.user.id).single();
-
-                if (profile) {
-                    const jabatan = profile.jabatan.toUpperCase();
-                    const navHome = document.getElementById('nav-home');
-                    const navMenu = document.getElementById('nav-menu');
-                    let homeLink = 'index.html'; let menuLink = 'menu_utama.html';
-                    if (jabatan.includes('OPERATOR')) { homeLink = 'OPERATOR_HOME.html'; menuLink = 'MENU_UTAMA_OPERATOR.html'; }
-                    else if (jabatan.includes('SUPERVISOR')) { homeLink = 'SUPERVISOR_HOME.html'; menuLink = 'MENU_UTAMA_SUPERVISOR.html'; }
-                    else if (jabatan.includes('SUPERINTENDENT')) { homeLink = 'SUPERINTENDENT_HOME.html'; menuLink = 'MENU_UTAMA_SUPERINTENDENT.html'; }
-                    else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) { homeLink = 'MANAGER_HOME.html'; menuLink = 'MENU_UTAMA_MANAGER.html'; }
-                    else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) { homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html'; menuLink = 'MENU_UTAMA_JM_PRODUKSI.html'; }
-                    else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) { homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html'; menuLink = 'MENU_UTAMA_JM_PPIC.html'; }
-                    if (navHome) navHome.href = homeLink;
-                    if (navMenu) navMenu.href = menuLink;
+            // --- 0. HELPER FUNCTION ---
+            function showStatus(msg, isError=false) {
+                const el = document.getElementById('status-msg');
+                if(el) {
+                    el.innerText = msg;
+                    el.style.color = isError ? '#ef4444' : '#fbbf24';
+                    setTimeout(() => { el.innerText = ''; }, 5000);
                 }
-            } catch (err) { console.error(err); }
-        }
-
-        // --- 2. LOGO HELPERS (PROXY) ---
-        async function fetchImageAsBase64(url) {
-            const proxies = [
-                'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url),
-                'https://corsproxy.io/?' + encodeURIComponent(url),
-                'https://api.allorigins.win/raw?url=' + encodeURIComponent(url)
-            ];
-            for (let proxyUrl of proxies) {
-                try {
-                    const response = await fetch(proxyUrl);
-                    if (response.ok) {
-                        const blob = await response.blob();
-                        return new Promise((resolve) => {
-                            const reader = new FileReader();
-                            reader.onloadend = () => resolve(reader.result);
-                            reader.readAsDataURL(blob);
-                        });
-                    }
-                } catch (e) {}
             }
-            return null;
-        }
 
-        async function preloadLogo() {
-            const base64 = await fetchImageAsBase64(LOGO_URL_ASLI);
-            if(base64) GLOBAL_BASE64_LOGO = base64;
-        }
+            // --- 1. INITIAL SETUP ---
+            window.onload = async () => {
+                setupDynamicNavigation();
+                
+                const now = new Date();
+                document.getElementById('f-bulan').value = now.getMonth() + 1;
+                document.getElementById('f-tahun').value = now.getFullYear();
 
-        async function replaceImgWithCanvas(imgElement, base64Data) {
-            return new Promise((resolve) => {
-                const image = new Image();
-                image.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = image.naturalWidth || image.width;
-                    canvas.height = image.naturalHeight || image.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(image, 0, 0);
-                    canvas.className = imgElement.className; canvas.id = imgElement.id;
-                    canvas.classList.add('logo-canvas'); 
-                    imgElement.parentNode.replaceChild(canvas, imgElement);
-                    resolve(canvas);
-                };
-                image.src = base64Data;
-            });
-        }
-
-        // --- 3. SEARCH DATA ---
-        async function searchReport() {
-            const m_name = document.getElementById('f-mesin').value;
-            const bln = document.getElementById('f-bulan').value; 
-            const thn = document.getElementById('f-tahun').value;
-
-            if (!m_name) return alert("Pilih mesin!");
-            showStatus("Mencari data...", false);
-
-            const lastDay = new Date(thn, bln, 0).getDate(); 
-            const start = `${thn}-${bln.padStart(2,'0')}-01T00:00:00`;
-            const end = `${thn}-${bln.padStart(2,'0')}-${lastDay}T23:59:59`;
-
-            const { data: logs, error } = await _sb
-                .from('prslb_log')
-                .select('*, prslb_mesin(*), prslb_result(*, prslb_items(*))')
-                .eq('mesin_id', m_name)
-                .gte('created_at', start)
-                .lte('created_at', end)
-                .order('created_at', { ascending: false })
-                .limit(1);
-
-            if (error) { showStatus("Error Database: " + error.message, true); return; }
-            if (!logs || logs.length === 0) { showStatus("Data tidak ditemukan.", true); return; }
-            
-            renderReport(logs[0]);
-        }
-
-        function renderReport(log) {
-            document.getElementById('status-msg').innerText = "Data ditemukan.";
-            const imgLogo = document.getElementById('logo-header');
-            if(GLOBAL_BASE64_LOGO) imgLogo.src = GLOBAL_BASE64_LOGO;
-            
-            const d = new Date(log.created_at);
-            document.getElementById('m-nama').innerText = log.mesin_id;
-            document.getElementById('m-tonage').innerText = log.prslb_mesin?.tonage || "-";
-            document.getElementById('m-tgl').innerText = d.toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
-            document.getElementById('m-tahun').innerText = d.getFullYear();
-            document.getElementById('m-target').innerText = log.target_selesai || ":";
-            document.getElementById('m-start').innerText = log.start_jam || ":";
-            document.getElementById('m-finish').innerText = log.finish_jam || ":";
-            document.getElementById('m-hours').innerText = log.running_hours || ":";
-
-            const body = document.getElementById('content-body');
-            body.innerHTML = "";
-            let currentCat = "", no = 1;
-
-            const results = [...log.prslb_result].sort((a,b) => a.prslb_items.id - b.prslb_items.id);
-            results.forEach(r => {
-                if (r.prslb_items.kategori !== currentCat) {
-                    currentCat = r.prslb_items.kategori;
-                    body.innerHTML += `<tr class="cat-bg"><td colspan="6">${currentCat}</td></tr>`;
-                }
-                const finalNote = r.keterangan_koordinator ? r.keterangan_koordinator : (r.keterangan || "");
-                let statusP2 = r.status_koordinator ? r.status_koordinator : (log.status_verifikasi ? 'OK' : '');
-                body.innerHTML += `<tr><td style="text-align:center;">${no++}</td><td>${r.prslb_items.item_name}</td><td>${r.prslb_items.standard || ""}</td><td style="text-align:center;">${r.status === 'OK' ? 'OK' : 'NG'}</td><td style="text-align:center;">${statusP2}</td><td>${finalNote}</td></tr>`;
-            });
-
-            const setSig = (id, url, name) => {
-                const img = document.getElementById(id);
-                img.src = url || ""; img.style.display = url ? "block" : "none";
-                document.getElementById('n' + id.charAt(1)).innerText = name || "(....................)";
+                await preloadLogo(); 
+                
+                // Load Mesin
+                const { data } = await _sb.from('prslb_mesin').select('nama_mesin').order('nama_mesin');
+                const select = document.getElementById('f-mesin');
+                select.innerHTML = '<option value="">-- Pilih Mesin --</option>';
+                data?.forEach(m => {
+                    select.innerHTML += `<option value="${m.nama_mesin}">${m.nama_mesin}</option>`;
+                });
             };
-            setSig('s1', log.signature_pelaksana, log.pelaksana_nama);
-            setSig('s2', log.signature_koordinator, log.koordinator_nama);
-            setSig('s3', log.signature_superintendent, log.superintendent_nama);
 
-            document.getElementById('empty-state').style.display = 'none';
-            document.getElementById('report-view').style.display = 'flex';
-        }
+            // Routing Navigasi Dinamis
+            async function setupDynamicNavigation() {
+                try {
+                    const { data: { session } } = await _sb.auth.getSession();
+                    if (!session) return;
+                    const { data: profile } = await _sb.from('profiles').select('jabatan').eq('id', session.user.id).single();
 
-        // --- 4. EXPORT PDF: LANDSCAPE + CENTER + LOGO SWAP ---
-        async function downloadPDF() {
-            const btn = document.querySelector('.btn-print');
-            const originalText = btn.innerHTML;
-            const element = document.getElementById('report-view');
-            const imgLogo = document.getElementById('logo-header');
-            
-            btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> PROSES...";
-            let originalImgClone = null;
+                    if (profile) {
+                        const jabatan = profile.jabatan.toUpperCase();
+                        const navHome = document.getElementById('nav-home');
+                        const navMenu = document.getElementById('nav-menu');
+                        let homeLink = 'index.html'; let menuLink = 'menu_utama.html';
+                        if (jabatan.includes('OPERATOR')) { homeLink = 'OPERATOR_HOME.html'; menuLink = 'MENU_UTAMA_OPERATOR.html'; }
+                        else if (jabatan.includes('SUPERVISOR')) { homeLink = 'SUPERVISOR_HOME.html'; menuLink = 'MENU_UTAMA_SUPERVISOR.html'; }
+                        else if (jabatan.includes('SUPERINTENDENT')) { homeLink = 'SUPERINTENDENT_HOME.html'; menuLink = 'MENU_UTAMA_SUPERINTENDENT.html'; }
+                        else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) { homeLink = 'MANAGER_HOME.html'; menuLink = 'MENU_UTAMA_MANAGER.html'; }
+                        else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) { homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html'; menuLink = 'MENU_UTAMA_JM_PRODUKSI.html'; }
+                        else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) { homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html'; menuLink = 'MENU_UTAMA_JM_PPIC.html'; }
+                        if (navHome) navHome.href = homeLink;
+                        if (navMenu) navMenu.href = menuLink;
+                    }
+                } catch (err) { console.error(err); }
+            }
 
-            try {
-                if (imgLogo && imgLogo.tagName === 'IMG') {
-                    originalImgClone = imgLogo.cloneNode(true);
-                    let dataToUse = GLOBAL_BASE64_LOGO || await fetchImageAsBase64(LOGO_URL_ASLI);
-                    if (dataToUse) await replaceImgWithCanvas(imgLogo, dataToUse);
+            // --- 2. LOGO HELPERS (PROXY) ---
+            async function fetchImageAsBase64(url) {
+                const proxies = [
+                    'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url),
+                    'https://corsproxy.io/?' + encodeURIComponent(url),
+                    'https://api.allorigins.win/raw?url=' + encodeURIComponent(url)
+                ];
+                for (let proxyUrl of proxies) {
+                    try {
+                        const response = await fetch(proxyUrl);
+                        if (response.ok) {
+                            const blob = await response.blob();
+                            return new Promise((resolve) => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => resolve(reader.result);
+                                reader.readAsDataURL(blob);
+                            });
+                        }
+                    } catch (e) {}
+                }
+                return null;
+            }
+
+            async function preloadLogo() {
+                const base64 = await fetchImageAsBase64(LOGO_URL_ASLI);
+                if(base64) GLOBAL_BASE64_LOGO = base64;
+            }
+
+            async function replaceImgWithCanvas(imgElement, base64Data) {
+                return new Promise((resolve) => {
+                    const image = new Image();
+                    image.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = image.naturalWidth || image.width;
+                        canvas.height = image.naturalHeight || image.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(image, 0, 0);
+                        canvas.className = imgElement.className; canvas.id = imgElement.id;
+                        canvas.classList.add('logo-canvas'); 
+                        imgElement.parentNode.replaceChild(canvas, imgElement);
+                        resolve(canvas);
+                    };
+                    image.src = base64Data;
+                });
+            }
+
+            // --- 3. SEARCH DATA ---
+            async function searchReport() {
+                const m_name = document.getElementById('f-mesin').value;
+                const bln = document.getElementById('f-bulan').value; 
+                const thn = document.getElementById('f-tahun').value;
+
+                if (!m_name) return alert("Pilih mesin!");
+                showStatus("Mencari data...", false);
+
+                const lastDay = new Date(thn, bln, 0).getDate(); 
+                const start = `${thn}-${bln.padStart(2,'0')}-01T00:00:00`;
+                const end = `${thn}-${bln.padStart(2,'0')}-${lastDay}T23:59:59`;
+
+                const { data: logs, error } = await _sb
+                    .from('prslb_log')
+                    .select('*, prslb_mesin(*), prslb_result(*, prslb_items(*))')
+                    .eq('mesin_id', m_name)
+                    .gte('created_at', start)
+                    .lte('created_at', end)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                if (error) { showStatus("Error Database: " + error.message, true); return; }
+                
+                // REVISI LOGIKA TAMPILKAN ATAU SEMBUNYIKAN REPORT JIKA DATA TIDAK ADA
+                if (!logs || logs.length === 0) { 
+                    showStatus("Data tidak ditemukan.", true); 
+                    document.getElementById('report-view').style.display = 'none'; // Sembunyikan kertas pdf
+                    document.getElementById('empty-state').style.display = 'block'; // Tampilkan kembali peringatan kosong
+                    return; 
                 }
                 
-                await new Promise(r => setTimeout(r, 400));
-                
-                // FIXED A4 LANDSCAPE SIZING FOR HTML2CANVAS
-                const A4_WIDTH_PX = 1122; 
-                const A4_HEIGHT_PX = 794;
-                
-                const originalShadow = element.style.boxShadow;
-                element.style.boxShadow = 'none';
-                element.style.margin = '0';
+                renderReport(logs[0]);
+            }
 
-                const canvas = await html2canvas(element, {
-                    scale: 2, useCORS: true, backgroundColor: "#ffffff",
-                    width: A4_WIDTH_PX, windowWidth: A4_WIDTH_PX, scrollY: 0, logging: false
+            function renderReport(log) {
+                document.getElementById('status-msg').innerText = "Data ditemukan.";
+                const imgLogo = document.getElementById('logo-header');
+                if(GLOBAL_BASE64_LOGO) imgLogo.src = GLOBAL_BASE64_LOGO;
+                
+                const d = new Date(log.created_at);
+                document.getElementById('m-nama').innerText = log.mesin_id;
+                document.getElementById('m-tonage').innerText = log.prslb_mesin?.tonage || "-";
+                document.getElementById('m-tgl').innerText = d.toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
+                document.getElementById('m-tahun').innerText = d.getFullYear();
+                document.getElementById('m-target').innerText = log.target_selesai || ":";
+                document.getElementById('m-start').innerText = log.start_jam || ":";
+                document.getElementById('m-finish').innerText = log.finish_jam || ":";
+                document.getElementById('m-hours').innerText = log.running_hours || ":";
+
+                const body = document.getElementById('content-body');
+                body.innerHTML = "";
+                let currentCat = "", no = 1;
+
+                const results = [...log.prslb_result].sort((a,b) => a.prslb_items.id - b.prslb_items.id);
+                results.forEach(r => {
+                    if (r.prslb_items.kategori !== currentCat) {
+                        currentCat = r.prslb_items.kategori;
+                        body.innerHTML += `<tr class="cat-bg"><td colspan="6">${currentCat}</td></tr>`;
+                    }
+                    const finalNote = r.keterangan_koordinator ? r.keterangan_koordinator : (r.keterangan || "");
+                    let statusP2 = r.status_koordinator ? r.status_koordinator : (log.status_verifikasi ? 'OK' : '');
+                    body.innerHTML += `<tr><td style="text-align:center;">${no++}</td><td>${r.prslb_items.item_name}</td><td>${r.prslb_items.standard || ""}</td><td style="text-align:center;">${r.status === 'OK' ? 'OK' : 'NG'}</td><td style="text-align:center;">${statusP2}</td><td>${finalNote}</td></tr>`;
                 });
 
-                const imgData = canvas.toDataURL('image/jpeg', 0.98);
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF('l', 'mm', 'a4'); 
-                
-                // Fit 1 page landscape
-                pdf.addImage(imgData, 'JPEG', 0, 0, 297, 210);
-                pdf.save(`Laporan_PRSLB_${document.getElementById('f-mesin').value}.pdf`);
-                
-                element.style.boxShadow = originalShadow;
-                element.style.margin = '0 auto';
-                showStatus("PDF Berhasil diunduh!");
+                const setSig = (id, url, name) => {
+                    const img = document.getElementById(id);
+                    img.src = url || ""; img.style.display = url ? "block" : "none";
+                    document.getElementById('n' + id.charAt(1)).innerText = name || "(....................)";
+                };
+                setSig('s1', log.signature_pelaksana, log.pelaksana_nama);
+                setSig('s2', log.signature_koordinator, log.koordinator_nama);
+                setSig('s3', log.signature_superintendent, log.superintendent_nama);
 
-            } catch (err) { console.error(err); alert("Gagal Export PDF: " + err.message); } 
-            finally {
-                if (originalImgClone) {
-                    const canvasLogo = document.getElementById('logo-header');
-                    if (canvasLogo && canvasLogo.tagName === 'CANVAS') canvasLogo.parentNode.replaceChild(originalImgClone, canvasLogo);
-                }
-                btn.innerHTML = originalText;
+                document.getElementById('empty-state').style.display = 'none';
+                document.getElementById('report-view').style.display = 'flex';
             }
-        }
-    </script>
-</body>
-</html>
+
+            // --- 4. EXPORT PDF: LANDSCAPE + CENTER + LOGO SWAP ---
+            async function downloadPDF() {
+                const btn = document.querySelector('.btn-print');
+                const originalText = btn.innerHTML;
+                const element = document.getElementById('report-view');
+                const imgLogo = document.getElementById('logo-header');
+                
+                btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> PROSES...";
+                let originalImgClone = null;
+
+                try {
+                    if (imgLogo && imgLogo.tagName === 'IMG') {
+                        originalImgClone = imgLogo.cloneNode(true);
+                        let dataToUse = GLOBAL_BASE64_LOGO || await fetchImageAsBase64(LOGO_URL_ASLI);
+                        if (dataToUse) await replaceImgWithCanvas(imgLogo, dataToUse);
+                    }
+                    
+                    await new Promise(r => setTimeout(r, 400));
+                    
+                    // FIXED A4 LANDSCAPE SIZING FOR HTML2CANVAS
+                    const A4_WIDTH_PX = 1122; 
+                    const A4_HEIGHT_PX = 794;
+                    
+                    const originalShadow = element.style.boxShadow;
+                    element.style.boxShadow = 'none';
+                    element.style.margin = '0';
+
+                    const canvas = await html2canvas(element, {
+                        scale: 2, useCORS: true, backgroundColor: "#ffffff",
+                        width: A4_WIDTH_PX, windowWidth: A4_WIDTH_PX, scrollY: 0, logging: false
+                    });
+
+                    const imgData = canvas.toDataURL('image/jpeg', 0.98);
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF('l', 'mm', 'a4'); 
+                    
+                    // Fit 1 page landscape
+                    pdf.addImage(imgData, 'JPEG', 0, 0, 297, 210);
+
+                    // REVISI NAMA FILE MENJADI JELAS DAN DINAMIS (Misal: Eco power 210 T (4) - Thor _ Februari_2026.pdf)
+                    const elmBulan = document.getElementById('f-bulan');
+                    const namaBulan = elmBulan.options[elmBulan.selectedIndex].text;
+                    const tahunPdf = document.getElementById('f-tahun').value;
+                    const mesinPdf = document.getElementById('f-mesin').value;
+                    // Replace karakter yang dilarang pada sistem file windows/mac seperti '/' agar tidak error
+                    const namaMesinAman = mesinPdf.replace(/[\/\\]/g, '-'); 
+                    const pdfFileName = `${namaMesinAman} _ ${namaBulan}_${tahunPdf}.pdf`;
+
+                    pdf.save(pdfFileName);
+                    
+                    element.style.boxShadow = originalShadow;
+                    element.style.margin = '0 auto';
+                    showStatus("PDF Berhasil diunduh!");
+
+                } catch (err) { console.error(err); alert("Gagal Export PDF: " + err.message); } 
+                finally {
+                    if (originalImgClone) {
+                        const canvasLogo = document.getElementById('logo-header');
+                        if (canvasLogo && canvasLogo.tagName === 'CANVAS') canvasLogo.parentNode.replaceChild(originalImgClone, canvasLogo);
+                    }
+                    btn.innerHTML = originalText;
+                }
+            }
+        </script>
+    </body>
+    </html>
