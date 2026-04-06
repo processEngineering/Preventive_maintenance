@@ -337,6 +337,8 @@
             <!-- Input tipe "month" untuk hanya memilih bulan dan tahun -->
             <input type="month" id="searchDate" class="input-ctrl">
             <button class="btn-ctrl btn-show" onclick="fetchReports()"><i class="fa-solid fa-search"></i> CARI DATA</button>
+            <!-- Dropdown otomatis muncul jika ada data -->
+            <select id="searchMold" class="input-ctrl" style="display:none;" onchange="loadSelectedMold()"></select>
             <button class="btn-ctrl btn-print" onclick="downloadPDF()"><i class="fa-solid fa-file-pdf"></i> CETAK PDF</button>
         </div>
     </div>
@@ -608,7 +610,7 @@
             itemsDefinition = data || [];
         }
 
-        // --- FETCH DATA MODIFIED UNTUK BULAN/TAHUN ---
+        // --- FETCH DATA MODIFIED UNTUK BULAN/TAHUN & MULTIPLE MOLD ---
         window.fetchReports = async function() {
             const dateVal = document.getElementById('searchDate').value; // Mengambil string YYYY-MM
             if(!dateVal) return alert("Pilih bulan dan tahun!");
@@ -628,13 +630,38 @@
                 .lte('tanggal_perawatan', endDate)
                 .order('created_at', {ascending: false});
             
+            const selectMold = document.getElementById('searchMold');
+
             if(!data || !data.length) {
                 document.getElementById('loading-overlay').style.display = 'none';
+                selectMold.style.display = 'none';
                 return alert("Tidak ada data untuk bulan yang dipilih.");
             }
             
-            // Mengambil hasil terbaru di bulan tersebut
+            // Kosongkan dan isi ulang dropdown mold
+            selectMold.innerHTML = '';
+            data.forEach((log) => {
+                const opt = document.createElement('option');
+                opt.value = log.id;
+                // Format agar tampil rapi: "Kode Mold (Tgl: DD-MM-YYYY)"
+                opt.text = `${log.kode_mold} (Tgl: ${log.tanggal_perawatan.split('-').reverse().join('-')})`;
+                selectMold.appendChild(opt);
+            });
+            
+            // Tampilkan dropdown agar user bisa memilih jika ada lebih dari 1 mold
+            selectMold.style.display = 'inline-block';
+            
+            // Mengambil hasil terbaru di bulan tersebut sebagai default
             renderPaper(data[0].id);
+        }
+
+        // Fungsi baru untuk me-load saat user ganti pilihan mold di dropdown
+        window.loadSelectedMold = function() {
+            const logId = document.getElementById('searchMold').value;
+            if(logId) {
+                document.getElementById('loading-overlay').style.display = 'flex';
+                renderPaper(logId);
+            }
         }
 
         async function renderPaper(logId) {
