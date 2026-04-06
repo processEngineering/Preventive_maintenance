@@ -285,8 +285,8 @@
 
     <div id="loadingOverlay">
         <i class="fa-solid fa-spinner fa-spin fa-3x"></i>
-        <p style="margin-top:15px; font-family:'Inter', sans-serif;">Sedang memproses PDF...</p>
-        <p style="font-size:12px; color:#ccc; font-family:'Inter', sans-serif;">Mohon tunggu, sedang menyesuaikan format A4...</p>
+        <p style="margin-top:15px; font-family:'Inter', sans-serif;">Sedang memproses...</p>
+        <p style="font-size:12px; color:#ccc; font-family:'Inter', sans-serif;">Mohon tunggu sebentar...</p>
     </div>
 
     <div class="top-bar no-print">
@@ -297,26 +297,8 @@
         <div class="controls-horizontal">
             <span class="ctrl-title"><i class="fa-solid fa-print"></i> KONTROL:</span>
             <select id="filter_mesin" class="input-ctrl"><option value="">-- Loading Mesin... --</option></select>
-            <select id="filter_bulan" class="input-ctrl">
-                <option value="">Semua Bulan</option>
-                <option value="1">Januari</option>
-                <option value="2">Februari</option>
-                <option value="3">Maret</option>
-                <option value="4">April</option>
-                <option value="5">Mei</option>
-                <option value="6">Juni</option>
-                <option value="7">Juli</option>
-                <option value="8">Agustus</option>
-                <option value="9">September</option>
-                <option value="10">Oktober</option>
-                <option value="11">November</option>
-                <option value="12">Desember</option>
-            </select>
-            <select id="filter_tahun" class="input-ctrl">
-                <option value="2026">2026</option>
-                <option value="2025">2025</option>
-                <option value="2024">2024</option>
-            </select>
+            <!-- Input diganti jadi pemilih bulan dan tahun secara langsung, dengan trigger otomatis -->
+            <input type="month" id="filter_bulan_tahun" class="input-ctrl" onchange="loadAvailableMachines()">
             <button class="btn-ctrl btn-show" onclick="fetchData()"><i class="fa-solid fa-search"></i> TAMPILKAN</button>
             <button class="btn-ctrl btn-print" onclick="exportPDF()"><i class="fa-solid fa-file-pdf"></i> CETAK PDF</button>
         </div>
@@ -475,47 +457,80 @@
             }
         }
 
-        const machineList = [
-            "INJECT BLOW LIANXIN IBM 30 H (01) / TOAD", "TM-EXPRESS 270/2250 (02) / NEBULA", "ECO POWER 240/750 (03) / SPIDERMAN",
-            "ECO POWER 210 T (04) / THOR", "TiM-EXPRESS 350/3400 (05) / IRON MAN", "ARBURG 320 T (06) / STARLORD",
-            "ECO POWER EXPRESS 500/3300 (07) / STEVE ROGERS", "ECO POWER EXPRESS 500/3300 (08) / THANOS", "FCS CT-220 SE (09) / BLACK WIDOW",
-            "NPC 260 T (10) / HAWK EYE", "ARBURG 200 (11) / GAMORA", "FCS SA 3800 H (12) / LOKI", "EMAC 220 PRO (13) / DEADPOOL",
-            "ENGEL 380 T (14) / HULK", "NPC 400 H (15) / WANDA", "ENGEL 280 (16) / DOCTOR STRANGE",
-            "FCS HT -100 SV (31) / ANT-MAN", "NPC 160 T (32) / WASP", "NPC 160 T (33) / WONG",
-            "FCS HT-150 SV (34) / ROCKET", "FCS HT-150 SV (35) / MANTIS", "NPC 160 T (36) / SHANG CHI", "NPC 260 T (37) / VISION",
-            "NPC 200 T (38) / MAGNETO", "FCS HT-100 SV (39) / NICK FURY", "FCS AF250 (40) / WOLVERINE", "NPC 260 T (41) / HAWKEYE 2",
-            "MESIN GRINDING", "MESIN BUBUT", "MESIN MILLING 1", "MESIN MILLING 2",
-            "MESIN 31. FCS-160T", "MESIN 32", "MESIN 33. NPC-160T", "MESIN 34. FCS-150T", "MESIN 35. FCS-150T",
-            "MESIN 36. NPC-160T", "MESIN 37. NPC-260T", "MESIN 38. NPC-200T", "MESIN 39. FCS -100T", "MESIN 40. FCS-250T", "MESIN 41. NPC-260T"
-        ];
-
         document.addEventListener('DOMContentLoaded', async () => {
             setupDynamicNavigation();
-            document.getElementById('filter_tahun').value = new Date().getFullYear();
-            const sel = document.getElementById('filter_mesin');
-            sel.innerHTML = '<option value="">-- Pilih Mesin --</option>';
-            machineList.forEach(m => { let o = document.createElement('option'); o.value = m; o.textContent = m; sel.appendChild(o); });
+            
+            // Set default value untuk input bulan dan tahun
+            const now = new Date();
+            const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            document.getElementById('filter_bulan_tahun').value = currentMonthStr;
+
+            // Load mesin otomatis sesuai bulan saat ini (hanya mesin yang ada datanya)
+            await loadAvailableMachines();
         });
+
+        async function loadAvailableMachines() {
+            const dateVal = document.getElementById('filter_bulan_tahun').value;
+            const sel = document.getElementById('filter_mesin');
+            
+            if(!dateVal) {
+                sel.innerHTML = '<option value="">-- Pilih Bulan Dahulu --</option>';
+                return;
+            }
+
+            sel.innerHTML = '<option value="">-- Sedang Mencari Mesin... --</option>';
+
+            const [tahun, bulan] = dateVal.split('-');
+            const lastDay = new Date(tahun, bulan, 0).getDate(); 
+            const start = `${dateVal}-01`;
+            const end = `${dateVal}-${lastDay}`;
+
+            try {
+                // Mengambil data untuk bulan yang dipilih dari Supabase
+                const { data, error } = await db.from('kartu_riwayat_items')
+                    .select('machine_name')
+                    .gte('entry_date', start)
+                    .lte('entry_date', end);
+
+                if(error) throw error;
+
+                if (!data || data.length === 0) {
+                    sel.innerHTML = '<option value="">-- Tidak Ada Data Mesin --</option>';
+                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="7" align="center" style="padding:20px;">Tidak ada riwayat mesin sama sekali di bulan ini.</td></tr>';
+                    return;
+                }
+
+                // Hanya mengambil nama mesin yang unik (menghapus nama yang duplikat)
+                const uniqueMachines = [...new Set(data.map(item => item.machine_name))].sort();
+
+                sel.innerHTML = '<option value="">-- Pilih Mesin --</option>';
+                uniqueMachines.forEach(m => {
+                    let o = document.createElement('option'); 
+                    o.value = m; 
+                    o.textContent = m; 
+                    sel.appendChild(o);
+                });
+
+            } catch (e) {
+                console.error(e);
+                sel.innerHTML = '<option value="">-- Error Muat Mesin --</option>';
+            }
+        }
 
         async function fetchData() {
             const mesin = document.getElementById('filter_mesin').value;
-            const tahun = document.getElementById('filter_tahun').value;
-            const bulan = document.getElementById('filter_bulan').value; 
+            const dateVal = document.getElementById('filter_bulan_tahun').value;
             const tbody = document.getElementById('tableBody');
 
             if(!mesin) { alert('Harap pilih mesin!'); return; }
+            if(!dateVal) { alert('Harap pilih bulan dan tahun!'); return; }
+
             tbody.innerHTML = '<tr><td colspan="7" align="center" style="padding:20px;">Memuat data...</td></tr>';
 
-            let start, end;
-            if (bulan) {
-                const lastDay = new Date(tahun, bulan, 0).getDate(); 
-                const mm = String(bulan).padStart(2, '0');
-                start = `${tahun}-${mm}-01`;
-                end = `${tahun}-${mm}-${lastDay}`;
-            } else {
-                start = `${tahun}-01-01`;
-                end = `${tahun}-12-31`;
-            }
+            const [tahun, bulan] = dateVal.split('-');
+            const lastDay = new Date(tahun, bulan, 0).getDate(); 
+            const start = `${dateVal}-01`;
+            const end = `${dateVal}-${lastDay}`;
 
             try {
                 const { data, error } = await db.from('kartu_riwayat_items')
@@ -688,7 +703,20 @@
 
                 // 5. Konfigurasi html2pdf
                 const namaMesin = document.getElementById('disp_nama').innerText || 'Mesin';
-                const namaFile = `KartuRiwayat_${namaMesin.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+                const dateInput = document.getElementById('filter_bulan_tahun').value;
+                let monthStr = 'bulan';
+                let yearStr = 'tahun';
+                
+                if (dateInput) {
+                    const [year, month] = dateInput.split('-');
+                    const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+                    monthStr = monthNames[parseInt(month) - 1];
+                    yearStr = year;
+                }
+
+                // Format sesuai permintaan (Contoh: KartuRiwayat_MesinABC_february_2026.pdf)
+                const cleanMesin = namaMesin.replace(/[^a-zA-Z0-9]/g, '_');
+                const namaFile = `KartuRiwayat_${cleanMesin}_${monthStr}_${yearStr}.pdf`;
 
                 const opt = {
                     margin: 0,
