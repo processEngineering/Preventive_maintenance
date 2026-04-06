@@ -92,6 +92,24 @@
             font-family: 'Inter', sans-serif;
         }
 
+        /* Style untuk Select Dropdown Filter */
+        .select-ctrl {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #fff;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            cursor: pointer;
+            background: #ffffff;
+            color: var(--text-main);
+            transition: all 0.2s;
+        }
+        .select-ctrl:hover {
+            border-color: var(--primary-light);
+        }
+
         .btn-ctrl {
             padding: 8px 12px;
             border-radius: 6px;
@@ -267,6 +285,29 @@
         <!-- Panel Kontrol Horizontal di sebelahnya -->
         <div class="controls-horizontal">
             <span class="ctrl-title"><i class="fa-solid fa-table"></i> DATA REPAIR</span>
+            
+            <!-- Filter Bulan & Tahun -->
+            <select id="filterMonth" class="select-ctrl" onchange="fetchData()">
+                <option value="all">Semua Bulan</option>
+                <option value="01">Januari</option>
+                <option value="02">Februari</option>
+                <option value="03">Maret</option>
+                <option value="04">April</option>
+                <option value="05">Mei</option>
+                <option value="06">Juni</option>
+                <option value="07">Juli</option>
+                <option value="08">Agustus</option>
+                <option value="09">September</option>
+                <option value="10">Oktober</option>
+                <option value="11">November</option>
+                <option value="12">Desember</option>
+            </select>
+            
+            <select id="filterYear" class="select-ctrl" onchange="fetchData()">
+                <option value="all">Semua Tahun</option>
+                <!-- Opsi Tahun Dibuat Secara Dinamis via JS -->
+            </select>
+
             <button onclick="fetchData()" class="btn-ctrl btn-show"><i class="fa-solid fa-rotate-right"></i> REFRESH</button>
             <button onclick="exportPDF()" class="btn-ctrl btn-pdf"><i class="fa-solid fa-file-pdf"></i> EKSPOR PDF</button>
         </div>
@@ -335,7 +376,6 @@
         </div>
     </div>
 
-    <!-- LOGIKA JAVASCRIPT (TIDAK DIUBAH FUNGSINYA) -->
     <script>
         // Fungsi Buka Tutup Sidebar & Navigasi Pintar
         function toggleSidebar() {
@@ -350,8 +390,22 @@
 
         window.onload = () => {
             setupDynamicNavigation();
+            populateYears(); // Panggil fungsi isi tahun
             fetchData();
         };
+
+        // Generate list tahun untuk filter secara otomatis
+        function populateYears() {
+            const yearSelect = document.getElementById('filterYear');
+            const currentYear = new Date().getFullYear();
+            
+            for (let i = currentYear; i >= 2020; i--) {
+                let opt = document.createElement('option');
+                opt.value = i;
+                opt.innerHTML = i;
+                yearSelect.appendChild(opt);
+            }
+        }
 
         // Routing Navigasi Dinamis
         async function setupDynamicNavigation() {
@@ -407,6 +461,9 @@
             const loading = document.getElementById('loading');
             const empty = document.getElementById('empty');
 
+            const filterMonth = document.getElementById('filterMonth').value;
+            const filterYear = document.getElementById('filterYear').value;
+
             tbody.innerHTML = '';
             loading.style.display = 'block';
             empty.style.display = 'none';
@@ -417,23 +474,47 @@
             }
 
             try {
-                // Mengambil data dari tabel lkmr_repair
-                const { data, error } = await client
-                    .from('lkmr_repair') // Menggunakan lkmr_repair sesuai fungsi
-                    .select('*')
-                    .order('tanggal', { ascending: false }) // Terbaru paling atas
-                    .order('waktu_mulai', { ascending: false });
+                let query = client.from('lkmr_repair').select('*');
+
+                // Logika Query Filter Database
+                if (filterYear !== 'all') {
+                    if (filterMonth !== 'all') {
+                        const lastDay = new Date(filterYear, filterMonth, 0).getDate();
+                        const startDate = `${filterYear}-${filterMonth}-01`;
+                        const endDate = `${filterYear}-${filterMonth}-${lastDay}`;
+                        query = query.gte('tanggal', startDate).lte('tanggal', endDate);
+                    } else {
+                        const startDate = `${filterYear}-01-01`;
+                        const endDate = `${filterYear}-12-31`;
+                        query = query.gte('tanggal', startDate).lte('tanggal', endDate);
+                    }
+                }
+
+                query = query.order('tanggal', { ascending: false }).order('waktu_mulai', { ascending: false });
+
+                const { data, error } = await query;
 
                 if (error) throw error;
 
                 loading.style.display = 'none';
 
-                if (!data || data.length === 0) {
+                let finalData = data || [];
+
+                // Validasi Edge-case: Jika pilih Bulan tapi Tahunnya 'Semua' (Filter JS Memory)
+                if (filterYear === 'all' && filterMonth !== 'all') {
+                    finalData = finalData.filter(item => {
+                        if (!item.tanggal) return false;
+                        const m = (new Date(item.tanggal).getMonth() + 1).toString().padStart(2, '0');
+                        return m === filterMonth;
+                    });
+                }
+
+                if (finalData.length === 0) {
                     empty.style.display = 'block';
                     return;
                 }
 
-                data.forEach(item => {
+                finalData.forEach(item => {
                     // Format Tanggal
                     const dateObj = new Date(item.tanggal);
                     const day = dateObj.getDate();
@@ -486,14 +567,25 @@
 
             // Header PDF
             doc.setFontSize(14);
-            doc.text('DATA LAPORAN MAINTENANCE REPAIR MOLD - AKG', 14, 15);
-            doc.setFontSize(10);
-            doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 14, 22);
+
+            // Mengambil teks periode dari filter aktif untuk judul di PDF
+            const monthSel = document.getElementById('filterMonth');
+            const yearSel = document.getElementById('filterYear');
+            let periodText = '';
+            
+            if (monthSel.value !== 'all' || yearSel.value !== 'all') {
+                const monthText = monthSel.value !== 'all' ? monthSel.options[monthSel.selectedIndex].text : '';
+                const yearText = yearSel.value !== 'all' ? yearSel.value : '';
+                const space = (monthText && yearText) ? ' ' : '';
+                periodText = ` - PERIODE: ${monthText}${space}${yearText}`.toUpperCase();
+            }
+
+            doc.text(`DATA LAPORAN MAINTENANCE REPAIR MOLD - AKG${periodText}`, 14, 15);
 
             // Generate Tabel
             doc.autoTable({
                 html: '#dataTable',
-                startY: 28,
+                startY: 22,
                 theme: 'grid',
                 headStyles: { 
                     fillColor: [201, 25, 25], // Merah Header (Theme Primary)
@@ -519,8 +611,23 @@
                 }
             });
 
+            // Menentukan nama file berdasarkan filter yang dipilih
+            const monthVal = monthSel.value;
+            const yearVal = yearSel.value;
+            let fileNameSuffix = "";
+            
+            if (monthVal !== 'all' && yearVal !== 'all') {
+                fileNameSuffix = `_${monthVal}_${yearVal}`; // Contoh: _01_2026
+            } else if (monthVal !== 'all') {
+                fileNameSuffix = `_Bulan_${monthVal}`; // Contoh: _Bulan_01
+            } else if (yearVal !== 'all') {
+                fileNameSuffix = `_Tahun_${yearVal}`; // Contoh: _Tahun_2026
+            } else {
+                fileNameSuffix = `_Semua_Periode`; // Jika semua bulan dan tahun
+            }
+
             // Simpan File
-            doc.save(`Laporan_Repair_Mold_${new Date().toISOString().slice(0,10)}.pdf`);
+            doc.save(`Laporan_Repair_Mold${fileNameSuffix}.pdf`);
         }
     </script>
 </body>
