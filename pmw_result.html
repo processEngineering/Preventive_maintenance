@@ -10,6 +10,8 @@
     
     <!-- Supabase JS Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- html2pdf JS Library untuk Export PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
         :root {
@@ -356,6 +358,14 @@
         .text-center { text-align: center; }
         .empty-state { text-align: center; padding: 50px; color: #888; font-size: 16px; }
 
+        /* LOADING OVERLAY PDF */
+        #loadingOverlayPDF {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 20000;
+            display: none; justify-content: center; align-items: center; flex-direction: column;
+            color: white; font-size: 18px; font-family: 'Inter', sans-serif;
+        }
+
         /* --- PRINT MEDIA QUERY (PERBAIKAN TOTAL PAKSA 1 HALAMAN) --- */
         @media print {
             * {
@@ -432,6 +442,13 @@
 </head>
 <body>
 
+    <!-- LOADING OVERLAY PDF -->
+    <div id="loadingOverlayPDF">
+        <i class="fa-solid fa-spinner fa-spin fa-3x"></i>
+        <p style="margin-top:15px; font-weight:bold; font-family:'Inter', sans-serif;">Sedang memproses PDF...</p>
+        <p style="font-size:12px; color:#ccc; font-family:'Inter', sans-serif;">Mohon tunggu sebentar...</p>
+    </div>
+
     <!-- OVERLAY & SIDEBAR (NO PRINT) -->
     <div class="sidebar-overlay no-print" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -473,16 +490,16 @@
         <!-- CONTROL PANEL (NO PRINT) -->
         <div class="control-panel no-print">
             <div class="filter-group">
-                <label>Pilih Mesin</label>
-                <select id="filterMesin" class="filter-input">
-                    <option value="">-- Memuat Data Mesin... --</option>
-                </select>
+                <label>Pilih Bulan</label>
+                <!-- Input type="month" ditambahkan event onchange -->
+                <input type="month" id="filterBulan" class="filter-input" onchange="loadMesinOptions()">
             </div>
 
             <div class="filter-group">
-                <label>Pilih Bulan</label>
-                <!-- Input type="month" -->
-                <input type="month" id="filterBulan" class="filter-input">
+                <label>Pilih Mesin</label>
+                <select id="filterMesin" class="filter-input">
+                    <option value="">-- Menunggu Pilihan Bulan... --</option>
+                </select>
             </div>
 
             <!-- PERBAIKAN: Menambahkan type="button" untuk mencegah implicit submit -->
@@ -501,7 +518,7 @@
             <div class="empty-state no-print" id="emptyState">
                 <i class="fa-solid fa-file-invoice" style="font-size: 40px; margin-bottom: 15px; color: #cbd5e1;"></i>
                 <br>
-                Silakan pilih <b>Mesin</b> dan <b>Bulan</b> di atas, lalu klik "Cari Data" untuk memuat laporan.
+                Silakan pilih <b>Bulan</b> dan <b>Mesin</b> di atas, lalu klik "Cari Data" untuk memuat laporan.
             </div>
 
             <div id="printableContent" style="display: none;">
@@ -725,18 +742,39 @@
             return new Date(dateStr).toLocaleDateString('id-ID', options);
         }
 
-        // --- INIT: Memuat Daftar Mesin Unik ke dalam Dropdown ---
+        // --- INIT: Memuat Daftar Mesin Unik ke dalam Dropdown sesuai bulan yg dipilih ---
         async function loadMesinOptions() {
+            const dateVal = document.getElementById('filterBulan').value;
             const selectMesin = document.getElementById('filterMesin');
+            
+            if(!dateVal) {
+                selectMesin.innerHTML = '<option value="">-- Pilih Bulan Dahulu --</option>';
+                return;
+            }
+
+            selectMesin.innerHTML = '<option value="">-- Sedang Mencari Mesin... --</option>';
+
+            const [tahun, bulan] = dateVal.split('-');
+            const lastDay = new Date(tahun, bulan, 0).getDate(); 
+            const start = `${dateVal}-01`;
+            const end = `${dateVal}-${lastDay}`;
+
             try {
                 const { data, error } = await client
                     .from('pmw_log')
                     .select('mesin')
-                    .order('mesin', { ascending: true });
+                    .gte('tanggal', start)
+                    .lte('tanggal', end);
 
                 if (error) throw error;
 
-                const uniqueMesin = [...new Set(data.map(item => item.mesin))];
+                if (!data || data.length === 0) {
+                    selectMesin.innerHTML = '<option value="">-- Tidak Ada Data Mesin --</option>';
+                    return;
+                }
+
+                // Mengambil nilai unik (menghilangkan duplikat)
+                const uniqueMesin = [...new Set(data.map(item => item.mesin))].sort();
 
                 selectMesin.innerHTML = '<option value="">-- Pilih Mesin --</option>';
                 uniqueMesin.forEach(mesin => {
@@ -888,53 +926,123 @@
             }
         }
 
-        // --- FUNGSI EXPORT PDF (DIPERBAIKI) ---
-        function exportPDF() {
+        // --- FUNGSI EXPORT PDF (DIPERBAIKI MENGGUNAKAN HTML2PDF) ---
+        async function exportPDF() {
+            const printableContent = document.getElementById('printableContent');
+            if (printableContent.style.display === 'none') {
+                alert("Silakan muat data terlebih dahulu sebelum mengekspor PDF.");
+                return;
+            }
+
+            const overlay = document.getElementById('loadingOverlayPDF');
+            overlay.style.display = 'flex';
+
             try {
-                const originalTitle = document.title;
+                // 1. Clone area dokumen agar tidak merusak tampilan asli
+                const originalElement = document.getElementById('documentArea');
+                const clonedElement = originalElement.cloneNode(true);
+
+                // Hapus empty state dari clone (jika ada) agar tidak ikut ter-render
+                const emptyStateClone = clonedElement.querySelector('#emptyState');
+                if (emptyStateClone) emptyStateClone.remove();
+
+                // 2. Styling paksa untuk Clone agar mengikuti ukuran A4 Portrait presisi
+                const A4_WIDTH_PX = 794;
+                const A4_HEIGHT_PX = 1123;
+
+                clonedElement.style.margin = '0';
+                clonedElement.style.padding = '15mm'; 
+                clonedElement.style.width = `${A4_WIDTH_PX}px`;
+                clonedElement.style.minHeight = `${A4_HEIGHT_PX}px`;
+                clonedElement.style.height = 'auto';
+                clonedElement.style.boxSizing = 'border-box';
+                clonedElement.style.background = 'white';
+                clonedElement.style.position = 'relative';
+                clonedElement.style.transform = 'none';
+                clonedElement.style.left = 'auto';
+                clonedElement.style.top = 'auto';
+
+                // 3. Buat Container Tersembunyi
+                const container = document.createElement('div');
+                container.id = 'pdf-export-container';
+                container.style.position = 'fixed';
+                container.style.top = '0';
+                container.style.left = '-10000px'; // Buang jauh dari layar
+                container.style.width = `${A4_WIDTH_PX}px`;
+                container.style.zIndex = '-9999';
+                
+                container.appendChild(clonedElement);
+                document.body.appendChild(container);
+
+                // Tunggu 500ms agar browser selesai menggambar clone di dalam DOM
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // 4. Ambil data untuk Penamaan File
                 const mesinEl = document.getElementById('docMesin');
-                const tanggalEl = document.getElementById('docTanggalPengecekan');
+                const dateInput = document.getElementById('filterBulan').value;
                 
                 let namaMesin = 'Mesin';
-                // PERBAIKAN: Menggunakan textContent agar lebih aman di semua browser
                 if (mesinEl && mesinEl.textContent) {
-                    namaMesin = mesinEl.textContent.replace(/[^a-zA-Z0-9\s-]/g, '').trim().replace(/\s+/g, '_');
+                    // Biarkan spasi pada nama mesin (jangan ubah jadi underscore)
+                    namaMesin = mesinEl.textContent.replace(/[^a-zA-Z0-9\s-]/g, '').trim();
                 }
                 
-                let tglLaporan = 'Tanggal';
-                if (tanggalEl && tanggalEl.textContent) {
-                    tglLaporan = tanggalEl.textContent.replace(/\s+/g, '_');
+                let monthStr = 'bulan';
+                let yearStr = 'tahun';
+                if (dateInput) {
+                    const [year, month] = dateInput.split('-');
+                    const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+                    monthStr = monthNames[parseInt(month) - 1];
+                    yearStr = year;
                 }
                 
-                // Set judul halaman
-                document.title = `PMW_${namaMesin}_${tglLaporan}`;
-                
-                // PERBAIKAN: Menambahkan jeda kecil agar DOM merender nama title yang baru sebelum print dijalankan
-                setTimeout(() => {
-                    window.print();
-                    
-                    // Kembalikan judul halaman seperti semula setelah print dialog muncul
-                    setTimeout(() => {
-                        document.title = originalTitle;
-                    }, 1000);
-                }, 100);
+                // Format baru sesuai permintaan (huruf kecil semua)
+                const namaFile = `preventif workshop_${namaMesin}_${monthStr}_${yearStr}.pdf`.toLowerCase();
+
+                // 5. Konfigurasi html2pdf
+                const opt = {
+                    margin: 0,
+                    filename: namaFile,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { 
+                        scale: 2, // Meningkatkan resolusi agar HD
+                        useCORS: true,
+                        width: A4_WIDTH_PX,
+                        windowWidth: A4_WIDTH_PX, 
+                        scrollX: 0,
+                        scrollY: 0,
+                        x: 0,
+                        y: 0
+                    },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }
+                };
+
+                // Eksekusi Konversi
+                await html2pdf().set(opt).from(clonedElement).save();
+
+                // Bersihkan DOM dari container rahasia
+                document.body.removeChild(container);
 
             } catch (error) {
-                // PERBAIKAN: Memberikan alert jika ada error yang gagal ditangkap agar pengguna tahu masalahnya
-                console.error("Gagal membuka dialog Print:", error);
-                alert("Maaf, terjadi kesalahan atau browser Anda memblokir dialog cetak PDF.");
+                console.error("Gagal menyimpan PDF:", error);
+                alert("Maaf, terjadi kesalahan saat mengekspor dokumen ke PDF.");
+            } finally {
+                // Tutup Loading Overlay
+                overlay.style.display = 'none';
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             setupDynamicNavigation();
-            loadMesinOptions();
             
             // Set default bulan ke bulan ini
             const today = new Date();
             const yyyy = today.getFullYear();
             const mm = String(today.getMonth() + 1).padStart(2, '0');
             document.getElementById('filterBulan').value = `${yyyy}-${mm}`;
+
+            // Panggil filter dinamis otomatis setelah bulan awal di-set
+            await loadMesinOptions();
         });
 
     </script>
