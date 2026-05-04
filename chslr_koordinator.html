@@ -448,8 +448,22 @@
             <div id="view-list" class="animate-fade">
                 <div class="section-header">
                     <span class="section-title">Antrean Verifikasi</span>
+                    <!-- TAMBAHAN: TOMBOL CARI -->
+                    <button onclick="toggleSearch()" style="background:var(--accent-soft); border:none; color:var(--primary); font-size:12px; font-weight:800; cursor:pointer; padding: 8px 12px; border-radius: 8px; display:flex; align-items:center; gap:6px; box-shadow: 0 2px 5px rgba(201, 25, 25, 0.1);">
+                        <i class="fa-solid fa-magnifying-glass"></i> CARI
+                    </button>
                 </div>
                 
+                <!-- === TAMBAHAN: FITUR PENCARIAN MESIN (DISEMBUNYIKAN AWALNYA) === -->
+                <div id="searchContainer" class="input-group hidden" style="position: relative; padding: 0 12px; margin-bottom: 20px;">
+                    <i class="fa-solid fa-search" style="position: absolute; left: 30px; top: 50%; transform: translateY(-50%); color: var(--text-soft); font-size: 16px;"></i>
+                    <input type="text" id="searchMesin" onkeyup="filterMesin()" class="input-field" placeholder="Ketik nama mesin atau pelaksana..." style="padding-left: 48px; border: 2px solid var(--border-red);">
+                    <button onclick="toggleSearch()" style="position: absolute; right: 25px; top: 50%; transform: translateY(-50%); background:none; border:none; color:var(--text-soft); cursor:pointer; font-size:18px;">
+                        <i class="fa-solid fa-times-circle"></i>
+                    </button>
+                </div>
+                <!-- === AKHIR TAMBAHAN === -->
+
                 <div id="log-container">
                     <div style="text-align:center; padding:40px; color:var(--text-muted);">
                         <i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 10px; color:var(--primary);"></i>
@@ -522,7 +536,7 @@
         </div>
     </div>
 
-    <!-- LOGIC JS (FUNGSI UTAMA TIDAK DIUBAH) -->
+    <!-- LOGIC JS -->
     <script>
         // Fungsi Buka Tutup Sidebar Samping
         function toggleSidebar() {
@@ -563,6 +577,45 @@
             // Event listener: Cek DB begitu koordinator selesai ngetik namanya
             document.getElementById('koor-name').addEventListener('blur', checkExistingKoorSignature);
         };
+
+        // === TAMBAHAN: FUNGSI BUKA TUTUP PENCARIAN MESIN ===
+        function toggleSearch() {
+            const searchContainer = document.getElementById('searchContainer');
+            const searchInput = document.getElementById('searchMesin');
+            
+            if (searchContainer.classList.contains('hidden')) {
+                // Munculkan kolom pencarian
+                searchContainer.classList.remove('hidden');
+                searchInput.focus();
+            } else {
+                // Sembunyikan dan reset kolom pencarian kembali seperti semula
+                searchContainer.classList.add('hidden');
+                searchInput.value = '';
+                filterMesin(); // Panggil filterMesin untuk menampilkan semua list lagi
+            }
+        }
+
+        function filterMesin() {
+            const input = document.getElementById("searchMesin");
+            const filter = input.value.toLowerCase();
+            const container = document.getElementById("log-container");
+            
+            // Ambil semua elemen dengan class card-item
+            const cards = container.getElementsByClassName("card-item");
+
+            for (let i = 0; i < cards.length; i++) {
+                // Ambil semua teks di dalam satu card (termasuk nama mesin dan pelaksana)
+                const txtValue = cards[i].textContent || cards[i].innerText;
+                
+                // Jika teks input cocok dengan teks di dalam card
+                if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                    cards[i].style.display = ""; // Tampilkan
+                } else {
+                    cards[i].style.display = "none"; // Sembunyikan
+                }
+            }
+        }
+        // === AKHIR TAMBAHAN ===
 
         // --- FUNGSI PINTAR: DETEKSI TTD DARI DATABASE ---
         async function checkExistingKoorSignature() {
@@ -678,6 +731,15 @@
             }
             switchView('view-list');
             activeLog = null;
+            
+            // Jika pencarian sedang terbuka saat kembali ke menu, otomatis tutup dan bersihkan
+            const searchContainer = document.getElementById('searchContainer');
+            const searchInput = document.getElementById('searchMesin');
+            if (searchContainer && !searchContainer.classList.contains('hidden')) {
+                searchContainer.classList.add('hidden');
+                searchInput.value = '';
+            }
+
             loadQueue(); 
         }
 
