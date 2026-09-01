@@ -34,7 +34,7 @@ function renderHome(config) {
 
             <div class="text-side">
                 <div class="action-area">
-                    <a href="${config.menuUrl}" class="btn btn-mulai">
+                    <a href="base-app.html?page=menu-utama" class="btn btn-mulai">
                         <i class="fa-solid fa-rocket"></i>
                         Mulai Akses
                     </a>

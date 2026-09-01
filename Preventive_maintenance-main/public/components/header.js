@@ -33,7 +33,7 @@ export function renderHeader(title = "MENU UTAMA") {
             </a>
 
             <a
-                href="base-app.html?page=menu"
+                href="base-app.html?page=menu-utama"
                 class="nav-item"
             >
                 <div class="nav-icon-box">
@@ -64,26 +64,20 @@ export function renderHeader(title = "MENU UTAMA") {
 
         </nav>
 
+        <div class="header-content-wrapper">
 
-        <!-- HEADER -->
-        <header class="main-header">
+            <button
+                class="hamburger-menu"
+                id="hamburgerMenu"
+                type="button"
+            >
+                <i class="fa-solid fa-bars"></i>
+            </button>
 
-            <div class="header-content-wrapper">
-
-                <button
-                    class="hamburger-menu"
-                    id="hamburgerMenu"
-                    type="button"
-                >
-                    <i class="fa-solid fa-bars"></i>
-                </button>
-
-                <div class="header-title-pill">
-                    ${title}
-                </div>
-
+            <div class="header-title-pill">
+                ${title}
             </div>
 
-        </header>
+        </div>
     `;
 }

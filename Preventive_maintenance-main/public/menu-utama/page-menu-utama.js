@@ -1,125 +1,85 @@
 import { supabaseClient as client } from "../../src/supabase/supabase-client.js";
-import { ROLE_CONFIG, getCurrentRole } from "../menu-role/role-home.js";
-import { renderHeader } from "../components/header.js";
-
+import { getCurrentRole } from "../menu-role/role-home.js";
 
 // ======================================================
 // MENU CONFIGURATION
 // ======================================================
 
-const MENU_CONFIG = {
+const MENU_CONFIG = [
 
-    "ADMIN": [
-        // nanti isi menu admin
-    ],
+    {
+        title: "Checklist Harian<br>mesin Injection",
+        url: "clhmi_pelaksana.html"
+    },
 
-    "OPERATOR | PELAKSANA": [
-        // nanti isi menu pelaksana
-    ],
+    {
+        title: "Checklist Harian<br>stand label & robot",
+        url: "chslr_pelaksana.html"
+    },
 
-    "SUPERVISOR | KOORDINATOR": [
-        // nanti isi menu koordinator
-    ],
+    {
+        title: "Pelaksanaan<br>Pekerjaan Workshop",
+        url: "ppw_operator.html"
+    },
 
-    "SUPERINTENDENT": [
-        // nanti isi menu superintendent
-    ],
+    {
+        title: "Laporan kerja<br>Maintenance & Repair",
+        action: "lkmr"
+    },
 
-    "JUNIOR MANAGER PRODUKSI": [
-        // nanti isi menu JM Produksi
-    ],
+    {
+        title: "Preventif mesin<br>injection (clamping)",
+        url: "pmi_pelaksana.html"
+    },
 
-    "JUNIOR MANAGER PPC": [
-        // nanti isi menu JM PPC
-    ],
+    {
+        title: "Preventif Robot<br>& Stand Label",
+        url: "prslb_pelaksana.html"
+    },
 
-    "MANAGER": [
+    {
+        title: "Laporan perawatan<br>& overhaul tools",
+        url: "pohm_engineer.html"
+    },
 
-        {
-            title: "Laporan perawatan<br>& overhaul tools",
-            url: "pohm_manager.html"
-        },
+    {
+        title: "Checklist<br>perawatan mold",
+        url: "cplm_operator.html"
+    },
 
-        {
-            title: "Jadwal perawatan<br>dan overhaul",
-            url: "Jpdo_manager.html"
-        },
+    {
+        title: "Jadwal perawatan<br>dan overhaul",
+        url: "Jpdo_supervisor.html"
+    },
 
-        {
-            title: "Data Grafik",
-            action: "grafik"
-        },
+    {
+        title: "Kartu<br>Riwayat",
+        url: "kartu_riwayat_pic.html"
+    },
 
-        {
-            title: "Grafik Data<br>Laporan Pekerja",
-            action: "grafik-pekerja"
-        }
+    {
+        title: "Data Grafik",
+        action: "grafik"
+    },
 
-    ]
+    {
+        title: "Grafik Data<br>Laporan Pekerja",
+        action: "grafik-pekerja"
+    },
 
-};
+    {
+        title: "Preventive Mesin<br>Workshop",
+        url: "pmw_operator.html"
+    }
 
-
-// ======================================================
-// RENDER HEADER
-// ======================================================
-
-function renderHeader(role) {
-
-    const header =
-        document.getElementById("mainHeader");
-
-    if (!header) return;
-
-
-    const config =
-        ROLE_CONFIG[role];
-
-
-    header.innerHTML = `
-
-        <div class="header-content-wrapper">
-
-            <button
-                class="hamburger-menu"
-                id="hamburgerMenu"
-                type="button"
-            >
-                <i class="fa-solid fa-bars"></i>
-            </button>
-
-
-            <div class="header-title-pill">
-
-                ${config.header
-                    .replace("HOME", "MENU UTAMA")}
-
-            </div>
-
-        </div>
-
-    `;
-
-
-    const hamburger = document.getElementById("hamburgerMenu");
-    const sidebar = document.getElementById("sidebar");
-    const overlay = document.getElementById("sidebarOverlay");
-
-
-    hamburger.addEventListener("click",() => {
-            sidebar.classList.add("active");
-            overlay.classList.add("active");
-        }
-    );
-
-}
+];
 
 
 // ======================================================
 // RENDER MENU
 // ======================================================
 
-function renderMenu(role) {
+function renderMenu() {
 
     const content =
         document.getElementById("pageContent");
@@ -127,15 +87,11 @@ function renderMenu(role) {
     if (!content) return;
 
 
-    const menus =
-        MENU_CONFIG[role] || [];
-
-
     content.innerHTML = `
 
         <div class="menu-grid">
 
-            ${menus.map((menu, index) => `
+            ${MENU_CONFIG.map((menu, index) => `
 
                 ${
                     menu.action
@@ -144,6 +100,7 @@ function renderMenu(role) {
 
                     `
                     <button
+                        type="button"
                         class="menu-card"
                         data-action="${menu.action}"
                         style="animation-delay: ${index * 50}ms"
@@ -179,7 +136,6 @@ function renderMenu(role) {
 
                     </a>
                     `
-
                 }
 
             `).join("")}
@@ -187,21 +143,18 @@ function renderMenu(role) {
         </div>
 
 
-        <div
-            id="grafikModalContainer"
-        ></div>
+        <div id="lkmrModalContainer"></div>
 
+        <div id="grafikModalContainer"></div>
 
-        <div
-            id="grafikPekerjaModalContainer"
-        ></div>
+        <div id="grafikPekerjaModalContainer"></div>
 
     `;
 
 
     initializeMenuCards();
 
-    initializeMenuActions(role);
+    initializeMenuActions();
 
 }
 
@@ -211,29 +164,114 @@ function renderMenu(role) {
 // ======================================================
 
 function initializeMenuCards() {
-    const cards = document.querySelectorAll(".menu-card");
+
+    const cards =
+        document.querySelectorAll(".menu-card");
+
 
     cards.forEach((card, index) => {
-            setTimeout( () => {
-                    card.classList.add("show");
-                },
-                index * 80
-            );
+
+        setTimeout(() => {
+
+            card.classList.add("show");
+
+        }, index * 50);
 
 
-            card.addEventListener(
-                "mousemove",
-                handleMouseMove
-            );
+        card.addEventListener(
+            "mousedown",
+            createRipple
+        );
 
 
-            card.addEventListener(
-                "mouseleave",
-                handleMouseLeave
-            );
+        card.addEventListener(
+            "mousemove",
+            handleMouseMove
+        );
 
-        }
-    );
+
+        card.addEventListener(
+            "mouseleave",
+            handleMouseLeave
+        );
+
+    });
+
+}
+
+
+// ======================================================
+// RIPPLE EFFECT
+// ======================================================
+
+function createRipple(event) {
+
+    const button =
+        event.currentTarget.querySelector(".menu-pill");
+
+    if (!button) return;
+
+
+    const circle =
+        document.createElement("span");
+
+
+    const diameter =
+        Math.max(
+            button.clientWidth,
+            button.clientHeight
+        );
+
+
+    const radius =
+        diameter / 2;
+
+
+    const rect =
+        button.getBoundingClientRect();
+
+
+    const clientX =
+        event.clientX;
+
+
+    const clientY =
+        event.clientY;
+
+
+    circle.style.width =
+        circle.style.height =
+        `${diameter}px`;
+
+
+    circle.style.left =
+        `${clientX - rect.left - radius}px`;
+
+
+    circle.style.top =
+        `${clientY - rect.top - radius}px`;
+
+
+    circle.classList.add("ripple");
+
+
+    const existingRipple =
+        button.querySelector(".ripple");
+
+
+    if (existingRipple) {
+        existingRipple.remove();
+    }
+
+
+    button.appendChild(circle);
+
+
+    setTimeout(() => {
+
+        circle.remove();
+
+    }, 800);
 
 }
 
@@ -241,51 +279,98 @@ function initializeMenuCards() {
 // ======================================================
 // 3D EFFECT
 // ======================================================
+
 function handleMouseMove(event) {
-    const card = event.currentTarget;
-    const pill = card.querySelector(".menu-pill");
+
+    const card =
+        event.currentTarget;
+
+
+    const pill =
+        card.querySelector(".menu-pill");
+
 
     if (!pill) return;
-    const rect = card.getBoundingClientRect();
 
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
 
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
+    const rect =
+        card.getBoundingClientRect();
 
-    const rotateX = ((y - centerY) / centerY) * -10;
-    const rotateY = ((x - centerX) / centerX) * 10;
+
+    const x =
+        event.clientX - rect.left;
+
+
+    const y =
+        event.clientY - rect.top;
+
+
+    const centerX =
+        rect.width / 2;
+
+
+    const centerY =
+        rect.height / 2;
+
+
+    const rotateX =
+        ((y - centerY) / centerY) * -15;
+
+
+    const rotateY =
+        ((x - centerX) / centerX) * 15;
+
 
     pill.style.transform = `
+
         perspective(1000px)
+
         rotateX(${rotateX}deg)
+
         rotateY(${rotateY}deg)
-        scale3d(1.03,1.03,1.03)
+
+        scale3d(1.05, 1.05, 1.05)
+
     `;
+
 
     pill.style.setProperty(
         "--mouse-x",
         `${x}px`
     );
 
+
     pill.style.setProperty(
         "--mouse-y",
         `${y}px`
     );
+
 }
 
+
 function handleMouseLeave(event) {
-    const card = event.currentTarget;
-    
-    const pill = card.querySelector(".menu-pill");
+
+    const card =
+        event.currentTarget;
+
+
+    const pill =
+        card.querySelector(".menu-pill");
+
+
     if (!pill) return;
 
+
     pill.style.transform = `
+
         perspective(1000px)
+
         rotateX(0deg)
+
         rotateY(0deg)
-        scale3d(1,1,1)
+
+        scale3d(1, 1, 1)
+
     `;
 
 }
@@ -295,29 +380,146 @@ function handleMouseLeave(event) {
 // MENU ACTIONS
 // ======================================================
 
-function initializeMenuActions(role) {
+function initializeMenuActions() {
+
     document
         .querySelectorAll("[data-action]")
         .forEach(button => {
+
             button.addEventListener(
                 "click",
                 () => {
+
                     const action =
                         button.dataset.action;
 
-                    if (action === "grafik") {
-                        openGrafikModal();
+
+                    if (action === "lkmr") {
+
+                        openLkmrModal();
+
                     }
 
-                    if (
-                        action ===
-                        "grafik-pekerja"
-                    ) {
-                        openGrafikPekerjaModal();
+
+                    if (action === "grafik") {
+
+                        openGrafikModal();
+
                     }
+
+
+                    if (
+                        action === "grafik-pekerja"
+                    ) {
+
+                        openGrafikPekerjaModal();
+
+                    }
+
                 }
             );
+
         });
+
+}
+
+
+// ======================================================
+// LKMR MODAL
+// ======================================================
+
+function openLkmrModal() {
+
+    const container =
+        document.getElementById(
+            "lkmrModalContainer"
+        );
+
+
+    container.innerHTML = `
+
+        <div
+            class="choice-overlay active"
+            id="lkmrModal"
+        >
+
+            <div class="choice-box">
+
+                <h3
+                    style="
+                        margin-bottom: 20px;
+                        color: #333;
+                        font-size: 18px;
+                    "
+                >
+                    Pilih Jenis Laporan
+                </h3>
+
+
+                <a
+                    href="Lkmr_operator.html"
+                    class="choice-btn btn-mesin"
+                >
+                    Maintenance Mesin
+                </a>
+
+
+                <a
+                    href="Lkmr_operator_repair.html"
+                    class="choice-btn btn-repair"
+                >
+                    Maintenance Repair
+                </a>
+
+
+                <button
+                    type="button"
+                    id="closeLkmrModal"
+                    style="
+                        margin-top: 15px;
+                        color: #888;
+                        font-size: 14px;
+                        cursor: pointer;
+                        text-decoration: underline;
+                        border: none;
+                        background: transparent;
+                    "
+                >
+                    Tutup
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    const modal =
+        document.getElementById("lkmrModal");
+
+
+    document
+        .getElementById("closeLkmrModal")
+        .addEventListener(
+            "click",
+            () => modal.remove()
+        );
+
+
+    modal.addEventListener(
+        "click",
+        event => {
+
+            if (event.target === modal) {
+
+                modal.remove();
+
+            }
+
+        }
+    );
+
 }
 
 
@@ -327,7 +529,10 @@ function initializeMenuActions(role) {
 
 function openGrafikModal() {
 
-    const container = document.getElementById( "grafikModalContainer" );
+    const container =
+        document.getElementById(
+            "grafikModalContainer"
+        );
 
 
     container.innerHTML = `
@@ -340,6 +545,7 @@ function openGrafikModal() {
             <div class="grafik-modal-box">
 
                 <button
+                    type="button"
                     class="grafik-modal-close"
                     id="closeGrafikModal"
                 >
@@ -403,18 +609,19 @@ function openGrafikModal() {
 
 
     const modal =
-        document.getElementById("grafikModal");
-
-    const close =
         document.getElementById(
-            "closeGrafikModal"
+            "grafikModal"
         );
 
 
-    close.addEventListener(
-        "click",
-        () => modal.remove()
-    );
+    document
+        .getElementById(
+            "closeGrafikModal"
+        )
+        .addEventListener(
+            "click",
+            () => modal.remove()
+        );
 
 
     modal.addEventListener(
@@ -422,7 +629,9 @@ function openGrafikModal() {
         event => {
 
             if (event.target === modal) {
+
                 modal.remove();
+
             }
 
         }
@@ -453,6 +662,7 @@ function openGrafikPekerjaModal() {
             <div class="grafik-modal-box">
 
                 <button
+                    type="button"
                     class="grafik-modal-close"
                     id="closeGrafikPekerjaModal"
                 >
@@ -512,7 +722,9 @@ function openGrafikPekerjaModal() {
         event => {
 
             if (event.target === modal) {
+
                 modal.remove();
+
             }
 
         }
@@ -563,27 +775,16 @@ async function initMenuUtama() {
         }
 
 
-        if (!ROLE_CONFIG[role]) {
-
-            console.error(
-                "Role belum dikonfigurasi:",
-                role
-            );
-
-            return;
-
-        }
-
-
-        renderHeader(role);
-
-        renderMenu(role);
-
-
         console.log(
             "Menu utama loaded:",
             role
         );
+
+
+        // Untuk sekarang SEMUA ROLE
+        // menggunakan 13 menu yang sama.
+
+        renderMenu();
 
     }
 
@@ -603,23 +804,25 @@ async function initMenuUtama() {
 // PAGE ROUTER
 // ======================================================
 
+// ======================================================
+// PAGE ROUTER
+// ======================================================
+
 document.addEventListener(
     "DOMContentLoaded",
     async () => {
-
         const params =
             new URLSearchParams(
                 window.location.search
             );
 
-
         if (
             params.get("page") !==
-            "menu"
-        ) return;
-
+            "menu-utama"
+        ) {
+            return;
+        }
 
         await initMenuUtama();
-
     }
 );
