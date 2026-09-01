@@ -69,38 +69,6 @@ function renderDownloadPage() {
         return;
     }
 
-    // ==================================================
-    // IMPORTANT:
-    // Jangan gunakan header.innerHTML di sini.
-    //
-    // header.js sudah membuat:
-    // .header-content-wrapper
-    // .hamburger-menu
-    // .header-title-pill
-    //
-    // Kita hanya mengubah TEXT title-nya.
-    // ==================================================
-
-    const headerTitle =
-        document.querySelector(".header-title-pill");
-
-    if (headerTitle) {
-        headerTitle.textContent = "DOWNLOAD DATA";
-    } else {
-        console.warn(
-            "header-title-pill tidak ditemukan."
-        );
-    }
-
-    // ==================================================
-    // DOWNLOAD CONTENT
-    //
-    // IMPORTANT:
-    // Semua content dibungkus .app-container
-    // supaya struktur Download sama dengan
-    // layout Menu Utama.
-    // ==================================================
-
     content.innerHTML = `
         <div class="app-container">
 
@@ -152,6 +120,17 @@ function renderDownloadPage() {
 
         </div>
     `;
+
+    const headerTitle =
+        document.querySelector(".header-title-pill");
+
+    if (headerTitle) {
+        headerTitle.textContent = "DOWNLOAD DATA";
+    } else {
+        console.warn(
+            "header-title-pill tidak ditemukan."
+        );
+    }
 
     initializeDownloadCards();
     initializeDownloadActions();

@@ -34,3 +34,16 @@ function closeSidebar() {
 hamburger.addEventListener("click", openSidebar);
 closeButton.addEventListener("click", closeSidebar);
 overlay.addEventListener("click", closeSidebar);
+
+function setPageTitle(title) {
+
+    const headerTitle =
+        document.querySelector(".header-title-pill");
+
+    if (!headerTitle) {
+        console.warn("Header title tidak ditemukan.");
+        return;
+    }
+
+    headerTitle.textContent = title;
+}
