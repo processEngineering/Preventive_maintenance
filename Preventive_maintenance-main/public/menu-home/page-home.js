@@ -1,5 +1,5 @@
 import { supabaseClient } from '../../src/supabase/supabase-client.js';
-import { ROLE_CONFIG, getCurrentRole } from '../menu-role/role-home.js';
+import { ROLE_CONFIG, getCurrentRole } from '../data-role/role-home.js';
 
 // --- render home page
 function renderHome(config) {
