@@ -1,7 +1,11 @@
 import { renderHeader } from "../../public/components/header.js";
+import { renderFooter, setConnectionStatus} from "../../public/components/footer.js";
 
 const app = document.getElementById("mainHeader");
 app.innerHTML = renderHeader("MENU UTAMA");
+
+renderFooter();
+setConnectionStatus(true); // Example: Set initial connection status to connected
 
 
 const sidebar = document.getElementById("sidebar");

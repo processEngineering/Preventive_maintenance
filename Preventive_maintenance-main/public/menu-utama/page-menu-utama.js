@@ -1,5 +1,5 @@
 import { supabaseClient as client } from "../../src/supabase/supabase-client.js";
-import { getCurrentRole } from "../menu-role/role-home.js";
+import { getCurrentRole } from "../data-role/role-home.js";
 
 // ======================================================
 // MENU CONFIGURATION
