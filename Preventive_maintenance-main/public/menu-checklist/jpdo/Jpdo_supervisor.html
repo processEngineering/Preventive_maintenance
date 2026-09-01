@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Input Supervisor - AKG Maintenance</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        /* --- THEME VARIABLES (Light Mode AKG) --- */
+        :root {
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --accent: #dc2626;
+            --accent-soft: #ffebeb;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #ef4444;
+            
+            --bg-body: #f4f6f8;
+            --bg-card: #ffffff; 
+            --bg-input: #ffffff;
+            
+            --text-main: #333333;
+            --text-muted: #6b7280;
+            --text-soft: #9ca3af;
+            
+            --border: #e5e7eb;
+            --border-red: rgba(201, 25, 25, 0.3);
+            
+            --radius: 16px;
+            --sidebar-width: 280px; 
+            --header-height: 70px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background: var(--bg-body); 
+            color: var(--text-main); 
+            min-height: 100vh; 
+            display: block; 
+            overflow-x: hidden;
+            padding-bottom: 40px;
+        }
+
+        /* --- Background Animation --- */
+        .bg-glow {
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(201, 25, 25, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hidden { display: none !important; }
+
+        /* --- PROFESSIONAL HEADER BAR (TOMBOL GARIS 3) --- */
+        .main-header {
+            position: fixed;
+            top: 0;
+            left: 0; 
+            right: 0;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+
+        .header-content-wrapper {
+            width: 100%;
+            max-width: 600px; 
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        .hamburger-menu {
+            font-size: 26px;
+            color: var(--primary);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            transition: transform 0.2s;
+            z-index: 2;
+        }
+        .hamburger-menu:active { transform: scale(0.9); }
+
+        .header-title-pill {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 30px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1);
+            white-space: nowrap;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+
+        .side-nav {
+            position: fixed;
+            top: 0; left: -100%;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+
+        .side-nav.active { left: 0; }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-title { font-weight: 800; color: var(--primary); font-size: 20px; }
+        .sidebar-close { font-size: 24px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: var(--text-muted);
+            background: white; width: 100%; padding: 14px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: 600;
+        }
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 20px; color: var(--primary); }
+
+        /* --- APP CONTAINER (CENTERED) --- */
+        .app-shell {
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .app-container {
+            width: 100%; 
+            max-width: 600px; 
+            margin: 0 auto;
+            padding: 20px 24px 60px 24px; 
+            padding-top: calc(var(--header-height) + 30px);
+            min-height: 100vh;
+        }
+
+        /* --- FORM CARDS (LIGHT THEME) --- */
+        .form-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px; margin-bottom: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            animation: fadeIn 0.4s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .section-title {
+            font-size: 14px; font-weight: 800; color: var(--text-main);
+            text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px dashed var(--border);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .section-title::before {
+            content: ''; width: 6px; height: 6px; background: var(--primary); border-radius: 50%;
+        }
+
+        /* Form Elements */
+        .form-group { margin-bottom: 20px; }
+        .form-label { 
+            display: block; font-size: 11px; color: var(--text-muted); 
+            margin-bottom: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        
+        .form-input, .form-select {
+            width: 100%; padding: 14px 16px;
+            background: var(--bg-input); border: 1px solid var(--border);
+            border-radius: 12px; color: var(--text-main);
+            font-size: 14px; font-weight: 600; outline: none; transition: 0.3s;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            font-family: inherit;
+        }
+        .form-input:focus, .form-select:focus {
+            border-color: var(--primary); box-shadow: 0 0 0 3px var(--accent-soft); background: #fff;
+        }
+        .form-input::placeholder { color: #cbd5e1; font-weight: 400; }
+
+        select.form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c91919' stroke-width='3'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat; background-position: right 1rem center; background-size: 1em; cursor: pointer;
+        }
+
+        /* --- CUSTOM RADIO BUTTONS (LIGHT THEME) --- */
+        .radio-group { display: flex; gap: 10px; margin-top: 5px; }
+        .radio-opt { flex: 1; position: relative; height: 45px; cursor: pointer; }
+        .radio-opt input { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; z-index: 10; }
+        
+        .radio-tile {
+            display: flex; align-items: center; justify-content: center; height: 100%; width: 100%;
+            background: #f8f9fa; border: 2px solid var(--border); border-radius: 10px;
+            font-size: 13px; font-weight: 800; color: var(--text-muted); transition: all 0.2s;
+        }
+
+        /* Checked Styles */
+        .radio-opt input[value="YA"]:checked + .radio-tile,
+        .radio-opt input[value="KERJA"]:checked + .radio-tile {
+            background: #dcfce7; border-color: var(--success); color: var(--success); 
+            box-shadow: 0 2px 8px rgba(5, 150, 105, 0.15); transform: translateY(-2px);
+        }
+        
+        .radio-opt input[value="TIDAK"]:checked + .radio-tile,
+        .radio-opt input[value="LIBUR"]:checked + .radio-tile {
+            background: #fee2e2; border-color: var(--danger); color: var(--danger); 
+            box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15); transform: translateY(-2px);
+        }
+
+        /* Helper Classes */
+        .disabled-section { opacity: 0.4; pointer-events: none; filter: grayscale(1); transition: 0.3s; }
+
+        /* --- SIGNATURE PAD --- */
+        .sig-wrapper {
+            background: #f8f9fa; border-radius: 12px; border: 2px dashed var(--border-red);
+            height: 180px; position: relative; overflow: hidden; transition: border-color 0.3s;
+        }
+        .sig-wrapper:hover { border-color: var(--primary-light); }
+        canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+        
+        .btn-clear {
+            display: inline-block; font-size: 10px; color: var(--primary);
+            border: 1px solid var(--primary); padding: 6px 14px; border-radius: 6px;
+            background: transparent; cursor: pointer; font-weight: 800; text-transform: uppercase; transition: 0.3s;
+        }
+        .btn-clear:hover { background: var(--primary); color: white; }
+
+        /* --- SUBMIT BUTTON --- */
+        .btn-submit {
+            width: 100%; 
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; border: none; padding: 18px; border-radius: 14px;
+            font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 8px 24px rgba(201, 25, 25, 0.3); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-submit:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 4px 12px rgba(201, 25, 25, 0.3); }
+        .btn-submit:disabled { background: #d1d5db; box-shadow: none; color: #9ca3af; cursor: not-allowed; transform: none; }
+
+        /* SweetAlert Light Theme Overrides */
+        div:where(.swal2-container) { z-index: 9999 !important; }
+        div:where(.swal2-container) div:where(.swal2-popup) { background: #ffffff !important; border: 1px solid var(--border); color: var(--text-main) !important; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        div:where(.swal2-confirm) { background-color: var(--primary) !important; border-radius: 10px; font-weight: bold; }
+        div:where(.swal2-cancel) { color: var(--text-main) !important; font-weight: bold; background: #f1f5f9 !important; border: none; }
+
+    </style>
+</head>
+<body class="pb-24">
+
+    <div class="bg-glow"></div>
+
+    <!-- HEADER UTAMA (TOMBOL GARIS 3) -->
+    <header class="main-header">
+        <div class="header-content-wrapper">
+            <div class="hamburger-menu" onclick="toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+            <div class="header-title-pill">INPUT SUPERVISOR</div>
+        </div>
+    </header>
+
+    <!-- OVERLAY & SIDEBAR -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <div class="app-shell">
+        <div class="app-container">
+
+            <form id="jpdoForm">
+                <!-- 1. General Section -->
+                <div class="form-section">
+                    <div class="section-title">Waktu & Status</div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Tanggal Pelaksanaan</label>
+                        <input type="date" class="form-input" id="date-input" required onchange="handleDateChange(this.value)">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Status Hari</label>
+                        <div class="radio-group disabled-section" id="day-status-container">
+                            <label class="radio-opt">
+                                <input type="radio" name="day_status" value="KERJA" onclick="handleDayStatusChange(this.value)" disabled required>
+                                <div class="radio-tile">HARI KERJA</div>
+                            </label>
+                            <label class="radio-opt">
+                                <input type="radio" name="day_status" value="LIBUR" onclick="handleDayStatusChange(this.value)" disabled required>
+                                <div class="radio-tile">HARI LIBUR</div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Operational Section (Hidden by default) -->
+                <div id="operational-form-section" class="form-section hidden">
+                    <div class="section-title">Detail Operasional</div>
+
+                    <div class="form-group">
+                        <label class="form-label">Nama Mesin / Tool / Equipment</label>
+                        <select class="form-select" id="mesin-select">
+                            <option value="" disabled selected>-- Pilih Mesin --</option>
+                            <option value="INJECT BLOW LIANXIN IBM30H">INJECT BLOW LIANXIN IBM30H</option>
+                            <option value="TM EXPRESS 270/2250">TM EXPRESS 270/2250 (+ Robot Wittman 822)</option>
+                            <option value="ECO POWER 240/750">ECO POWER 240/750 (+ Robot Wittman 822)</option>
+                            <option value="ECO POWER 210 T">ECO POWER 210 T (+ Robot Wittman 823 UHS)</option>
+                            <option value="TM EXPRESS 350/3400">TM EXPRESS 350/3400 (Sepro S5-25 + Robot jet)</option>
+                            <option value="ARBURG 320 T">ARBURG 320 T (STAR LORD)</option>
+                            <option value="WIBA 500 T (STEVE)">WIBA 500 T (STEVE ROGERS)</option>
+                            <option value="WIBA 500 T (THANOS)">WIBA 500 T (THANOS)</option>
+                            <option value="FCS 220 T">FCS 220 T (BLACKWIDOW)</option>
+                            <option value="ENGEL 220 T">ENGEL 220 T (DEADPOOL)</option>
+                            <option value="ARBURG 200 T">ARBURG 200 T (WOLVERINE)</option>
+                            <option value="FCS 380 T (LOKI)">FCS 380 T (LOKI)</option>
+                            <option value="ENGEL 380 T (INHUMANS)">ENGEL 380 T (INHUMANS)</option>
+                            <option value="ENGEL 380 T (HULK)">ENGEL 380 T (HULK)</option>
+                            <option value="NPC 400 T (WANDA)">NPC 400 T (WANDA)</option>
+                            <option value="ENGEL 280 T">ENGEL 280 T (DOCTOR STRANGE)</option>
+                            <option value="FCS 100 T (ANTMAN)">FCS 100 T (ANTMAN)</option>
+                            <option value="NPC 160 T (WASP)">NPC 160 T (WASP)</option>
+                            <option value="NPC 160 T (WONG)">NPC 160 T (WONG)</option>
+                            <option value="FCS 150 T (ROCKET)">FCS 150 T (ROCKET)</option>
+                            <option value="FCS 150 T (MANTIS)">FCS 150 T (MANTIS)</option>
+                            <option value="NPC 160 T (SHANCHI)">NPC 160 T (SHANCHI)</option>
+                            <option value="NPC 260 T (VISION)">NPC 260 T (VISION)</option>
+                            <option value="NPC 200 T (MAGNETO)">NPC 200 T (MAGNETO)</option>
+                            <option value="FCS 100 T (NICK FURRY)">FCS 100 T (NICK FURRY)</option>
+                            <option value="FCS 250 T (CYCLOPS)">FCS 250 T (CYCLOPS)</option>
+                            <option value="NPC 260 T (HAWKEYE)">NPC 260 T (HAWKEYE)</option>
+                            <option value="WORKSHOP">WORKSHOP (ZSJ 328)</option>
+                            <option value="GRINDING">GRINDING</option>
+                            <option value="MILLING 1">MILLING 1</option>
+                            <option value="MILLING 2">MILLING 2</option>
+                            <option value="BUBUT">BUBUT</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group p-4 bg-gray-50 border border-gray-200 rounded-xl mb-4">
+                        <label class="form-label" style="color:var(--primary);">PLAN (Rencana)</label>
+                        <div class="radio-group">
+                            <label class="radio-opt">
+                                <input type="radio" name="plan_status" value="YA" onclick="handlePlanChange(this.value)">
+                                <div class="radio-tile">YA</div>
+                            </label>
+                            <label class="radio-opt">
+                                <input type="radio" name="plan_status" value="TIDAK" onclick="handlePlanChange(this.value)">
+                                <div class="radio-tile">TIDAK</div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group p-4 bg-gray-50 border border-gray-200 rounded-xl mb-6" id="actual-container">
+                        <label class="form-label" style="color:var(--primary);">ACTUAL (Aktual)</label>
+                        <div class="radio-group">
+                            <label class="radio-opt">
+                                <input type="radio" name="actual_status" value="YA" id="actual_ya">
+                                <div class="radio-tile">YA</div>
+                            </label>
+                            <label class="radio-opt">
+                                <input type="radio" name="actual_status" value="TIDAK" id="actual_tidak">
+                                <div class="radio-tile">TIDAK</div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Nama PIC (Pelaksana)</label>
+                        <input type="text" class="form-input" id="nama-pic" placeholder="Ketik nama Teknisi/Operator">
+                    </div>
+                </div>
+
+                <!-- 3. Identity & Signature (Hidden by default until status selected) -->
+                <div id="identity-section" class="form-section hidden">
+                    <div class="section-title">Otorisasi Supervisor</div>
+
+                    <div class="form-group">
+                        <label class="form-label">Nama Supervisor</label>
+                        <input type="text" class="form-input" id="nama-supervisor" required placeholder="Ketik nama lengkap">
+                    </div>
+                    
+                    <div class="form-group" id="signature-pad-container">
+                        <div class="flex justify-between items-center mb-2 px-1">
+                            <label class="form-label mb-0">Paraf Digital</label>
+                            <button type="button" class="btn-clear" onclick="clearSignature()">Ulangi</button>
+                        </div>
+                        <div class="sig-wrapper">
+                            <canvas id="signature-canvas"></canvas>
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="submit-btn" class="btn-submit" onclick="submitData()">
+                        <i class="fa-solid fa-paper-plane mr-2"></i> SIMPAN LAPORAN
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- LOGIKA JAVASCRIPT (FUNGSI TIDAK DIUBAH) -->
+    <script>
+        // --- 1. Navigasi Pintar & Sidebar ---
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E'; 
+        
+        if (!window.supabaseClient) {
+            window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
+
+        window.onload = () => {
+            setupDynamicNavigation();
+            setTimeout(resizeCanvas, 300);
+        };
+
+        // Routing Navigasi Dinamis
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await window.supabaseClient.auth.getSession();
+                if (!session) return;
+
+                const { data: profile } = await window.supabaseClient
+                    .from('profiles')
+                    .select('jabatan')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+
+                    let homeLink = 'index.html';
+                    let menuLink = 'menu_utama.html';
+
+                    if (jabatan.includes('OPERATOR')) {
+                        homeLink = 'OPERATOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_OPERATOR.html';
+                    } else if (jabatan.includes('SUPERVISOR')) {
+                        homeLink = 'SUPERVISOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                    } else if (jabatan.includes('SUPERINTENDENT')) {
+                        homeLink = 'SUPERINTENDENT_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                    } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                        homeLink = 'MANAGER_HOME.html';
+                        menuLink = 'MENU_UTAMA_MANAGER.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                        homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                        homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                    }
+
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) {
+                console.error("Gagal mengatur navigasi dinamis:", err);
+            }
+        }
+
+        // --- 2. LOGIKA TAMPILAN FORM ---
+        function handleDateChange(value) {
+            const dayStatusInputs = document.querySelectorAll('input[name="day_status"]');
+            const dayStatusContainer = document.getElementById('day-status-container');
+            if (value) {
+                dayStatusInputs.forEach(input => input.disabled = false);
+                dayStatusContainer.classList.remove('disabled-section');
+            } else {
+                dayStatusInputs.forEach(input => { input.disabled = true; input.checked = false; });
+                dayStatusContainer.classList.add('disabled-section');
+                handleDayStatusChange(null);
+            }
+        }
+
+        function handlePlanChange(value) {
+            const actualContainer = document.getElementById('actual-container');
+            const actualYa = document.getElementById('actual_ya');
+            const actualTidak = document.getElementById('actual_tidak');
+            if (value === 'TIDAK') {
+                actualTidak.checked = true;
+                actualYa.disabled = true;
+                actualTidak.disabled = true; 
+                actualContainer.classList.add('disabled-section');
+            } else {
+                actualYa.disabled = false;
+                actualTidak.disabled = false;
+                actualTidak.checked = false; 
+                actualContainer.classList.remove('disabled-section');
+            }
+        }
+
+        function handleDayStatusChange(status) {
+            const operationalSection = document.getElementById('operational-form-section');
+            const identitySection = document.getElementById('identity-section');
+            const signatureContainer = document.getElementById('signature-pad-container');
+            
+            if (!status) {
+                operationalSection.classList.add('hidden');
+                identitySection.classList.add('hidden');
+                return;
+            }
+
+            identitySection.classList.remove('hidden');
+
+            // Resize canvas saat section muncul agar tidak blur/kecil
+            setTimeout(resizeCanvas, 100);
+
+            if (status === 'LIBUR') {
+                operationalSection.classList.add('hidden');
+                signatureContainer.classList.add('hidden'); // TTD sembunyi kalau libur
+            } else {
+                operationalSection.classList.remove('hidden');
+                signatureContainer.classList.remove('hidden');
+            }
+        }
+
+        // --- 3. LOGIKA TANDA TANGAN (CANVAS) ---
+        const canvas = document.getElementById('signature-canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        function resizeCanvas() {
+            // Sesuaikan ukuran canvas dengan container
+            const container = canvas.parentElement;
+            if(container && container.clientWidth > 0) {
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                ctx.strokeStyle = '#000000'; // Warna tinta HITAM
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // Event Listeners untuk Mouse & Touch
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        });
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mouseout', () => isDrawing = false);
+
+        canvas.addEventListener('touchstart', (e) => {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            lastX = e.touches[0].clientX - rect.left;
+            lastY = e.touches[0].clientY - rect.top;
+            e.preventDefault(); // Prevent scrolling
+        }, { passive: false });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.touches[0].clientX - rect.left;
+            const y = e.touches[0].clientY - rect.top;
+            drawLine(lastX, lastY, x, y);
+            lastX = x;
+            lastY = y;
+            e.preventDefault();
+        }, { passive: false });
+        
+        canvas.addEventListener('touchend', () => isDrawing = false);
+
+        function draw(e) {
+            if (!isDrawing) return;
+            drawLine(lastX, lastY, e.offsetX, e.offsetY);
+            lastX = e.offsetX;
+            lastY = e.offsetY;
+        }
+
+        function drawLine(x1, y1, x2, y2) {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+
+        function clearSignature() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function isCanvasBlank() {
+            const pixelBuffer = new Uint32Array(
+                ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer
+            );
+            return !pixelBuffer.some(color => color !== 0);
+        }
+
+        // --- 4. SUBMIT DATA KE SUPABASE ---
+        async function submitData() {
+            const btn = document.getElementById('submit-btn');
+            const originalHtml = btn.innerHTML;
+            
+            // Konfigurasi warna Alert Light Theme
+            const swalLightStyle = {
+                background: '#ffffff', color: '#333333', confirmButtonColor: '#c91919'
+            };
+
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Menyimpan...';
+            btn.disabled = true;
+
+            try {
+                // Ambil Data Form
+                const tanggal = document.getElementById('date-input').value;
+                const statusHari = document.querySelector('input[name="day_status"]:checked')?.value;
+                const namaSupervisor = document.getElementById('nama-supervisor').value;
+                
+                if (!tanggal || !statusHari || !namaSupervisor) {
+                    throw new Error("Tanggal, Status Hari, dan Nama Supervisor wajib diisi!");
+                }
+
+                let namaMesin = null;
+                let namaPic = null;
+                let signatureData = null;
+                let plan = null;
+                let actual = null;
+
+                // Jika Hari KERJA, ambil data teknis
+                if (statusHari === 'KERJA') {
+                    const mesinSelect = document.getElementById('mesin-select');
+                    namaMesin = mesinSelect.value;
+                    if (!namaMesin) throw new Error("Silakan pilih Mesin!");
+
+                    plan = document.querySelector('input[name="plan_status"]:checked')?.value;
+                    if (!plan) throw new Error("Status PLAN wajib dipilih!");
+
+                    // Jika plan YA, actual wajib. Jika TIDAK, actual otomatis TIDAK.
+                    actual = document.querySelector('input[name="actual_status"]:checked')?.value;
+                    if (!actual && plan === 'YA') throw new Error("Status ACTUAL wajib dipilih!");
+                    if (plan === 'TIDAK') actual = 'TIDAK';
+
+                    namaPic = document.getElementById('nama-pic').value;
+
+                    // Cek Tanda Tangan
+                    if (isCanvasBlank()) {
+                        throw new Error("Mohon tanda tangan terlebih dahulu!");
+                    }
+                    signatureData = canvas.toDataURL(); // Base64 string
+                }
+
+                // 1. Insert ke jpdo_log
+                const { data: logData, error: logError } = await window.supabaseClient
+                    .from('jpdo_log')
+                    .insert([
+                        {
+                            tanggal: tanggal,
+                            status_hari: statusHari,
+                            nama_supervisor: namaSupervisor,
+                            nama_mesin: namaMesin,
+                            nama_pic: namaPic,
+                            tanda_tangan: signatureData
+                        }
+                    ])
+                    .select();
+
+                if (logError) throw logError;
+                const logId = logData[0].id;
+
+                // 2. Insert ke jpdo_result (Jika Kerja)
+                if (statusHari === 'KERJA') {
+                    const { error: resultError } = await window.supabaseClient
+                        .from('jpdo_result')
+                        .insert([
+                            {
+                                log_id: logId,
+                                plan_status: plan,
+                                actual_status: actual
+                            }
+                        ]);
+                    
+                    if (resultError) throw resultError;
+                }
+
+                Swal.fire({
+                    ...swalLightStyle,
+                    icon: 'success', title: 'Berhasil!', text: 'Data jadwal perawatan berhasil disimpan.',
+                    showConfirmButton: false, timer: 1500
+                }).then(() => {
+                    const menuLink = document.getElementById('nav-menu') ? document.getElementById('nav-menu').href : 'menu_utama.html';
+                    window.location.href = menuLink;
+                });
+
+            } catch (error) {
+                Swal.fire({...swalLightStyle, icon:'error', title:'Peringatan', text: error.message});
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        }
+    </script>
+
+</body>
+</html>

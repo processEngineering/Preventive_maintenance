@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Data Laporan LKMR - AKG Maintenance</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Library jsPDF & AutoTable untuk Export PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            /* TEMA WARNA AKG UI (Light Mode) */
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --border: #e5e7eb;
+            --text-main: #333333;
+            --text-muted: #6b7280;
+            --bg-body: #f4f6f8;
+            --bg-card: #ffffff;
+            --bg-input: #f8f9fa;
+            --sidebar-width: 280px; 
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+        }
+
+        /* === GLOBAL RESET === */
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            margin: 0; padding: 0;
+            background: var(--bg-body);
+            font-family: 'Inter', sans-serif;
+            font-size: 7pt;
+            padding-bottom: 40px;
+            overflow: auto; 
+            color: var(--text-main);
+        }
+
+        /* --- TOP ACTION BAR (GARIS TIGA + KONTROL HORIZONTAL) --- */
+        .top-bar {
+            position: sticky;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #1e293b; /* Warna gelap profesional */
+            padding: 10px 20px;
+            display: flex;
+            justify-content: flex-start; /* Posisi ke Kiri */
+            align-items: center;
+            gap: 25px; 
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            flex-wrap: wrap; 
+        }
+
+        /* Tombol Hamburger di Kiri */
+        .hamburger-btn {
+            width: 42px; height: 42px;
+            background: var(--primary); color: white;
+            border-radius: 8px; display: flex; justify-content: center; align-items: center;
+            font-size: 20px; cursor: pointer; transition: 0.2s;
+            flex-shrink: 0;
+        }
+        .hamburger-btn:hover { background: var(--primary-dark); transform: scale(1.05); }
+        .hamburger-btn:active { transform: scale(0.95); }
+
+        /* Panel Kontrol di sebelah Kanan Garis Tiga */
+        .controls-horizontal {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+        }
+
+        .controls-horizontal span.ctrl-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: white;
+            text-transform: uppercase;
+            margin-right: 5px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Style untuk Select Dropdown Filter */
+        .select-ctrl {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #fff;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            cursor: pointer;
+            background: #ffffff;
+            color: var(--text-main);
+            transition: all 0.2s;
+        }
+        .select-ctrl:hover {
+            border-color: var(--primary-light);
+        }
+
+        .btn-ctrl {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-show { background: #22c55e; color: white; }
+        .btn-show:hover { background: #16a34a; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+        .btn-pdf { background: var(--primary); color: white; border: none; }
+        .btn-pdf:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(201,25,25,0.3); }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 2000; opacity: 0; visibility: hidden; transition: 0.3s;
+            backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+        
+        .side-nav {
+            position: fixed; top: 0; left: -400px; width: 320px; height: 100vh;
+            background: white; z-index: 2001; transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+            display: flex; flex-direction: column; padding: 25px; box-shadow: 10px 0 30px rgba(0,0,0,0.3);
+            font-family: 'Inter', sans-serif; 
+        }
+        .side-nav.active { left: 0; }
+
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+        .sidebar-title { font-weight: bold; color: var(--primary); font-size: 24px; }
+        .sidebar-close { font-size: 30px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: #666; 
+            background: white; width: 100%; padding: 18px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: bold; font-size: 16px;
+        }
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 24px; color: var(--primary); }
+
+        /* --- APP CONTAINER --- */
+        .app-container {
+            width: 100%;
+            padding: 20px;
+        }
+
+        /* --- TABEL DATA --- */
+        .table-wrapper {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            border: 1px solid var(--border);
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        thead {
+            background: #f8f9fa;
+        }
+
+        th {
+            padding: 16px 20px;
+            text-align: left;
+            color: var(--text-muted);
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        td {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-main);
+            vertical-align: top;
+            font-weight: 500;
+        }
+
+        tr:hover td {
+            background-color: #fafafa;
+        }
+
+        /* Highlight Columns */
+        td.highlight-pic {
+            color: var(--primary);
+            font-weight: 800;
+        }
+
+        td.highlight-mesin {
+            font-weight: 700;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.approved {
+            background: #dcfce7;
+            color: var(--success);
+            border: 1px solid #a7f3d0;
+        }
+
+        .status-badge.pending {
+            background: #fee2e2;
+            color: var(--danger);
+            border: 1px solid #fca5a5;
+        }
+
+        /* Feedback Text */
+        .feedback-text {
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 12px;
+            max-width: 300px;
+            white-space: normal;
+            line-height: 1.4;
+        }
+
+        .loading-state, .empty-state {
+            padding: 60px 20px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Custom Scrollbar untuk Tabel */
+        .table-wrapper::-webkit-scrollbar { height: 8px; }
+        .table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .table-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .table-wrapper::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    </style>
+</head>
+<body>
+
+    <!-- TOP ACTION BAR (Horizontal Control Panel & Hamburger) -->
+    <div class="top-bar no-print">
+        <!-- Tombol Navigasi Garis 3 di sebelah KIRI -->
+        <div class="hamburger-btn" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+        </div>
+
+        <!-- Panel Kontrol Horizontal di sebelahnya -->
+        <div class="controls-horizontal">
+            <span class="ctrl-title"><i class="fa-solid fa-table"></i> DATA LKMR</span>
+            
+            <!-- TAMBAHAN: Filter Bulan & Tahun -->
+            <select id="filterMonth" class="select-ctrl" onchange="fetchData()">
+                <option value="all">Semua Bulan</option>
+                <option value="01">Januari</option>
+                <option value="02">Februari</option>
+                <option value="03">Maret</option>
+                <option value="04">April</option>
+                <option value="05">Mei</option>
+                <option value="06">Juni</option>
+                <option value="07">Juli</option>
+                <option value="08">Agustus</option>
+                <option value="09">September</option>
+                <option value="10">Oktober</option>
+                <option value="11">November</option>
+                <option value="12">Desember</option>
+            </select>
+            
+            <select id="filterYear" class="select-ctrl" onchange="fetchData()">
+                <option value="all">Semua Tahun</option>
+                <!-- Opsi Tahun Dibuat Secara Dinamis via JS -->
+            </select>
+
+            <button onclick="fetchData()" class="btn-ctrl btn-show"><i class="fa-solid fa-rotate-right"></i> REFRESH</button>
+            <button onclick="exportPDF()" class="btn-ctrl btn-pdf"><i class="fa-solid fa-file-pdf"></i> EKSPOR PDF</button>
+        </div>
+    </div>
+
+    <!-- OVERLAY & SIDEBAR (NO-PRINT) -->
+    <div class="sidebar-overlay no-print" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <nav class="side-nav no-print" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <!-- CONTENT CONTAINER -->
+    <div class="app-container">
+        <!-- Table Container -->
+        <div class="table-wrapper">
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>TANGGAL</th>
+                        <th>SHIFT</th>
+                        <th>PIC</th>
+                        <th>MESIN</th>
+                        <th>JENIS PROBLEM</th>
+                        <th>DESKRIPSI MASALAH</th>
+                        <th>WAKTU MULAI</th>
+                        <th>WAKTU SELESAI</th>
+                        <th>TARGET WAKTU PM</th>
+                        <th>STATUS</th>
+                        <th>FEEDBACK SPV</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Data Rows Rendered Here -->
+                </tbody>
+            </table>
+            
+            <div id="loading" class="loading-state">
+                <i class="fa-solid fa-circle-notch fa-spin text-primary" style="font-size: 24px; margin-bottom: 10px; color: var(--primary);"></i><br>
+                MEMUAT DATA...
+            </div>
+            <div id="empty" class="empty-state" style="display: none;">
+                <i class="fa-regular fa-folder-open" style="font-size: 32px; margin-bottom: 10px; color: #cbd5e1;"></i><br>
+                TIDAK ADA DATA.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Fungsi Buka Tutup Sidebar & Navigasi Pintar
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
+        // Setup Supabase
+        const supabaseUrl = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const client = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
+
+        window.onload = () => {
+            setupDynamicNavigation();
+            populateYears(); // Panggil fungsi isi tahun
+            fetchData();
+        };
+
+        // TAMBAHAN: Generate list tahun untuk filter secara otomatis
+        function populateYears() {
+            const yearSelect = document.getElementById('filterYear');
+            const currentYear = new Date().getFullYear();
+            
+            // Generate dari tahun saat ini mundur ke 2020 (Bisa disesuaikan)
+            for (let i = currentYear; i >= 2020; i--) {
+                let opt = document.createElement('option');
+                opt.value = i;
+                opt.innerHTML = i;
+                yearSelect.appendChild(opt);
+            }
+        }
+
+        // Routing Navigasi Dinamis
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await client.auth.getSession();
+                if (!session) return;
+
+                const { data: profile } = await client
+                    .from('profiles')
+                    .select('jabatan')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+
+                    let homeLink = 'index.html';
+                    let menuLink = 'menu_utama.html';
+
+                    if (jabatan.includes('OPERATOR')) {
+                        homeLink = 'OPERATOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_OPERATOR.html';
+                    } else if (jabatan.includes('SUPERVISOR')) {
+                        homeLink = 'SUPERVISOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                    } else if (jabatan.includes('SUPERINTENDENT')) {
+                        homeLink = 'SUPERINTENDENT_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                    } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                        homeLink = 'MANAGER_HOME.html';
+                        menuLink = 'MENU_UTAMA_MANAGER.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                        homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                        homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                    }
+
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) {
+                console.error("Gagal mengatur navigasi dinamis:", err);
+            }
+        }
+
+        // FETCH DATA
+        async function fetchData() {
+            const tbody = document.getElementById('tableBody');
+            const loading = document.getElementById('loading');
+            const empty = document.getElementById('empty');
+            
+            // Ambil value dari filter
+            const filterMonth = document.getElementById('filterMonth').value;
+            const filterYear = document.getElementById('filterYear').value;
+
+            tbody.innerHTML = '';
+            loading.style.display = 'block';
+            empty.style.display = 'none';
+
+            if (!client) {
+                loading.innerText = 'Database Error';
+                return;
+            }
+
+            try {
+                let query = client.from('Lkmr_result').select('*');
+
+                // TAMBAHAN: Logika Query Filter Database
+                if (filterYear !== 'all') {
+                    if (filterMonth !== 'all') {
+                        // Filter spesifik Bulan dan Tahun (Dapatkan hari terakhir di bulan tersebut)
+                        const lastDay = new Date(filterYear, filterMonth, 0).getDate();
+                        const startDate = `${filterYear}-${filterMonth}-01`;
+                        const endDate = `${filterYear}-${filterMonth}-${lastDay}`;
+                        query = query.gte('tanggal', startDate).lte('tanggal', endDate);
+                    } else {
+                        // Filter spesifik Tahun saja
+                        const startDate = `${filterYear}-01-01`;
+                        const endDate = `${filterYear}-12-31`;
+                        query = query.gte('tanggal', startDate).lte('tanggal', endDate);
+                    }
+                }
+
+                // Default sorting
+                query = query.order('tanggal', { ascending: false }).order('waktu_mulai', { ascending: false });
+
+                const { data, error } = await query;
+
+                if (error) throw error;
+
+                loading.style.display = 'none';
+
+                let finalData = data || [];
+
+                // Validasi Edge-case: Jika pilih Bulan tapi Tahunnya 'Semua' (Filter JS Memory)
+                if (filterYear === 'all' && filterMonth !== 'all') {
+                    finalData = finalData.filter(item => {
+                        if (!item.tanggal) return false;
+                        const m = (new Date(item.tanggal).getMonth() + 1).toString().padStart(2, '0');
+                        return m === filterMonth;
+                    });
+                }
+
+                if (finalData.length === 0) {
+                    empty.style.display = 'block';
+                    return;
+                }
+
+                finalData.forEach(item => {
+                    // Format Tanggal
+                    const dateObj = new Date(item.tanggal);
+                    const day = dateObj.getDate();
+                    const month = dateObj.toLocaleString('id-ID', { month: 'short' });
+                    const year = dateObj.getFullYear();
+                    const formattedDate = `${day} ${month} ${year}`;
+
+                    // Status Logic
+                    const status = item.status || 'PENDING';
+                    const isApproved = status === 'APPROVED';
+                    const statusClass = isApproved ? 'approved' : 'pending';
+                    const statusLabel = isApproved ? 'APPROVED' : 'PENDING';
+
+                    // Feedback Logic (TANPA NAMA SUPERINTENDENT)
+                    const feedback = item.feedback 
+                        ? `<div class="feedback-text">"${item.feedback}"</div>` 
+                        : '-';
+
+                    // Urutan Kolom
+                    const row = `
+                        <tr>
+                            <td>${formattedDate}</td>
+                            <td>${item.shift || '-'}</td>
+                            <td class="highlight-pic">${item.pic || '-'}</td>
+                            <td class="highlight-mesin">${item.nama_mesin || '-'}</td>
+                            <td>${item.jenis_problem || '-'}</td>
+                            <td style="white-space: normal; min-width: 250px;">${item.deskripsi_masalah || '-'}</td>
+                            <td>${item.waktu_mulai || '--:--'}</td>
+                            <td>${item.waktu_selesai || '--:--'}</td>
+                            <td>${item.target_waktu_pm || '-'}</td>
+                            <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                            <td style="white-space: normal;">${feedback}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+
+            } catch (err) {
+                console.error(err);
+                loading.innerText = 'Error Memuat Data';
+            }
+        }
+
+        // EXPORT PDF FUNCTION MENGGUNAKAN JSPDF AUTOTABLE
+        async function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            
+            // Landscape orientation, Unit mm, Format A4
+            const doc = new jsPDF('l', 'mm', 'a4'); 
+
+            // Header PDF
+            doc.setFontSize(14);
+
+            // TAMBAHAN: Mengambil teks periode dari filter aktif untuk judul di PDF
+            const monthSel = document.getElementById('filterMonth');
+            const yearSel = document.getElementById('filterYear');
+            let periodText = '';
+            
+            if (monthSel.value !== 'all' || yearSel.value !== 'all') {
+                const monthText = monthSel.value !== 'all' ? monthSel.options[monthSel.selectedIndex].text : '';
+                const yearText = yearSel.value !== 'all' ? yearSel.value : '';
+                const space = (monthText && yearText) ? ' ' : '';
+                periodText = ` - PERIODE: ${monthText}${space}${yearText}`.toUpperCase();
+            }
+
+            doc.text(`DATA LAPORAN MAINTENANCE & REPAIR - AKG${periodText}`, 14, 15);
+
+            // Generate Tabel
+            doc.autoTable({
+                html: '#dataTable',
+                startY: 22, // Disesuaikan jarak tabelnya karena teks tanggal telah dihapus
+                theme: 'grid',
+                headStyles: { 
+                    fillColor: [201, 25, 25], // Merah Header (Theme Primary)
+                    textColor: [255, 255, 255], // Putih Text
+                    fontStyle: 'bold'
+                },
+                styles: { 
+                    fontSize: 8, 
+                    cellPadding: 3,
+                    textColor: [51, 51, 51] // Hitam/Abu gelap untuk isi
+                },
+                columnStyles: {
+                    5: { cellWidth: 50 }, // Deskripsi lebih lebar
+                    10: { cellWidth: 40 } // Feedback lebih lebar
+                },
+                didParseCell: function (data) {
+                    // Membersihkan teks dari HTML tags jika ada di cell
+                    if (data.section === 'body') {
+                        // Khusus kolom status & feedback yang punya inner HTML
+                        let text = data.cell.raw.innerText || data.cell.raw.textContent || data.cell.text[0];
+                        data.cell.text = text.trim();
+                    }
+                }
+            });
+
+            // Menentukan nama file berdasarkan filter yang dipilih
+            const monthVal = monthSel.value;
+            const yearVal = yearSel.value;
+            let fileNameSuffix = "";
+            
+            if (monthVal !== 'all' && yearVal !== 'all') {
+                fileNameSuffix = `_${monthVal}_${yearVal}`; // Contoh: _01_2026
+            } else if (monthVal !== 'all') {
+                fileNameSuffix = `_Bulan_${monthVal}`; // Contoh: _Bulan_01
+            } else if (yearVal !== 'all') {
+                fileNameSuffix = `_Tahun_${yearVal}`; // Contoh: _Tahun_2026
+            } else {
+                fileNameSuffix = `_Semua_Periode`; // Jika semua bulan dan tahun
+            }
+
+            // Simpan File
+            doc.save(`Laporan_Maintenance_Mesin${fileNameSuffix}.pdf`);
+        }
+    </script>
+</body>
+</html>

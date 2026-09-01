@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pelaksana CHSLR - AKG Maintenance</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            /* TEMA MERAH PUTIH */
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --accent: #dc2626;
+            --accent-soft: #ffebeb;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #ef4444;
+            
+            /* BACKGROUND PUTIH */
+            --bg-body: #ffffff;
+            --bg-card: #ffffff;
+            --bg-input: #f8f9fa;
+            
+            /* TEXT GELAP UNTUK BACKGROUND TERANG */
+            --text-main: #333333;
+            --text-muted: #6b7280;
+            --text-soft: #9ca3af;
+            
+            /* BORDER TERANG */
+            --border: #e5e7eb;
+            --border-red: rgba(201, 25, 25, 0.3);
+            
+            --radius: 16px;
+            --sidebar-width: 280px; 
+            --header-height: 80px;
+
+            /* Status Colors for Chips (Light Theme Optimized) */
+            --status-ok: #059669;
+            --status-ng: #dc2626;
+            --status-mn: #d97706;
+            --status-na: #6b7280;
+        }
+
+        * { 
+            margin: 0; padding: 0; box-sizing: border-box; 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        body {
+            background: var(--bg-body);
+            min-height: 100vh;
+            color: var(--text-main);
+            position: relative;
+            overflow-x: hidden;
+            display: block; /* Auto center */
+        }
+
+        /* --- Background Animation (Tema Terang) --- */
+        .bg-glow {
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(201, 25, 25, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hidden { display: none !important; }
+
+        /* --- PROFESSIONAL HEADER BAR (TOMBOL GARIS 3) --- */
+        .main-header {
+            position: fixed;
+            top: 0;
+            left: 0; 
+            right: 0;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+
+        .header-content-wrapper {
+            width: 100%;
+            max-width: 600px; /* Disesuaikan dengan app-container */
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        .hamburger-menu {
+            font-size: 26px;
+            color: var(--primary);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            transition: transform 0.2s;
+            z-index: 2;
+        }
+        .hamburger-menu:active { transform: scale(0.9); }
+
+        .header-title-pill {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 30px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1);
+            white-space: nowrap;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .side-nav {
+            position: fixed;
+            top: 0; left: -100%;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+
+        .side-nav.active { left: 0; }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-title {
+            font-weight: 800;
+            color: var(--primary);
+            font-size: 20px;
+        }
+
+        .sidebar-close {
+            font-size: 24px;
+            color: #888;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: var(--text-muted);
+            background: white;
+            width: 100%;
+            padding: 14px 20px;
+            margin-bottom: 15px;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        
+        .nav-item:hover, .nav-item.active {
+            border-color: var(--primary);
+            background: #fff5f5;
+            color: var(--primary);
+            transform: translateX(5px);
+        }
+
+        .nav-icon-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px; height: 32px;
+            margin-right: 15px;
+            font-size: 20px;
+            color: var(--primary);
+        }
+
+        /* --- APP CONTAINER (CENTERED) --- */
+        .app-shell {
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .app-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px 24px 60px 24px;
+            padding-top: calc(var(--header-height) + 30px);
+            min-height: 100vh;
+        }
+
+        /* Header Inner */
+        .header {
+            text-align: center;
+            padding: 16px 0 24px;
+            margin-bottom: 24px;
+        }
+
+        .header-title {
+            font-size: 16px; 
+            font-weight: 900; 
+            color: var(--primary);
+            text-transform: uppercase; 
+            letter-spacing: 2px;
+        }
+
+        /* --- SCANNER VIEW --- */
+        .scanner-container {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 20px 0;
+        }
+        .scanner-frame {
+            width: 260px; height: 260px; border-radius: 24px; overflow: hidden;
+            border: 4px solid var(--primary); box-shadow: 0 0 30px rgba(201, 25, 25, 0.2);
+            position: relative; background: #f8f9fa; margin-bottom: 30px;
+            display: flex; justify-content: center; align-items: center;
+        }
+        #reader { width: 100%; height: 100%; position: relative; overflow: hidden; }
+        #reader video { width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: 0 !important; }
+
+        /* --- 3D CARD STYLE --- */
+        .card-3d {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-bottom: 4px solid var(--primary-dark);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .machine-card {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(201, 25, 25, 0.2);
+        }
+        .machine-card::after {
+            content: ''; position: absolute; top: -50%; right: -50%;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%);
+        }
+
+        /* --- INPUTS --- */
+        .input-3d {
+            width: 100%; padding: 14px;
+            background: var(--bg-input); border: 1px solid var(--border);
+            border-radius: 12px; color: var(--text-main); font-size: 14px; font-weight: 600;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: all 0.3s ease;
+        }
+        .input-3d:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--accent-soft); background: #fff;}
+        .input-3d::placeholder { color: #cbd5e1; font-weight: 400; }
+        .label { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; display: block; margin-left: 4px; letter-spacing: 1px;}
+
+        /* --- CHECKLIST ITEMS --- */
+        .category-title {
+            color: var(--primary); font-size: 12px; font-weight: 900; 
+            text-transform: uppercase; letter-spacing: 1px;
+            margin: 24px 0 12px 4px; border-bottom: 2px dashed var(--border-red); padding-bottom: 8px;
+        }
+
+        .radio-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+        .radio-option input { display: none; }
+        .radio-tile {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 45px; background: #ffffff; border: 1px solid var(--border);
+            border-radius: 10px; cursor: pointer; transition: 0.2s;
+            color: var(--text-muted); box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .radio-tile span { font-size: 10px; font-weight: 800; }
+        
+        .radio-option input:checked + .radio-tile.ok { background: #dcfce7; border-color: var(--status-ok); color: var(--status-ok); box-shadow: 0 2px 8px rgba(5, 150, 105, 0.2); }
+        .radio-option input:checked + .radio-tile.ng { background: #fee2e2; border-color: var(--status-ng); color: var(--status-ng); box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2); }
+        .radio-option input:checked + .radio-tile.mn { background: #fef3c7; border-color: var(--status-mn); color: var(--status-mn); box-shadow: 0 2px 8px rgba(217, 119, 6, 0.2); }
+        .radio-option input:checked + .radio-tile.na { background: #f3f4f6; border-color: var(--status-na); color: var(--status-na); box-shadow: 0 2px 8px rgba(107, 114, 128, 0.1); }
+
+        .ng-box {
+            margin-top: 12px; background: #fffafa;
+            border: 1px dashed rgba(201, 25, 25, 0.4); border-radius: 10px; padding: 10px;
+            display: none; animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .ng-box textarea { width: 100%; background: transparent; border: none; color: var(--text-main); font-size: 12px; outline: none; resize: none; }
+        .ng-box textarea::placeholder { color: #fca5a5; }
+
+        /* --- SIGNATURE BOX --- */
+        .sig-wrapper {
+            background: #f8f9fa; border-radius: 12px; height: 160px; position: relative; overflow: hidden;
+            border: 2px dashed var(--border-red); margin-bottom: 8px; transition: border-color 0.3s;
+        }
+        .sig-wrapper:hover { border-color: var(--primary-light); }
+        .sig-wrapper canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+        
+        /* --- BUTTONS --- */
+        .btn-3d {
+            width: 100%; padding: 16px; border-radius: 14px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 1px;
+            transition: all 0.2s ease; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px; border: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #fff; box-shadow: 0 8px 24px rgba(201, 25, 25, 0.3); margin-top: 30px;
+        }
+        .btn-primary:active { transform: translateY(3px); box-shadow: 0 4px 12px rgba(201, 25, 25, 0.3); }
+        .btn-primary:disabled { background: #d1d5db; box-shadow: none; color: #9ca3af; cursor: not-allowed; }
+
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="pb-28">
+
+    <div class="bg-glow"></div>
+
+    <!-- HEADER UTAMA (TOMBOL GARIS 3) -->
+    <header class="main-header">
+        <div class="header-content-wrapper">
+            <div class="hamburger-menu" onclick="toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+            <div class="header-title-pill">PELAKSANA</div>
+        </div>
+    </header>
+
+    <!-- OVERLAY & SIDEBAR -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+
+        <!-- DYNAMIC ROUTING LINKS -->
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <div class="app-shell">
+        <div class="app-container">
+            
+            <!-- SCANNER VIEW -->
+            <div id="page-scanner" class="fade-in">
+                <header class="header w-full">
+                    <h1 class="header-title">Scan Mesin</h1>
+                </header>
+                
+                <div class="scanner-container">
+                    <div class="scanner-frame">
+                        <div id="reader"></div>
+                        <div class="corner corner-tl"></div>
+                        <div class="corner corner-tr"></div>
+                        <div class="corner corner-bl"></div>
+                        <div class="corner corner-br"></div>
+                        <div class="scan-line"></div>
+                    </div>
+                    
+                    <p class="text-xs text-gray-500 mt-4 text-center font-medium">Arahkan kamera ke QR Code Mesin<br>untuk memulai checklist.</p>
+                    
+                    <div class="mt-8 px-4 py-2 bg-red-50 border border-red-200 rounded-lg">
+                        <p class="text-[10px] text-primary font-bold animate-pulse">KAMERA AKTIF</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FORM VIEW -->
+            <div id="page-form" class="hidden fade-in">
+                <header class="header">
+                    <h1 class="header-title">Checklist Harian<br>Stand Label & Robot</h1>
+                </header>
+
+                <!-- Machine Info -->
+                <div class="machine-card">
+                    <h2 id="machine-name" class="text-xl font-black text-white uppercase mb-2">...</h2>
+                    <div class="flex gap-3">
+                        <span class="text-[10px] font-bold bg-white/20 px-2 py-1 rounded text-white border border-white/30">TON: <span id="machine-ton">-</span></span>
+                        <span class="text-[10px] font-bold bg-white/20 px-2 py-1 rounded text-white border border-white/30">SN: <span id="machine-sn">-</span></span>
+                    </div>
+                </div>
+
+                <!-- Identity -->
+                <div class="mb-6">
+                    <label class="label">Nama Pelaksana</label>
+                    <input type="text" id="technician-name" class="input-3d font-bold" placeholder="Ketik nama lengkap anda">
+                </div>
+
+                <!-- Checklist Items -->
+                <div id="checklist-container"></div>
+
+                <!-- General Note -->
+                <div class="mt-8 mb-6">
+                    <label class="label">Catatan Tambahan (Opsional)</label>
+                    <textarea id="general-note" rows="3" class="input-3d" placeholder="Berikan catatan sebagai laporan untuk koordinator"></textarea>
+                </div>
+
+                <!-- Signature -->
+                <div class="card-3d">
+                    <div class="flex justify-between items-center mb-2 px-1">
+                        <label class="label mb-0">Paraf Pelaksana</label>
+                        <button onclick="resetSignature()" id="btn-clear-sig" class="text-[10px] text-gray-400 hover:text-primary uppercase font-bold">Hapus</button>
+                    </div>
+                    <div class="sig-wrapper" id="sig-wrapper">
+                        <canvas id="signature-pad"></canvas>
+                    </div>
+                    <!-- Notifikasi TTD Otomatis -->
+                    <div id="sig-status" class="hidden mt-2 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                        <i class="fa-solid fa-circle-check text-green-600"></i>
+                        <span class="text-xs text-green-700 font-bold">Tanda Tangan otomatis diambil dari Database.</span>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="mt-6 pb-6">
+                    <button onclick="saveAll()" id="btn-save" class="btn-3d btn-primary">
+                        <i class="fa-solid fa-paper-plane"></i> KIRIM LAPORAN
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Fungsi Sidebar & Navigasi Pintar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
+        
+        let scanner, sigPad, currentMachineId;
+        let existingSignatureFile = null; // Variabel penyimpan nama file TTD dari database
+
+        window.onload = () => {
+            setupDynamicNavigation();
+            scanner = new Html5Qrcode("reader");
+            
+            // --- REVISI: Penambahan blok .catch() tanpa mengubah parameter scanner.start ---
+            scanner.start(
+                { facingMode: "environment" }, 
+                { fps: 20, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, 
+                onScanSuccess
+            ).catch((err) => {
+                console.error("Gagal memulai kamera:", err);
+                alert("Kamera gagal diakses!\n\nKemungkinan penyebab:\n1. Anda membuka file lewat 'file:///' (Gunakan ekstensi Live Server / localhost / HTTPS).\n2. Izin kamera belum diberikan atau diblokir oleh browser.\n3. Perangkat tidak memiliki kamera belakang.\n\nDetail Error: " + err);
+            });
+            // --- AKHIR REVISI ---
+            
+            // Event listener: Cek DB begitu operator selesai ngetik namanya
+            document.getElementById('technician-name').addEventListener('blur', checkExistingSignature);
+        };
+
+        // Fungsi Cek Jabatan & Update Link Navigasi
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await _sb.auth.getSession();
+                if (!session) return;
+
+                const { data: profile } = await _sb
+                    .from('profiles')
+                    .select('jabatan')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+
+                    let homeLink = 'index.html';
+                    let menuLink = 'menu_utama.html';
+
+                    if (jabatan.includes('OPERATOR')) {
+                        homeLink = 'OPERATOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_OPERATOR.html';
+                    } else if (jabatan.includes('SUPERVISOR')) {
+                        homeLink = 'SUPERVISOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                    } else if (jabatan.includes('SUPERINTENDENT')) {
+                        homeLink = 'SUPERINTENDENT_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                    } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                        homeLink = 'MANAGER_HOME.html';
+                        menuLink = 'MENU_UTAMA_MANAGER.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                        homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                        homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                    }
+
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) {
+                console.error("Gagal mengatur navigasi dinamis:", err);
+            }
+        }
+
+        async function onScanSuccess(decodedText) {
+            if (navigator.vibrate) navigator.vibrate(50);
+            await scanner.stop(); scanner.clear();
+            
+            const { data: mesin } = await _sb.from('chslr_mesin').select('*').ilike('nama_mesin', `%${decodedText.trim()}%`).maybeSingle();
+            
+            if (mesin) {
+                currentMachineId = mesin.nama_mesin;
+                document.getElementById('page-scanner').classList.add('hidden');
+                document.getElementById('page-form').classList.remove('hidden');
+                
+                document.getElementById('machine-name').innerText = mesin.nama_mesin;
+                document.getElementById('machine-ton').innerText = mesin.tonage || '-';
+                document.getElementById('machine-sn').innerText = mesin.no_seri || '-';
+                
+                loadItems(); 
+                setTimeout(initSigPad, 100);
+            } else { 
+                alert("QR Code Tidak Dikenal!"); location.reload(); 
+            }
+        }
+
+        function initSigPad() {
+            const canvas = document.getElementById('signature-pad');
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio; 
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+            
+            sigPad = new SignaturePad(canvas, { 
+                minWidth: 2,
+                maxWidth: 4,
+                penColor: 'black',  
+                backgroundColor: 'rgba(255,255,255,0)' 
+            });
+        }
+
+        async function loadItems() {
+            const container = document.getElementById('checklist-container');
+            const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
+            container.innerHTML = "";
+            let lastCategory = "";
+
+            items.forEach((item) => {
+                if (item.kategori && item.kategori !== lastCategory) {
+                    container.insertAdjacentHTML('beforeend', `<div class="category-title">${item.kategori}</div>`);
+                    lastCategory = item.kategori;
+                }
+
+                let inputHtml = '';
+                
+                if (item.input_type === 'val') {
+                    inputHtml = `
+                        <div class="flex items-center gap-3 mt-3">
+                            <input type="number" id="val-${item.id}" class="input-3d text-center font-bold text-primary" placeholder="0">
+                            <span class="text-xs font-bold text-gray-500">VALUE</span>
+                        </div>
+                    `;
+                } else {
+                    inputHtml = `
+                        <div class="radio-grid">
+                            <label class="radio-option">
+                                <input type="radio" name="st-${item.id}" value="OK" checked onchange="handleStatusChange('${item.id}', 'OK')">
+                                <div class="radio-tile ok"><span>OK</span></div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="st-${item.id}" value="NG" onchange="handleStatusChange('${item.id}', 'NG')">
+                                <div class="radio-tile ng"><span>NG</span></div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="st-${item.id}" value="MN" onchange="handleStatusChange('${item.id}', 'MN')">
+                                <div class="radio-tile mn"><span>MN</span></div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="st-${item.id}" value="NA" onchange="handleStatusChange('${item.id}', 'NA')">
+                                <div class="radio-tile na"><span>NA</span></div>
+                            </label>
+                        </div>
+                    `;
+                }
+
+                const itemHtml = `
+                    <div class="card-3d p-4" id="card-${item.id}" data-type="${item.input_type || 'std'}">
+                        <div class="flex justify-between items-start">
+                            <div class="w-2/3">
+                                <h3 class="text-sm font-bold text-[var(--text-main)] mb-1">${item.item_name}</h3>
+                                <p class="text-[10px] text-[var(--text-muted)]">Std: ${item.standard}</p>
+                            </div>
+                        </div>
+                        
+                        ${inputHtml}
+
+                        <div id="ng-box-${item.id}" class="ng-box">
+                            <div class="flex items-center gap-1 mb-1 text-[var(--primary)]">
+                                <i class="fa-solid fa-circle-exclamation text-[10px]"></i>
+                                <span class="text-[10px] font-bold uppercase">Keterangan Masalah</span>
+                            </div>
+                            <textarea id="note-${item.id}" rows="2" placeholder="Jelaskan detail kerusakan..."></textarea>
+                        </div>
+                    </div>`;
+                container.insertAdjacentHTML('beforeend', itemHtml);
+            });
+        }
+
+        window.handleStatusChange = function(itemId, status) {
+            const ngBox = document.getElementById(`ng-box-${itemId}`);
+            const noteInput = document.getElementById(`note-${itemId}`);
+
+            if (status === 'NG' || status === 'MN') {
+                ngBox.style.display = 'block';
+            } else {
+                ngBox.style.display = 'none';
+                noteInput.value = ''; 
+            }
+        }
+
+        // --- FUNGSI PINTAR: DETEKSI TTD DARI DATABASE ---
+        async function checkExistingSignature() {
+            const nameInput = document.getElementById('technician-name').value.trim();
+            if (!nameInput) return;
+
+            try {
+                // 1. Cari log terakhir yang pernah dibikin sama orang ini
+                const { data: logs } = await _sb.from('chslr_log')
+                    .select('id, pelaksana_names')
+                    .order('created_at', { ascending: false })
+                    .limit(10); // Tarik 10 data terakhir biar cepat
+
+                if (logs) {
+                    const userLog = logs.find(l => 
+                        l.pelaksana_names && 
+                        l.pelaksana_names.some(n => n.toLowerCase() === nameInput.toLowerCase())
+                    );
+
+                    if (userLog) {
+                        // 2. Kalau ketemu, cari nama file TTD-nya di tabel result
+                        const { data: res } = await _sb.from('chslr_result')
+                            .select('signature')
+                            .eq('log_id', userLog.id)
+                            .not('signature', 'is', null)
+                            .neq('signature', '')
+                            .limit(1);
+
+                        if (res && res.length > 0 && res[0].signature.includes('.png')) {
+                            // BBOOM! TTD ketemu di database.
+                            existingSignatureFile = res[0].signature;
+
+                            // Update UI: Sembunyikan kanvas, munculin notif hijau
+                            document.getElementById('sig-wrapper').style.display = 'none';
+                            document.getElementById('sig-status').classList.remove('hidden');
+                            document.getElementById('btn-clear-sig').innerText = 'Buat Baru';
+                        }
+                    }
+                }
+            } catch(e) { console.log("Gagal auto-detect TTD:", e); }
+        }
+
+        // Fungsi Reset (Kalau user mau ganti TTD)
+        function resetSignature() {
+            if (existingSignatureFile) {
+                // Batalkan auto-TTD, paksa user gambar manual
+                existingSignatureFile = null;
+                document.getElementById('sig-wrapper').style.display = 'block';
+                document.getElementById('sig-status').classList.add('hidden');
+                document.getElementById('btn-clear-sig').innerText = 'Hapus';
+            }
+            if (sigPad) sigPad.clear();
+        }
+
+        // --- FUNGSI HELPER: UBAH BASE64 JADI FILE GAMBAR (BLOB) ---
+        function dataURLtoBlob(dataurl) {
+            let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1];
+            let bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+            while(n--){ u8arr[n] = bstr.charCodeAt(n); }
+            return new Blob([u8arr], {type:mime});
+        }
+
+        async function saveAll() {
+            const name = document.getElementById('technician-name').value.trim();
+            const generalNote = document.getElementById('general-note').value.trim();
+
+            if(!name) { 
+                alert("⚠️ Mohon isi Nama Pelaksana terlebih dahulu."); 
+                document.getElementById('technician-name').focus(); 
+                return; 
+            }
+            // MODIFIKASI: Cek existingSignatureFile dulu
+            if(!existingSignatureFile && sigPad.isEmpty()) { 
+                alert("⚠️ Tanda Tangan Pelaksana wajib diisi."); 
+                return; 
+            }
+            
+            const itemCards = document.querySelectorAll('.card-3d[id^="card-"]');
+            const results = [];
+            let hasError = false;
+
+            itemCards.forEach(card => {
+                if(hasError) return;
+
+                const itemId = card.id.replace('card-', '');
+                const type = card.getAttribute('data-type');
+                let status = '', valData = '', note = '';
+                
+                const noteEl = document.getElementById(`note-${itemId}`);
+                
+                if (type === 'val') {
+                    valData = document.getElementById(`val-${itemId}`).value.trim();
+                    status = 'OK';
+                    if(!valData) {
+                        alert(`⚠️ Nilai angka untuk item ini wajib diisi!`);
+                        document.getElementById(`val-${itemId}`).focus();
+                        hasError = true; return;
+                    }
+                } else {
+                    const checked = document.querySelector(`input[name="st-${itemId}"]:checked`);
+                    status = checked ? checked.value : 'OK';
+                    
+                    if ((status === 'NG' || status === 'MN') && !noteEl.value.trim()) {
+                        alert(`⚠️ Keterangan wajib diisi untuk status ${status}!`);
+                        noteEl.focus();
+                        hasError = true; return;
+                    }
+                    note = noteEl.value.trim();
+                }
+
+                results.push({ itemId, status, valData, note });
+            });
+
+            if(hasError) return;
+
+            const btn = document.getElementById('btn-save');
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> MENGIRIM...`; btn.disabled = true;
+
+            const now = new Date();
+            const d = now.getDate(), m = now.getMonth()+1, y = now.getFullYear();
+
+            try {
+                // --- PROSES UPLOAD TANDA TANGAN KE BUCKET ---
+                let sigFileName = existingSignatureFile; // Pakai yang dari database kalau ada
+
+                // Kalau user bikin TTD baru (gak otomatis dari DB), baru kita upload ke Bucket!
+                if (!existingSignatureFile) {
+                    sigFileName = `sig_chslr_${Date.now()}_${Math.floor(Math.random()*1000)}.png`;
+                    const sigBlob = dataURLtoBlob(sigPad.toDataURL('image/png'));
+                    
+                    const { error: uploadError } = await _sb.storage
+                        .from('signatures')
+                        .upload(sigFileName, sigBlob, {
+                            contentType: 'image/png',
+                            upsert: false
+                        });
+                        
+                    if (uploadError) {
+                        throw new Error("Gagal mengunggah Tanda Tangan: " + uploadError.message);
+                    }
+                }
+                // --- SELESAI UPLOAD ---
+
+
+                let { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', currentMachineId).eq('bulan', m).eq('tahun', y).maybeSingle();
+                
+                if(!log) {
+                    const { data: nLog } = await _sb.from('chslr_log').insert({ 
+                        mesin_id: currentMachineId, bulan: m, tahun: y, 
+                        pelaksana_names: [name], catatan_pelaksana: generalNote
+                    }).select().single();
+                    log = nLog;
+                } else {
+                    let updatedNames = log.pelaksana_names || [];
+                    if(!updatedNames.includes(name)) updatedNames.push(name);
+                    await _sb.from('chslr_log').update({ 
+                        pelaksana_names: updatedNames, catatan_pelaksana: generalNote 
+                    }).eq('id', log.id);
+                }
+
+                // --- UBAH PAYLOAD DATABASE ---
+                // Ganti property signature dengan NAMA FILE, bukan teks Base64 lagi!
+                const payload = results.map(r => ({
+                    log_id: log.id,
+                    item_id: r.itemId,
+                    tanggal: d,
+                    status: r.status,
+                    input_value: r.valData,
+                    keterangan: r.note,
+                    signature: sigFileName // <- KEAJAIBAN TERJADI DI SINI
+                }));
+
+                await _sb.from('chslr_result').delete().eq('log_id', log.id).eq('tanggal', d);
+                const { error } = await _sb.from('chslr_result').insert(payload);
+
+                if(error) throw error;
+
+                alert("Laporan Berhasil Disimpan!"); 
+                
+                // Redirect cerdas ke menu yang sesuai jabatan
+                const menuLink = document.getElementById('nav-menu') ? document.getElementById('nav-menu').href : 'menu_utama.html';
+                location.href = menuLink;
+            } catch(e) {
+                alert("GAGAL: " + e.message); 
+                btn.innerHTML = originalHtml; btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

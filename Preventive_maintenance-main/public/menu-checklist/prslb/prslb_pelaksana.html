@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Preventif Pelaksana (PRSLB) - AKG Maintenance</title>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    
+    <style>
+        /* --- THEME VARIABLES (Light Mode AKG) --- */
+        :root {
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --accent: #dc2626;
+            --accent-soft: #ffebeb;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #ef4444;
+            
+            --bg-body: #f4f6f8;
+            --bg-card: #ffffff; 
+            --bg-input: #ffffff;
+            
+            --text-main: #333333;
+            --text-muted: #6b7280;
+            --text-soft: #9ca3af;
+            
+            --border: #e5e7eb;
+            --border-red: rgba(201, 25, 25, 0.3);
+            
+            --radius: 16px;
+            --sidebar-width: 280px; 
+            --header-height: 70px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background: var(--bg-body);
+            min-height: 100vh;
+            color: var(--text-main);
+            padding-bottom: 40px;
+            overflow-x: hidden;
+            display: block;
+        }
+
+        /* --- BACKGROUND ANIMATION --- */
+        .bg-glow {
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(201, 25, 25, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hidden { display: none !important; }
+
+        /* --- PROFESSIONAL HEADER BAR (TOMBOL GARIS 3) --- */
+        .main-header {
+            position: fixed;
+            top: 0;
+            left: 0; 
+            right: 0;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+
+        .header-content-wrapper {
+            width: 100%;
+            max-width: 600px; 
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        .hamburger-menu {
+            font-size: 26px;
+            color: var(--primary);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            transition: transform 0.2s;
+            z-index: 2;
+        }
+        .hamburger-menu:active { transform: scale(0.9); }
+
+        .header-title-pill {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 30px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1);
+            white-space: nowrap;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+
+        .side-nav {
+            position: fixed;
+            top: 0; left: -100%;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+        .side-nav.active { left: 0; }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .sidebar-title { font-weight: 800; color: var(--primary); font-size: 20px; }
+        .sidebar-close { font-size: 24px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: var(--text-muted);
+            background: white; width: 100%; padding: 14px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: 600;
+        }
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 20px; color: var(--primary); }
+
+        /* --- APP SHELL & CONTAINER --- */
+        .app-shell {
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+        .app-container {
+            width: 100%; 
+            max-width: 600px; 
+            margin: 0 auto;
+            padding: 20px 24px 60px 24px; 
+            padding-top: calc(var(--header-height) + 30px);
+            min-height: 100vh;
+        }
+
+        /* --- SCANNER VIEW --- */
+        #view-scan { width: 100%; display: flex; flex-direction: column; align-items: center; animation: fadeIn 0.5s ease; }
+        
+        .scan-header { text-align: center; margin-bottom: 24px; }
+        .scan-title { font-size: 16px; font-weight: 900; color: var(--primary); text-transform: uppercase; letter-spacing: 2px; }
+
+        .instruction-text { text-align: center; color: var(--text-muted); font-size: 13px; margin-bottom: 20px; font-weight: 500; line-height: 1.5;}
+
+        .qr-frame-container {
+            width: 260px; height: 260px; border-radius: 24px; overflow: hidden;
+            background: #f8f9fa; position: relative; margin-bottom: 20px;
+            box-shadow: 0 0 30px rgba(201, 25, 25, 0.1); border: 4px solid var(--primary);
+            display: flex; justify-content: center; align-items: center;
+        }
+        #reader { width: 100%; height: 100%; border: none !important; }
+        #reader video { width: 100% !important; height: 100% !important; object-fit: cover !important; }
+
+        .scan-status { 
+            background: var(--accent-soft); color: var(--primary); border: 1px dashed var(--border-red);
+            font-size: 12px; font-weight: 800; text-transform: uppercase; margin-top: 10px; 
+            padding: 10px 24px; border-radius: 50px; letter-spacing: 1px;
+        }
+
+        /* --- FORM VIEW --- */
+        #view-form { display: none; width: 100%; animation: slideUp 0.5s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Machine Info Card */
+        .machine-card {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: var(--radius); padding: 24px; margin-bottom: 24px;
+            color: white; box-shadow: 0 10px 25px rgba(201, 25, 25, 0.2);
+            text-align: left; position: relative; overflow: hidden;
+        }
+        .machine-card::after {
+            content: ''; position: absolute; top: -50%; right: -50%; width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%); pointer-events: none;
+        }
+        .machine-card h3 { font-size: 18px; font-weight: 900; margin-bottom: 8px; letter-spacing: 1px; position: relative; z-index: 1;}
+        .machine-card p { font-size: 12px; font-weight: 600; opacity: 0.9; text-transform: uppercase; position: relative; z-index: 1;}
+
+        /* Inputs */
+        .form-group { margin-bottom: 20px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        
+        label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;}
+        
+        .form-control {
+            width: 100%; padding: 14px 16px;
+            background: var(--bg-input); border: 1px solid var(--border);
+            border-radius: 12px; color: var(--text-main); font-size: 14px; font-weight: 600; 
+            outline: none; transition: 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--accent-soft); background: #fff;}
+        .form-control::placeholder { color: #cbd5e1; font-weight: 400; }
+
+        /* Checklist Style */
+        .cat-header {
+            font-size: 13px; font-weight: 800; color: var(--primary);
+            margin: 32px 0 16px; text-transform: uppercase; letter-spacing: 1px;
+            border-bottom: 2px dashed var(--border-red); padding-bottom: 8px;
+        }
+
+        .check-item {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-left: 4px solid var(--primary); border-radius: 16px;
+            padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            transition: all 0.3s ease;
+        }
+        .check-item:hover { border-color: var(--primary-light); box-shadow: 0 6px 20px rgba(201, 25, 25, 0.08); }
+        
+        .item-name { font-weight: 800; font-size: 14px; color: var(--text-main); margin-bottom: 6px; }
+        .item-std { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; font-weight: 500; }
+
+        .btn-group { display: flex; gap: 10px; }
+        .btn-status {
+            flex: 1; padding: 12px; border: 2px solid var(--border); background: #f8f9fa;
+            border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer;
+            color: var(--text-muted); display: flex; align-items: center; justify-content: center; gap: 6px;
+            transition: 0.2s;
+        }
+        
+        .btn-ok.active { background: #dcfce7; border-color: var(--success); color: var(--success); box-shadow: 0 4px 10px rgba(5, 150, 105, 0.15); transform: translateY(-2px);}
+        .btn-ng.active { background: #fee2e2; border-color: var(--danger); color: var(--danger); box-shadow: 0 4px 10px rgba(220, 38, 38, 0.15); transform: translateY(-2px);}
+
+        .note-area { margin-top: 16px; display: none; animation: fadeIn 0.3s; }
+        .note-area.show { display: block; }
+        .note-label { font-size: 10px; font-weight: 800; color: var(--danger); display: flex; align-items: center; gap: 6px; margin-bottom: 6px; text-transform: uppercase;}
+        .input-note {
+            width: 100%; padding: 12px; border: 1px solid #fca5a5;
+            border-radius: 10px; font-size: 13px; background: #fffafa; color: var(--text-main); outline: none;
+            transition: 0.3s;
+        }
+        .input-note:focus { border-color: var(--danger); box-shadow: 0 0 0 3px #fee2e2; }
+        .input-note::placeholder { color: #fca5a5; }
+
+        /* Signature */
+        .sig-box {
+            background: #f8f9fa; border-radius: 12px; border: 2px dashed var(--border-red);
+            height: 180px; position: relative; overflow: hidden; margin-top: 5px; transition: border-color 0.3s;
+        }
+        .sig-box:hover { border-color: var(--primary-light); }
+        canvas { width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
+        
+        .btn-clear-sig {
+            position: absolute; bottom: 8px; right: 8px;
+            background: white; border: 1px solid var(--primary); color: var(--primary);
+            padding: 6px 14px; border-radius: 6px; font-size: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; transition: 0.3s;
+        }
+        .btn-clear-sig:hover { background: var(--primary); color: white; }
+
+        /* Submit Button */
+        .btn-submit {
+            width: 100%; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; border: none; padding: 18px; border-radius: 14px;
+            font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 8px 24px rgba(201, 25, 25, 0.3); cursor: pointer;
+            margin-top: 32px; transition: transform 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px;
+        }
+        .btn-submit:active { transform: translateY(3px); box-shadow: 0 4px 12px rgba(201, 25, 25, 0.3); }
+        .btn-submit:disabled { opacity: 0.7; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    </style>
+</head>
+<body>
+
+    <div class="bg-glow"></div>
+
+    <!-- HEADER UTAMA (TOMBOL GARIS 3) -->
+    <header class="main-header">
+        <div class="header-content-wrapper">
+            <div class="hamburger-menu" onclick="toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+            <div class="header-title-pill">OPERATOR MEKANIK</div>
+        </div>
+    </header>
+
+    <!-- OVERLAY & SIDEBAR -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+
+        <!-- DYNAMIC ROUTING LINKS -->
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <div class="app-shell">
+        <div class="app-container">
+            
+            <!-- SCAN VIEW -->
+            <div id="view-scan">
+                <div class="scan-header">
+                    <h1 class="scan-title">Scan Mesin</h1>
+                </div>
+                
+                <div class="instruction-text">
+                    Silahkan scan QR code pada mesin untuk memulai laporan preventif.
+                </div>
+                
+                <div class="qr-frame-container">
+                    <div id="reader"></div>
+                </div>
+                
+                <div class="scan-status" id="status-scan">Arahkan kamera ke QR code</div>
+            </div>
+
+            <!-- FORM VIEW -->
+            <div id="view-form">
+                
+                <!-- Machine Info Card -->
+                <div class="machine-card">
+                    <h3 id="txt-mesin-nama">-</h3>
+                    <p id="txt-mesin-detail">-</p>
+                </div>
+
+                <!-- Inputs -->
+                <div class="form-group">
+                    <label>Nama Pelaksana</label>
+                    <input type="text" id="input-nama" class="form-control" placeholder="Ketik nama lengkap anda">
+                </div>
+
+                <div class="form-row">
+                    <div>
+                        <label>Start Jam</label>
+                        <input type="time" id="input-start" class="form-control">
+                    </div>
+                    <div>
+                        <label>Finish Jam</label>
+                        <input type="time" id="input-finish" class="form-control">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div>
+                        <label>Running Hours (HM)</label>
+                        <input type="number" id="input-hours" class="form-control" placeholder="Contoh: 12500">
+                    </div>
+                    <div>
+                        <label>Target Selesai</label>
+                        <input type="time" id="input-target" class="form-control">
+                    </div>
+                </div>
+
+                <!-- Checklist Container -->
+                <div id="checklist-container">
+                    <!-- Items will be injected here -->
+                </div>
+
+                <!-- Signature -->
+                <div class="form-group" style="margin-top:32px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <label style="margin:0;">Paraf Pelaksana</label>
+                    </div>
+                    <div class="sig-box">
+                        <canvas id="signature-pad"></canvas>
+                        <button onclick="signaturePad.clear()" class="btn-clear-sig">Ulangi</button>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <button class="btn-submit" id="btn-save" onclick="simpanData()">
+                    <i class="fa-solid fa-paper-plane"></i> KIRIM LAPORAN
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- LOGIKA FUNGSIONAL TIDAK DIUBAH -->
+    <script>
+        // Fungsi Buka Tutup Sidebar Samping
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
+
+        let scanner = null, signaturePad = null, currentMesin = null;
+
+        async function startScanner() {
+            scanner = new Html5Qrcode("reader");
+            await scanner.start(
+                { facingMode: "environment" },
+                { fps: 20, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
+                onScanSuccess
+            ).catch(err => {
+                document.getElementById('status-scan').innerHTML = "<span style='color:var(--danger)'>Gagal akses kamera! Periksa izin browser.</span>";
+            });
+        }
+
+        async function onScanSuccess(decodedText) {
+            const clean = decodedText.trim();
+            document.getElementById('status-scan').innerText = "MENCARI DATA MESIN...";
+
+            const { data, error } = await _sb.from('prslb_mesin')
+                .select('*')
+                .ilike('nama_mesin', `%${clean}%`) 
+                .maybeSingle();
+
+            if (data) {
+                currentMesin = data;
+                if(navigator.vibrate) navigator.vibrate(50);
+                if(scanner) await scanner.stop();
+                renderForm();
+            } else {
+                document.getElementById('status-scan').innerHTML = `<span style="color:var(--danger)">MESIN TIDAK TERDAFTAR: ${clean}</span>`;
+            }
+        }
+
+        async function renderForm() {
+            document.getElementById('view-scan').style.display = 'none';
+            document.getElementById('view-form').style.display = 'block';
+            
+            document.getElementById('txt-mesin-nama').innerText = currentMesin.nama_mesin;
+            document.getElementById('txt-mesin-detail').innerText = `NO SERI: ${currentMesin.no_seri || '-'} | TONNAGE: ${currentMesin.tonage || '-'}`;
+
+            const now = new Date();
+            const timeString = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+            
+            // Set Start Time
+            const startInput = document.getElementById('input-start');
+            startInput.value = timeString;
+            
+            // Set Target Time (Start + 70 mins default)
+            updateTargetTime(timeString);
+
+            // Add Listener to Start Time to auto-update Target Time
+            startInput.addEventListener('change', function() {
+                updateTargetTime(this.value);
+            });
+
+            // Init Signature Pad
+            setTimeout(() => {
+                const canvas = document.getElementById('signature-pad');
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
+                signaturePad = new SignaturePad(canvas, { backgroundColor: 'rgba(255,255,255,0)', penColor: '#000000' }); 
+            }, 100);
+
+            // Fetch Items
+            const { data: items } = await _sb.from('prslb_items').select('*').order('id');
+            const container = document.getElementById('checklist-container');
+            let currentCat = "";
+
+            items.forEach(item => {
+                if (item.kategori !== currentCat) {
+                    currentCat = item.kategori;
+                    container.innerHTML += `<div class="cat-header">${currentCat}</div>`;
+                }
+                
+                // Menyesuaikan class dan HTML agar sama dengan tema Light Mode
+                container.innerHTML += `
+                    <div class="check-item" data-id="${item.id}">
+                        <div class="item-name">${item.item_name}</div>
+                        <div class="item-std">Standar: ${item.standard}</div>
+                        <div class="btn-group">
+                            <button type="button" class="btn-status btn-ok" onclick="setStatus(this,'OK')"><i class="fa-solid fa-check"></i> OK</button>
+                            <button type="button" class="btn-status btn-ng" onclick="setStatus(this,'NG')"><i class="fa-solid fa-xmark"></i> NG</button>
+                        </div>
+                        <div class="note-area" id="ng-box-${item.id}">
+                            <span class="note-label"><i class="fa-solid fa-triangle-exclamation"></i> Ket/Sparepart Penggantian</span>
+                            <input type="text" class="input-note" placeholder="Ketik keterangan masalah...">
+                        </div>
+                    </div>`;
+            });
+        }
+
+        // Auto calc 70 mins from start
+        function updateTargetTime(startVal) {
+            if(!startVal) return;
+            const [h, m] = startVal.split(':').map(Number);
+            const date = new Date();
+            date.setHours(h);
+            date.setMinutes(m + 70); // ADD 70 MINUTES
+            
+            const newH = String(date.getHours()).padStart(2, '0');
+            const newM = String(date.getMinutes()).padStart(2, '0');
+            document.getElementById('input-target').value = `${newH}:${newM}`;
+        }
+
+        window.setStatus = function(btn, status) {
+            const p = btn.closest('.check-item');
+            p.querySelectorAll('.btn-status').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Mengambil elemen note-area dari parent check-item
+            const noteArea = p.querySelector('.note-area');
+            if (status === 'NG') {
+                noteArea.classList.add('show');
+            } else {
+                noteArea.classList.remove('show');
+                const inp = p.querySelector('.input-note');
+                if(inp) inp.value = '';
+            }
+        };
+
+        // Routing Navigasi Dinamis
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await _sb.auth.getSession();
+                if (!session) return;
+
+                const { data: profile } = await _sb
+                    .from('profiles')
+                    .select('jabatan')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+
+                    let homeLink = 'index.html';
+                    let menuLink = 'menu_utama.html';
+
+                    if (jabatan.includes('OPERATOR')) {
+                        homeLink = 'OPERATOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_OPERATOR.html';
+                    } else if (jabatan.includes('SUPERVISOR')) {
+                        homeLink = 'SUPERVISOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                    } else if (jabatan.includes('SUPERINTENDENT')) {
+                        homeLink = 'SUPERINTENDENT_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                    } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                        homeLink = 'MANAGER_HOME.html';
+                        menuLink = 'MENU_UTAMA_MANAGER.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                        homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                        homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                    }
+
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) {
+                console.error("Gagal mengatur navigasi dinamis:", err);
+            }
+        }
+
+        async function simpanData() {
+            const nama = document.getElementById('input-nama').value.trim();
+            const start = document.getElementById('input-start').value;
+            const finish = document.getElementById('input-finish').value;
+            const hours = document.getElementById('input-hours').value.trim();
+            const target = document.getElementById('input-target').value;
+            const saveBtn = document.getElementById('btn-save');
+
+            if (!nama) return alert("NAMA PELAKSANA WAJIB DIISI!");
+            if (!start || !finish) return alert("JAM START & FINISH WAJIB DIISI!");
+            if (!hours) return alert("RUNNING HOURS WAJIB DIISI!");
+            if (!target) return alert("TARGET SELESAI WAJIB DIISI!");
+            if (signaturePad.isEmpty()) return alert("TANDA TANGAN WAJIB DIISI!");
+
+            const checks = document.querySelectorAll('.check-item');
+            const results = [];
+            let missing = false;
+            
+            checks.forEach(c => {
+                const btn = c.querySelector('.btn-status.active');
+                if (!btn) { missing = true; return; }
+                
+                const status = btn.innerText.includes('OK') ? 'OK' : 'NG';
+                const noteInput = c.querySelector('.note-area input');
+                const note = noteInput ? noteInput.value.trim() : '';
+                
+                if (status === 'NG' && !note) { 
+                    alert("KETERANGAN NG WAJIB DIISI!"); 
+                    missing = true; 
+                    c.scrollIntoView({behavior: "smooth", block: "center"});
+                    return;
+                }
+                
+                results.push({ item_id: c.dataset.id, status: status, keterangan: note });
+            });
+
+            if (missing) return alert("Mohon lengkapi semua checklist atau keterangan NG.");
+
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = "<i class='fa-solid fa-circle-notch fa-spin'></i> MENGIRIM...";
+
+            try {
+                const { data: log, error: e1 } = await _sb.from('prslb_log').insert({
+                    mesin_id: String(currentMesin.nama_mesin),
+                    pelaksana_nama: nama,
+                    signature_pelaksana: signaturePad.toDataURL(),
+                    start_jam: start,
+                    finish_jam: finish,
+                    running_hours: hours,
+                    target_selesai: target 
+                }).select().single();
+
+                if (e1) throw e1;
+
+                const payload = results.map(r => ({ ...r, log_id: log.id }));
+                const { error: e2 } = await _sb.from('prslb_result').insert(payload);
+                
+                if (e2) throw e2;
+
+                alert("DATA PREVENTIF BERHASIL DISIMPAN!");
+                // Redirect cerdas ke menu yang sesuai jabatan
+                const menuLink = document.getElementById('nav-menu') ? document.getElementById('nav-menu').href : 'menu_utama.html';
+                location.href = menuLink;
+            } catch (e) { 
+                alert("GAGAL: " + e.message); 
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = "<i class='fa-solid fa-paper-plane'></i> KIRIM LAPORAN";
+            }
+        }
+
+        window.onload = () => {
+            setupDynamicNavigation();
+            startScanner();
+        };
+    </script>
+
+</body>
+</html>

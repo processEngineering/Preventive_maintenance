@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cetak Laporan Preventive Mesin Workshop</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- html2pdf JS Library untuk Export PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #c91919;
+            --primary-dark: #a50e0e;
+            --bg-body: #f4f6f8;
+            --text-dark: #333333;
+            --border-color: #e2e8f0;
+            --sidebar-width: 280px;
+        }
+
+        * {
+            margin: 0; padding: 0; box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-dark);
+            font-family: 'Inter', sans-serif;
+            padding-bottom: 50px;
+        }
+
+        /* --- HEADER & SIDEBAR (NO PRINT) --- */
+        .top-header {
+            background: #fff;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-title {
+            font-weight: 800;
+            font-size: 15px;
+            color: var(--primary);
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .hamburger-menu {
+            position: absolute; left: 20px;
+            font-size: 24px; color: var(--primary); cursor: pointer; transition: transform 0.2s;
+        }
+        .hamburger-menu:active { transform: scale(0.9); }
+
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 2000;
+            opacity: 0; visibility: hidden; transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+        
+        .side-nav {
+            position: fixed; top: 0; left: -100%; width: var(--sidebar-width); height: 100vh;
+            background: white; z-index: 2001; transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex; flex-direction: column; padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+        .side-nav.active { left: 0; }
+        
+        .sidebar-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid #eee;
+        }
+        .sidebar-title { font-weight: 800; color: var(--primary); font-size: 20px; }
+        .sidebar-close { font-size: 24px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+        
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: var(--primary);
+            background: white; width: 100%; padding: 14px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s;
+        }
+        .nav-item:hover, .nav-item:active {
+            border-color: var(--primary); background: #fff5f5; transform: translateX(5px);
+        }
+        .nav-icon-box {
+            display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+            margin-right: 15px; font-size: 20px; color: var(--primary);
+        }
+        .nav-item span { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* --- CONTROL PANEL (NO PRINT) --- */
+        .control-panel {
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: flex-end;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        .filter-input {
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            min-width: 200px;
+            background: #f8fafc;
+        }
+        .filter-input:focus { border-color: var(--primary); background: #fff; }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            height: 40px;
+        }
+        .btn-search { background: var(--primary); color: white; }
+        .btn-search:hover { background: var(--primary-dark); }
+        .btn-print { background: #10b981; color: white; }
+        .btn-print:hover { background: #059669; }
+
+        /* --- A4 DOCUMENT TEMPLATE --- */
+        .app-shell {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .a4-container {
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            margin: 0 auto;
+            padding: 15mm;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            font-family: Arial, sans-serif;
+            color: #000;
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        /* --- HEADER DOKUMEN ISO --- */
+        .iso-header {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        
+        .iso-header td {
+            border: 1px solid #000;
+            padding: 5px;
+            vertical-align: middle;
+        }
+        
+        .iso-logo-col {
+            width: 25%;
+            text-align: center;
+            padding: 10px !important;
+        }
+        
+        .iso-logo-col img {
+            max-height: 50px;
+            max-width: 100%;
+        }
+        
+        .iso-title-col {
+            width: 50%;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .iso-info-col {
+            width: 25%;
+            padding: 0 !important;
+        }
+        
+        .iso-info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .iso-info-table td {
+            border: none;
+            border-bottom: 1px solid #000;
+            padding: 2px 4px;
+            font-size: 10px;
+        }
+        
+        .iso-info-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .iso-info-table td:first-child {
+            border-right: 1px solid #000;
+            width: 45%;
+        }
+
+        /* Info Mesin */
+        .machine-info-table {
+            width: 100%;
+            border: none;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .machine-info-table td {
+            padding: 2px 0;
+            vertical-align: top;
+        }
+        .machine-info-table td:first-child {
+            width: 60px;
+        }
+
+        /* Tabel Utama */
+        .main-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-bottom: 15px;
+            table-layout: fixed; /* Mencegah kolom melebar */
+        }
+        .main-table th, .main-table td {
+            border: 1px solid #000;
+            padding: 5px 3px; /* Padding dikurangi untuk space */
+            text-align: center;
+            vertical-align: middle;
+            word-wrap: break-word; 
+            overflow-wrap: break-word;
+            word-break: break-word; /* PAKSA POTONG KATA PANJANG AGAR TIDAK NABRAK GARIS */
+        }
+        .main-table th { 
+            background-color: #f0f0f0; 
+            font-weight: bold; 
+        }
+        .align-left { text-align: left !important; }
+        
+        .checkmark {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Layout Kotak Action */
+        .action-box-container {
+            text-align: left;
+            font-size: 10px;
+            display: flex;
+            flex-direction: row; 
+            flex-wrap: wrap;     
+            gap: 8px;           
+            align-items: flex-start;
+        }
+        .action-box-item {
+            display: flex;
+            align-items: flex-start; /* Sejajar atas agar text rapi saat turun baris */
+            gap: 4px;
+            text-align: left;
+        }
+
+        /* Keterangan Footer */
+        .footer-info {
+            font-size: 11px;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+        
+        .footer-info table {
+            border: none;
+            border-collapse: collapse;
+        }
+        .footer-info td {
+            border: none;
+            padding: 1px 4px 1px 0;
+            vertical-align: top;
+        }
+
+        /* Tanda Tangan */
+        .signature-area {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .sig-block {
+            width: 30%;
+            text-align: center;
+            font-size: 11px;
+        }
+        
+        .sig-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .sig-img-container {
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 5px;
+        }
+        
+        .sig-img-container img {
+            max-height: 100%;
+            max-width: 100%;
+            object-fit: contain;
+        }
+        
+        .sig-empty {
+            color: #999;
+            font-style: italic;
+        }
+        
+        .sig-name {
+            font-weight: bold;
+            text-decoration: underline;
+            text-transform: uppercase;
+        }
+        
+        .sig-role {
+            margin-top: 2px;
+        }
+
+        /* Utility */
+        .text-center { text-align: center; }
+        .empty-state { text-align: center; padding: 50px; color: #888; font-size: 16px; }
+
+        /* LOADING OVERLAY PDF */
+        #loadingOverlayPDF {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 20000;
+            display: none; justify-content: center; align-items: center; flex-direction: column;
+            color: white; font-size: 18px; font-family: 'Inter', sans-serif;
+        }
+
+        /* --- PRINT MEDIA QUERY --- */
+        @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            @page { 
+                size: A4 portrait; 
+                margin: 0 !important; 
+            } 
+            html, body { 
+                background: white !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                width: 210mm !important;
+                height: 297mm !important;
+                overflow: hidden !important; 
+            }
+            .no-print, .top-header, .control-panel, .sidebar-overlay, .side-nav { 
+                display: none !important; 
+            }
+            .app-shell {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 210mm !important;
+                height: 297mm !important;
+                max-width: 100% !important;
+                box-shadow: none !important;
+            }
+            .a4-container { 
+                margin: 0 !important; 
+                padding: 10mm 15mm !important; 
+                width: 210mm !important; 
+                height: 297mm !important; 
+                max-height: 297mm !important;
+                box-shadow: none !important; 
+                border: none !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LOADING OVERLAY PDF -->
+    <div id="loadingOverlayPDF">
+        <i class="fa-solid fa-spinner fa-spin fa-3x"></i>
+        <p style="margin-top:15px; font-weight:bold; font-family:'Inter', sans-serif;">Sedang memproses PDF...</p>
+        <p style="font-size:12px; color:#ccc; font-family:'Inter', sans-serif;">Memastikan laporan muat 1 halaman...</p>
+    </div>
+
+    <!-- OVERLAY & SIDEBAR (NO PRINT) -->
+    <div class="sidebar-overlay no-print" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <nav class="side-nav no-print" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">AKG Maintenance</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+
+        <a href="#" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="#" id="nav-menu" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <!-- HEADER UTAMA (NO PRINT) -->
+    <header class="top-header no-print">
+        <div class="hamburger-menu" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+        </div>
+        <div class="header-title">Cetak Preventive Mesin Workshop</div>
+    </header>
+
+    <div class="app-shell">
+        <!-- CONTROL PANEL (NO PRINT) -->
+        <div class="control-panel no-print">
+            <div class="filter-group">
+                <label>Pilih Bulan</label>
+                <input type="month" id="filterBulan" class="filter-input" onchange="loadMesinOptions()">
+            </div>
+
+            <div class="filter-group">
+                <label>Pilih Mesin</label>
+                <select id="filterMesin" class="filter-input">
+                    <option value="">-- Menunggu Pilihan Bulan... --</option>
+                </select>
+            </div>
+
+            <button type="button" class="btn btn-search" onclick="fetchLaporan()">
+                <i class="fa-solid fa-magnifying-glass"></i> Cari Data
+            </button>
+
+            <button type="button" class="btn btn-print" onclick="exportPDF()" id="btnPrint" style="display:none;">
+                <i class="fa-solid fa-file-pdf"></i> Simpan ke PDF
+            </button>
+        </div>
+
+        <!-- AREA DOKUMEN A4 -->
+        <div class="a4-container" id="documentArea">
+            <div class="empty-state no-print" id="emptyState">
+                <i class="fa-solid fa-file-invoice" style="font-size: 40px; margin-bottom: 15px; color: #cbd5e1;"></i>
+                <br>
+                Silakan pilih <b>Bulan</b> dan <b>Mesin</b> di atas, lalu klik "Cari Data" untuk memuat laporan.
+            </div>
+
+            <div id="printableContent" style="display: none;">
+                
+                <!-- Header Dokumen ISO -->
+                <table class="iso-header">
+                    <tr>
+                        <td class="iso-logo-col">
+                            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQangcdsPfv_NscPphZdCGOdF9A77Gv73h6xQ&s" alt="Logo PT AKG">
+                        </td>
+                        <td class="iso-title-col">
+                            PREVENTIVE MESIN WORKSHOP
+                        </td>
+                        <td class="iso-info-col">
+                            <table class="iso-info-table">
+                                <tr><td>No Dokumen</td><td>AF.SP 05.22.Rev-00</td></tr>
+                                <tr><td>Tanggal Terbit</td><td>02 Agustus 2024</td></tr>
+                                <tr><td>Halaman</td><td>1/1</td></tr>
+                                <tr><td>Tanggal Revisi</td><td>-</td></tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Detail Laporan -->
+                <table class="machine-info-table">
+                    <tr>
+                        <td>MESIN</td>
+                        <td>: <span id="docMesin"></span></td>
+                    </tr>
+                    <tr>
+                        <td>Dept.</td>
+                        <td>: WORKSHOP</td>
+                    </tr>
+                </table>
+
+                <!-- Tabel Utama -->
+                <table class="main-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" width="5%">No</th>
+                            <th rowspan="2" width="28%">PROSEDUR PREVENTIVE</th>
+                            <th rowspan="2" width="18%">STANDART</th>
+                            <th colspan="3" width="15%">KONDISI</th>
+                            <th rowspan="2" width="17%">ACTION</th>
+                            <th rowspan="2" width="17%">CATATAN</th>
+                        </tr>
+                        <tr>
+                            <th width="5%">B</th>
+                            <th width="5%">C</th>
+                            <th width="5%">K</th>
+                        </tr>
+                    </thead>
+                    <tbody id="docTableBody">
+                        <!-- Baris Tabel akan digenerate otomatis di sini -->
+                    </tbody>
+                </table>
+
+                <!-- Keterangan Laporan -->
+                <div class="footer-info">
+                    <table>
+                        <tr>
+                            <td style="width: 120px; font-weight: bold;">Tanggal Pengecekan</td>
+                            <td>: <span id="docTanggalPengecekan"></span></td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold; padding-top: 5px;">Keterangan</td>
+                            <td style="padding-top: 5px;">:</td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td>B - Baik : Tidak Perlu Perbaikan</td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td>C - Cukup : Perlu Inspeksi</td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td>K - Kurang : Perlu Perbaikan Segera</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Kolom Tanda Tangan -->
+                <div class="signature-area">
+                    <div class="sig-block">
+                        <div class="sig-title">DIBUAT OLEH</div>
+                        <div class="sig-img-container">
+                            <img id="sigOperator" src="" alt="TTD Operator" style="display:none;">
+                            <span id="noSigOperator" class="sig-empty">(Belum TTD)</span>
+                        </div>
+                        <div class="sig-name" id="nameOperator">Nama Operator</div>
+                        <div class="sig-role">PIC / Operator</div>
+                    </div>
+
+                    <div class="sig-block">
+                        <div class="sig-title">DIKETAHUI OLEH</div>
+                        <div class="sig-img-container">
+                            <img id="sigSpv" src="" alt="TTD Supervisor" style="display:none;">
+                            <span id="noSigSpv" class="sig-empty">(Belum TTD)</span>
+                        </div>
+                        <div class="sig-name" id="nameSpv">Nama Supervisor</div>
+                        <div class="sig-role">Supervisor</div>
+                    </div>
+
+                    <div class="sig-block">
+                        <div class="sig-title">DISETUJUI OLEH</div>
+                        <div class="sig-img-container">
+                            <img id="sigSupt" src="" alt="TTD Superintendent" style="display:none;">
+                            <span id="noSigSupt" class="sig-empty">(Belum TTD)</span>
+                        </div>
+                        <div class="sig-name" id="nameSupt">Nama Superintendent</div>
+                        <div class="sig-role">Superintendent</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT UTAMA -->
+    <script>
+        // --- SETUP SUPABASE ---
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const actionTexts = [
+            "OK / DIBERSIHKAN",
+            "OK / DIBERSIHKAN",
+            "OK / DIBERSIHKAN",
+            "OK / CEK TERMINATION",
+            "OK / CEK DENGAN MULTITESTER",
+            "OK / CEK AMPERMETER",
+            "OK / CEK VISUAL",
+            "OK / CEK FUNGSI",
+            "OK / CEK LEVEL TANGKI",
+            "OK / CEK KEBOCORAN OLI",
+            "OK / CEK PRESURE GAUGE",
+            "OK / CEK PRESURE GAUGE",
+            "OK / CEK MAGNETIC TABLE"
+        ];
+
+        // --- FUNGSI DYNAMIC NAVIGATION (SIDEBAR) ---
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session }, error: sessionError } = await client.auth.getSession();
+                
+                if (sessionError || !session) {
+                    setFallbackLinks();
+                    return;
+                }
+
+                const { data: profile, error: profileError } = await client
+                    .from('profiles')
+                    .select('jabatan')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profileError || !profile) {
+                    setFallbackLinks();
+                    return;
+                }
+
+                const jabatan = profile.jabatan.toUpperCase();
+                const navHome = document.getElementById('nav-home');
+                const navMenu = document.getElementById('nav-menu');
+
+                let homeLink = 'index.html';
+                let menuLink = 'menu_utama.html';
+
+                if (jabatan.includes('OPERATOR')) {
+                    homeLink = 'OPERATOR_HOME.html';
+                    menuLink = 'MENU_UTAMA_OPERATOR.html';
+                } else if (jabatan.includes('SUPERVISOR')) {
+                    homeLink = 'SUPERVISOR_HOME.html';
+                    menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                } else if (jabatan.includes('SUPERINTENDENT')) {
+                    homeLink = 'SUPERINTENDENT_HOME.html';
+                    menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                    homeLink = 'MANAGER_HOME.html';
+                    menuLink = 'MENU_UTAMA_MANAGER.html';
+                } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                    homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                    menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                    homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                    menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                }
+
+                if (navHome) navHome.href = homeLink;
+                if (navMenu) navMenu.href = menuLink;
+                
+            } catch (err) {
+                console.error("Kesalahan navigasi:", err);
+                setFallbackLinks();
+            }
+        }
+        
+        function setFallbackLinks() {
+            const navHome = document.getElementById('nav-home');
+            const navMenu = document.getElementById('nav-menu');
+            if (navHome) navHome.href = 'index.html';
+            if (navMenu) navMenu.href = 'menu_utama.html';
+        }
+
+        // Toggle Sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        // Format Tanggal untuk Tampilan Indonesia
+        function formatTanggalId(dateStr) {
+            if(!dateStr) return "-";
+            const options = { day: '2-digit', month: 'long', year: 'numeric' };
+            return new Date(dateStr).toLocaleDateString('id-ID', options);
+        }
+
+        // --- INIT: Memuat Daftar Mesin Unik ke dalam Dropdown sesuai bulan yg dipilih ---
+        async function loadMesinOptions() {
+            const dateVal = document.getElementById('filterBulan').value;
+            const selectMesin = document.getElementById('filterMesin');
+            
+            if(!dateVal) {
+                selectMesin.innerHTML = '<option value="">-- Pilih Bulan Dahulu --</option>';
+                return;
+            }
+
+            selectMesin.innerHTML = '<option value="">-- Sedang Mencari Mesin... --</option>';
+
+            const [tahun, bulan] = dateVal.split('-');
+            const lastDay = new Date(tahun, bulan, 0).getDate(); 
+            const start = `${dateVal}-01`;
+            const end = `${dateVal}-${lastDay}`;
+
+            try {
+                const { data, error } = await client
+                    .from('pmw_log')
+                    .select('mesin')
+                    .gte('tanggal', start)
+                    .lte('tanggal', end);
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    selectMesin.innerHTML = '<option value="">-- Tidak Ada Data Mesin --</option>';
+                    return;
+                }
+
+                const uniqueMesin = [...new Set(data.map(item => item.mesin))].sort();
+
+                selectMesin.innerHTML = '<option value="">-- Pilih Mesin --</option>';
+                uniqueMesin.forEach(mesin => {
+                    const opt = document.createElement('option');
+                    opt.value = mesin;
+                    opt.textContent = mesin;
+                    selectMesin.appendChild(opt);
+                });
+
+            } catch (err) {
+                console.error("Gagal memuat list mesin:", err);
+                selectMesin.innerHTML = '<option value="">Gagal memuat data</option>';
+            }
+        }
+
+        // --- FETCH & RENDER DATA ---
+        async function fetchLaporan() {
+            const mesin = document.getElementById('filterMesin').value;
+            const bulanThn = document.getElementById('filterBulan').value;
+
+            if (!mesin || !bulanThn) {
+                alert("Mohon pilih Mesin dan Bulan terlebih dahulu!");
+                return;
+            }
+
+            const [tahun, bulan] = bulanThn.split('-');
+            const awalBulan = `${tahun}-${bulan}-01`;
+            const akhirBulanDate = new Date(tahun, bulan, 0);
+            const akhirBulan = `${tahun}-${bulan}-${akhirBulanDate.getDate()}`;
+
+            const emptyState = document.getElementById('emptyState');
+            const printableContent = document.getElementById('printableContent');
+            const btnPrint = document.getElementById('btnPrint');
+
+            emptyState.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><br>Mencari Laporan...';
+            emptyState.style.display = 'block';
+            printableContent.style.display = 'none';
+            btnPrint.style.display = 'none';
+
+            try {
+                const { data: logData, error: logError } = await client
+                    .from('pmw_log')
+                    .select('*')
+                    .eq('mesin', mesin)
+                    .gte('tanggal', awalBulan)
+                    .lte('tanggal', akhirBulan)
+                    .order('tanggal', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if (logError || !logData) {
+                    const namaBulan = new Date(`${bulanThn}-01`).toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+                    emptyState.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:var(--danger)"></i><br>Laporan untuk Mesin <b>${mesin}</b> pada bulan <b>${namaBulan}</b> tidak ditemukan.`;
+                    return;
+                }
+
+                const targetTanggal = logData.tanggal;
+
+                const { data: reports, error: repError } = await client
+                    .from('pmw_reports')
+                    .select('*')
+                    .eq('mesin', mesin)
+                    .eq('tanggal', targetTanggal)
+                    .order('id', { ascending: true });
+
+                if (repError) throw repError;
+
+                document.getElementById('docMesin').innerText = logData.mesin;
+                document.getElementById('docTanggalPengecekan').innerText = formatTanggalId(logData.tanggal);
+
+                const tbody = document.getElementById('docTableBody');
+                tbody.innerHTML = '';
+
+                if (reports.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8">Belum ada rincian item checklist pada laporan ini.</td></tr>`;
+                } else {
+                    reports.forEach((rep, idx) => {
+                        let cekB = rep.kondisi === 'B' ? '✓' : '';
+                        let cekC = rep.kondisi === 'C' ? '✓' : '';
+                        let cekK = rep.kondisi === 'K' ? '✓' : '';
+
+                        const actionTeksRaw = actionTexts[idx] || "OK / CEK";
+                        const parts = actionTeksRaw.split('/');
+                        const opt1 = parts[0] ? parts[0].trim() : "OK";
+                        const opt2 = parts[1] ? parts[1].trim() : "";
+
+                        const checkedBox = '☑';
+                        const emptyBox = '☐';
+
+                        let box1 = rep.action_text === opt1 ? checkedBox : emptyBox;
+                        let box2 = rep.action_text === opt2 ? checkedBox : emptyBox;
+
+                        // Perbaikan HTML render memastikan text panjang tidak hancur
+                        let actionHTML = `
+                            <div class="action-box-container">
+                                <div class="action-box-item"><span style="font-size:14px; line-height:1;">${box1}</span> <span>${opt1}</span></div>
+                                ${opt2 ? `<div class="action-box-item"><span style="font-size:14px; line-height:1;">${box2}</span> <span>${opt2}</span></div>` : ''}
+                            </div>
+                        `;
+
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${idx + 1}</td>
+                            <td class="align-left">${rep.prosedur_preventive || '-'}</td>
+                            <td>${rep.standart || '-'}</td>
+                            <td class="checkmark">${cekB}</td>
+                            <td class="checkmark">${cekC}</td>
+                            <td class="checkmark">${cekK}</td>
+                            <td>${actionHTML}</td>
+                            <td>${rep.catatan || ''}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                renderSignature('Operator', logData.pic, logData.ttd_operator);
+                renderSignature('Spv', logData.spv_name, logData.ttd_spv);
+                renderSignature('Supt', logData.supt_name, logData.ttd_supt);
+
+                emptyState.style.display = 'none';
+                printableContent.style.display = 'block';
+                btnPrint.style.display = 'flex';
+
+            } catch (err) {
+                console.error("Error Detail:", err);
+                emptyState.innerHTML = `<i class="fa-solid fa-circle-xmark" style="color:var(--danger)"></i><br>Terjadi kesalahan saat memuat data.`;
+            }
+        }
+
+        function renderSignature(role, name, imgBase64) {
+            const nameEl = document.getElementById(`name${role}`);
+            const imgEl = document.getElementById(`sig${role}`);
+            const noSigEl = document.getElementById(`noSig${role}`);
+
+            nameEl.innerText = name ? name : "................................";
+
+            if (imgBase64) {
+                imgEl.src = imgBase64;
+                imgEl.style.display = 'block';
+                noSigEl.style.display = 'none';
+            } else {
+                imgEl.style.display = 'none';
+                noSigEl.style.display = 'block';
+            }
+        }
+
+        // --- FUNGSI EXPORT PDF (DIJAMIN 1 HALAMAN PRESISI) ---
+        async function exportPDF() {
+            const printableContent = document.getElementById('printableContent');
+            if (printableContent.style.display === 'none') {
+                alert("Silakan muat data terlebih dahulu sebelum mengekspor PDF.");
+                return;
+            }
+
+            const overlay = document.getElementById('loadingOverlayPDF');
+            overlay.style.display = 'flex';
+
+            try {
+                const originalElement = document.getElementById('documentArea');
+                const clonedElement = originalElement.cloneNode(true);
+
+                const emptyStateClone = clonedElement.querySelector('#emptyState');
+                if (emptyStateClone) emptyStateClone.remove();
+
+                const A4_WIDTH_PX = 794;
+                const A4_HEIGHT_PX = 1123;
+
+                // Memadatkan dan memaksa batasan layout Clone sebelum diekspor
+                clonedElement.style.margin = '0';
+                clonedElement.style.padding = '10mm 15mm'; // Kompres padding luar
+                clonedElement.style.width = `${A4_WIDTH_PX}px`;
+                clonedElement.style.height = `${A4_HEIGHT_PX}px`; // Fix limit max tinggi ke A4
+                clonedElement.style.maxHeight = `${A4_HEIGHT_PX}px`; 
+                clonedElement.style.overflow = 'hidden'; // Menjamin elemen tidak bocor ke page 2
+                clonedElement.style.boxSizing = 'border-box';
+                clonedElement.style.background = 'white';
+                clonedElement.style.position = 'relative';
+                clonedElement.style.transform = 'none';
+                clonedElement.style.left = 'auto';
+                clonedElement.style.top = 'auto';
+
+                // Mengurangi padding tabel pada PDF agar lebih renggang
+                clonedElement.querySelectorAll('.main-table th, .main-table td').forEach(el => {
+                    el.style.padding = '4px 2px';
+                    el.style.fontSize = '10px';
+                });
+                clonedElement.querySelectorAll('.action-box-container').forEach(el => {
+                    el.style.gap = '4px';
+                    el.style.fontSize = '9px';
+                });
+                clonedElement.querySelectorAll('.footer-info').forEach(el => {
+                    el.style.marginBottom = '10px';
+                    el.style.fontSize = '10px';
+                });
+                clonedElement.querySelectorAll('.signature-area').forEach(el => {
+                    el.style.marginTop = '10px';
+                });
+                clonedElement.querySelectorAll('.sig-img-container').forEach(el => {
+                    el.style.height = '50px';
+                    el.style.marginBottom = '2px';
+                });
+
+                const container = document.createElement('div');
+                container.id = 'pdf-export-container';
+                container.style.position = 'fixed';
+                container.style.top = '0';
+                container.style.left = '-10000px'; 
+                container.style.width = `${A4_WIDTH_PX}px`;
+                container.style.zIndex = '-9999';
+                
+                container.appendChild(clonedElement);
+                document.body.appendChild(container);
+
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                const mesinEl = document.getElementById('docMesin');
+                const dateInput = document.getElementById('filterBulan').value;
+                
+                let namaMesin = 'Mesin';
+                if (mesinEl && mesinEl.textContent) {
+                    namaMesin = mesinEl.textContent.replace(/[^a-zA-Z0-9\s-]/g, '').trim();
+                }
+                
+                let monthStr = 'bulan';
+                let yearStr = 'tahun';
+                if (dateInput) {
+                    const [year, month] = dateInput.split('-');
+                    const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+                    monthStr = monthNames[parseInt(month) - 1];
+                    yearStr = year;
+                }
+                
+                const namaFile = `preventif workshop_${namaMesin}_${monthStr}_${yearStr}.pdf`.toLowerCase();
+
+                const opt = {
+                    margin: 0,
+                    filename: namaFile,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { 
+                        scale: 2, 
+                        useCORS: true,
+                        width: A4_WIDTH_PX,
+                        height: A4_HEIGHT_PX, // Paksa html2canvas memotret batas tinggi maksimal saja
+                        windowWidth: A4_WIDTH_PX, 
+                        scrollX: 0,
+                        scrollY: 0,
+                        x: 0,
+                        y: 0
+                    },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }
+                };
+
+                await html2pdf().set(opt).from(clonedElement).save();
+
+                document.body.removeChild(container);
+
+            } catch (error) {
+                console.error("Gagal menyimpan PDF:", error);
+                alert("Maaf, terjadi kesalahan saat mengekspor dokumen ke PDF.");
+            } finally {
+                overlay.style.display = 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            setupDynamicNavigation();
+            
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('filterBulan').value = `${yyyy}-${mm}`;
+
+            await loadMesinOptions();
+        });
+
+    </script>
+
+</body>
+</html>

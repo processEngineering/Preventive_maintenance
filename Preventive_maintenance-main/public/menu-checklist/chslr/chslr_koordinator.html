@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Koordinator (CHSLR) - AKG Maintenance</title>
+    
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            /* TEMA MERAH PUTIH */
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --accent: #dc2626;
+            --accent-soft: #ffebeb;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #ef4444;
+            
+            /* BACKGROUND PUTIH */
+            --bg-body: #ffffff;
+            --bg-card: #ffffff;
+            --bg-input: #f8f9fa;
+            
+            /* TEXT GELAP UNTUK BACKGROUND TERANG */
+            --text-main: #333333;
+            --text-muted: #6b7280;
+            --text-soft: #9ca3af;
+            
+            /* BORDER TERANG */
+            --border: #e5e7eb;
+            --border-red: rgba(201, 25, 25, 0.3);
+            
+            --radius: 16px;
+            --sidebar-width: 280px; 
+            --header-height: 80px;
+
+            /* Status Colors for Chips (Light Theme Optimized) */
+            --status-ok: #059669;
+            --status-ng: #dc2626;
+            --status-mn: #d97706;
+            --status-na: #6b7280;
+        }
+
+        * { 
+            margin: 0; padding: 0; box-sizing: border-box; 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        body {
+            background: var(--bg-body);
+            min-height: 100vh;
+            color: var(--text-main);
+            position: relative;
+            overflow-x: hidden;
+            display: block; /* Agar container bisa auto center */
+        }
+
+        /* --- Background Animation (Tema Terang) --- */
+        .bg-glow {
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(201, 25, 25, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hidden { display: none !important; }
+
+        /* --- PROFESSIONAL HEADER BAR (TOMBOL GARIS 3) --- */
+        .main-header {
+            position: fixed;
+            top: 0;
+            left: 0; 
+            right: 0;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+
+        .header-content-wrapper {
+            width: 100%;
+            max-width: 600px; /* Disesuaikan dengan app-container */
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        .hamburger-menu {
+            font-size: 26px;
+            color: var(--primary);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            transition: transform 0.2s;
+            z-index: 2;
+        }
+        .hamburger-menu:active { transform: scale(0.9); }
+
+        .header-title-pill {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 30px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1);
+            white-space: nowrap;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .side-nav {
+            position: fixed;
+            top: 0; left: -100%;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+
+        .side-nav.active { left: 0; }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-title {
+            font-weight: 800;
+            color: var(--primary);
+            font-size: 20px;
+        }
+
+        .sidebar-close {
+            font-size: 24px;
+            color: #888;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: var(--text-muted);
+            background: white;
+            width: 100%;
+            padding: 14px 20px;
+            margin-bottom: 15px;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        
+        .nav-item:hover, .nav-item.active {
+            border-color: var(--primary);
+            background: #fff5f5;
+            color: var(--primary);
+            transform: translateX(5px);
+        }
+
+        .nav-icon-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px; height: 32px;
+            margin-right: 15px;
+            font-size: 20px;
+            color: var(--primary);
+        }
+
+        /* --- APP CONTAINER (CENTERED) --- */
+        .app-shell {
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .app-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px 24px 60px 24px;
+            padding-top: calc(var(--header-height) + 30px);
+            min-height: 100vh;
+        }
+
+        /* --- SECTIONS & TITLES --- */
+        .section-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-left: 12px; border-left: 4px solid var(--primary);
+        }
+        .section-title {
+            font-size: 14px; font-weight: 800; color: var(--text-main);
+            text-transform: uppercase; letter-spacing: 1.5px;
+        }
+
+        /* --- CARDS (QUEUE LIST - LIGHT THEME) --- */
+        .card-item {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--primary);
+            border-radius: 16px; 
+            padding: 20px; 
+            margin-bottom: 20px;
+            position: relative; 
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        }
+        .card-item:active { transform: scale(0.98); border-color: var(--primary); }
+        .card-item:hover { box-shadow: 0 8px 25px rgba(201, 25, 25, 0.1); }
+        
+        .card-row { display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center; }
+        .lbl { font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .val { font-size: 15px; color: var(--text-main); font-weight: 800; }
+        
+        .badge-status {
+            background: var(--primary); 
+            color: #fff;
+            font-size: 13px; 
+            font-weight: 800; 
+            text-align: center;
+            padding: 14px; 
+            border-radius: 12px; 
+            margin-top: 16px;
+            border: none;
+            width: 100%;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(201, 25, 25, 0.3);
+            text-transform: uppercase;
+            transition: transform 0.2s;
+        }
+        .card-item:hover .badge-status {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(201, 25, 25, 0.4);
+        }
+
+        /* --- SCANNER VIEW --- */
+        .scanner-container {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 20px 0;
+        }
+        .scanner-frame {
+            width: 260px; height: 260px; border-radius: 24px; overflow: hidden;
+            border: 4px solid var(--primary); box-shadow: 0 0 30px rgba(255, 51, 51, 0.2);
+            position: relative; background: #f8f9fa; margin-bottom: 30px;
+            display: flex; justify-content: center; align-items: center;
+        }
+        #reader { width: 100%; height: 100%; position: relative; overflow: hidden; }
+        #reader video { width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: 0 !important; }
+
+        /* --- FORM & INPUTS (LIGHT THEME) --- */
+        .info-box {
+            background: var(--bg-input); 
+            border: 1px solid var(--border);
+            border-radius: 16px; 
+            padding: 20px; 
+            margin-bottom: 24px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .i-val { font-weight: 800; color: var(--text-main); text-align: right; }
+
+        .review-item {
+            background: #ffffff; border: 1px solid var(--border);
+            border-radius: 12px; padding: 14px; margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        }
+        .ri-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .ri-name { font-size: 13px; font-weight: 700; color: var(--text-main); }
+        .ri-badge {
+            font-size: 10px; padding: 4px 8px; border-radius: 6px; 
+            font-weight: 800; text-transform: uppercase;
+        }
+        .bg-ok { background: #dcfce7; color: var(--status-ok); border: 1px solid #a7f3d0; }
+        .bg-ng { background: #fee2e2; color: var(--status-ng); border: 1px solid #fca5a5; }
+        .bg-mn { background: #fef3c7; color: var(--status-mn); border: 1px solid #fde68a; }
+        .bg-na { background: #f3f4f6; color: var(--status-na); border: 1px solid #e5e7eb; }
+
+        .input-group { margin-bottom: 20px; }
+        .label-input { 
+            display: block; font-size: 11px; color: var(--text-muted); 
+            margin-bottom: 8px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+        }
+        .input-field {
+            width: 100%; padding: 16px; 
+            background: #ffffff; 
+            border: 1px solid var(--border);
+            border-radius: 12px; 
+            color: var(--text-main); 
+            font-size: 14px; 
+            font-weight: 600;
+            transition: 0.3s;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .input-field:focus {
+            border-color: var(--primary); 
+            box-shadow: 0 0 0 3px var(--accent-soft); 
+            outline: none;
+        }
+        .input-field::placeholder { color: #cbd5e1; font-weight: 400; }
+
+        .sig-wrapper {
+            background: #f8f9fa; 
+            border-radius: 12px; height: 160px; position: relative; overflow: hidden;
+            border: 2px dashed var(--border-red); margin-bottom: 8px;
+            transition: border-color 0.3s;
+        }
+        .sig-wrapper:hover { border-color: var(--primary-light); }
+        .sig-wrapper canvas {
+            width: 100%; height: 100%; display: block; touch-action: none;
+            cursor: crosshair;
+        }
+        
+        /* --- BUTTONS --- */
+        .btn-3d {
+            width: 100%; padding: 16px; border-radius: 14px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 1px;
+            transition: all 0.2s ease; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; border: none;
+            box-shadow: 0 8px 24px rgba(201, 25, 25, 0.3); margin-top: 30px;
+        }
+        .btn-primary:active { transform: translateY(3px); box-shadow: 0 4px 12px rgba(201, 25, 25, 0.3); }
+
+        .btn-secondary {
+            background: var(--accent-soft); 
+            color: var(--primary);
+            border: none; margin-top: 12px;
+        }
+        .btn-secondary:hover { background: #fcd5d5; }
+
+        /* Helpers */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    </style>
+</head>
+<body class="pb-24">
+
+    <div class="bg-glow"></div>
+
+    <!-- HEADER UTAMA (TOMBOL GARIS 3) -->
+    <header class="main-header">
+        <div class="header-content-wrapper">
+            <div class="hamburger-menu" onclick="toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+            <div class="header-title-pill">VERIFIKASI KOORDINATOR</div>
+        </div>
+    </header>
+
+    <!-- OVERLAY & SIDEBAR -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+
+        <!-- DYNAMIC ROUTING LINKS -->
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <div class="app-shell">
+        <div class="app-container">
+
+            <!-- VIEW: LIST ANTREAN -->
+            <div id="view-list" class="animate-fade">
+                <div class="section-header">
+                    <span class="section-title">Antrean Verifikasi</span>
+                    <!-- TAMBAHAN: TOMBOL CARI -->
+                    <button onclick="toggleSearch()" style="background:var(--accent-soft); border:none; color:var(--primary); font-size:12px; font-weight:800; cursor:pointer; padding: 8px 12px; border-radius: 8px; display:flex; align-items:center; gap:6px; box-shadow: 0 2px 5px rgba(201, 25, 25, 0.1);">
+                        <i class="fa-solid fa-magnifying-glass"></i> CARI
+                    </button>
+                </div>
+                
+                <!-- === TAMBAHAN: FITUR PENCARIAN MESIN (DISEMBUNYIKAN AWALNYA) === -->
+                <div id="searchContainer" class="input-group hidden" style="position: relative; padding: 0 12px; margin-bottom: 20px;">
+                    <i class="fa-solid fa-search" style="position: absolute; left: 30px; top: 50%; transform: translateY(-50%); color: var(--text-soft); font-size: 16px;"></i>
+                    <input type="text" id="searchMesin" onkeyup="filterMesin()" class="input-field" placeholder="Ketik nama mesin atau pelaksana..." style="padding-left: 48px; border: 2px solid var(--border-red);">
+                    <button onclick="toggleSearch()" style="position: absolute; right: 25px; top: 50%; transform: translateY(-50%); background:none; border:none; color:var(--text-soft); cursor:pointer; font-size:18px;">
+                        <i class="fa-solid fa-times-circle"></i>
+                    </button>
+                </div>
+                <!-- === AKHIR TAMBAHAN === -->
+
+                <div id="log-container">
+                    <div style="text-align:center; padding:40px; color:var(--text-muted);">
+                        <i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 10px; color:var(--primary);"></i>
+                        <p>Memuat antrean...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: SCANNER -->
+            <div id="view-scanner" class="hidden animate-fade">
+                <div class="scanner-container">
+                    <div style="color:var(--primary); margin-bottom:16px; text-align:center; font-weight:800; text-transform:uppercase; letter-spacing:1.5px;">
+                        Scan QR Code Mesin
+                    </div>
+                    <div class="scanner-frame"><div id="reader"></div></div>
+                </div>
+            </div>
+
+            <!-- VIEW: FORM VALIDASI -->
+            <div id="view-form" class="hidden animate-fade">
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="lbl">MESIN</span> <span class="i-val" id="form-mesin">...</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="lbl">PELAKSANA</span> <span class="i-val" id="form-pelaksana" style="font-size:13px; color:var(--primary);">...</span>
+                    </div>
+                    <div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border);">
+                        <span class="lbl">CATATAN PELAKSANA</span>
+                        <div id="form-catatan-pel" style="color: var(--text-muted); font-size: 13px; margin-top: 4px; font-weight:500;">...</div>
+                    </div>
+                </div>
+
+                <div class="section-header">
+                    <span class="section-title">Review Pengecekan</span>
+                </div>
+
+                <div id="checklist-review" style="margin-bottom: 24px;"></div>
+
+                <div class="input-group">
+                    <label class="label-input">Nama Koordinator</label>
+                    <input type="text" id="koor-name" class="input-field" placeholder="Ketik nama lengkap anda">
+                </div>
+
+                <div class="input-group">
+                    <label class="label-input">Catatan Verifikasi (Opsional)</label>
+                    <textarea id="koor-remark" rows="2" class="input-field" style="resize:none; height:80px;" placeholder="Catatan untuk superintendent"></textarea>
+                </div>
+                
+                <div class="input-group">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                        <label class="label-input" style="margin:0;">Paraf Koordinator</label>
+                        <button onclick="clearPad()" id="btn-clear-sig-koor" style="background:none; border:none; color:var(--primary); font-size:11px; font-weight:800; cursor:pointer;">HAPUS</button>
+                    </div>
+                    <div class="sig-wrapper" id="sig-wrapper-koor">
+                        <canvas id="signature-pad-koor"></canvas>
+                    </div>
+                    <!-- Notifikasi TTD Otomatis -->
+                    <div id="sig-status-koor" class="hidden mt-2 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                        <i class="fa-solid fa-circle-check text-green-600"></i>
+                        <span class="text-xs text-green-700 font-bold">Tanda Tangan otomatis diambil dari Database.</span>
+                    </div>
+                </div>
+
+                <button onclick="submitApproval()" id="btn-approve" class="btn-3d btn-primary">
+                    <i class="fa-solid fa-check-circle"></i> SUBMIT VERIFIKASI
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- LOGIC JS -->
+    <script>
+        // Fungsi Buka Tutup Sidebar Samping
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
+        
+        let activeLog = null;
+        let scanner = null;
+        let sigPadKoor = null;
+        let existingSignatureKoorFile = null; // Variabel penyimpan nama file TTD dari database
+
+        window.onload = function() {
+            setupDynamicNavigation();
+            loadQueue();
+            
+            // Init Signature
+            const canvas = document.getElementById('signature-pad-koor');
+            function resizeCanvas() {
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                if(canvas.offsetWidth > 0){
+                    canvas.width = canvas.offsetWidth * ratio;
+                    canvas.height = canvas.offsetHeight * ratio;
+                    canvas.getContext("2d").scale(ratio, ratio);
+                }
+            }
+            window.addEventListener("resize", resizeCanvas);
+            resizeCanvas();
+            // PenColor tetap hitam karena background canvas putih 
+            sigPadKoor = new SignaturePad(canvas, { minWidth: 1, maxWidth: 2.5, penColor: 'black' });
+
+            // Event listener: Cek DB begitu koordinator selesai ngetik namanya
+            document.getElementById('koor-name').addEventListener('blur', checkExistingKoorSignature);
+        };
+
+        // === TAMBAHAN: FUNGSI BUKA TUTUP PENCARIAN MESIN ===
+        function toggleSearch() {
+            const searchContainer = document.getElementById('searchContainer');
+            const searchInput = document.getElementById('searchMesin');
+            
+            if (searchContainer.classList.contains('hidden')) {
+                // Munculkan kolom pencarian
+                searchContainer.classList.remove('hidden');
+                searchInput.focus();
+            } else {
+                // Sembunyikan dan reset kolom pencarian kembali seperti semula
+                searchContainer.classList.add('hidden');
+                searchInput.value = '';
+                filterMesin(); // Panggil filterMesin untuk menampilkan semua list lagi
+            }
+        }
+
+        function filterMesin() {
+            const input = document.getElementById("searchMesin");
+            const filter = input.value.toLowerCase();
+            const container = document.getElementById("log-container");
+            
+            // Ambil semua elemen dengan class card-item
+            const cards = container.getElementsByClassName("card-item");
+
+            for (let i = 0; i < cards.length; i++) {
+                // Ambil semua teks di dalam satu card (termasuk nama mesin dan pelaksana)
+                const txtValue = cards[i].textContent || cards[i].innerText;
+                
+                // Jika teks input cocok dengan teks di dalam card
+                if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                    cards[i].style.display = ""; // Tampilkan
+                } else {
+                    cards[i].style.display = "none"; // Sembunyikan
+                }
+            }
+        }
+        // === AKHIR TAMBAHAN ===
+
+        // --- FUNGSI PINTAR: DETEKSI TTD DARI DATABASE ---
+        async function checkExistingKoorSignature() {
+            const nameInput = document.getElementById('koor-name').value.trim();
+            if (!nameInput) return;
+
+            try {
+                // Cari log terakhir di mana koordinator ini udah pernah ttd
+                const { data: logs } = await _sb.from('chslr_log')
+                    .select('signature_koordinator')
+                    .ilike('koordinator_nama', nameInput)
+                    .not('signature_koordinator', 'is', null)
+                    .neq('signature_koordinator', '')
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                if (logs && logs.length > 0 && logs[0].signature_koordinator.includes('.png')) {
+                    // BBOOM! TTD ketemu di database.
+                    existingSignatureKoorFile = logs[0].signature_koordinator;
+
+                    // Update UI: Sembunyikan kanvas, munculin notif hijau
+                    document.getElementById('sig-wrapper-koor').style.display = 'none';
+                    document.getElementById('sig-status-koor').classList.remove('hidden');
+                    document.getElementById('btn-clear-sig-koor').innerText = 'BUAT BARU';
+                }
+            } catch(e) { console.log("Gagal auto-detect TTD Koordinator:", e); }
+        }
+
+        // Fungsi Reset (Kalau user mau ganti TTD)
+        function clearPad() {
+            if (existingSignatureKoorFile) {
+                // Batalkan auto-TTD, paksa user gambar manual
+                existingSignatureKoorFile = null;
+                document.getElementById('sig-wrapper-koor').style.display = 'block';
+                document.getElementById('sig-status-koor').classList.add('hidden');
+                document.getElementById('btn-clear-sig-koor').innerText = 'HAPUS';
+            }
+            if (sigPadKoor) sigPadKoor.clear();
+        }
+
+        // --- FUNGSI HELPER: UBAH BASE64 JADI FILE GAMBAR (BLOB) ---
+        function dataURLtoBlob(dataurl) {
+            let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1];
+            let bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+            while(n--){ u8arr[n] = bstr.charCodeAt(n); }
+            return new Blob([u8arr], {type:mime});
+        }
+
+
+        // Fungsi Cek Jabatan & Update Link Navigasi (Navigasi Pintar)
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await _sb.auth.getSession();
+                if (!session) return;
+
+                const { data: profile } = await _sb
+                    .from('profiles')
+                    .select('jabatan')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+
+                    let homeLink = 'index.html';
+                    let menuLink = 'menu_utama.html';
+
+                    if (jabatan.includes('OPERATOR')) {
+                        homeLink = 'OPERATOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_OPERATOR.html';
+                    } else if (jabatan.includes('SUPERVISOR')) {
+                        homeLink = 'SUPERVISOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                    } else if (jabatan.includes('SUPERINTENDENT')) {
+                        homeLink = 'SUPERINTENDENT_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                    } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                        homeLink = 'MANAGER_HOME.html';
+                        menuLink = 'MENU_UTAMA_MANAGER.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                        homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                        homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                    }
+
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) {
+                console.error("Gagal mengatur navigasi dinamis:", err);
+            }
+        }
+
+        function switchView(viewId) {
+            ['view-list', 'view-scanner', 'view-form'].forEach(id => {
+                const el = document.getElementById(id);
+                if (id === viewId) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+        }
+
+        async function backToList() {
+            if(scanner) {
+                try { await scanner.stop(); } catch(e) {}
+                scanner.clear();
+            }
+            switchView('view-list');
+            activeLog = null;
+            
+            // Jika pencarian sedang terbuka saat kembali ke menu, otomatis tutup dan bersihkan
+            const searchContainer = document.getElementById('searchContainer');
+            const searchInput = document.getElementById('searchMesin');
+            if (searchContainer && !searchContainer.classList.contains('hidden')) {
+                searchContainer.classList.add('hidden');
+                searchInput.value = '';
+            }
+
+            loadQueue(); 
+        }
+
+        // --- 1. LOAD QUEUE ---
+        async function loadQueue() {
+            const now = new Date();
+            const todayDate = now.getDate();
+            const currentMonth = now.getMonth() + 1;
+            const currentYear = now.getFullYear();
+
+            const container = document.getElementById('log-container');
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px; color:var(--primary);"></i><p style="margin-top:10px; font-weight:600;">Memuat antrean...</p></div>';
+
+            const { data: logs, error } = await _sb.from('chslr_log')
+                .select('*')
+                .eq('bulan', currentMonth)
+                .eq('tahun', currentYear)
+                .is('signature_koordinator', null);
+
+            if (error) {
+                container.innerHTML = `<p style="color:red; text-align:center; font-weight:bold;">Error DB: ${error.message}</p>`;
+                return;
+            }
+
+            if (!logs || logs.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding:40px; border:1px dashed var(--border-red); border-radius:16px; color:var(--text-muted); background:var(--bg-input);"><i class="fa-regular fa-folder-open" style="font-size:40px; margin-bottom:15px; color:var(--text-soft);"></i><p class="font-bold uppercase tracking-widest text-xs">Tidak ada antrean</p></div>`;
+                return;
+            }
+
+            container.innerHTML = "";
+            let count = 0;
+
+            for (let log of logs) {
+                const { data: results } = await _sb.from('chslr_result')
+                    .select('id') 
+                    .eq('log_id', log.id)
+                    .eq('tanggal', todayDate) 
+                    .limit(1);
+
+                if (results && results.length > 0) {
+                    count++;
+                    const names = log.pelaksana_names ? log.pelaksana_names.join(', ') : '-';
+                    const dateStr = `${todayDate}/${currentMonth}/${currentYear}`;
+                    
+                    container.insertAdjacentHTML('beforeend', `
+                        <div class="card-item" onclick="startScanner('${encodeURIComponent(JSON.stringify(log))}')">
+                            <div class="card-row">
+                                <span class="lbl">MESIN</span> 
+                                <span class="val" style="color:var(--primary);">${log.mesin_id}</span>
+                            </div>
+                            <div class="card-row">
+                                <span class="lbl">PELAKSANA</span> 
+                                <span class="val" style="font-size:13px;">${names}</span>
+                            </div>
+                            <div class="card-row">
+                                <span class="lbl">TANGGAL</span> 
+                                <span class="val" style="font-size:13px; color:var(--text-muted);">${dateStr}</span>
+                            </div>
+                            <button class="badge-status">KETUK UNTUK VERIFIKASI</button>
+                        </div>`);
+                }
+            }
+
+            if(count === 0) {
+                container.innerHTML = `<div style="text-align:center; padding:40px; border:1px dashed var(--border-red); border-radius:16px; color:var(--text-muted); background:var(--bg-input);"><i class="fa-solid fa-clock-rotate-left" style="font-size:40px; margin-bottom:15px; color:var(--text-soft);"></i><p class="font-bold uppercase tracking-widest text-xs">Menunggu Pelaksana...</p></div>`;
+            }
+        }
+
+        // --- 2. SCANNER LOGIC ---
+        function startScanner(logStr) {
+            activeLog = JSON.parse(decodeURIComponent(logStr));
+            switchView('view-scanner');
+            if(!scanner) scanner = new Html5Qrcode("reader");
+            const config = { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 };
+            scanner.start({ facingMode: "environment" }, config, onScanSuccess).catch(err => { alert("Kamera error: " + err); backToList(); });
+        }
+
+        async function onScanSuccess(decodedText) {
+            if (activeLog.mesin_id.toLowerCase().trim() === decodedText.toLowerCase().trim()) {
+                if(navigator.vibrate) navigator.vibrate(100);
+                try { await scanner.stop(); scanner.clear(); } catch(e){}
+                openForm();
+            } else {
+                alert(`❌ QR SALAH!\nTarget: ${activeLog.mesin_id}\nTerbaca: ${decodedText}`);
+            }
+        }
+
+        // --- 3. FORM DISPLAY ---
+        async function openForm() {
+            switchView('view-form');
+            document.getElementById('form-mesin').innerText = activeLog.mesin_id;
+            document.getElementById('form-pelaksana').innerText = activeLog.pelaksana_names ? activeLog.pelaksana_names.join(', ') : '-';
+            document.getElementById('koor-name').value = "";
+            document.getElementById('koor-remark').value = "";
+            
+            const canvas = document.getElementById('signature-pad-koor');
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            if(canvas.offsetWidth > 0){
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
+            }
+            clearPad(); // Reset canvas + Notif saat form dibuka
+            
+            const reviewContainer = document.getElementById('checklist-review');
+            reviewContainer.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin text-primary text-2xl mb-2"></i><br><span class="text-xs font-bold uppercase tracking-widest">Memuat detail...</span></div>';
+
+            const today = new Date().getDate();
+
+            // Refresh data log header
+            const { data: freshLog } = await _sb.from('chslr_log').select('catatan_pelaksana').eq('id', activeLog.id).single();
+            document.getElementById('form-catatan-pel').innerText = (freshLog && freshLog.catatan_pelaksana) ? freshLog.catatan_pelaksana : '-';
+
+            const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
+            const { data: results } = await _sb.from('chslr_result')
+                .select('*')  
+                .eq('log_id', activeLog.id)
+                .eq('tanggal', today);
+
+            reviewContainer.innerHTML = "";
+
+            if (!results || results.length === 0) {
+                reviewContainer.innerHTML = "<p style='color:var(--text-muted); text-align:center; font-weight:600;'>Data checklist kosong.</p>";
+                return;
+            }
+
+            items.forEach(item => {
+                const res = results.find(r => r.item_id === item.id);
+                if(res) {
+                    let badgeClass = 'bg-ok';
+                    if(res.status === 'NG') badgeClass = 'bg-ng';
+                    if(res.status === 'MN') badgeClass = 'bg-mn';
+                    if(res.status === 'NA') badgeClass = 'bg-na';
+
+                    let extraHtml = '';
+                    if(res.input_value) extraHtml += `<div style="font-size:12px; color:var(--primary); font-weight:800; margin-top:4px;">Input: ${res.input_value}</div>`;
+                    if(res.keterangan) extraHtml += `<div style="font-size:11px; color:var(--text-muted); margin-top:4px; font-style:italic;">"${res.keterangan}"</div>`;
+
+                    const html = `
+                        <div class="review-item">
+                            <div class="ri-top">
+                                <div class="ri-name">${item.item_name}</div>
+                                <div class="ri-badge ${badgeClass}">${res.status}</div>
+                            </div>
+                            <div style="font-size:10px; color:var(--text-muted); font-weight:600;">Std: ${item.standard}</div>
+                            ${extraHtml}
+                        </div>
+                    `;
+                    reviewContainer.insertAdjacentHTML('beforeend', html);
+                }
+            });
+        }
+
+        // --- 4. SUBMIT ---
+        async function submitApproval() {
+            const name = document.getElementById('koor-name').value.trim();
+            const remark = document.getElementById('koor-remark').value.trim();
+            const btn = document.getElementById('btn-approve');
+
+            if(!activeLog || !activeLog.id) {
+                alert("Error: Data Log hilang."); return;
+            }
+            if(!name) { document.getElementById('koor-name').focus(); return alert("⚠️ Nama Koordinator wajib diisi!"); }
+            
+            // MODIFIKASI: Cek existingSignatureKoorFile dulu
+            if(!existingSignatureKoorFile && sigPadKoor.isEmpty()) return alert("⚠️ Harap tanda tangan dulu!");
+
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> MENYIMPAN...'; 
+            btn.disabled = true;
+
+            try {
+                // --- PROSES UPLOAD TANDA TANGAN KE BUCKET ---
+                let sigFileName = existingSignatureKoorFile; // Pakai yang dari database kalau ada
+
+                // Kalau user bikin TTD baru (gak otomatis dari DB), baru kita upload ke Bucket!
+                if (!existingSignatureKoorFile) {
+                    sigFileName = `sig_koor_${Date.now()}_${Math.floor(Math.random()*1000)}.png`;
+                    const sigBlob = dataURLtoBlob(sigPadKoor.toDataURL('image/png'));
+                    
+                    const { error: uploadError } = await _sb.storage
+                        .from('signatures')
+                        .upload(sigFileName, sigBlob, {
+                            contentType: 'image/png',
+                            upsert: false
+                        });
+                        
+                    if (uploadError) {
+                        throw new Error("Gagal mengunggah Tanda Tangan: " + uploadError.message);
+                    }
+                }
+                // --- SELESAI UPLOAD ---
+
+
+                const { data, error } = await _sb.from('chslr_log').update({
+                    koordinator_nama: name,
+                    signature_koordinator: sigFileName, // <- UBAH JADI NAMA FILE
+                    status_verifikasi: true,
+                    remark_koordinator: remark
+                }).eq('id', activeLog.id).select();
+
+                if (error) throw new Error(error.message);
+
+                alert("VERIFIKASI BERHASIL!");
+                await backToList(); 
+
+            } catch (err) {
+                console.error("Gagal Menyimpan:", err);
+                alert("❌ GAGAL: " + err.message);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

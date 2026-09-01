@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Statistik Pekerja Mesin - AKG</title>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary: #c91919; 
+            --primary-dark: #a50e0e;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            
+            --sidebar-width: 280px;
+            --blue-dark: #1e3a8a; 
+            --blue-darker: #172554; 
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            margin: 0; padding: 0;
+            background: var(--bg-body);
+            font-family: 'Inter', sans-serif;
+            font-size: 9pt;
+            color: var(--text-main);
+        }
+
+        /* --- TOP BAR --- */
+        .top-bar {
+            position: sticky; top: 0; left: 0; right: 0;
+            background: var(--primary); 
+            padding: 12px 20px;
+            display: flex; justify-content: flex-start; align-items: center; gap: 15px; 
+            z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.2); flex-wrap: wrap; 
+        }
+
+        .hamburger-btn {
+            width: 38px; height: 38px; background: var(--blue-dark); color: white;
+            border-radius: 8px; display: flex; justify-content: center; align-items: center;
+            font-size: 18px; cursor: pointer; transition: 0.2s; flex-shrink: 0;
+        }
+        .hamburger-btn:hover { background: var(--blue-darker); }
+
+        .ctrl-title { font-size: 11px; font-weight: 900; color: white; text-transform: uppercase; }
+        
+        .input-ctrl { 
+            padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); 
+            background: var(--blue-dark); color: white; font-weight: bold; outline: none; cursor: pointer;
+        }
+        .input-ctrl option { background: var(--blue-dark); color: white; }
+
+        .btn-show { 
+            background: var(--blue-dark); color: white; border: none; padding: 8px 16px; 
+            border-radius: 6px; font-weight: 800; cursor: pointer; transition: 0.2s;
+        }
+        .btn-show:hover { background: var(--blue-darker); transform: scale(1.02); }
+
+        /* --- SIDEBAR NAV --- */
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+            z-index: 2000; opacity: 0; visibility: hidden; transition: 0.3s; backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+        
+        .side-nav {
+            position: fixed; top: 0; left: -100%; width: var(--sidebar-width); height: 100vh; background: white;
+            z-index: 2001; transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+            display: flex; flex-direction: column; padding: 20px; box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+        .side-nav.active { left: 0; }
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+        .sidebar-title { font-weight: 800; color: var(--primary); font-size: 20px; }
+        .sidebar-close { font-size: 24px; color: #888; cursor: pointer; transition: 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: #666; 
+            background: white; width: 100%; padding: 14px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: 600;
+        }
+        .nav-item:hover { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 22px; color: var(--primary); }
+
+        /* --- CONTENT --- */
+        .app-container { width: 100%; max-width: 1240px; margin: 0 auto; padding: 20px; }
+
+        /* GRID UNTUK GRAFIK MULTIPEL */
+        .multi-chart-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media(min-width: 900px) {
+            .multi-chart-grid {
+                grid-template-columns: 1fr 1fr; /* 2 Kolom untuk layar lebar */
+            }
+            .chart-wide {
+                grid-column: span 2; /* Chart ini mengambil lebar penuh */
+            }
+        }
+
+        .chart-section {
+            background: var(--bg-card); border-radius: 16px; padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid var(--border);
+            position: relative;
+        }
+
+        .chart-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px; border-left: 5px solid var(--primary); padding-left: 15px;
+        }
+
+        .chart-title { font-size: 15px; font-weight: 900; text-transform: uppercase; color: var(--text-main); }
+        .chart-subtitle { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; }
+
+        .chart-container-small { width: 100%; height: 300px; position: relative; }
+        .chart-container-wide { width: 100%; height: 350px; position: relative; }
+
+        /* --- SUMMARY CARDS --- */
+        .summary-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: white; border-radius: 12px; padding: 18px; border: 1px solid var(--border);
+            border-left: 5px solid var(--border); display: flex; flex-direction: column;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        }
+
+        .summary-label { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px; }
+        .summary-val { font-size: 20px; font-weight: 900; line-height: 1.2; color: var(--text-main); word-break: break-word; }
+        .summary-highlight { color: var(--primary); font-size: 12px; margin-top: 5px; font-weight: 700;}
+
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9); display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 5000;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- OVERLAY & SIDEBAR -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()"><i class="fa-solid fa-xmark"></i></div>
+        </div>
+        <a href="index.html" class="nav-item" id="nav-home"><div class="nav-icon-box"><i class="fa-solid fa-house"></i></div><span>Home</span></a>
+        <a href="javascript:history.back()" class="nav-item" id="nav-menu"><div class="nav-icon-box"><i class="fa-solid fa-arrow-left"></i></div><span>Kembali</span></a>
+    </nav>
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <div class="hamburger-btn" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+        </div>
+        <span class="ctrl-title">Periode:</span>
+        <select id="f-bulan" class="input-ctrl">
+            <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+            <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+            <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+            <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+        </select>
+        <select id="f-tahun" class="input-ctrl">
+            <option value="2025">2025</option><option value="2026" selected>2026</option>
+        </select>
+        
+        <!-- FILTER PIC -->
+        <span class="ctrl-title" style="margin-left: 5px;">PIC:</span>
+        <select id="f-pic" class="input-ctrl" onchange="applyFilterAndRender()">
+            <option value="ALL">Semua PIC</option>
+        </select>
+
+        <button onclick="loadData()" class="btn-show"><i class="fa-solid fa-chart-pie"></i> TAMPILKAN GRAFIK</button>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="app-container">
+        
+        <h2 style="font-weight: 900; color: var(--blue-dark); margin-bottom: 20px; text-transform: uppercase;" id="main-title">
+            Dashboard Analisa Pekerja Mesin
+        </h2>
+
+        <!-- KESIMPULAN / SUMMARY -->
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="summary-label">TOTAL LAPORAN</div>
+                <div class="summary-val" id="sum-total">0 <span style="font-size:14px;">Laporan</span></div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">NAMA PIC</div>
+                <div class="summary-val" id="sum-pic">-</div>
+                <div class="summary-highlight" id="sum-pic-count">0 Pekerjaan</div>
+            </div>
+            <!-- Card 3 Diubah Menjadi Target Waktu -->
+            <div class="summary-card">
+                <div class="summary-label">PERFORMA KETEPATAN WAKTU</div>
+                <div class="summary-val" id="sum-target">0%</div>
+                <div class="summary-highlight" id="sum-target-count">0 Tepat Waktu / 0 Dievaluasi</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">SHIFT TERPADAT</div>
+                <div class="summary-val" id="sum-shift">-</div>
+                <div class="summary-highlight" id="sum-shift-count">0 Laporan</div>
+            </div>
+        </div>
+
+        <!-- AREA GRAFIK -->
+        <div class="multi-chart-grid">
+            
+            <!-- GRAFIK 1: PIC (Kiri) -->
+            <div class="chart-section">
+                <div class="chart-header">
+                    <div class="chart-title">Beban Kerja PIC</div>
+                    <div class="chart-subtitle">Y: Jumlah Pekerjaan</div>
+                </div>
+                <div class="chart-container-small">
+                    <canvas id="picChart"></canvas>
+                </div>
+            </div>
+
+            <!-- GRAFIK 2: SHIFT (Kanan) -->
+            <div class="chart-section">
+                <div class="chart-header">
+                    <div class="chart-title">Distribusi Laporan Per Shift</div>
+                    <div class="chart-subtitle">Persentase (%)</div>
+                </div>
+                <div class="chart-container-small">
+                    <canvas id="shiftChart"></canvas>
+                </div>
+            </div>
+
+            <!-- GRAFIK 3: TARGET WAKTU (Bawah Lebar) -->
+            <div class="chart-section chart-wide">
+                <div class="chart-header">
+                    <div class="chart-title">Analisa Pencapaian Target Waktu PM</div>
+                    <div class="chart-subtitle">X: PIC | Y: Jumlah Pekerjaan (Tepat Waktu vs Melebihi Target)</div>
+                </div>
+                <div class="chart-container-wide">
+                    <canvas id="targetChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- LOADING SPINNER -->
+    <div id="loading" class="loading-overlay">
+        <i class="fa-solid fa-circle-notch fa-spin" style="font-size:45px; color:var(--primary);"></i>
+        <p style="font-weight:900; margin-top:15px; font-size:16px; letter-spacing: 1px; color: var(--text-main);">MENARIK DATA...</p>
+    </div>
+
+    <script>
+        // Setup Supabase
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Chart Instances
+        let chartPIC = null;
+        let chartShift = null;
+        let chartTarget = null;
+
+        // Menyimpan data asli satu bulan penuh agar filter PIC sangat cepat
+        let currentMonthlyData = [];
+
+        // Auto Load Data saat halaman dibuka
+        window.onload = () => {
+            const now = new Date();
+            document.getElementById('f-bulan').value = now.getMonth() + 1;
+            loadData();
+        };
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
+        async function loadData() {
+            const bulan = document.getElementById('f-bulan').value;
+            const tahun = document.getElementById('f-tahun').value;
+            const bulanTeks = document.getElementById('f-bulan').options[bulan-1].text;
+            
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('main-title').innerText = `Dashboard Analisa Pekerja Mesin - ${bulanTeks} ${tahun}`;
+
+            try {
+                // Menentukan rentang tanggal untuk filter database
+                const monthPadded = bulan.toString().padStart(2, '0');
+                const startDate = `${tahun}-${monthPadded}-01`;
+                const lastDay = new Date(tahun, bulan, 0).getDate();
+                const endDate = `${tahun}-${monthPadded}-${lastDay}`;
+
+                // Fetch Data (Waktu Mulai, Selesai, Target, Shift, PIC)
+                const { data, error } = await supabaseClient
+                    .from('Lkmr_result')
+                    .select('shift, pic, waktu_mulai, waktu_selesai, target_waktu_pm')
+                    .gte('tanggal', startDate)
+                    .lte('tanggal', endDate);
+
+                if (error) throw error;
+
+                currentMonthlyData = data || [];
+
+                if (currentMonthlyData.length === 0) {
+                    resetUI();
+                    document.getElementById('f-pic').innerHTML = '<option value="ALL">Semua PIC</option>';
+                    alert(`Tidak ada data laporan untuk periode ${bulanTeks} ${tahun}.`);
+                    return;
+                }
+
+                // Bangun otomatis pilihan dropdown PIC
+                populatePICDropdown(currentMonthlyData);
+
+                // Filter & Render Grafik
+                applyFilterAndRender();
+
+            } catch (err) {
+                console.error("Gagal menarik data LKMR:", err);
+                alert("Terjadi kesalahan saat menarik data. Cek koneksi internet Anda.");
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function populatePICDropdown(dataArray) {
+            const picSelect = document.getElementById('f-pic');
+            const currentSelection = picSelect.value; 
+
+            // Ambil nama PIC yang unik dan hilangkan spasi kosong
+            const uniquePICs = [...new Set(dataArray.map(item => (item.pic || 'Tidak Diketahui').trim()))].sort();
+
+            // Reset opsi
+            picSelect.innerHTML = '<option value="ALL">Semua PIC</option>';
+
+            // Tambahkan daftar PIC ke dropdown
+            uniquePICs.forEach(pic => {
+                const opt = document.createElement('option');
+                opt.value = pic;
+                opt.innerText = pic;
+                picSelect.appendChild(opt);
+            });
+
+            // Jika PIC yang dipilih sebelumnya masih ada di bulan ini, pertahankan pilihannya
+            if (uniquePICs.includes(currentSelection)) {
+                picSelect.value = currentSelection;
+            } else {
+                picSelect.value = 'ALL';
+            }
+        }
+
+        // Fungsi ini dijalankan saat tombol Tampilkan Grafik diklik ATAU saat opsi Dropdown PIC diganti
+        function applyFilterAndRender() {
+            const selectedPIC = document.getElementById('f-pic').value;
+            
+            // Filter Data Lokal (Sangat Cepat)
+            let filteredData = currentMonthlyData;
+            if (selectedPIC !== 'ALL') {
+                filteredData = currentMonthlyData.filter(item => (item.pic || 'Tidak Diketahui').trim() === selectedPIC);
+            }
+
+            if (filteredData.length === 0) {
+                resetUI();
+                return;
+            }
+
+            // --- PROSES AGREGASI (MENGHITUNG DATA) ---
+            let picCounts = {};
+            let shiftCounts = {};
+            let targetStats = {}; // Statistik Target Waktu per PIC
+            let totalOnTime = 0;
+            let totalEvaluated = 0;
+
+            filteredData.forEach(row => {
+                let p = (row.pic || 'Tidak Diketahui').trim();
+                let s = (row.shift || 'Tidak Diketahui').trim().toUpperCase();
+
+                picCounts[p] = (picCounts[p] || 0) + 1;
+                shiftCounts[s] = (shiftCounts[s] || 0) + 1;
+
+                // Inisialisasi struktur untuk PIC
+                if (!targetStats[p]) {
+                    targetStats[p] = { onTime: 0, overdue: 0, unknown: 0 };
+                }
+
+                // Kalkulasi Target Waktu
+                if (row.waktu_mulai && row.waktu_selesai && row.target_waktu_pm) {
+                    let actualMins = calculateDurationMinutes(row.waktu_mulai, row.waktu_selesai);
+                    let targetMins = parseTargetMinutes(row.target_waktu_pm);
+
+                    if (actualMins !== null && targetMins > 0) {
+                        totalEvaluated++;
+                        if (actualMins <= targetMins) {
+                            targetStats[p].onTime++;
+                            totalOnTime++;
+                        } else {
+                            targetStats[p].overdue++;
+                        }
+                    } else {
+                        targetStats[p].unknown++; // Ada data tapi formatnya rusak/aneh
+                    }
+                } else {
+                    targetStats[p].unknown++; // Data belum diisi lengkap
+                }
+            });
+
+            // --- MENCARI NILAI TERTINGGI ---
+            const topPIC = getTopItem(picCounts);
+            const topShift = getTopItem(shiftCounts);
+
+            // --- UPDATE SUMMARY CARDS ---
+            document.getElementById('sum-total').innerHTML = `${filteredData.length} <span style="font-size:14px; color:var(--text-muted);">Laporan</span>`;
+            
+            document.getElementById('sum-pic').innerText = topPIC.name;
+            document.getElementById('sum-pic-count').innerText = `${topPIC.count} Pekerjaan diselesaikan`;
+
+            // Update Card Performa Target
+            let onTimeRate = totalEvaluated > 0 ? Math.round((totalOnTime / totalEvaluated) * 100) : 0;
+            document.getElementById('sum-target').innerText = `${onTimeRate}%`;
+            document.getElementById('sum-target-count').innerText = `${totalOnTime} Tepat Waktu / ${totalEvaluated} Dievaluasi`;
+
+            document.getElementById('sum-shift').innerText = `SHIFT ${topShift.name}`;
+            document.getElementById('sum-shift-count').innerText = `${topShift.count} Laporan tercatat`;
+
+            // --- RENDER SEMUA GRAFIK ---
+            renderPicChart(picCounts);
+            renderShiftChart(shiftCounts);
+            renderTargetChart(targetStats);
+        }
+
+        // === FUNGSI BANTUAN KALKULASI WAKTU ===
+        function calculateDurationMinutes(start, end) {
+            if (!start || !end) return null;
+            try {
+                let startTime = start.split(':');
+                let endTime = end.split(':');
+                let startMins = parseInt(startTime[0]) * 60 + parseInt(startTime[1]);
+                let endMins = parseInt(endTime[0]) * 60 + parseInt(endTime[1]);
+                
+                let diff = endMins - startMins;
+                if (diff < 0) diff += 24 * 60; // Jika melewati tengah malam
+                return diff;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function parseTargetMinutes(targetStr) {
+            if (!targetStr) return 0;
+            let str = targetStr.toString().toLowerCase().trim();
+            // Ambil angkanya saja
+            let num = parseFloat(str.replace(/[^\d.]/g, ''));
+            if (isNaN(num)) return 0;
+            
+            // Jika ada kata 'jam', konversi ke menit
+            if (str.includes('jam')) {
+                return num * 60;
+            }
+            return num; // Default diasumsikan dalam satuan menit
+        }
+
+        function getTopItem(obj) {
+            let maxKey = '-';
+            let maxVal = 0;
+            for (let key in obj) {
+                if (obj[key] > maxVal) {
+                    maxVal = obj[key];
+                    maxKey = key;
+                }
+            }
+            return { name: maxKey, count: maxVal };
+        }
+
+        // === RENDER CHART 1: BEBAN KERJA PIC ===
+        function renderPicChart(dataObj) {
+            const ctx = document.getElementById('picChart').getContext('2d');
+            
+            // Urutkan dari yang terbanyak
+            const sortedData = Object.entries(dataObj).sort((a, b) => b[1] - a[1]);
+            const labels = sortedData.map(item => item[0]);
+            const values = sortedData.map(item => item[1]);
+
+            if (chartPIC) chartPIC.destroy();
+
+            chartPIC = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Jumlah Pekerjaan',
+                        data: values,
+                        backgroundColor: '#3b82f6', // Biru terang
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { backgroundColor: 'rgba(30, 41, 59, 0.9)', titleFont: {size: 13}, bodyFont: {size: 13, weight: 'bold'} }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { weight: 'bold', size: 10 } } },
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1, font: { weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        // === RENDER CHART 2: DISTRIBUSI SHIFT ===
+        function renderShiftChart(dataObj) {
+            const ctx = document.getElementById('shiftChart').getContext('2d');
+            
+            const labels = Object.keys(dataObj);
+            const values = Object.values(dataObj);
+            const colors = ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b']; // Warna warni
+
+            if (chartShift) chartShift.destroy();
+
+            chartShift = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    cutout: '60%', // Membuat lubang donat
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { weight: 'bold' }, usePointStyle: true, padding: 20 } },
+                        tooltip: { 
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    let val = context.parsed || 0;
+                                    let total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    let percent = Math.round((val / total) * 100);
+                                    return ` ${label}: ${val} (${percent}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // === RENDER CHART 3: PENCAPAIAN TARGET WAKTU ===
+        function renderTargetChart(dataObj) {
+            const ctx = document.getElementById('targetChart').getContext('2d');
+            
+            const labels = Object.keys(dataObj).sort(); // Urut abjad PIC
+            const dataOnTime = labels.map(l => dataObj[l].onTime);
+            const dataOverdue = labels.map(l => dataObj[l].overdue);
+            const dataUnknown = labels.map(l => dataObj[l].unknown);
+
+            if (chartTarget) chartTarget.destroy();
+
+            chartTarget = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Tepat Waktu (<= Target)', data: dataOnTime, backgroundColor: '#10b981', borderRadius: 4 }, // Hijau
+                        { label: 'Melebihi Target (> Target)', data: dataOverdue, backgroundColor: '#ef4444', borderRadius: 4 }, // Merah
+                        { label: 'Waktu Tidak Lengkap', data: dataUnknown, backgroundColor: '#94a3b8', borderRadius: 4 } // Abu-abu
+                    ]
+                },
+                options: {
+                    indexAxis: 'x', 
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { weight: 'bold', size: 11 }, usePointStyle: true } },
+                        tooltip: { mode: 'index', intersect: false, backgroundColor: 'rgba(30, 41, 59, 0.9)', padding: 12, titleFont: {size: 13}, bodyFont: {size: 14, weight: 'bold'} }
+                    },
+                    scales: {
+                        x: { stacked: true, grid: { display: false }, ticks: { font: { weight: 'bold', size: 10 } } },
+                        y: { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1, font: { weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        function resetUI() {
+            document.getElementById('sum-total').innerHTML = `0 <span style="font-size:14px; color:var(--text-muted);">Laporan</span>`;
+            document.getElementById('sum-pic').innerText = '-';
+            document.getElementById('sum-pic-count').innerText = '0 Pekerjaan';
+            document.getElementById('sum-target').innerText = '0%';
+            document.getElementById('sum-target-count').innerText = '0 Tepat Waktu / 0 Dievaluasi';
+            document.getElementById('sum-shift').innerText = '-';
+            document.getElementById('sum-shift-count').innerText = '0 Laporan';
+
+            if (chartPIC) chartPIC.destroy();
+            if (chartShift) chartShift.destroy();
+            if (chartTarget) chartTarget.destroy();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Input Operator - Pekerjaan Workshop</title>
+    
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        /* --- THEME VARIABLES --- */
+        :root {
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --accent: #dc2626;
+            --accent-soft: #ffebeb;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #ef4444;
+            --info: #0284c7;
+            
+            --bg-body: #f4f6f8;
+            --bg-card: #ffffff; 
+            --bg-input: #ffffff;
+            
+            --text-main: #333333;
+            --text-muted: #6b7280;
+            --text-soft: #9ca3af;
+            
+            --border: #e5e7eb;
+            --radius: 16px;
+            --sidebar-width: 280px; 
+            --header-height: 70px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body { background: var(--bg-body); min-height: 100vh; color: var(--text-main); padding-bottom: 40px; }
+
+        .hidden { display: none !important; }
+
+        /* --- HEADER BAR --- */
+        .main-header {
+            position: fixed; top: 0; left: 0; right: 0; height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
+            z-index: 1000; display: flex; align-items: center; justify-content: center; 
+            border-bottom: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+        .header-content-wrapper {
+            width: 100%; max-width: 600px; display: flex; align-items: center; padding: 0 20px; position: relative;
+        }
+        .hamburger-menu {
+            font-size: 26px; color: var(--primary); cursor: pointer; width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: flex-start; z-index: 2;
+        }
+        .header-title-pill {
+            border: 2px solid var(--primary); color: var(--primary); padding: 8px 30px;
+            border-radius: 50px; font-weight: 800; font-size: 14px; text-transform: uppercase;
+            background: white; box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1); white-space: nowrap;
+            position: absolute; left: 50%; transform: translateX(-50%); z-index: 1;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+            z-index: 2000; opacity: 0; visibility: hidden; transition: 0.3s; backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+        .side-nav {
+            position: fixed; top: 0; left: -100%; width: var(--sidebar-width); height: 100vh; background: white;
+            z-index: 2001; transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1); display: flex; flex-direction: column; padding: 20px;
+        }
+        .side-nav.active { left: 0; }
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+        .sidebar-title { font-weight: 800; color: var(--primary); font-size: 20px; }
+        .sidebar-close { font-size: 24px; color: #888; cursor: pointer; }
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: var(--text-muted);
+            background: white; width: 100%; padding: 14px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; font-weight: 600;
+        }
+        .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; margin-right: 15px; font-size: 20px; }
+
+        /* --- CONTAINER --- */
+        .app-container {
+            width: 100%; max-width: 600px; margin: 0 auto; padding: 20px 24px 60px 24px; 
+            padding-top: calc(var(--header-height) + 30px);
+        }
+        .section-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-left: 12px; border-left: 4px solid var(--info);
+        }
+        .section-title { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; }
+
+        /* --- ACCORDION CARDS (TASK LIST) --- */
+        .task-card {
+            background: var(--bg-card); border: 1px solid var(--border); border-left: 4px solid var(--warning);
+            border-radius: var(--radius); margin-bottom: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            overflow: hidden; transition: all 0.3s;
+        }
+        .task-card.active { border-left-color: var(--primary); box-shadow: 0 8px 25px rgba(201, 25, 25, 0.1); }
+        
+        .task-header {
+            padding: 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+            background: white; transition: 0.2s;
+        }
+        .task-header:active { background: #f8fafc; }
+        .task-info h4 { font-size: 15px; font-weight: 800; color: var(--text-main); margin-bottom: 4px; }
+        .task-info p { font-size: 12px; color: var(--text-muted); font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .task-meta { margin-top: 8px; font-size: 11px; color: var(--text-soft); font-weight: 700; display: flex; gap: 12px; }
+        .task-meta span { display: flex; align-items: center; gap: 4px; }
+        .task-toggle-icon {
+            font-size: 18px; color: var(--text-soft); transition: transform 0.3s;
+            width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; border-radius: 50%;
+        }
+        .task-card.active .task-toggle-icon { transform: rotate(180deg); color: white; background: var(--primary); }
+
+        .task-body {
+            padding: 0 20px 20px 20px; display: none; border-top: 1px dashed var(--border); margin-top: 5px; padding-top: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+        .task-card.active .task-body { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- INPUTS --- */
+        .input-group { margin-bottom: 16px; }
+        .label-input { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 8px; font-weight: 800; text-transform: uppercase; }
+        .input-field {
+            width: 100%; padding: 14px 16px; background: var(--bg-input); border: 1px solid var(--border);
+            border-radius: 12px; color: var(--text-main); font-size: 14px; font-weight: 600; outline: none;
+        }
+        .input-field:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--accent-soft); }
+        textarea.input-field { min-height: 80px; resize: vertical; }
+
+        /* --- RADIO BUTTONS --- */
+        .radio-group { display: flex; gap: 10px; }
+        .radio-option { flex: 1; position: relative; }
+        .radio-option input { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; z-index: 2; }
+        .radio-label {
+            display: block; text-align: center; padding: 12px; background: #f8f9fa; border: 2px solid var(--border);
+            border-radius: 12px; color: var(--text-muted); font-weight: 800; transition: 0.2s; font-size: 13px;
+        }
+        .radio-option input[value="OK"]:checked + .radio-label { background: #dcfce7; color: var(--success); border-color: var(--success); }
+        .radio-option input[value="NOT OK"]:checked + .radio-label { background: #fee2e2; color: var(--primary); border-color: var(--primary); }
+
+        /* --- BUTTONS --- */
+        .btn-submit {
+            width: 100%; background: linear-gradient(135deg, var(--info) 0%, #0369a1 100%);
+            color: white; padding: 16px; border: none; border-radius: 14px; font-weight: 800; font-size: 14px; text-transform: uppercase;
+            box-shadow: 0 6px 20px rgba(2, 132, 199, 0.25); cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-submit:active { transform: scale(0.98); }
+
+        /* --- EMPTY STATE & LOADING --- */
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+        .empty-state i { font-size: 48px; color: #cbd5e1; margin-bottom: 16px; }
+        .empty-state h3 { font-size: 16px; font-weight: 800; color: var(--text-main); margin-bottom: 8px; }
+        .empty-state p { font-size: 13px; font-weight: 500; }
+
+        .loader-center { display: flex; justify-content: center; padding: 40px; color: var(--primary); font-size: 24px; }
+        
+        /* Loading Overlay Fullscreen */
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9);
+            z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { margin-top: 15px; font-weight: 700; font-size: 14px; text-transform: uppercase; }
+
+        /* --- ALERT BOX --- */
+        #customAlert {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #ffffff; padding: 16px 24px; border-radius: 16px;
+            border: 1px solid var(--border); border-left: 4px solid var(--success); display: none; z-index: 10000; width: 90%; max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1); align-items: center; gap: 16px;
+        }
+        #alertTitle { font-size: 15px; color: var(--text-main); font-weight: 800; margin-bottom: 4px; }
+        #alertMsg { font-size: 13px; color: var(--text-muted); font-weight: 500;}
+
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="main-header">
+        <div class="header-content-wrapper">
+            <div class="hamburger-menu" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></div>
+            <div class="header-title-pill">OPERATOR WORKSHOP</div>
+        </div>
+    </header>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()"><i class="fa-solid fa-xmark"></i></div>
+        </div>
+        <a href="index.html" id="nav-home" class="nav-item"><div class="nav-icon-box"><i class="fa-solid fa-house"></i></div><span>Home</span></a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item active"><div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div><span>Menu Utama</span></a>
+        <a href="informasi_akun.html" class="nav-item"><div class="nav-icon-box"><i class="fa-solid fa-user"></i></div><span>Akun</span></a>
+    </nav>
+
+    <div class="app-shell">
+        <div class="app-container">
+            
+            <div class="section-header">
+                <span class="section-title">Daftar Tugas Pending</span>
+                <span id="badge-count" style="background: var(--primary); color: white; padding: 4px 10px; border-radius: 50px; font-size: 11px; font-weight: 800;">0 Tugas</span>
+            </div>
+
+            <!-- Kontainer List Tugas -->
+            <div id="tasksContainer">
+                <div class="loader-center"><i class="fa-solid fa-circle-notch fa-spin"></i></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Loading UI & Alert -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Menyimpan...</div>
+    </div>
+    <div id="customAlert">
+        <i id="alertIcon" class="fa-solid fa-circle-check" style="color: var(--success); font-size: 28px;"></i>
+        <div style="flex:1;">
+            <h4 id="alertTitle">Berhasil</h4>
+            <p id="alertMsg">Tugas telah diselesaikan.</p>
+        </div>
+    </div>
+
+    <!-- SCRIPT LOGIC -->
+    <script>
+        // 1. Supabase Config
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Sidebar logic
+        window.toggleSidebar = function() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        };
+
+        // Routing Navigasi Dinamis
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session) return;
+                const { data: profile } = await supabaseClient.from('profiles').select('jabatan').eq('id', session.user.id).single();
+                
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    let homeLink = 'index.html', menuLink = 'menu_utama.html';
+
+                    if (jabatan.includes('OPERATOR')) { homeLink = 'OPERATOR_HOME.html'; menuLink = 'MENU_UTAMA_OPERATOR.html'; }
+                    else if (jabatan.includes('SUPERVISOR')) { homeLink = 'SUPERVISOR_HOME.html'; menuLink = 'MENU_UTAMA_SUPERVISOR.html'; }
+                    
+                    document.getElementById('nav-home').href = homeLink;
+                    document.getElementById('nav-menu').href = menuLink;
+                }
+            } catch (err) { console.error("Navigasi error:", err); }
+        }
+
+        // Tampilkan Alert
+        function showNotification(title, msg, type = 'success') {
+            const alertBox = document.getElementById('customAlert');
+            const icon = document.getElementById('alertIcon');
+            document.getElementById('alertTitle').textContent = title; 
+            document.getElementById('alertMsg').textContent = msg;
+            
+            if (type === 'success') { 
+                icon.className = 'fa-solid fa-circle-check'; icon.style.color = 'var(--success)'; alertBox.style.borderLeftColor = 'var(--success)';
+            } else { 
+                icon.className = 'fa-solid fa-circle-exclamation'; icon.style.color = 'var(--danger)'; alertBox.style.borderLeftColor = 'var(--danger)';
+            }
+            alertBox.style.display = 'flex';
+            setTimeout(() => { alertBox.style.display = 'none'; }, 3500);
+        }
+
+        // --- FETCH DATA PEKERJAAN PENDING ---
+        async function fetchPendingTasks() {
+            const container = document.getElementById('tasksContainer');
+            try {
+                // Ambil data dari ppw_log yang waktu_mulai nya masih kosong (null) -> berarti belum dikerjakan operator
+                const { data, error } = await supabaseClient
+                    .from('ppw_log')
+                    .select('id, nama_part, job_desc, estimasi_waktu, nama_spv, tanggal')
+                    .is('waktu_mulai', null)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                document.getElementById('badge-count').textContent = `${data.length} Tugas`;
+
+                if (data.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fa-solid fa-clipboard-check"></i>
+                            <h3>Semua Tugas Selesai!</h3>
+                            <p>Tidak ada pekerjaan pending dari Supervisor saat ini.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                renderTasks(data);
+            } catch (error) {
+                console.error(error);
+                container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="color:var(--danger)"></i><p>Gagal memuat data.</p></div>`;
+            }
+        }
+
+        // --- RENDER KE DALAM HTML (ACCORDION) ---
+        function renderTasks(tasks) {
+            const container = document.getElementById('tasksContainer');
+            let html = '';
+
+            tasks.forEach((task) => {
+                // Konversi format tanggal menjadi lebih rapi
+                const tgl = new Date(task.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
+                html += `
+                <div class="task-card" id="task-${task.id}">
+                    <div class="task-header" onclick="toggleTask(${task.id})">
+                        <div class="task-info">
+                            <h4>${task.nama_part || 'Pekerjaan Tanpa Nama'}</h4>
+                            <p>${task.job_desc || '-'}</p>
+                            <div class="task-meta">
+                                <span><i class="fa-regular fa-clock"></i> ${task.estimasi_waktu || '-'}</span>
+                                <span><i class="fa-regular fa-user"></i> SPV: ${task.nama_spv || '-'}</span>
+                            </div>
+                        </div>
+                        <div class="task-toggle-icon">
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                    </div>
+
+                    <div class="task-body">
+                        <form onsubmit="submitTask(event, ${task.id})">
+                            
+                            <div style="display: flex; gap: 12px;">
+                                <div class="input-group" style="flex:1;">
+                                    <label class="label-input">Waktu Mulai</label>
+                                    <input type="time" id="mulai_${task.id}" class="input-field" required>
+                                </div>
+                                <div class="input-group" style="flex:1;">
+                                    <label class="label-input">Waktu Selesai</label>
+                                    <input type="time" id="selesai_${task.id}" class="input-field" required>
+                                </div>
+                            </div>
+
+                            <div class="input-group">
+                                <label class="label-input">Nama Operator</label>
+                                <input type="text" id="operator_${task.id}" class="input-field" placeholder="Ketik nama anda" required>
+                            </div>
+
+                            <div class="input-group">
+                                <label class="label-input">Keterangan / Tindakan</label>
+                                <textarea id="ket_${task.id}" class="input-field" placeholder="Jelaskan tindakan yang dilakukan..." required></textarea>
+                            </div>
+
+                            <div class="input-group">
+                                <label class="label-input">Status Hasil</label>
+                                <div class="radio-group">
+                                    <div class="radio-option">
+                                        <input type="radio" name="status_${task.id}" value="OK" checked>
+                                        <label class="radio-label">OK</label>
+                                    </div>
+                                    <div class="radio-option">
+                                        <input type="radio" name="status_${task.id}" value="NOT OK">
+                                        <label class="radio-label">NOT OK</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn-submit">
+                                <i class="fa-solid fa-check-double"></i> Simpan & Selesaikan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Toggle Accordion
+        window.toggleTask = function(id) {
+            const card = document.getElementById(`task-${id}`);
+            // Tutup card lain jika mau (opsional, disini saya buat bisa buka banyak sekaligus)
+            card.classList.toggle('active');
+        };
+
+        // --- SUBMIT UPDATE DATA KE SUPABASE ---
+        window.submitTask = async function(e, id) {
+            e.preventDefault();
+            document.getElementById('loadingOverlay').style.display = 'flex';
+
+            // Ambil value dari form yang di expand
+            const waktu_mulai = document.getElementById(`mulai_${id}`).value;
+            const waktu_selesai = document.getElementById(`selesai_${id}`).value;
+            const nama_operator = document.getElementById(`operator_${id}`).value;
+            const keterangan = document.getElementById(`ket_${id}`).value;
+            const status_hasil = document.querySelector(`input[name="status_${id}"]:checked`).value;
+
+            try {
+                // Update row di table ppw_log berdasarkan ID
+                const { error } = await supabaseClient
+                    .from('ppw_log')
+                    .update({
+                        waktu_mulai: waktu_mulai,
+                        waktu_selesai: waktu_selesai,
+                        nama_operator: nama_operator,
+                        keterangan: keterangan,
+                        status_hasil: status_hasil
+                    })
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                document.getElementById('loadingOverlay').style.display = 'none';
+                showNotification('Berhasil!', 'Pekerjaan berhasil diperbarui.', 'success');
+                
+                // Hapus card dari UI
+                const card = document.getElementById(`task-${id}`);
+                card.style.transform = 'scale(0.9)';
+                card.style.opacity = '0';
+                setTimeout(() => { 
+                    card.remove(); 
+                    // Update counter
+                    const remaining = document.querySelectorAll('.task-card').length;
+                    document.getElementById('badge-count').textContent = `${remaining} Tugas`;
+                    if(remaining === 0) fetchPendingTasks(); // trigger empty state
+                }, 300);
+
+            } catch (err) {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                console.error(err);
+                showNotification('Gagal!', 'Terjadi kesalahan jaringan.', 'error');
+            }
+        };
+
+        // Init jalankan saat halaman load
+        window.onload = () => {
+            setupDynamicNavigation();
+            fetchPendingTasks();
+        };
+
+    </script>
+</body>
+</html>

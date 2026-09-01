@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Form Engineer - POHM</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        /* --- THEME VARIABLES (Light Mode AKG) --- */
+        :root {
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --accent: #dc2626;
+            --accent-soft: #ffebeb;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #ef4444;
+            
+            --bg-body: #f4f6f8;
+            --bg-card: #ffffff; 
+            --bg-input: #ffffff;
+            
+            --text-main: #333333;
+            --text-muted: #6b7280;
+            --text-soft: #9ca3af;
+            
+            --border: #e5e7eb;
+            --border-red: rgba(201, 25, 25, 0.3);
+            
+            --radius: 16px;
+            --sidebar-width: 280px; 
+            --header-height: 70px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background: var(--bg-body); 
+            color: var(--text-main); 
+            min-height: 100vh; 
+            display: block; 
+            overflow-x: hidden;
+            padding-bottom: 40px;
+        }
+
+        /* --- Background Animation --- */
+        .bg-glow {
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(201, 25, 25, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* --- PROFESSIONAL HEADER BAR (TOMBOL GARIS 3) --- */
+        .main-header {
+            position: fixed;
+            top: 0;
+            left: 0; 
+            right: 0;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+
+        .header-content-wrapper {
+            width: 100%;
+            max-width: 800px; 
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        .hamburger-menu {
+            font-size: 26px;
+            color: var(--primary);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            transition: transform 0.2s;
+            z-index: 2;
+        }
+        .hamburger-menu:active { transform: scale(0.9); }
+
+        .header-title-pill {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 30px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1);
+            white-space: nowrap;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+
+        .side-nav {
+            position: fixed;
+            top: 0; left: -100%;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+
+        .side-nav.active { left: 0; }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-title { font-weight: 800; color: var(--primary); font-size: 20px; }
+        .sidebar-close { font-size: 24px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: var(--text-muted);
+            background: white; width: 100%; padding: 14px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: 600;
+        }
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 20px; color: var(--primary); }
+
+        /* --- APP CONTAINER (CENTERED) --- */
+        .app-container {
+            width: 100%; 
+            max-width: 800px; 
+            margin: 0 auto;
+            padding: 20px; 
+            padding-top: calc(var(--header-height) + 30px);
+            position: relative;
+            z-index: 1;
+        }
+
+        /* --- FORM CARDS (LIGHT THEME) --- */
+        .form-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--primary);
+            border-radius: var(--radius);
+            padding: 24px; margin-bottom: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .section-title {
+            font-size: 14px; font-weight: 800; color: var(--text-main);
+            text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px dashed var(--border);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .section-title::before {
+            content: ''; width: 6px; height: 6px; background: var(--primary); border-radius: 50%;
+        }
+
+        .form-group { margin-bottom: 16px; }
+        .form-label {
+            display: block; font-size: 11px; color: var(--text-muted);
+            margin-bottom: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        .form-control {
+            width: 100%; padding: 14px 16px;
+            background: var(--bg-input); border: 1px solid var(--border);
+            border-radius: 12px; color: var(--text-main);
+            font-size: 14px; font-weight: 600; outline: none; transition: 0.3s;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            appearance: none;
+        }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--accent-soft); background: #fff;}
+        .form-control::placeholder { color: #cbd5e1; font-weight: 400; }
+        
+        select.form-control {
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c91919' stroke-width='3'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat; background-position: right 1rem center; background-size: 1em; cursor: pointer;
+        }
+
+        .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 600px) { .row-2 { grid-template-columns: 1fr; gap: 12px; } }
+
+        /* --- LINE INPUTS (MULTIPLE LINES) --- */
+        .line-input {
+            width: 100%; background: transparent; border: none;
+            border-bottom: 1px dashed var(--border); color: var(--text-main);
+            padding: 12px 0; margin-bottom: 8px; font-size: 14px; font-weight: 500;
+            transition: 0.3s; outline: none;
+        }
+        .line-input:focus { border-bottom: 1px solid var(--primary); }
+        .line-input::placeholder { color: #94a3b8; font-style: italic; }
+
+        /* --- RADIO BUTTONS (BOX STYLE) --- */
+        .radio-group { display: flex; gap: 12px; }
+        .radio-option { flex: 1; position: relative; }
+        .radio-option input { position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 2; }
+        
+        .radio-label {
+            display: flex; align-items: center; justify-content: center;
+            padding: 14px; background: var(--bg-input);
+            border: 1px solid var(--border); border-radius: 12px;
+            font-size: 13px; font-weight: 700; color: var(--text-muted);
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.01);
+        }
+        
+        .radio-option:hover .radio-label { border-color: var(--primary); color: var(--primary); }
+        .radio-option input:checked + .radio-label {
+            background: var(--accent-soft); color: var(--primary);
+            border-color: var(--primary); box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1);
+        }
+
+        /* --- TABLE --- */
+        .table-wrapper { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+        .part-table { width: 100%; border-collapse: collapse; min-width: 500px; font-size: 13px; }
+        .part-table th {
+            background: #f8f9fa; color: var(--text-muted); padding: 14px; text-align: left;
+            border-bottom: 2px solid var(--primary); font-size: 11px; text-transform: uppercase; font-weight: 800;
+        }
+        .part-table td { padding: 12px 10px; border-bottom: 1px solid var(--border); background: #ffffff; vertical-align: middle; }
+        .part-table input, .part-table select {
+            width: 100%; padding: 10px; background: var(--bg-input); border: 1px solid var(--border);
+            border-radius: 8px; color: var(--text-main); font-size: 13px; font-weight: 500; outline: none; transition: 0.3s;
+        }
+        .part-table input:focus, .part-table select:focus { border-color: var(--primary); background: #fff;}
+
+        /* --- SIGNATURE PAD --- */
+        .sig-wrapper {
+            background: #f8f9fa; border-radius: 12px; border: 2px dashed var(--border-red);
+            height: 180px; position: relative; overflow: hidden; margin-bottom: 10px; transition: border-color 0.3s;
+        }
+        .sig-wrapper:hover { border-color: var(--primary-light); }
+        canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+        
+        .btn-clear {
+            display: inline-block; font-size: 10px; color: var(--primary);
+            border: 1px solid var(--primary); padding: 6px 14px; border-radius: 6px;
+            background: transparent; cursor: pointer; float: right; font-weight: 800; text-transform: uppercase; transition: 0.3s;
+        }
+        .btn-clear:hover { background: var(--primary); color: white; }
+
+        /* --- SUBMIT BUTTON --- */
+        .btn-submit {
+            width: 100%; 
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; border: none; padding: 18px; border-radius: 14px;
+            font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 8px 24px rgba(201, 25, 25, 0.3); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+        .btn-submit:active { transform: translateY(3px); box-shadow: 0 4px 12px rgba(201, 25, 25, 0.3); }
+        .btn-submit:disabled { background: #d1d5db; box-shadow: none; color: #9ca3af; cursor: not-allowed; transform: none; }
+        
+        .spinner {
+            width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: #fff; border-radius: 50%; animation: spin 1s infinite;
+            display: none;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* SweetAlert Light Theme Overrides */
+        div:where(.swal2-container) { z-index: 9999 !important; }
+        div:where(.swal2-container) div:where(.swal2-popup) { background: #ffffff !important; border: 1px solid var(--border); color: var(--text-main) !important; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        div:where(.swal2-confirm) { background-color: var(--primary) !important; border-radius: 10px; font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+    <div class="bg-glow"></div>
+
+    <!-- HEADER UTAMA (TOMBOL GARIS 3) -->
+    <header class="main-header">
+        <div class="header-content-wrapper">
+            <div class="hamburger-menu" onclick="toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+            <div class="header-title-pill">FORM POHM ENGINEER</div>
+        </div>
+    </header>
+
+    <!-- OVERLAY & SIDEBAR -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <div class="app-container">
+        <form id="pohmForm">
+            <!-- 1. Identitas -->
+            <div class="form-section">
+                <div class="section-title">Identitas & Waktu</div>
+                
+                <div class="form-group">
+                    <label class="form-label">Nama Mesin / Tools</label>
+                    <select id="nama_mesin" class="form-control" required>
+                        <option value="">-- Memuat Data --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Jenis Pekerjaan</label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" name="jenis_pekerjaan" value="Perawatan" required>
+                            <span class="radio-label">Perawatan</span>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="jenis_pekerjaan" value="Over Haul">
+                            <span class="radio-label">Over Haul</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row-2">
+                    <div class="form-group">
+                        <label class="form-label">Mulai</label>
+                        <input type="datetime-local" id="waktu_mulai" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Selesai</label>
+                        <input type="datetime-local" id="waktu_selesai" class="form-control" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Masalah -->
+            <div class="form-section">
+                <div class="section-title">Deskripsi Masalah</div>
+                <input type="text" class="line-input problem-input" placeholder="1. Detail masalah yang ditemukan...">
+                <input type="text" class="line-input problem-input" placeholder="2. ...">
+                <input type="text" class="line-input problem-input" placeholder="3. ...">
+                <input type="text" class="line-input problem-input" placeholder="4. ...">
+                <input type="text" class="line-input problem-input" placeholder="5. ...">
+            </div>
+
+            <!-- 3. Tindakan -->
+            <div class="form-section">
+                <div class="section-title">Tindakan / Perbaikan</div>
+                <input type="text" class="line-input action-input" placeholder="1. Tindakan perbaikan yang diambil...">
+                <input type="text" class="line-input action-input" placeholder="2. ...">
+                <input type="text" class="line-input action-input" placeholder="3. ...">
+                <input type="text" class="line-input action-input" placeholder="4. ...">
+                <input type="text" class="line-input action-input" placeholder="5. ...">
+            </div>
+
+            <!-- 4. Sparepart -->
+            <div class="form-section">
+                <div class="section-title">Pemakaian Sparepart / Kerusakan</div>
+                <div class="table-wrapper">
+                    <table class="part-table" id="partsTable">
+                        <thead>
+                            <tr>
+                                <th style="width:30px">No</th>
+                                <th>Nama Part</th>
+                                <th style="width:60px">Qty</th>
+                                <th style="width:100px">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 5 Baris Statis -->
+                            <tr><td class="text-center font-bold text-gray-400">1</td><td><input type="text" class="part-name" placeholder="Nama part"></td><td><input type="number" class="part-qty" placeholder="0"></td><td><select class="part-action"><option value="Ganti Baru">Ganti</option><option value="Repair">Repair</option></select></td></tr>
+                            <tr><td class="text-center font-bold text-gray-400">2</td><td><input type="text" class="part-name"></td><td><input type="number" class="part-qty"></td><td><select class="part-action"><option value="Ganti Baru">Ganti</option><option value="Repair">Repair</option></select></td></tr>
+                            <tr><td class="text-center font-bold text-gray-400">3</td><td><input type="text" class="part-name"></td><td><input type="number" class="part-qty"></td><td><select class="part-action"><option value="Ganti Baru">Ganti</option><option value="Repair">Repair</option></select></td></tr>
+                            <tr><td class="text-center font-bold text-gray-400">4</td><td><input type="text" class="part-name"></td><td><input type="number" class="part-qty"></td><td><select class="part-action"><option value="Ganti Baru">Ganti</option><option value="Repair">Repair</option></select></td></tr>
+                            <tr><td class="text-center font-bold text-gray-400">5</td><td><input type="text" class="part-name"></td><td><input type="number" class="part-qty"></td><td><select class="part-action"><option value="Ganti Baru">Ganti</option><option value="Repair">Repair</option></select></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 5. Validasi -->
+            <div class="form-section">
+                <div class="section-title">Validasi Engineer</div>
+                
+                <div class="form-group">
+                    <label class="form-label">Rekomendasi / Catatan</label>
+                    <textarea id="rekomendasi" class="form-control" style="min-height: 80px; resize: none;" placeholder="Catatan tambahan untuk evaluasi..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Nama Engineer</label>
+                    <input type="text" id="engineer_name" class="form-control" placeholder="Ketik nama lengkap anda" required>
+                </div>
+
+                <div class="form-group">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="form-label mb-0" style="margin:0;">Paraf Digital</label>
+                        <button type="button" class="btn-clear" onclick="clearSignature()">Ulangi</button>
+                    </div>
+                    <div class="sig-wrapper">
+                        <canvas id="signaturePad"></canvas>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="button" class="btn-submit" id="btnSubmit" onclick="submitForm()">
+                    <div class="spinner"></div>
+                    <i class="fa-solid fa-paper-plane mr-2" id="icon-submit"></i>
+                    <span class="btn-text">KIRIM LAPORAN</span>
+                </button>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- LOGIKA FUNGSIONAL TIDAK DIUBAH -->
+    <script>
+        // --- NAVIGASI PINTAR ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Routing Navigasi Dinamis
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await db.auth.getSession();
+                if (!session) return;
+
+                const { data: profile } = await db
+                    .from('profiles')
+                    .select('jabatan')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+
+                    let homeLink = 'index.html';
+                    let menuLink = 'menu_utama.html';
+
+                    if (jabatan.includes('OPERATOR')) {
+                        homeLink = 'OPERATOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_OPERATOR.html';
+                    } else if (jabatan.includes('SUPERVISOR')) {
+                        homeLink = 'SUPERVISOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                    } else if (jabatan.includes('SUPERINTENDENT')) {
+                        homeLink = 'SUPERINTENDENT_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                    } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                        homeLink = 'MANAGER_HOME.html';
+                        menuLink = 'MENU_UTAMA_MANAGER.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                        homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                        homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                    }
+
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) {
+                console.error("Gagal mengatur navigasi dinamis:", err);
+            }
+        }
+
+        // --- SIGNATURE PAD ---
+        const canvas = document.getElementById('signaturePad');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            ctx.scale(ratio, ratio);
+        }
+        window.addEventListener('resize', resizeCanvas);
+        setTimeout(resizeCanvas, 500);
+
+        function startDraw(e) {
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(getX(e), getY(e));
+            ctx.lineWidth = 3; 
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000000'; // Black ink on white bg
+        }
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            ctx.lineTo(getX(e), getY(e));
+            ctx.stroke();
+        }
+        function stopDraw() { isDrawing = false; }
+        function getX(e) { const rect = canvas.getBoundingClientRect(); return (e.touches ? e.touches[0].clientX : e.clientX) - rect.left; }
+        function getY(e) { const rect = canvas.getBoundingClientRect(); return (e.touches ? e.touches[0].clientY : e.clientY) - rect.top; }
+        
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('mouseout', stopDraw);
+        canvas.addEventListener('touchstart', startDraw, {passive: false});
+        canvas.addEventListener('touchmove', draw, {passive: false});
+        canvas.addEventListener('touchend', stopDraw);
+
+        function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+        function isCanvasBlank() {
+            const blank = document.createElement('canvas');
+            blank.width = canvas.width; blank.height = canvas.height;
+            return canvas.toDataURL() === blank.toDataURL();
+        }
+
+        // --- LOAD DATA MESIN ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            setupDynamicNavigation();
+            const mesinSelect = document.getElementById('nama_mesin');
+            try {
+                const { data, error } = await db.from('pohm_machine').select('name').order('name', { ascending: true });
+                
+                mesinSelect.innerHTML = '<option value="">-- Pilih Mesin --</option>';
+                
+                if (data && data.length > 0) {
+                    data.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m.name; opt.textContent = m.name;
+                        mesinSelect.appendChild(opt);
+                    });
+                } else {
+                    const fallback = ["MESIN EXTRUDER", "MESIN WORKSHOP", "HOIST CRANE", "INJECT BLOW LIANXIN", "ECO POWER 240"];
+                    fallback.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m; opt.textContent = m;
+                        mesinSelect.appendChild(opt);
+                    });
+                }
+            } catch (err) { console.error(err); }
+        });
+
+        // --- SUBMIT LOGIC ---
+        async function submitForm() {
+            const btn = document.querySelector('.btn-submit');
+            const spinner = document.querySelector('.spinner');
+            const btnText = document.querySelector('.btn-text');
+            const iconSub = document.getElementById('icon-submit');
+
+            // Gather Data
+            const namaMesin = document.getElementById('nama_mesin').value;
+            const jenisKerja = document.querySelector('input[name="jenis_pekerjaan"]:checked')?.value;
+            const tglMulai = document.getElementById('waktu_mulai').value;
+            const tglSelesai = document.getElementById('waktu_selesai').value;
+            const engineerName = document.getElementById('engineer_name').value;
+
+            // Gather Lists
+            const problemInputs = document.querySelectorAll('.problem-input');
+            const problemText = Array.from(problemInputs).map(i => i.value).filter(v => v.trim() !== "").join('\n');
+
+            const actionInputs = document.querySelectorAll('.action-input');
+            const actionText = Array.from(actionInputs).map(i => i.value).filter(v => v.trim() !== "").join('\n');
+
+            // Setup Tema Terang untuk SweetAlert
+            const swalLightStyle = {
+                background: '#ffffff', color: '#333333', confirmButtonColor: '#c91919'
+            };
+
+            // Validate
+            if (!namaMesin || !jenisKerja || !tglMulai || !tglSelesai || !engineerName) {
+                Swal.fire({
+                    ...swalLightStyle,
+                    icon: 'warning', title: 'Data Belum Lengkap', text: 'Mohon lengkapi identitas, waktu, dan nama engineer.'
+                });
+                return;
+            }
+            if (isCanvasBlank()) {
+                if(!confirm('Tanda tangan masih kosong. Yakin lanjut?')) return;
+            }
+
+            // Prep UI
+            btn.disabled = true; 
+            spinner.style.display = 'block'; 
+            if(iconSub) iconSub.style.display = 'none';
+            btnText.textContent = 'MENYIMPAN...';
+
+            try {
+                const signatureData = isCanvasBlank() ? null : canvas.toDataURL();
+                
+                // Get Parts
+                const parts = [];
+                document.querySelectorAll('#partsTable tbody tr').forEach((row, i) => {
+                    const name = row.querySelector('.part-name').value;
+                    const qty = row.querySelector('.part-qty').value;
+                    const act = row.querySelector('.part-action').value;
+                    if(name.trim()) parts.push({ no: i+1, name, qty: qty||1, action: act });
+                });
+
+                // Insert to 'pohm_items'
+                const { data: item, error } = await db.from('pohm_items').insert([{
+                    machine_name: namaMesin,
+                    work_type: jenisKerja,
+                    start_time: new Date(tglMulai).toISOString(),
+                    end_time: new Date(tglSelesai).toISOString(),
+                    problem_desc: problemText, 
+                    action_taken: actionText,  
+                    spare_parts: parts,
+                    recommendations: document.getElementById('rekomendasi').value,
+                    engineer_name: engineerName,
+                    engineer_signature: signatureData 
+                }]).select().single();
+
+                if (error) throw error;
+
+                // Create Log Entry
+                await db.from('pohm_log').insert([{
+                    item_id: item.id,
+                    engineer_status: 'Submitted',
+                    engineer_note: 'Laporan selesai.'
+                }]);
+
+                Swal.fire({
+                    ...swalLightStyle,
+                    icon: 'success', title: 'Berhasil!', text: 'Laporan POHM tersimpan.',
+                    showConfirmButton: false, timer: 1500
+                }).then(() => {
+                    // Redirect cerdas ke menu yang sesuai jabatan
+                    const menuLink = document.getElementById('nav-menu') ? document.getElementById('nav-menu').href : 'menu_utama.html';
+                    window.location.href = menuLink;
+                });
+
+            } catch (err) {
+                console.error(err);
+                Swal.fire({
+                    ...swalLightStyle,
+                    icon: 'error', title: 'Gagal', text: err.message
+                });
+                btn.disabled = false; 
+                spinner.style.display = 'none'; 
+                if(iconSub) iconSub.style.display = 'inline-block';
+                btnText.textContent = 'KIRIM LAPORAN';
+            }
+        }
+    </script>
+
+</body>
+</html>

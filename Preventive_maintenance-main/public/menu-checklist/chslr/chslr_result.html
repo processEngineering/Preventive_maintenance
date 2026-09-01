@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <!-- VIEWPORT WAJIB AGAR RESPONSIF DI HP -->
+    <meta name="viewport" content="width=device-width, initial-scale=0.5, user-scalable=yes">
+    <title>AF.SP 05.14.Rev-00 - REPORT</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- Font & Icons untuk UI Bar & Sidebar -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            /* TEMA WARNA AKG UI */
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --border: #e5e7eb;
+            --text-main: #333333;
+        }
+
+        /* === GLOBAL RESET === */
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        
+        body {
+            margin: 0; padding: 0;
+            background: #525659;
+            font-family: Arial, sans-serif;
+            font-size: 7pt;
+            /* Jangan ada padding-bottom lagi karena nav bawah dihapus */
+            overflow: auto; 
+        }
+
+        /* --- TOP ACTION BAR (GARIS TIGA + KONTROL HORIZONTAL) --- */
+        .top-bar {
+            position: sticky;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #1e293b; /* Warna gelap agar kontras */
+            padding: 10px 20px;
+            display: flex;
+            justify-content: flex-start; /* Posisi ke Kiri */
+            align-items: center;
+            gap: 25px; /* Jarak antara Garis 3 dan Panel Kontrol */
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            flex-wrap: wrap; /* Mencegah overflow parah di layar kecil */
+        }
+
+        /* Tombol Hamburger di Kiri */
+        .hamburger-btn {
+            width: 42px; height: 42px;
+            background: var(--primary); color: white;
+            border-radius: 8px; display: flex; justify-content: center; align-items: center;
+            font-size: 20px; cursor: pointer; transition: 0.2s;
+            flex-shrink: 0;
+        }
+        .hamburger-btn:hover { background: var(--primary-dark); transform: scale(1.05); }
+        .hamburger-btn:active { transform: scale(0.95); }
+
+        /* Panel Kontrol di sebelah Kanan Garis Tiga */
+        .controls-horizontal {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+        }
+
+        .controls-horizontal span.ctrl-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: white;
+            text-transform: uppercase;
+            margin-right: 5px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .input-ctrl, .btn-ctrl {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .input-ctrl { background: #f8f9fa; color: #333; }
+        .input-ctrl:focus { border-color: var(--primary); outline: 2px solid var(--primary); }
+
+        .btn-show { background: #22c55e; color: white; }
+        .btn-show:hover { background: #16a34a; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+        .btn-print { background: var(--primary); color: white; border: none; }
+        .btn-print:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(201,25,25,0.3); }
+
+        #status-msg { font-size: 12px; font-weight: 700; margin-left: 10px; font-family: 'Inter', sans-serif; }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 2000; opacity: 0; visibility: hidden; transition: 0.3s;
+            backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+        
+        .side-nav {
+            position: fixed; top: 0; left: -400px; width: 320px; height: 100vh;
+            background: white; z-index: 2001; transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+            display: flex; flex-direction: column; padding: 25px; box-shadow: 10px 0 30px rgba(0,0,0,0.3);
+            font-family: 'Inter', sans-serif; /* Menggunakan font UI */
+        }
+        .side-nav.active { left: 0; }
+
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+        .sidebar-title { font-weight: bold; color: var(--primary); font-size: 24px; }
+        .sidebar-close { font-size: 30px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: #666; 
+            background: white; width: 100%; padding: 18px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: bold; font-size: 16px;
+        }
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 24px; color: var(--primary); }
+
+        /* === WADAH KERTAS (TETAP UKURAN A4 LANDSCAPE) === */
+        .sheet {
+            background: white;
+            width: 297mm; /* Lebar tetap A4 Landscape */
+            min-height: 210mm; 
+            margin: 20px auto;
+            padding: 4mm 6mm; 
+            position: relative;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            color: black;
+        }
+
+        /* ========================================================================= */
+        /* MAGIC FIX 100% ANTI TEBAL & ANTI BLOK HITAM UNTUK HTML2CANVAS             */
+        /* (Disuntikkan langsung tanpa mengganggu HTML Anda)                         */
+        /* ========================================================================= */
+        table { 
+            border-collapse: separate !important; 
+            border-spacing: 0 !important; 
+            width: 100%; 
+        }
+        td, th { 
+            border-top: none !important;
+            border-left: none !important;
+            border-bottom: 1px solid black !important; 
+            border-right: 1px solid black !important; 
+            padding: 1px 2px; 
+            vertical-align: middle; 
+            line-height: 1.05; 
+            color: black; 
+            background-clip: padding-box;
+        }
+        
+        .header-table, .main-table { 
+            margin-bottom: 3px; 
+            border-top: 2px solid black !important; 
+            border-left: 2px solid black !important;
+            border-right: 1px solid black !important;
+            border-bottom: 1px solid black !important;
+        }
+        
+        /* Membebaskan border pada tabel yang seharusnya tidak punya garis */
+        .meta-table td, .info-table, .info-table td, .legend-table, .legend-table td { 
+            border: none !important; 
+        }
+        /* ========================================================================= */
+
+        .logo-cell { width: 80px; text-align: center; border-right: 1px solid black !important; }
+        .title-cell { font-size: 12pt; font-weight: bold; text-align: center; width: 50%; }
+        .meta-table td { padding: 0 3px; font-size: 6pt; line-height: 1.2; }
+
+        .info-table { margin-bottom: 3px; }
+        .info-table td { padding: 1px 3px; font-weight: bold; font-size: 7pt; }
+
+        /* === TABEL CHECKLIST UTAMA === */
+        .main-table { table-layout: fixed; }
+        .main-table th { background-color: #f2f2f2; height: 18px; font-size: 6.5pt; text-align: center; font-weight: bold; }
+        .main-table td { height: 12px; font-size: 6.5pt; padding: 0 1px; }
+
+        .col-no { width: 22px; text-align: center; }
+        .col-jenis { width: 180px; text-align: left !important; padding-left: 5px !important; }
+        .col-std { width: 130px; text-align: left !important; padding-left: 5px !important; font-style: italic; font-size: 6pt; }
+        
+        /* MAGIC FIX 2: KOLOM ANGKA DIPERLEBAR AGAR AMAN */
+        .col-date { 
+            width: 20px; 
+            font-size: 6.5pt; 
+            text-align: center; 
+            overflow: hidden; 
+            white-space: nowrap; 
+            padding: 0 !important;
+        }
+
+        .cat-row { background-color: #bfbfbf; font-weight: bold; text-align: left !important; padding-left: 5px !important; height: 16px; }
+        .sig-row td { height: 26px; vertical-align: middle; background-color: #f2f2f2; }
+        
+        /* GAMBAR TANDA TANGAN (Filter Invert Dihapus agar Background Transparan Aman) */
+        .sig-img { 
+            width: 100%; height: 24px; 
+            object-fit: contain; 
+            display: block; margin: 0 auto; 
+        }
+        
+        /* STYLING STATUS */
+        .ng-text { color: red; font-weight: bold; font-family: sans-serif; }
+        .ok-text { color: black; font-weight: bold; font-family: sans-serif; }
+        .mn-text { color: orange; font-weight: bold; font-family: sans-serif; } 
+        .na-text { color: #666; font-weight: bold; } 
+        
+        /* MAGIC FIX 3: TEKS ANGKA 7-DIGIT DI-GEPENG-KAN SECARA HORIZONTAL */
+        .val-text { 
+            color: blue; 
+            font-weight: 900; 
+            font-size: 5.5pt; 
+            letter-spacing: -0.6px; 
+            display: inline-block;
+            transform: scaleX(0.60); 
+            transform-origin: center center;
+        }
+
+        /* === FOOTER AREA === */
+        .footer-container { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 5px; }
+        .legend-box { width: 60%; font-size: 6.5pt; }
+        .legend-table td { padding: 1px 0; vertical-align: top; }
+
+        /* === KOTAK TTD === */
+        .approval-box {
+            width: 200px;
+            border: 1px solid black;
+            text-align: center;
+            font-size: 7pt;
+            background: white;
+        }
+        .app-header { font-weight: normal; padding: 5px 0; font-size: 7pt; text-transform: uppercase; border-bottom: 1px solid black; }
+        .app-sig-area { height: 60px; display: flex; align-items: center; justify-content: center; padding: 5px; }
+        .app-name { font-weight: bold; text-transform: uppercase; display: block; font-size: 7pt; padding: 4px 0 2px 0; border-bottom: 1px solid black; }
+        .app-role { font-size: 7pt; text-transform: uppercase; display: block; padding: 2px 0 5px 0; }
+        
+        /* TTD SUPERINTENDENT (Filter Invert Dihapus agar Background Transparan Aman) */
+        .super-img { 
+            max-height: 55px; 
+            max-width: 90%; 
+            object-fit: contain; 
+        }
+
+        /* === PENGATURAN CETAK === */
+        @media print {
+            @page { size: A4 landscape; margin: 0; }
+            body { background: white; margin: 0; padding: 0; zoom: 95%; }
+            .no-print, .top-bar, .sidebar-overlay, .side-nav { display: none !important; }
+            .sheet { margin: 0; box-shadow: none; border: none; width: 100%; padding: 5mm; page-break-inside: avoid; }
+            .main-table th { background-color: #f2f2f2 !important; }
+            .cat-row { background-color: #bfbfbf !important; }
+            .sig-row td { background-color: #f2f2f2 !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOP ACTION BAR (Horizontal Control Panel & Hamburger) -->
+    <div class="top-bar no-print">
+        <!-- Tombol Navigasi Garis 3 di sebelah KIRI -->
+        <div class="hamburger-btn" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+        </div>
+
+        <!-- Panel Kontrol Horizontal di sebelahnya -->
+        <div class="controls-horizontal">
+            <span class="ctrl-title"><i class="fa-solid fa-print"></i> KONTROL:</span>
+            <select id="f-mesin" class="input-ctrl"><option value="">-- Pilih Mesin --</option></select>
+            <select id="f-bulan" class="input-ctrl">
+                <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+                <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+                <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+                <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+            </select>
+            <select id="f-tahun" class="input-ctrl"><option value="2026">2026</option><option value="2027">2027</option></select>
+            <button class="btn-ctrl btn-show" onclick="loadData()"><i class="fa-solid fa-search"></i> TAMPILKAN</button>
+            <button class="btn-ctrl btn-print" onclick="captureAndExportPDF()"><i class="fa-solid fa-file-pdf"></i> CETAK PDF</button>
+            <span id="status-msg"></span>
+        </div>
+    </div>
+
+    <!-- OVERLAY & SIDEBAR (NO-PRINT) -->
+    <div class="sidebar-overlay no-print" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <nav class="side-nav no-print" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <!-- AREA KERTAS A4 -->
+    <div class="sheet" id="sheet-content">
+        <table class="header-table">
+            <tr>
+                <td class="logo-cell">
+                    <img src="https://amarilyskg.co.id/bootstrap/img/logo.png" style="width: 70px;" id="logo-header">
+                </td>
+                <td class="title-cell">
+                    CHECKLIST HARIAN STAND LABEL DAN ROBOT
+                </td>
+                <td class="meta-cell">
+                    <table class="meta-table">
+                        <tr><td>No Dokumen</td><td>: AF.SP 05.14.Rev-00</td></tr>
+                        <tr><td>Tanggal Terbit</td><td>: 02 Agustus 2024</td></tr>
+                        <tr><td>Halaman</td><td>: 1/1</td></tr>
+                        <tr><td>Tanggal Revisi</td><td>: -</td></tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <table class="info-table">
+            <tr>
+                <td width="100">MERK MESIN</td>
+                <td width="10">:</td>
+                <td width="300"><span id="txt-mesin"></span></td>
+                <td style="text-align: right; width: 80px;">BULAN</td>
+                <td width="10">:</td>
+                <td width="150"><span id="txt-bulan"></span></td>
+            </tr>
+            <tr>
+                <td>TONAGE</td>
+                <td>:</td>
+                <td><span id="txt-ton"></span></td>
+                <td colspan="3"></td>
+            </tr>
+        </table>
+
+        <table class="main-table">
+            <thead>
+                <tr>
+                    <th rowspan="2" class="col-no">No</th>
+                    <th rowspan="2" class="col-jenis">Jenis pengecekan</th>
+                    <th rowspan="2" class="col-std">Standard</th>
+                    <th colspan="31" style="height: 14px;">Tanggal</th>
+                </tr>
+                <tr id="date-row"></tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+            <tbody>
+                <tr class="sig-row" id="row-pel">
+                    <td colspan="3" style="text-align: right; font-weight: bold; padding-right: 10px;">Paraf Pelaksana</td>
+                </tr>
+                <tr class="sig-row" id="row-cek">
+                    <td colspan="3" style="text-align: right; font-weight: bold; padding-right: 10px;">Paraf Koordinator</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="footer-container">
+            <div class="legend-box">
+                <table class="legend-table">
+                    <tr><td colspan="2" style="font-weight: bold; text-decoration: underline;">Beri tanda :</td></tr>
+                    <tr><td width="15" style="text-align: center;">√</td><td>Bila item yang diperiksa baik, sesuai standar (OK)</td></tr>
+                    <tr><td style="text-align: center;">x</td><td>Bila terjadi penyimpangan / kerusakan (NG)</td></tr>
+                    <tr><td style="text-align: center;">o</td><td>Bila mesin dalam proses perbaikan (MN)</td></tr>
+                    <tr><td style="text-align: center;">-</td><td>Tidak ada jadwal / mesin mati (NA)</td></tr>
+                </table>
+            </div>
+
+            <div class="approval-box">
+                <div class="app-header">DIKETAHUI</div>
+                <div class="app-sig-area" id="super-sig-box">
+                    </div>
+                <div>
+                    <span class="app-name" id="super-name-txt">........................</span>
+                    <span class="app-role">MECHANIC SUPERINTENDENT</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- UI NAVIGATION LOGIC ---
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
+        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+        const _sb = supabase.createClient(SB_URL, SB_KEY);
+
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await _sb.auth.getSession();
+                if (!session) return;
+
+                const { data: profile } = await _sb.from('profiles').select('jabatan').eq('id', session.user.id).single();
+
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+
+                    let homeLink = 'index.html';
+                    let menuLink = 'menu_utama.html';
+
+                    if (jabatan.includes('OPERATOR')) {
+                        homeLink = 'OPERATOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_OPERATOR.html';
+                    } else if (jabatan.includes('SUPERVISOR')) {
+                        homeLink = 'SUPERVISOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                    } else if (jabatan.includes('SUPERINTENDENT')) {
+                        homeLink = 'SUPERINTENDENT_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                    } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                        homeLink = 'MANAGER_HOME.html';
+                        menuLink = 'MENU_UTAMA_MANAGER.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                        homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                        homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                    }
+
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) {
+                console.error("Gagal mengatur navigasi dinamis:", err);
+            }
+        }
+
+        async function init() {
+            setupDynamicNavigation(); // Panggil fungsi setup routing dinamis
+
+            const dr = document.getElementById('date-row');
+            for(let i=1; i<=31; i++) dr.innerHTML += `<th class="col-date">${i}</th>`;
+
+            const { data } = await _sb.from('chslr_mesin').select('nama_mesin').order('nama_mesin');
+            const sel = document.getElementById('f-mesin');
+            data?.forEach(d => sel.innerHTML += `<option>${d.nama_mesin}</option>`);
+
+            document.getElementById('f-bulan').value = 1; 
+            document.getElementById('f-tahun').value = 2026;
+        }
+
+        // --- FETCH LOGO UNTUK PDF ---
+        const LOGO_URL_ASLI = "https://amarilyskg.co.id/bootstrap/img/logo.png";
+        let GLOBAL_BASE64_LOGO = "";
+
+        async function fetchImageAsBase64(url) {
+            const proxies = [
+                'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url),
+                'https://corsproxy.io/?' + encodeURIComponent(url),
+                'https://api.allorigins.win/raw?url=' + encodeURIComponent(url)
+            ];
+            
+            for (let proxyUrl of proxies) {
+                try {
+                    const response = await fetch(proxyUrl);
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        return new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result);
+                            reader.readAsDataURL(blob);
+                        });
+                    }
+                } catch (e) { console.warn("Proxy error:", e); }
+            }
+            return null;
+        }
+
+        async function preloadLogo() {
+            const base64 = await fetchImageAsBase64(LOGO_URL_ASLI);
+            if(base64) GLOBAL_BASE64_LOGO = base64;
+        }
+
+        function showStatus(msg, isError=false) {
+            const el = document.getElementById('status-msg');
+            el.innerText = msg;
+            el.style.color = isError ? '#dc2626' : '#16a34a';
+            setTimeout(() => { el.innerText = ''; }, 5000);
+        }
+
+        async function captureAndExportPDF() {
+            const btn = document.querySelector('.btn-print');
+            const originalText = btn.innerHTML;
+
+            if(document.getElementById('f-mesin').value === "") {
+                showStatus("Mohon pilih data dulu sebelum ekspor!", true);
+                return;
+            }
+
+            try {
+                btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Proses...";
+
+                if(!GLOBAL_BASE64_LOGO) await preloadLogo();
+
+                const original = document.getElementById('sheet-content');
+                const clone = original.cloneNode(true);
+
+                const cloneLogo = clone.querySelector('#logo-header'); 
+                if(cloneLogo && GLOBAL_BASE64_LOGO) {
+                    cloneLogo.src = GLOBAL_BASE64_LOGO;
+                } else if (cloneLogo) {
+                     const b64 = await fetchImageAsBase64(LOGO_URL_ASLI);
+                     if(b64) cloneLogo.src = b64;
+                }
+                
+                // FIX PDF ALIGNMENT: Lock the exact pixel width equivalent to A4 Landscape at 96 DPI
+                clone.style.margin = '0';
+                clone.style.padding = '30px 40px'; 
+                clone.style.boxShadow = 'none';
+                clone.style.minHeight = '794px';
+                clone.style.width = '1122px'; 
+                clone.style.maxWidth = 'none';
+                clone.style.transform = 'none'; 
+                
+                const ghostContainer = document.createElement('div');
+                ghostContainer.style.position = 'absolute'; 
+                ghostContainer.style.top = '-9999px';
+                ghostContainer.style.left = '-9999px';
+                ghostContainer.style.width = '1122px'; 
+                ghostContainer.style.background = '#fff'; 
+                ghostContainer.style.overflow = 'visible'; 
+                
+                ghostContainer.appendChild(clone);
+                document.body.appendChild(ghostContainer);
+
+                await new Promise(r => setTimeout(r, 300));
+
+                btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Rendering...";
+
+                const canvas = await html2canvas(ghostContainer, {
+                    scale: 2, 
+                    useCORS: true,
+                    allowTaint: false,
+                    backgroundColor: "#ffffff",
+                    logging: false,
+                    width: 1122, 
+                    windowWidth: 1122 
+                });
+
+                btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Membuat PDF...";
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('l', 'mm', 'a4');
+                
+                const imgData = canvas.toDataURL('image/png'); 
+                
+                const pdfWidth = 297; 
+                const pdfHeight = 210; 
+                const imgProps = pdf.getImageProperties(imgData);
+                
+                const imgRatio = imgProps.width / imgProps.height;
+                const pdfRatio = pdfWidth / pdfHeight;
+                let finalWidth, finalHeight;
+                
+                if (imgRatio > pdfRatio) {
+                    finalWidth = pdfWidth;
+                    finalHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                } else {
+                    finalHeight = pdfHeight;
+                    finalWidth = (imgProps.width * pdfHeight) / imgProps.height;
+                }
+                
+                // Rumus posisi ini otomatis membuat layout berada di CENTER Kertas PDF
+                const xPos = (pdfWidth - finalWidth) / 2;
+                const yPos = (pdfHeight - finalHeight) / 2;
+                
+                pdf.addImage(imgData, 'PNG', xPos, yPos, finalWidth, finalHeight);
+                
+                const machineName = document.getElementById('f-mesin').selectedOptions[0].text;
+                const bln = document.getElementById('f-bulan').selectedOptions[0].text;
+                const filename = `Laporan_${machineName}_${bln}.pdf`;
+                
+                pdf.save(filename);
+                showStatus("PDF berhasil diunduh!");
+
+                document.body.removeChild(ghostContainer);
+
+            } catch (err) {
+                console.error(err);
+                showStatus("Gagal ekspor PDF: " + err.message, true);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function loadData() {
+            const m = document.getElementById('f-mesin').value;
+            // Parsing Integer (PENTING!)
+            const b = parseInt(document.getElementById('f-bulan').value);
+            const t = parseInt(document.getElementById('f-tahun').value);
+
+            if(!m) return alert("Pilih mesin terlebih dahulu!");
+
+            document.getElementById('txt-mesin').innerText = m;
+            document.getElementById('txt-bulan').innerText = document.getElementById('f-bulan').options[b-1].text.toUpperCase() + " " + t;
+            
+            const { data: mData } = await _sb.from('chslr_mesin').select('tonage').eq('nama_mesin', m).single();
+            document.getElementById('txt-ton').innerText = mData?.tonage || '-';
+
+            // 1. AMBIL LOG (HEADER) - SUMBER DATA SUPERINTENDENT
+            const { data: log, error: errLog } = await _sb.from('chslr_log')
+                .select('*')
+                .eq('mesin_id', m)
+                .eq('bulan', b)
+                .eq('tahun', t)
+                .maybeSingle();
+
+            console.log("Log Data:", log);
+            console.log("TTD Superintendent:", log ? log.signature_superintendent : "Log Kosong");
+
+            // 2. AMBIL RESULT (HARIAN)
+            const { data: items } = await _sb.from('chslr_items').select('*').order('sort_order');
+            const { data: res } = log ? await _sb.from('chslr_result').select('*').eq('log_id', log.id) : { data: [] };
+
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = "";
+            let curCat = "", rowNum = 1, subIdx = 0;
+            const abjad = "abcdefghijklmnopqrstuvwxyz";
+
+            items.forEach(item => {
+                if(item.kategori !== curCat) {
+                    curCat = item.kategori;
+                    subIdx = 0;
+                    tbody.innerHTML += `
+                        <tr class="cat-row">
+                            <td style="text-align: center;">${rowNum}</td>
+                            <td colspan="32" style="text-transform: uppercase;">${curCat}</td>
+                        </tr>`;
+                    rowNum++;
+                }
+
+                let html = `<tr>
+                    <td style="text-align: center;">${abjad[subIdx] || '-'}</td>
+                    <td class="col-jenis">${item.item_name}</td>
+                    <td class="col-std">${item.standard || ''}</td>`;
+                
+                for(let d=1; d<=31; d++) {
+                    const r = res.find(x => x.item_id === item.id && x.tanggal === d);
+                    let val = "";
+                    if(r) {
+                        if (item.input_type === 'val') {
+                            val = `<span class="val-text">${r.input_value || '-'}</span>`;
+                        } else {
+                            if(r.status === 'OK') val = '<span class="ok-text">√</span>';
+                            else if(r.status === 'NG') val = '<span class="ng-text">x</span>';
+                            else if(r.status === 'MN') val = '<span class="mn-text">o</span>';
+                            else if(r.status === 'NA') val = '<span class="na-text">-</span>';
+                        }
+                    }
+                    html += `<td class="col-date">${val}</td>`;
+                }
+                html += `</tr>`;
+                tbody.innerHTML += html;
+                subIdx++;
+            });
+
+            // --- TANDA TANGAN (BAGIAN KRUSIAL - UPDATE LOGIC BUCKET/BASE64) ---
+            const rPel = document.getElementById('row-pel');
+            const rCek = document.getElementById('row-cek');
+            
+            while(rPel.cells.length > 1) rPel.deleteCell(1);
+            while(rCek.cells.length > 1) rCek.deleteCell(1);
+
+            for(let d=1; d<=31; d++) {
+                // 1. Pelaksana
+                const dayRes = res.filter(x => x.tanggal === d && x.signature);
+                let cellPel = rPel.insertCell();
+                cellPel.className = "col-date";
+                if(dayRes.length > 0) {
+                    let pUrl = dayRes[0].signature;
+                    // Cek kalau nama file berakhiran .png, ambil Public URL-nya dari Supabase
+                    if(pUrl && pUrl.includes('.png')) {
+                        pUrl = _sb.storage.from('signatures').getPublicUrl(pUrl).data.publicUrl;
+                    }
+                    // Tambahkan crossorigin="anonymous" untuk keamanan PDF Download
+                    cellPel.innerHTML = `<img src="${pUrl}" class="sig-img" crossorigin="anonymous">`;
+                }
+
+                // 2. Koordinator
+                const hasData = res.some(x => x.tanggal === d);
+                let cellCek = rCek.insertCell();
+                cellCek.className = "col-date";
+                
+                // Pastikan ada data hari itu & ada TTD di database
+                if(hasData && log && log.signature_koordinator) {
+                    let kUrl = log.signature_koordinator;
+                    // Cek kalau nama file berakhiran .png, ambil Public URL-nya dari Supabase
+                    if(kUrl && kUrl.includes('.png')) {
+                        kUrl = _sb.storage.from('signatures').getPublicUrl(kUrl).data.publicUrl;
+                    }
+                    cellCek.innerHTML = `<img src="${kUrl}" class="sig-img" crossorigin="anonymous">`;
+                }
+            }
+
+            // 3. SUPERINTENDENT (FOOTER)
+            const supBox = document.getElementById('super-sig-box');
+            const supName = document.getElementById('super-name-txt');
+            
+            // LOGIKA: Jika Log ada DAN kolom signature_superintendent tidak kosong/null
+            if(log && log.signature_superintendent) {
+                let sUrl = log.signature_superintendent;
+                // Cek kalau nama file berakhiran .png, ambil Public URL-nya dari Supabase
+                if(sUrl && sUrl.includes('.png')) {
+                    sUrl = _sb.storage.from('signatures').getPublicUrl(sUrl).data.publicUrl;
+                }
+                // Tampilkan gambar dengan class super-img (yang sudah ada filter warnanya)
+                supBox.innerHTML = `<img src="${sUrl}" class="super-img" crossorigin="anonymous">`;
+                supName.innerText = `${log.superintendent_nama || '........................'}`;
+            } else {
+                supBox.innerHTML = "";
+                supName.innerText = "........................";
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

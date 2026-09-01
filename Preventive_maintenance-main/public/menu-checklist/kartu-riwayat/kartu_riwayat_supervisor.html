@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Approval Supervisor - Kartu Riwayat</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        /* ==================== THEME VARIABLES (Light Mode AKG) ==================== */
+        :root {
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --accent: #dc2626;
+            --accent-soft: #ffebeb;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #ef4444;
+            
+            --bg-body: #f4f6f8;
+            --bg-card: #ffffff; 
+            --bg-input: #ffffff;
+            
+            --text-main: #333333;
+            --text-muted: #6b7280;
+            --text-soft: #9ca3af;
+            
+            --border: #e5e7eb;
+            --border-red: rgba(201, 25, 25, 0.3);
+            
+            --radius: 16px;
+            --sidebar-width: 280px; 
+            --header-height: 70px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background: var(--bg-body);
+            color: var(--text-main); 
+            min-height: 100vh; 
+            display: block;
+            overflow-x: hidden;
+            padding-bottom: 40px;
+        }
+
+        /* --- Background Animation --- */
+        .bg-glow {
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(201, 25, 25, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* --- PROFESSIONAL HEADER BAR (TOMBOL GARIS 3) --- */
+        .main-header {
+            position: fixed;
+            top: 0;
+            left: 0; 
+            right: 0;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+
+        .header-content-wrapper {
+            width: 100%;
+            max-width: 900px; 
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        .hamburger-menu {
+            font-size: 26px;
+            color: var(--primary);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            transition: transform 0.2s;
+            z-index: 2;
+        }
+        .hamburger-menu:active { transform: scale(0.9); }
+
+        .header-title-pill {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 30px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1);
+            white-space: nowrap;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+
+        .side-nav {
+            position: fixed;
+            top: 0; left: -100%;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+        .side-nav.active { left: 0; }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .sidebar-title { font-weight: 800; color: var(--primary); font-size: 20px; }
+        .sidebar-close { font-size: 24px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: var(--text-muted);
+            background: white; width: 100%; padding: 14px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: 600;
+        }
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 20px; color: var(--primary); }
+
+        /* --- APP CONTAINER (CENTERED) --- */
+        .app-shell {
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .app-container {
+            width: 100%; 
+            max-width: 900px; 
+            margin: 0 auto;
+            padding: 20px; 
+            padding-top: calc(var(--header-height) + 30px);
+            min-height: 100vh;
+        }
+
+        /* --- TABLE STYLING (LIGHT THEME) --- */
+        .table-wrapper {
+            background: var(--bg-card); 
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--primary);
+            overflow-x: auto; 
+            margin-bottom: 24px; 
+            transition: all 0.3s;
+        }
+        
+        table { width: 100%; border-collapse: collapse; min-width: 800px; font-size: 13px; }
+        
+        th {
+            background: #f8f9fa; 
+            color: var(--text-muted);
+            padding: 16px 12px;
+            font-weight: 800; 
+            text-align: left; 
+            border-bottom: 2px solid var(--primary);
+            white-space: nowrap;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+        
+        td { 
+            border-bottom: 1px solid var(--border); 
+            padding: 14px 12px; 
+            vertical-align: top; 
+            color: var(--text-main); 
+            background: #ffffff;
+            transition: background 0.3s; 
+            font-weight: 500;
+        }
+        
+        tr.selected-row td { background-color: var(--accent-soft); } 
+        
+        input[type="checkbox"] { 
+            width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; 
+        }
+
+        .machine-name-txt {
+            font-weight: 800; color: var(--primary);
+        }
+        .pic-name-txt {
+            font-weight: 700; color: var(--text-main);
+        }
+
+        /* --- APPROVAL PANEL --- */
+        .approval-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-top: 4px solid var(--primary);
+            border-radius: 16px;
+            padding: 24px; 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .signature-container { width: 100%; }
+
+        .input-spv { 
+            width: 100%; padding: 16px; border: 1px solid var(--border); border-radius: 12px; 
+            margin-bottom: 16px; font-family: inherit; background: var(--bg-input);
+            color: var(--text-main); transition: all 0.3s; outline: none; font-size: 14px;
+            font-weight: 600; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .input-spv:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--accent-soft); }
+        .input-spv::placeholder { color: #cbd5e1; font-weight: 400; }
+        textarea.input-spv { min-height: 80px; resize: vertical; }
+
+        /* SIGNATURE PAD */
+        .sig-header { 
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; 
+        }
+        .sig-label {
+            font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        
+        .signature-pad {
+            border: 2px dashed var(--border-red); border-radius: 12px; background: #f8f9fa; 
+            width: 100%; height: 180px; touch-action: none; cursor: crosshair; transition: all 0.3s;
+        }
+        .signature-pad:hover { border-color: var(--primary-light); }
+
+        .btn-clear { 
+            font-size: 10px; color: var(--primary); background: transparent; 
+            border: 1px solid var(--primary); padding: 6px 14px; border-radius: 6px;
+            font-weight: 800; cursor: pointer; transition: all 0.3s; text-transform: uppercase;
+        }
+        .btn-clear:hover { background: var(--primary); color: white; }
+
+        /* SUBMIT BUTTON */
+        .btn-approve {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; width: 100%; padding: 18px; border: none; border-radius: 14px; 
+            font-weight: 800; font-size: 15px; margin-top: 24px; cursor: pointer; 
+            transition: all 0.3s; box-shadow: 0 8px 24px rgba(201, 25, 25, 0.3);
+            text-transform: uppercase; letter-spacing: 1px;
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+        }
+        .btn-approve:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 4px 12px rgba(201, 25, 25, 0.3); }
+        .btn-approve:disabled { background: #d1d5db; box-shadow: none; color: #9ca3af; cursor: not-allowed; }
+
+        .empty-state { 
+            text-align: center; padding: 60px 20px; color: var(--text-muted); 
+            font-weight: 600; background: transparent !important; border: none !important;
+        }
+
+        /* FIX: Z-Index SweetAlert Light Theme */
+        div:where(.swal2-container) { z-index: 9999 !important; }
+        div:where(.swal2-container) div:where(.swal2-popup) { background: #ffffff !important; border: 1px solid var(--border); color: var(--text-main) !important; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        div:where(.swal2-confirm) { background-color: var(--primary) !important; border-radius: 10px; font-weight: bold; }
+        div:where(.swal2-cancel) { color: var(--text-main) !important; font-weight: bold; background: #f1f5f9 !important; border: none; }
+
+    </style>
+</head>
+<body>
+
+    <div class="bg-glow"></div>
+
+    <!-- HEADER UTAMA (TOMBOL GARIS 3) -->
+    <header class="main-header">
+        <div class="header-content-wrapper">
+            <div class="hamburger-menu" onclick="toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+            <div class="header-title-pill">APPROVAL SUPERVISOR</div>
+        </div>
+    </header>
+
+    <!-- OVERLAY & SIDEBAR -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <div class="app-shell">
+        <div class="app-container">
+
+            <!-- List Data -->
+            <div class="table-wrapper">
+                <table id="dataList">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">
+                                <input type="checkbox" id="checkAll" onchange="toggleAll(this)">
+                            </th>
+                            <th style="width: 120px;">Tanggal</th>
+                            <th style="width: 180px;">Mesin</th>
+                            <th>Permasalahan</th>
+                            <th>Tindakan</th>
+                            <th style="width: 150px;">Spare Part</th>
+                            <th style="width: 120px;">PIC</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr>
+                            <td colspan="7" class="empty-state">
+                                <i class="fa-solid fa-circle-notch fa-spin text-primary text-2xl mb-2"></i><br>
+                                <span class="text-xs uppercase tracking-widest">Memuat data...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Approval Panel -->
+            <div class="approval-panel" id="approvalPanel" style="display: none;">
+                <div class="signature-container">
+                    <input type="text" id="spv_name" class="input-spv" placeholder="Ketik nama lengkap Anda">
+                    
+                    <textarea id="spv_note" class="input-spv" placeholder="Berikan catatan tambahan untuk Superintendent (Opsional)"></textarea>
+                    
+                    <div class="sig-header">
+                        <span class="sig-label">Paraf Digital</span>
+                        <button class="btn-clear" onclick="clearSignature()">Ulangi</button>
+                    </div>
+                    
+                    <!-- Canvas Tanda Tangan -->
+                    <canvas id="signaturePad" class="signature-pad"></canvas>
+
+                    <button class="btn-approve" onclick="submitApproval()">
+                        <i class="fa-solid fa-check-circle"></i> APPROVE ITEM TERPILIH (<span id="countSelected">0</span>)
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- LOGIKA JAVASCRIPT (TIDAK DIUBAH FUNGSINYA) -->
+    <script>
+        // --- NAVIGASI PINTAR ---
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
+        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Routing Navigasi Dinamis
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await db.auth.getSession();
+                if (!session) return;
+
+                const { data: profile } = await db
+                    .from('profiles')
+                    .select('jabatan')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+
+                    let homeLink = 'index.html';
+                    let menuLink = 'menu_utama.html';
+
+                    if (jabatan.includes('OPERATOR')) {
+                        homeLink = 'OPERATOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_OPERATOR.html';
+                    } else if (jabatan.includes('SUPERVISOR')) {
+                        homeLink = 'SUPERVISOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                    } else if (jabatan.includes('SUPERINTENDENT')) {
+                        homeLink = 'SUPERINTENDENT_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                    } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                        homeLink = 'MANAGER_HOME.html';
+                        menuLink = 'MENU_UTAMA_MANAGER.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                        homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                        homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                    }
+
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) {
+                console.error("Gagal mengatur navigasi dinamis:", err);
+            }
+        }
+
+        // --- SIGNATURE LOGIC ---
+        const canvas = document.getElementById('signaturePad');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+
+        function resizeCanvas() {
+            const wrapper = document.querySelector('.signature-container');
+            if(!wrapper) return; 
+            
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            const width = wrapper.clientWidth - 4; 
+            
+            canvas.width = width * ratio;
+            canvas.height = 180 * ratio; 
+            
+            canvas.style.width = width + "px";
+            canvas.style.height = "180px";
+            
+            ctx.scale(ratio, ratio);
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        ['mousedown', 'touchstart'].forEach(evt => canvas.addEventListener(evt, (e) => startDraw(e), {passive: false}));
+        ['mousemove', 'touchmove'].forEach(evt => canvas.addEventListener(evt, (e) => draw(e), {passive: false}));
+        ['mouseup', 'touchend'].forEach(evt => canvas.addEventListener(evt, () => isDrawing = false));
+
+        function startDraw(e) {
+            e.preventDefault(); isDrawing = true;
+            const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
+            ctx.lineWidth = 3; ctx.lineCap = 'round'; 
+            ctx.strokeStyle = '#000000'; // Tinta hitam untuk Light Theme
+        }
+        function draw(e) {
+            if (!isDrawing) return; e.preventDefault();
+            const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke();
+        }
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+        function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.beginPath(); }
+        function isCanvasBlank() {
+            try {
+                const pixelBuffer = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
+                return !pixelBuffer.some(color => color !== 0);
+            } catch (e) {
+                return true; 
+            }
+        }
+
+        // --- LOAD DATA ---
+        document.addEventListener('DOMContentLoaded', () => {
+            setupDynamicNavigation();
+            fetchData();
+        });
+
+        async function fetchData() {
+            const tbody = document.getElementById('tableBody');
+            const approvalPanel = document.getElementById('approvalPanel'); 
+            
+            try {
+                const { data, error } = await db
+                    .from('kartu_riwayat_items')
+                    .select('*')
+                    .is('spv_name', null) 
+                    .order('entry_date', { ascending: false });
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="empty-state">
+                                <i class="fa-solid fa-clipboard-check text-4xl mb-3 text-gray-300"></i><br>
+                                Tidak ada data antrean yang perlu diapprove.
+                            </td>
+                        </tr>`;
+                    approvalPanel.style.display = 'none'; 
+                    return;
+                }
+
+                approvalPanel.style.display = 'block';
+                tbody.innerHTML = '';
+                
+                data.forEach(item => {
+                    const dateStr = new Date(item.entry_date).toLocaleDateString('id-ID');
+                    const row = `
+                        <tr id="row-${item.id}">
+                            <td style="text-align: center;">
+                                <input type="checkbox" class="item-check" value="${item.id}" onchange="updateCount(this)">
+                            </td>
+                            <td>${dateStr}</td>
+                            <td class="machine-name-txt">${item.machine_name}</td>
+                            <td>${item.problem_desc || '-'}</td>
+                            <td>${item.action_taken || '-'}</td>
+                            <td>${item.spare_parts || '-'}</td>
+                            <td class="pic-name-txt">${item.pic_name}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+                
+                setTimeout(resizeCanvas, 100);
+
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state" style="color:var(--danger)">Gagal memuat data.</td></tr>';
+                approvalPanel.style.display = 'none'; 
+            }
+        }
+
+        // --- CHECKBOX LOGIC ---
+        function toggleAll(source) {
+            const checkboxes = document.querySelectorAll('.item-check');
+            checkboxes.forEach(cb => {
+                cb.checked = source.checked;
+                highlightRow(cb);
+            });
+            updateCount();
+        }
+
+        function updateCount(source) {
+            if(source) highlightRow(source);
+            const count = document.querySelectorAll('.item-check:checked').length;
+            document.getElementById('countSelected').innerText = count;
+        }
+
+        function highlightRow(checkbox) {
+            const row = checkbox.closest('tr');
+            if(checkbox.checked) row.classList.add('selected-row');
+            else row.classList.remove('selected-row');
+        }
+
+        // --- SUBMIT APPROVAL ---
+        async function submitApproval() {
+            const checkedBoxes = document.querySelectorAll('.item-check:checked');
+            const ids = Array.from(checkedBoxes).map(cb => cb.value);
+            const spvName = document.getElementById('spv_name').value.trim();
+            const spvNote = document.getElementById('spv_note').value.trim();
+
+            // Setup Tema Terang untuk SweetAlert
+            const swalLightStyle = {
+                background: '#ffffff', color: '#333333', confirmButtonColor: '#c91919', cancelButtonColor: '#e5e7eb'
+            };
+
+            if (ids.length === 0) { Swal.fire({ ...swalLightStyle, icon: 'warning', title: 'Pilih Item', text: 'Pilih setidaknya satu item data!'}); return; }
+            if (!spvName) { Swal.fire({ ...swalLightStyle, icon: 'warning', title: 'Data Kurang', text: 'Nama Supervisor wajib diisi!'}); return; }
+            if (isCanvasBlank()) {
+                const conf = await Swal.fire({
+                    ...swalLightStyle, title: 'Tanda Tangan Kosong', text: "Yakin lanjut approve tanpa tanda tangan?", icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Lanjut', cancelButtonText: '<span style="color:#333;">Batal</span>'
+                });
+                if (!conf.isConfirmed) return;
+            }
+
+            const signatureData = isCanvasBlank() ? null : canvas.toDataURL();
+            const btn = document.querySelector('.btn-approve');
+            const originalBtnText = `<i class="fa-solid fa-check-circle"></i> APPROVE ITEM TERPILIH (<span id="countSelected">${ids.length}</span>)`;
+            
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Memproses...'; 
+            btn.disabled = true;
+
+            try {
+                const { error } = await db
+                    .from('kartu_riwayat_items')
+                    .update({
+                        spv_name: spvName,
+                        spv_signature: signatureData,
+                        spv_note: spvNote
+                    })
+                    .in('id', ids);
+
+                if (error) throw error;
+
+                await Swal.fire({
+                    ...swalLightStyle,
+                    title: 'Berhasil!',
+                    text: `Berhasil meng-approve ${ids.length} data!`,
+                    icon: 'success'
+                });
+
+                // Redirect cerdas berdasarkan menu
+                const menuLink = document.getElementById('nav-menu') ? document.getElementById('nav-menu').href : 'menu_utama.html';
+                window.location.href = menuLink;
+
+            } catch (err) {
+                console.error(err);
+                Swal.fire({ ...swalLightStyle, icon: 'error', title: 'Gagal approve', text: err.message });
+                const count = document.querySelectorAll('.item-check:checked').length;
+                btn.innerHTML = `<i class="fa-solid fa-check-circle"></i> APPROVE ITEM TERPILIH (<span id="countSelected">${count}</span>)`;
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

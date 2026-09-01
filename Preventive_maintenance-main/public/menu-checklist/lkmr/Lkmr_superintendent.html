@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Monitoring Superintendent - AKG</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        /* --- THEME VARIABLES (Light Mode AKG) --- */
+        :root {
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --accent: #dc2626;
+            --accent-soft: #ffebeb;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #ef4444;
+            
+            --bg-body: #f4f6f8;
+            --bg-card: #ffffff; 
+            --bg-input: #ffffff;
+            
+            --text-main: #333333;
+            --text-muted: #6b7280;
+            --text-soft: #9ca3af;
+            
+            --border: #e5e7eb;
+            --border-red: rgba(201, 25, 25, 0.3);
+            
+            --radius: 16px;
+            --sidebar-width: 280px; 
+            --header-height: 70px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background: var(--bg-body); 
+            color: var(--text-main); 
+            min-height: 100vh; 
+            display: block; 
+            overflow-x: hidden;
+            padding-bottom: 40px;
+        }
+
+        /* --- Background Animation --- */
+        .bg-glow {
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(201, 25, 25, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hidden { display: none !important; }
+
+        /* --- PROFESSIONAL HEADER BAR (TOMBOL GARIS 3) --- */
+        .main-header {
+            position: fixed;
+            top: 0;
+            left: 0; 
+            right: 0;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+
+        .header-content-wrapper {
+            width: 100%;
+            max-width: 600px; 
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        .hamburger-menu {
+            font-size: 26px;
+            color: var(--primary);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            transition: transform 0.2s;
+            z-index: 2;
+        }
+        .hamburger-menu:active { transform: scale(0.9); }
+
+        .header-title-pill {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 30px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1);
+            white-space: nowrap;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+
+        .side-nav {
+            position: fixed;
+            top: 0; left: -100%;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+        .side-nav.active { left: 0; }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-title { font-weight: 800; color: var(--primary); font-size: 20px; }
+        .sidebar-close { font-size: 24px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: var(--text-muted);
+            background: white; width: 100%; padding: 14px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: 600;
+        }
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 20px; color: var(--primary); }
+
+        /* --- APP CONTAINER (CENTERED) --- */
+        .app-shell {
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .app-container {
+            width: 100%; 
+            max-width: 600px; 
+            margin: 0 auto;
+            padding: 20px 24px 60px 24px; 
+            padding-top: calc(var(--header-height) + 30px);
+            min-height: 100vh;
+        }
+
+        /* --- FILTER SECTION (LIGHT THEME) --- */
+        .filter-box {
+            background: var(--bg-card);
+            padding: 24px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--primary);
+            margin-bottom: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            animation: fadeIn 0.4s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .filter-title {
+            font-size: 14px; font-weight: 800; color: var(--text-main);
+            margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .form-control {
+            width: 100%; background: var(--bg-input); border: 1px solid var(--border);
+            color: var(--text-main); padding: 14px 16px; border-radius: 12px;
+            font-size: 14px; font-weight: 600; outline: none; transition: border-color 0.3s;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c91919' stroke-width='3'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat; background-position: right 1rem center; background-size: 1em; cursor: pointer;
+        }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--accent-soft); background: #fff;}
+
+        .btn-search { 
+            width: 100%; padding: 16px; border-radius: 14px; font-weight: 800; font-size: 14px;
+            cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; border: none; box-shadow: 0 8px 24px rgba(201, 25, 25, 0.3);
+            transition: transform 0.2s; margin-top: 20px;
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+        }
+        .btn-search:active { transform: translateY(3px); box-shadow: 0 4px 12px rgba(201, 25, 25, 0.3); }
+
+        /* --- REPORT CARDS (LIGHT THEME) --- */
+        .result-list {
+            display: flex; flex-direction: column; gap: 20px;
+        }
+
+        .report-card {
+            background: var(--bg-card); border-radius: var(--radius); padding: 0;
+            border: 1px solid var(--border); border-left: 4px solid var(--primary);
+            transition: all 0.3s; position: relative; overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03); animation: fadeIn 0.4s ease-out;
+        }
+        .report-card:hover { box-shadow: 0 8px 25px rgba(201, 25, 25, 0.1); border-color: var(--primary); }
+
+        .card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 20px; background: #f8f9fa; border-bottom: 1px dashed var(--border);
+        }
+
+        .date-day { font-weight: 800; font-size: 14px; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .date-day i { color: var(--primary); }
+
+        .card-body { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+
+        .info-row { display: flex; flex-direction: column; gap: 4px; }
+        .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
+        .value { font-size: 14px; font-weight: 600; color: var(--text-main); line-height: 1.4; }
+        .value.pic-highlight { color: var(--primary); font-weight: 800; font-size: 15px; }
+
+        .desc-box {
+            background: var(--bg-input); padding: 14px; border-radius: 12px; font-size: 13px;
+            color: var(--text-main); line-height: 1.5; border-left: 3px solid var(--primary);
+            margin-top: 4px; font-weight: 500; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        /* --- INLINE APPROVAL FORM (LIGHT THEME) --- */
+        .approval-form {
+            background: var(--accent-soft); padding: 20px; margin-top: 16px;
+            border-top: 1px dashed var(--border-red);
+        }
+
+        .approval-title {
+            font-size: 12px; font-weight: 800; color: var(--primary); margin-bottom: 16px;
+            text-transform: uppercase; letter-spacing: 1px; text-align: center;
+        }
+
+        .form-group-inline { margin-bottom: 16px; }
+
+        .input-inline {
+            width: 100%; background: #ffffff; border: 1px solid var(--border-red); color: var(--text-main);
+            padding: 14px 16px; border-radius: 12px; font-size: 13px; outline: none; transition: 0.3s; font-weight: 600;
+        }
+        .input-inline:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(201, 25, 25, 0.2); }
+        .input-inline::placeholder { color: #fca5a5; font-weight: 400; }
+
+        .btn-approve-inline {
+            width: 100%; background: var(--primary); color: white; border: none; padding: 16px;
+            border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer;
+            margin-top: 10px; text-transform: uppercase; letter-spacing: 1px;
+            transition: transform 0.2s; box-shadow: 0 4px 15px rgba(201, 25, 25, 0.3);
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-approve-inline:hover { background: var(--primary-dark); }
+        .btn-approve-inline:active { transform: translateY(3px); box-shadow: 0 2px 8px rgba(201, 25, 25, 0.3); }
+
+        /* States */
+        .loading-state, .empty-state {
+            text-align: center; padding: 60px 20px; color: var(--text-muted);
+            border: 1px dashed var(--border); border-radius: 16px; font-size: 13px;
+            background: #ffffff; font-weight: 600;
+        }
+
+        /* SweetAlert Light Theme Overrides */
+        div:where(.swal2-container) { z-index: 9999 !important; }
+        div:where(.swal2-container) div:where(.swal2-popup) { background: #ffffff !important; border: 1px solid var(--border); color: var(--text-main) !important; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        div:where(.swal2-confirm) { background-color: var(--primary) !important; border-radius: 10px; font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+    <div class="bg-glow"></div>
+
+    <!-- HEADER UTAMA (TOMBOL GARIS 3) -->
+    <header class="main-header">
+        <div class="header-content-wrapper">
+            <div class="hamburger-menu" onclick="toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+            <div class="header-title-pill">VERIFIKASI SUPERINTENDENT</div>
+        </div>
+    </header>
+
+    <!-- OVERLAY & SIDEBAR -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <nav class="side-nav" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Dashboard</span>
+            <div class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+
+        <!-- DYNAMIC ROUTING LINKS -->
+        <a href="index.html" id="nav-home" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+            <span>Home</span>
+        </a>
+        <a href="menu_utama.html" id="nav-menu" class="nav-item active">
+            <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+            <span>Menu Utama</span>
+        </a>
+        <a href="download_data.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <span>Unduh Data</span>
+        </a>
+        <a href="informasi_akun.html" class="nav-item">
+            <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+            <span>Akun</span>
+        </a>
+    </nav>
+
+    <div class="app-shell">
+        <div class="app-container">
+
+            <!-- Filter Section -->
+            <div class="filter-box">
+                <div class="filter-title">
+                    FILTER DATA LAPORAN
+                </div>
+                
+                <div class="filter-grid">
+                    <div>
+                        <select id="search_pic" class="form-control">
+                            <option value="" disabled selected>-- PILIH TEKNISI (PIC) --</option>
+                            <option value="DEDE ILYAS">DEDE ILYAS</option>
+                            <option value="VACANT">VACANT</option>
+                            <option value="AHMAD AINUL YAQIN">AHMAD AINUL YAQIN</option>
+                            <option value="ANGGA PRASETIANA">ANGGA PRASETIANA</option>
+                            <option value="AGUS SETIAWAN">AGUS SETIAWAN</option>
+                            <option value="RIZQI IRFAN ARIYANTO">RIZQI IRFAN ARIYANTO</option>
+                            <option value="M. TAUFIK ANDRIAN">M. TAUFIK ANDRIAN</option>
+                            <option value="ABDUL AZIZ">ABDUL AZIZ</option>
+                            <option value="AHMAD MAHMUDIN">AHMAD MAHMUDIN</option>
+                            <option value="ARBA NUR MAHBUB R.">ARBA NUR MAHBUB R.</option>
+                            <option value="MIFTAH SETIADI">MIFTAH SETIADI</option>
+                            <option value="ABDUL KARIM">ABDUL KARIM</option>
+                            <option value="ABDUL KHARIS AFRONI">ABDUL KHARIS AFRONI</option>
+                            <option value="IBNU ABI MANYU SAPUTRA">IBNU ABI MANYU SAPUTRA</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-actions">
+                    <button class="btn-search" onclick="fetchReports()">
+                        <i class="fa-solid fa-search"></i> CARI DATA
+                    </button>
+                </div>
+            </div>
+
+            <!-- Result Container -->
+            <div id="results_container" class="result-list">
+                <div class="empty-state">
+                    <i class="fa-solid fa-filter text-4xl text-gray-300 mb-4"></i><br>
+                    <span class="uppercase tracking-widest text-xs">Silakan pilih teknisi dan klik Cari Data.</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- LOGIKA JAVASCRIPT (TIDAK DIUBAH FUNGSINYA) -->
+    <script>
+        // Fungsi Sidebar & Navigasi Pintar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        // 1. Setup Supabase
+        const supabaseUrl = 'https://dsyvlavphvrdidmodokd.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
+        
+        const client = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
+
+        window.onload = () => {
+            setupDynamicNavigation();
+        };
+
+        // Routing Navigasi Dinamis
+        async function setupDynamicNavigation() {
+            try {
+                const { data: { session } } = await client.auth.getSession();
+                if (!session) return;
+
+                const { data: profile } = await client
+                    .from('profiles')
+                    .select('jabatan')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profile) {
+                    const jabatan = profile.jabatan.toUpperCase();
+                    const navHome = document.getElementById('nav-home');
+                    const navMenu = document.getElementById('nav-menu');
+
+                    let homeLink = 'index.html';
+                    let menuLink = 'menu_utama.html';
+
+                    if (jabatan.includes('OPERATOR')) {
+                        homeLink = 'OPERATOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_OPERATOR.html';
+                    } else if (jabatan.includes('SUPERVISOR')) {
+                        homeLink = 'SUPERVISOR_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                    } else if (jabatan.includes('SUPERINTENDENT')) {
+                        homeLink = 'SUPERINTENDENT_HOME.html';
+                        menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                    } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                        homeLink = 'MANAGER_HOME.html';
+                        menuLink = 'MENU_UTAMA_MANAGER.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                        homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                    } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                        homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                        menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                    }
+
+                    if (navHome) navHome.href = homeLink;
+                    if (navMenu) navMenu.href = menuLink;
+                }
+            } catch (err) {
+                console.error("Gagal mengatur navigasi dinamis:", err);
+            }
+        }
+
+        // 2. Fetch Data Logic (PIC Only)
+        async function fetchReports() {
+            const container = document.getElementById('results_container');
+            const picVal = document.getElementById('search_pic').value;
+
+            // Konfigurasi SweetAlert Tema Terang
+            const swalLightStyle = {
+                background: '#ffffff', color: '#333333', confirmButtonColor: '#c91919'
+            };
+
+            if (!picVal) {
+                Swal.fire({
+                    ...swalLightStyle,
+                    title: 'PILIH FILTER',
+                    text: 'Silakan pilih Nama Teknisi (PIC) terlebih dahulu.',
+                    icon: 'warning'
+                });
+                return;
+            }
+
+            container.innerHTML = '<div class="loading-state"><i class="fa-solid fa-spinner fa-spin text-2xl text-primary mb-3"></i><br><span class="text-xs font-bold uppercase tracking-widest">MEMUAT DATA...</span></div>';
+
+            if (!client) {
+                container.innerHTML = '<div class="empty-state text-danger">Database Error.</div>';
+                return;
+            }
+
+            try {
+                // Build Query (Filter by PIC Only)
+                let query = client
+                    .from('Lkmr_result')
+                    .select('*')
+                    .eq('pic', picVal) // Filter by PIC
+                    .order('tanggal', { ascending: false }) 
+                    .order('waktu_mulai', { ascending: false });
+
+                const { data, error } = await query;
+
+                if (error) throw error;
+
+                // FILTER CLIENT SIDE: Sembunyikan yang sudah APPROVED
+                const pendingData = data.filter(item => item.status !== 'APPROVED');
+
+                renderCards(pendingData);
+
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = `<div class="empty-state text-danger">Error: ${err.message}</div>`;
+            }
+        }
+
+        // 3. Render Cards
+        function renderCards(data) {
+            const container = document.getElementById('results_container');
+            container.innerHTML = '';
+
+            if (data.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="background:#f8f9fa; border-color:var(--success);">
+                        <i class="fa-solid fa-check-circle text-success text-4xl mb-3"></i><br>
+                        <span class="text-xs font-bold uppercase tracking-widest text-success">Tidak ada laporan pending.</span>
+                    </div>
+                `;
+                return;
+            }
+
+            data.forEach(item => {
+                const dateObj = new Date(item.tanggal);
+                const day = dateObj.getDate();
+                const year = dateObj.getFullYear();
+                const monthDisplay = item.bulan || dateObj.toLocaleString('id-ID', { month: 'long' });
+
+                const card = document.createElement('div');
+                card.id = `card-${item.id}`; 
+                card.className = `report-card`;
+                
+                // Form Inline
+                const approvalSection = `
+                    <div class="approval-form">
+                        <div class="approval-title">VALIDASI SUPERINTENDENT</div>
+                        
+                        <div class="form-group-inline">
+                            <input type="text" id="sup-name-${item.id}" class="input-inline" placeholder="Ketik nama lengkap anda" autocomplete="off">
+                        </div>
+                        
+                        <div class="form-group-inline">
+                            <textarea id="sup-note-${item.id}" class="input-inline" placeholder="Catatan evaluasi / feedback (Opsional)"></textarea>
+                        </div>
+                        
+                        <!-- Clean Button -->
+                        <button class="btn-approve-inline" onclick="submitApprovalInline('${item.id}')">
+                            <i class="fa-solid fa-check-circle"></i> APPROVE LAPORAN
+                        </button>
+                    </div>
+                `;
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div class="date-day">
+                            <i class="fa-regular fa-calendar-check"></i> ${day} ${monthDisplay} ${year}
+                        </div>
+                        <div style="font-size:12px; color:var(--text-muted); font-weight:700;">${item.waktu_mulai || '--:--'} WIB</div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="info-row">
+                            <span class="label">PIC TEKNISI</span>
+                            <span class="value pic-highlight">${item.pic || '-'}</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="label">MESIN / AREA</span>
+                            <span class="value">${item.nama_mesin || '-'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">JENIS PROBLEM</span>
+                            <span class="value" style="color:var(--primary);">${item.jenis_problem || '-'}</span>
+                        </div>
+                        
+                        <div class="info-row">
+                            <span class="label">TARGET WAKTU</span>
+                            <span class="value">${item.target_waktu_pm || '-'}</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="label">DESKRIPSI MASALAH</span>
+                            <div class="desc-box">
+                                ${item.deskripsi_masalah || '-'}
+                            </div>
+                        </div>
+
+                        <!-- Form Validasi Inline -->
+                        ${approvalSection}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 4. Function Submit Approval (REDIRECT KE LKMR.HTML SETELAH SUKSES)
+        async function submitApprovalInline(id) {
+            const nameInput = document.getElementById(`sup-name-${id}`);
+            const noteInput = document.getElementById(`sup-note-${id}`);
+            
+            const name = nameInput.value.trim();
+            const note = noteInput.value.trim();
+
+            const swalLightStyle = {
+                background: '#ffffff', color: '#333333', confirmButtonColor: '#c91919'
+            };
+
+            if (!name) {
+                Swal.fire({
+                    ...swalLightStyle,
+                    title: 'NAMA KOSONG',
+                    text: 'Harap isi Nama Superintendent.',
+                    icon: 'warning'
+                });
+                return;
+            }
+
+            try {
+                // Loading UI kecil
+                const btn = document.querySelector(`button[onclick="submitApprovalInline('${id}')"]`);
+                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> MEMPROSES...';
+                btn.disabled = true;
+
+                // Update Database
+                const { error } = await client
+                    .from('Lkmr_result')
+                    .update({ 
+                        feedback: note,
+                        superintendent_name: name,
+                        status: 'APPROVED' 
+                    })
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                // Sukses & Redirect
+                Swal.fire({
+                    ...swalLightStyle,
+                    title: 'APPROVED!',
+                    text: 'Laporan berhasil divalidasi.',
+                    icon: 'success',
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => {
+                    // Redirect cerdas ke menu yang sesuai jabatan
+                    const menuLink = document.getElementById('nav-menu') ? document.getElementById('nav-menu').href : 'menu_utama.html';
+                    window.location.href = menuLink;
+                });
+
+            } catch (err) {
+                console.error(err);
+                Swal.fire({
+                    ...swalLightStyle,
+                    title: 'GAGAL',
+                    text: err.message,
+                    icon: 'error'
+                });
+                // Reset button if error
+                const btn = document.querySelector(`button[onclick="submitApprovalInline('${id}')"]`);
+                if(btn) {
+                    btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> APPROVE LAPORAN';
+                    btn.disabled = false;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

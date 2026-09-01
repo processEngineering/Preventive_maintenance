@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Koordinator (PMI) - Maintenance</title>
+    
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ==================== THEME VARIABLES (Light Mode AKG) ==================== */
+        :root {
+            --primary: #c91919; 
+            --primary-light: #e53935;
+            --primary-dark: #a50e0e;
+            --accent: #dc2626;
+            --accent-soft: #ffebeb;
+            
+            --bg-body: #f4f6f8;
+            --bg-card: #ffffff; 
+            --bg-input: #ffffff;
+            
+            --text-main: #333333;
+            --text-muted: #6b7280;
+            --text-soft: #9ca3af;
+            
+            --border: #e5e7eb;
+            --border-red: rgba(201, 25, 25, 0.3);
+            
+            --radius-lg: 16px;
+            --sidebar-width: 280px; 
+            --header-height: 70px;
+
+            --success: #10B981;
+            --success-bg: #dcfce7;
+            --success-border: #a7f3d0;
+            --danger: #EF4444;
+            --danger-bg: #fee2e2;
+            --danger-border: #fca5a5;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background: var(--bg-body); 
+            color: var(--text-main); 
+            min-height: 100vh; 
+            display: block; 
+            overflow-x: hidden;
+            padding-bottom: 40px;
+        }
+
+        /* --- Background Animation --- */
+        .bg-glow {
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(201, 25, 25, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hidden { display: none !important; }
+
+        /* --- PROFESSIONAL HEADER BAR (TOMBOL GARIS 3) --- */
+        .main-header {
+            position: fixed;
+            top: 0;
+            left: 0; 
+            right: 0;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+
+        .header-content-wrapper {
+            width: 100%;
+            max-width: 600px; 
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        .hamburger-menu {
+            font-size: 26px;
+            color: var(--primary);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            transition: transform 0.2s;
+            z-index: 2;
+        }
+        .hamburger-menu:active { transform: scale(0.9); }
+
+        .header-title-pill {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 30px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(201, 25, 25, 0.1);
+            white-space: nowrap;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        /* --- OFF-CANVAS SIDEBAR --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+
+        .side-nav {
+            position: fixed;
+            top: 0; left: -100%;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+
+        .side-nav.active { left: 0; }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-title { font-weight: 800; color: var(--primary); font-size: 20px; }
+        .sidebar-close { font-size: 24px; color: #888; cursor: pointer; transition: color 0.2s; }
+        .sidebar-close:hover { color: var(--primary); }
+
+        .nav-item {
+            display: flex; align-items: center; text-decoration: none; color: var(--text-muted);
+            background: white; width: 100%; padding: 14px 20px; margin-bottom: 15px;
+            border: 2px solid #eee; border-radius: 12px; transition: all 0.2s; font-weight: 600;
+        }
+        
+        .nav-item:hover, .nav-item.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); transform: translateX(5px); }
+        .nav-icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: 15px; font-size: 20px; color: var(--primary); }
+
+        /* --- APP CONTAINER (CENTERED) --- */
+        .app-container {
+            width: 100%; 
+            max-width: 600px; 
+            margin: 0 auto;
+            padding: 20px 24px 60px 24px; 
+            padding-top: calc(var(--header-height) + 30px);
+            position: relative;
+            z-index: 1;
+            display: flex; flex-direction: column;
+        }
+
+        /* --- CONTENT SECTIONS --- */
+        .content { width: 100%; flex: 1; animation: fadeIn 0.4s ease; display: flex; flex-direction: column; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- LIST CARD STYLE (LIGHT MODE) --- */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--primary);
+            border-radius: var(--radius-lg);
+            padding: 20px; margin-bottom: 16px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
+            cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center; transition: all 0.2s;
+        }
+        .card:active { transform: scale(0.98); border-color: var(--primary); }
+        .card:hover { box-shadow: 0 8px 25px rgba(201, 25, 25, 0.1); }
+        
+        .card h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 800; color: var(--text-main); letter-spacing: 0.5px; }
+        .card p { margin: 0; font-size: 12px; color: var(--text-muted); font-weight: 600; display: flex; gap: 8px; align-items: center;}
+        .card i.fa-chevron-right { color: var(--primary); }
+        
+        .status-badge { font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 6px; display: inline-block; margin-top: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .bg-ok { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+        .bg-ng { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); }
+
+        /* --- SCANNER STYLE --- */
+        .scan-container { display: flex; flex-direction: column; align-items: center; width: 100%; margin-top: 20px;}
+        .instruction-text { text-align: center; font-size: 14px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5; max-width: 80%; font-weight: 500;}
+        
+        .qr-frame-container {
+            width: 260px; height: 260px; border-radius: 24px; overflow: hidden;
+            background: #f8f9fa; position: relative; margin-bottom: 20px;
+            box-shadow: 0 0 30px rgba(201, 25, 25, 0.2); border: 4px solid var(--primary);
+            display: flex; justify-content: center; align-items: center;
+        }
+        #reader { width: 100%; height: 100%; border: none; }
+        #reader video { width: 100% !important; height: 100% !important; object-fit: cover !important; }
+        
+        .scan-label {
+            background: var(--accent-soft); color: var(--primary); border: 1px dashed var(--border-red);
+            border-radius: 50px; padding: 12px 30px; font-weight: 800; font-size: 12px; 
+            margin-bottom: 12px; letter-spacing: 1px;
+        }
+        #target-machine { font-size: 14px; color: var(--primary); font-weight: 800; margin-bottom: 20px; text-align: center;}
+        #scan-msg { font-size: 12px; color: var(--text-muted); font-weight: 600; text-align: center;}
+
+        /* --- APPROVAL FORM STYLE --- */
+        .info-box {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-bottom: 4px solid var(--primary-dark);
+            border-radius: var(--radius-lg); padding: 24px; margin-bottom: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px dashed var(--border); padding-bottom: 10px; align-items: center;}
+        .info-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0;}
+        .info-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;}
+        .info-val { font-size: 13px; font-weight: 800; text-align: right; color: var(--text-main); }
+
+        .form-label { display: block; font-size: 12px; font-weight: 800; color: var(--text-main); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;}
+
+        /* --- CHECKLIST RESULTS TABLE (LIGHT MODE) --- */
+        .checklist-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+        .cat-header td { 
+            background: #f8f9fa; padding: 12px; color: var(--primary);
+            font-weight: 800; font-size: 12px; text-transform: uppercase; border-radius: 8px;
+            border-bottom: 2px solid var(--primary); margin-top: 15px; display: block;
+        }
+        .item-row td { padding: 16px 8px; border-bottom: 1px solid var(--border); background: white;}
+        .item-title { font-weight: 700; font-size: 13px; color: var(--text-main); display: block; margin-bottom: 4px;}
+        .item-std { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; display: block; font-weight: 500;}
+
+        /* Result Grid */
+        .grid-res { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 10px; align-items: end; }
+        .res-box { text-align: center; }
+        .res-label { font-size: 10px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px; text-transform: uppercase; }
+        .res-val { 
+            border: 1px solid var(--border); border-radius: 8px; padding: 8px; 
+            font-size: 12px; font-weight: 800; width: 100%; background: var(--bg-input); display: block; color: var(--text-main);
+        }
+        .val-ok { background: var(--success-bg); color: var(--success); border-color: var(--success-border); }
+        .val-ng { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-border); }
+        
+        .note-box { 
+            font-size: 12px; font-style: italic; background: #fffafa; padding: 10px; 
+            border-radius: 8px; margin-top: 12px; border: 1px dashed rgba(201,25,25,0.4); color: var(--danger); font-weight: 500;
+        }
+
+        /* --- FORM INPUTS --- */
+        .form-input {
+            width: 100%; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px;
+            font-size: 14px; background: var(--bg-input); color: var(--text-main); outline: none; margin-bottom: 16px; transition: all 0.3s;
+            font-weight: 600; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--accent-soft); background: #fff;}
+        .form-input::placeholder { color: #cbd5e1; font-weight: 400; }
+
+        /* --- SIGNATURE & BUTTONS --- */
+        .sig-wrapper { 
+            border: 2px dashed var(--border-red); border-radius: 12px; height: 160px; 
+            background: #f8f9fa; position: relative; margin-bottom: 24px; overflow: hidden; transition: border-color 0.3s;
+        }
+        .sig-wrapper:hover { border-color: var(--primary-light); }
+        canvas { width: 100%; height: 100%; cursor: crosshair; }
+        
+        .btn-clear-sig {
+            position: absolute; bottom: 8px; right: 8px; background: white; border: 1px solid var(--primary);
+            color: var(--primary); font-size: 10px; font-weight: 800; padding: 6px 12px; border-radius: 6px; cursor: pointer; text-transform: uppercase; transition: 0.3s;
+        }
+        .btn-clear-sig:hover { background: var(--primary); color: white; }
+
+        .btn-main {
+            width: 100%; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; border: none; border-radius: 14px;
+            padding: 18px; font-size: 15px; font-weight: 800; text-transform: uppercase; cursor: pointer;
+            box-shadow: 0 8px 24px rgba(201, 25, 25, 0.3); transition: transform 0.2s; margin-top: 10px; letter-spacing: 1px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-main:active { transform: translateY(3px); box-shadow: 0 4px 12px rgba(201, 25, 25, 0.3); }
+        .btn-main:disabled { background: #d1d5db; box-shadow: none; color: #9ca3af; cursor: not-allowed; }
+
+        /* Refresh Button Top */
+        .btn-refresh {
+            background: var(--accent-soft); border: 1px solid var(--border-red); color: var(--primary);
+            font-size: 10px; font-weight: 800; padding: 6px 14px; border-radius: 50px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; transition: 0.2s;
+        }
+        .btn-refresh:active { transform: scale(0.95); }
+
+    </style>
+</head>
+<body class="pb-24">
+
+<div class="bg-glow"></div>
+
+<!-- HEADER UTAMA (TOMBOL GARIS 3) -->
+<header class="main-header">
+    <div class="header-content-wrapper">
+        <div class="hamburger-menu" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+        </div>
+        <div class="header-title-pill">VERIFIKASI KOORDINATOR</div>
+    </div>
+</header>
+
+<!-- OVERLAY & SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<nav class="side-nav" id="sidebar">
+    <div class="sidebar-header">
+        <span class="sidebar-title">Dashboard</span>
+        <div class="sidebar-close" onclick="toggleSidebar()">
+            <i class="fa-solid fa-xmark"></i>
+        </div>
+    </div>
+
+    <!-- DYNAMIC ROUTING LINKS -->
+    <a href="index.html" id="nav-home" class="nav-item">
+        <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+        <span>Home</span>
+    </a>
+    <a href="menu_utama.html" id="nav-menu" class="nav-item active">
+        <div class="nav-icon-box"><i class="fa-solid fa-table-cells-large"></i></div>
+        <span>Menu Utama</span>
+    </a>
+    <a href="download_data.html" class="nav-item">
+        <div class="nav-icon-box"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+        <span>Unduh Data</span>
+    </a>
+    <a href="informasi_akun.html" class="nav-item">
+        <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+        <span>Akun</span>
+    </a>
+</nav>
+
+<div class="app-shell">
+    <div class="app-container">
+
+        <!-- LIST VIEW -->
+        <div id="view-list" class="content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding: 0 4px;">
+                <span style="font-size:12px; font-weight:800; color:var(--text-main); text-transform:uppercase; letter-spacing:1px;">Antrean Laporan</span>
+                <button onclick="loadList()" class="btn-refresh"><i class="fa-solid fa-rotate-right mr-1"></i> Refresh</button>
+            </div>
+            
+            <div id="list-data">
+                <div style="text-align:center; padding:40px; color:var(--text-muted);">
+                    <i class="fa-solid fa-spinner fa-spin text-primary" style="font-size:28px; margin-bottom:12px;"></i><br>
+                    <span class="font-bold text-xs uppercase tracking-widest">Memuat data...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCANNER VIEW -->
+        <div id="view-scan" class="content hidden">
+            <div class="scan-container">
+                <div class="instruction-text">
+                    Scan QR Code pada mesin yang sesuai dengan laporan untuk membuka form verifikasi.
+                </div>
+                
+                <div class="qr-frame-container">
+                    <div id="reader"></div>
+                </div>
+                
+                <div class="scan-label">KAMERA AKTIF</div>
+                <div id="target-machine">Target: ...</div>
+                <div id="scan-msg"></div>
+            </div>
+        </div>
+
+        <!-- FORM VIEW -->
+        <div id="view-approve" class="content hidden">
+            <div id="header-info" class="info-box">Loading info...</div>
+
+            <span class="form-label border-l-4 border-primary pl-2 mb-4">DETAIL PENGECEKAN</span>
+            <table class="checklist-table">
+                <tbody id="table-body"></tbody>
+            </table>
+
+            <div style="margin-top:30px;">
+                <label class="form-label ml-1">NAMA KOORDINATOR</label>
+                <input type="text" id="nama_koordinator" class="form-input" placeholder="Ketik nama lengkap anda">
+                
+                <label class="form-label ml-1">CATATAN TAMBAHAN (OPSIONAL)</label>
+                <textarea id="catatan_koordinator" class="form-input" rows="2" placeholder="Catatan untuk superintendent" style="resize:none; height:80px;"></textarea>
+
+                <div class="flex justify-between items-center mb-2 mt-4 px-1">
+                    <label class="form-label" style="margin:0;">PARAF DIGITAL</label>
+                </div>
+                <div class="sig-wrapper">
+                    <canvas id="sig-canvas"></canvas>
+                    <button onclick="clearPad()" class="btn-clear-sig">Ulangi</button>
+                </div>
+
+                <button class="btn-main" id="btn-submit" onclick="submitData()">
+                    <i class="fa-solid fa-check-circle"></i> VERIFIKASI LAPORAN
+                </button>
+                <button onclick="goHome()" class="w-full bg-transparent border border-gray-300 text-gray-500 font-bold py-3 mt-3 rounded-xl hover:bg-gray-100 transition-colors uppercase text-sm tracking-wide">Batal</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ======================= LOGIKA FUNGSIONAL TIDAK DIUBAH ======================= -->
+<script>
+    // Fungsi Sidebar & Navigasi Pintar
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+    }
+
+    const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
+    const _sb = supabase.createClient(SB_URL, SB_KEY);
+
+    // SETUP SCANNER FIX
+    const html5QrCode = new Html5Qrcode("reader");
+    let isScanning = false; 
+    let signaturePad = null;
+    let currentReport = null;
+
+    // --- GLOBAL RESIZE CANVAS ---
+    function resizeCanvas() {
+        const canvas = document.getElementById('sig-canvas');
+        if (canvas && signaturePad) {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+            signaturePad.clear();
+        }
+    }
+
+    function clearPad() { if(signaturePad) signaturePad.clear(); }
+
+    window.onload = () => {
+        setupDynamicNavigation();
+        loadList();
+        const canvas = document.getElementById('sig-canvas');
+        // Tinta hitam karena background canvas terang
+        signaturePad = new SignaturePad(canvas, { penColor: 'black', backgroundColor: 'rgba(255,255,255,0)' });
+        window.addEventListener("resize", resizeCanvas);
+    };
+
+    // Fungsi Cek Jabatan & Update Link Navigasi
+    async function setupDynamicNavigation() {
+        try {
+            const { data: { session } } = await _sb.auth.getSession();
+            if (!session) return;
+
+            const { data: profile } = await _sb
+                .from('profiles')
+                .select('jabatan')
+                .eq('id', session.user.id)
+                .single();
+
+            if (profile) {
+                const jabatan = profile.jabatan.toUpperCase();
+                const navHome = document.getElementById('nav-home');
+                const navMenu = document.getElementById('nav-menu');
+
+                let homeLink = 'index.html';
+                let menuLink = 'menu_utama.html';
+
+                if (jabatan.includes('OPERATOR')) {
+                    homeLink = 'OPERATOR_HOME.html';
+                    menuLink = 'MENU_UTAMA_OPERATOR.html';
+                } else if (jabatan.includes('SUPERVISOR')) {
+                    homeLink = 'SUPERVISOR_HOME.html';
+                    menuLink = 'MENU_UTAMA_SUPERVISOR.html';
+                } else if (jabatan.includes('SUPERINTENDENT')) {
+                    homeLink = 'SUPERINTENDENT_HOME.html';
+                    menuLink = 'MENU_UTAMA_SUPERINTENDENT.html';
+                } else if (jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+                    homeLink = 'MANAGER_HOME.html';
+                    menuLink = 'MENU_UTAMA_MANAGER.html';
+                } else if (jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+                    homeLink = 'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+                    menuLink = 'MENU_UTAMA_JM_PRODUKSI.html';
+                } else if (jabatan.includes('JUNIOR MANAGER PPIC') || jabatan.includes('JM PPIC')) {
+                    homeLink = 'JUNIOR_MANAGER_PPIC_HOME.html';
+                    menuLink = 'MENU_UTAMA_JM_PPIC.html';
+                }
+
+                if (navHome) navHome.href = homeLink;
+                if (navMenu) navMenu.href = menuLink;
+            }
+        } catch (err) {
+            console.error("Gagal mengatur navigasi dinamis:", err);
+        }
+    }
+
+    function showView(id) {
+        document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
+        document.getElementById(id).classList.remove('hidden');
+    }
+
+    function goHome() {
+        if(html5QrCode && isScanning) {
+            html5QrCode.stop().then(()=> isScanning=false).catch(()=>{});
+        }
+        showView('view-list');
+        loadList();
+    }
+
+    // 1. LOAD LIST
+    async function loadList() {
+        const div = document.getElementById('list-data');
+        div.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin text-primary" style="font-size:28px; margin-bottom:12px;"></i><br><span class="font-bold text-xs uppercase tracking-widest">Memuat data...</span></div>';
+
+        const { data, error } = await _sb.from('pmi_header')
+            .select(`id, tanggal, start_jam, nama_pelaksana, pmi_machines(nama_mesin, barcode), pmi_results(status)`)
+            .eq('status_verifikasi', 'Pending')
+            .order('created_at', { ascending: false });
+
+        if (error || !data || data.length === 0) {
+            div.innerHTML = '<div style="text-align:center; padding:50px 20px; color:var(--text-muted); border:1px dashed var(--border); border-radius:16px; background:var(--bg-card);"><i class="fa-regular fa-folder-open" style="font-size:40px; margin-bottom:15px; color:var(--text-soft);"></i><br><span class="font-bold text-xs uppercase tracking-widest">Tidak ada antrean laporan.</span></div>';
+            return;
+        }
+
+        div.innerHTML = '';
+        data.forEach(row => {
+            let ngCount = row.pmi_results ? row.pmi_results.filter(r => r.status === 'NG').length : 0;
+            let badge = ngCount > 0 
+                ? `<span class="status-badge bg-ng"><i class="fa-solid fa-triangle-exclamation"></i> ADA ${ngCount} KENDALA</span>` 
+                : `<span class="status-badge bg-ok"><i class="fa-solid fa-check"></i> KONDISI NORMAL</span>`;
+
+            let mName = row.pmi_machines ? row.pmi_machines.nama_mesin : 'Unknown';
+            let mCode = row.pmi_machines ? row.pmi_machines.barcode : '';
+
+            let el = document.createElement('div');
+            el.className = 'card';
+            el.innerHTML = `
+                <div>
+                    <h3>${mName}</h3>
+                    <p><i class="fa-solid fa-user-circle text-primary opacity-70"></i> ${row.nama_pelaksana} &nbsp;•&nbsp; <i class="fa-regular fa-clock text-primary opacity-70"></i> ${row.tanggal}</p>
+                    ${badge}
+                </div>
+                <i class="fa-solid fa-chevron-right card-arrow"></i>
+            `;
+            el.onclick = () => openScanner(row.id, mCode, mName);
+            div.appendChild(el);
+        });
+    }
+
+    // 2. SCANNER (FIXED)
+    function openScanner(id, targetBarcode, targetName) {
+        if(isScanning) return; 
+        currentReport = { id, targetBarcode };
+        showView('view-scan');
+        document.getElementById('target-machine').innerText = "Target: " + targetName;
+        document.getElementById('target-machine').style.color = "var(--primary)";
+
+        isScanning = true;
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 }, 
+            (decoded) => {
+                if(!isScanning) return; 
+
+                // 1. Bersihkan spasi awal/akhir
+                let code = decoded.trim();
+                
+                // 2. Handle jika URL berakhiran garis miring atau mengandung path
+                if(code.endsWith('/')) code = code.slice(0, -1);
+                if(code.includes('/')) code = code.split('/').pop().trim();
+
+                // 3. Decode URL characters (mengubah %20 kembali menjadi spasi)
+                try {
+                    code = decodeURIComponent(code).trim();
+                } catch (e) {
+                    console.warn("Gagal decode URI, pakai string asli", e);
+                }
+                
+                // 4. Bandingkan (CASE INSENSITIVE) - CEK BARCODE ATAU NAMA MESIN
+                let tBarcode = (targetBarcode || "").trim().toLowerCase();
+                let tName = (targetName || "").trim().toLowerCase();
+                let sBarcode = code.toLowerCase();
+
+                // LOGIKA BARU: Lolos kalau scan cocok dengan Barcode ATAU Nama Mesin
+                if (sBarcode === tBarcode || sBarcode === tName) {
+                    isScanning = false; 
+                    if(navigator.vibrate) navigator.vibrate(50);
+                    
+                    document.getElementById('target-machine').innerHTML = "COCOK! Membuka form...";
+                    document.getElementById('target-machine').style.color = "var(--success)";
+
+                    html5QrCode.stop().then(() => {
+                        openApproval(id);
+                    }).catch(err => {
+                        console.log("Stop error (ignore):", err);
+                        openApproval(id); 
+                    });
+                } else {
+                    document.getElementById('scan-msg').innerHTML = `<span style="color:var(--danger); font-size:12px; font-weight:bold;">&#9888; Scan Ditolak: "${code}"</span><br><span style="color:var(--text-muted); font-size:11px;">Arahkan ke mesin yang benar</span>`;
+                }
+            }, 
+            (err) => {}
+        );
+    }
+
+    // 3. LOAD FORM DATA
+    async function openApproval(headerId) {
+        showView('view-approve');
+        setTimeout(resizeCanvas, 300);
+        
+        document.getElementById('nama_koordinator').value = '';
+        document.getElementById('catatan_koordinator').value = '';
+        document.getElementById('header-info').innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-primary"></i></div>';
+        document.getElementById('table-body').innerHTML = '<tr><td style="color:var(--text-muted); text-align:center; padding:20px;">Loading data...</td></tr>';
+
+        try {
+            // A. HEADER
+            const { data: header } = await _sb.from('pmi_header')
+                .select(`*, pmi_machines(nama_mesin)`)
+                .eq('id', headerId).single();
+
+            if(!header) throw new Error("Data header tidak ditemukan");
+
+            document.getElementById('header-info').innerHTML = `
+                <div class="info-row"><span class="info-label">MESIN</span><span class="info-val" style="color:var(--primary);">${header.pmi_machines?.nama_mesin || '-'}</span></div>
+                <div class="info-row"><span class="info-label">TANGGAL</span><span class="info-val">${header.tanggal}</span></div>
+                <div class="info-row"><span class="info-label">PELAKSANA</span><span class="info-val">${header.nama_pelaksana}</span></div>
+                <div class="info-row"><span class="info-label">R. HOURS</span><span class="info-val">${header.running_hours}</span></div>
+            `;
+
+            // B. DETAILS
+            const { data: items } = await _sb.from('pmi_items').select('*').order('urutan');
+            const { data: fields } = await _sb.from('pmi_item_fields').select('*').order('urutan');
+            const { data: results } = await _sb.from('pmi_results').select('*').eq('pmi_header_id', headerId);
+
+            let resMap = {}; let noteMap = {};
+            if(results) {
+                results.forEach(r => {
+                    resMap[`${r.pmi_item_id}_${r.pmi_item_field_id}`] = r;
+                    if(r.keterangan) noteMap[r.pmi_item_id] = r.keterangan;
+                });
+            }
+
+            // C. RENDER
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            let lastCat = '';
+
+            if(items) {
+                items.forEach(item => {
+                    if(item.kategori !== lastCat) {
+                        lastCat = item.kategori;
+                        tbody.innerHTML += `<tr class="cat-header"><td colspan="2">${lastCat}</td></tr>`;
+                    }
+
+                    const myFields = fields.filter(f => f.pmi_item_id === item.id);
+                    let html = `<tr class="item-row"><td>
+                        <span class="item-title">${item.nama_item}</span>
+                        <span class="item-std">${item.standard || ''}</span>
+                        <div class="grid-res">`;
+
+                    if(myFields.length > 0) {
+                        myFields.forEach(f => {
+                            let key = `${item.id}_${f.id}`;
+                            let res = resMap[key];
+                            let val = "-";
+                            let css = "";
+
+                            if(res) {
+                                if(f.tipe_input === 'radio_ok_ng') {
+                                    val = res.status || "-";
+                                    if(val === 'OK') css = 'val-ok';
+                                    if(val === 'NG') css = 'val-ng';
+                                } else {
+                                    val = res.nilai_aktual || "-";
+                                }
+                            }
+                            let label = f.label ? `<span class="res-label">${f.label}</span>` : '';
+                            html += `<div class="res-box">${label}<span class="res-val ${css}">${val}</span></div>`;
+                        });
+                    } else {
+                        html += `<span style="color:var(--text-soft); font-size:10px; font-weight:600;">(Tidak ada input)</span>`;
+                    }
+
+                    html += `</div>`;
+                    if(noteMap[item.id]) html += `<div class="note-box"><i class="fa-solid fa-circle-info mr-1"></i> Catatan Pelaksana: ${noteMap[item.id]}</div>`;
+                    html += `</td></tr>`;
+                    tbody.innerHTML += html;
+                });
+            }
+
+        } catch (err) {
+            alert("Gagal memuat data: " + err.message);
+            goHome();
+        }
+    }
+
+    // 4. SUBMIT
+    async function submitData() {
+        const nama = document.getElementById('nama_koordinator').value.trim();
+        const note = document.getElementById('catatan_koordinator').value.trim();
+        const btn = document.getElementById('btn-submit');
+        
+        if (!currentReport || !currentReport.id) {
+            alert("ID Laporan hilang. Silakan scan ulang.");
+            goHome();
+            return;
+        }
+
+        if(!nama || signaturePad.isEmpty()) return alert("⚠️ Wajib isi Nama Koordinator & Paraf!");
+        if(!confirm("Kirim verifikasi laporan ini?")) return;
+
+        const originalText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> MEMPROSES...`;
+        btn.disabled = true;
+
+        try {
+            const { error } = await _sb.from('pmi_header').update({
+                nama_koordinator: nama,
+                catatan_koordinator: note,
+                signature_koordinator: signaturePad.toDataURL(),
+                status_verifikasi: 'Verified',
+                verified_at: new Date().toISOString()
+            }).eq('id', currentReport.id);
+
+            if(error) throw error;
+
+            alert("BERHASIL! Laporan Terverifikasi.");
+            
+            // Redirect cerdas ke menu yang sesuai jabatan
+            const menuLink = document.getElementById('nav-menu') ? document.getElementById('nav-menu').href : 'menu_utama.html';
+            location.href = menuLink;
+
+        } catch (err) {
+            console.error("ERROR DETAIL DARI SUPABASE:", err); 
+            let pesanError = err.message || JSON.stringify(err) || "Periksa koneksi internet";
+            alert("❌ GAGAL MENYIMPAN:\n" + pesanError);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+</script>
+</body>
+</html>
