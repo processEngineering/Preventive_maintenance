@@ -7,433 +7,545 @@ import { getCurrentRole } from "../data-role/role-home.js";
 
 const MENU_CONFIG = [
 
-    {
-        title: "Checklist Harian<br>mesin Injection",
-        url: "clhmi_pelaksana.html"
-    },
+    // ==================================================
+    // 1. CHECKLIST HARIAN MESIN INJECTION
+    // ==================================================
 
     {
-        title: "Checklist Harian<br>stand label & robot",
-        url: "../public/data-checklist/chslr/form-chslr.html"
+        title: "Checklist Harian<br>Mesin Injection",
+
+        urls: {
+            "OPERATOR | PELAKSANA":
+                "../public/data-checklist/clhmi/clhmi_pelaksana.html",
+
+            "SUPERVISOR | KOORDINATOR":
+                "../public/data-checklist/clhmi/clhmi_koordinator.html",
+
+            "SUPERINTENDENT":
+                "../public/data-checklist/clhmi/clhmi_superintendent.html"
+        }
     },
+
+
+    // ==================================================
+    // 2. CHECKLIST HARIAN STAND LABEL & ROBOT
+    // ==================================================
+
+    {
+        title: "Checklist Harian<br>Stand Label & Robot",
+
+        urls: {
+            "OPERATOR | PELAKSANA":
+                "../public/data-checklist/chslr/chslr_pelaksana.html",
+
+            "SUPERVISOR | KOORDINATOR":
+                "../public/data-checklist/chslr/chslr_koordinator.html",
+
+            "SUPERINTENDENT":
+                "../public/data-checklist/chslr/chslr_superintendent.html"
+        }
+    },
+
+
+    // ==================================================
+    // 3. PELAKSANAAN PEKERJAAN WORKSHOP
+    // ==================================================
 
     {
         title: "Pelaksanaan<br>Pekerjaan Workshop",
-        url: "ppw_operator.html"
+
+        urls: {
+            "OPERATOR | PELAKSANA":
+                "../public/data-checklist/ppw/ppw_operator.html",
+
+            "SUPERVISOR | KOORDINATOR":
+                "../public/data-checklist/ppw/ppw_spv.html",
+
+            "SUPERINTENDENT":
+                "../public/data-checklist/ppw/ppw_superintendent.html"
+        }
     },
 
-    {
-        title: "Laporan kerja<br>Maintenance & Repair",
-        action: "lkmr"
-    },
+
+    // ==================================================
+    // 4. LAPORAN KERJA MAINTENANCE & REPAIR
+    // ==================================================
 
     {
-        title: "Preventif mesin<br>injection (clamping)",
-        url: "pmi_pelaksana.html"
+        title: "Laporan Kerja<br>Maintenance & Repair",
+
+        action: "lkmr",
+
+        actionUrls: {
+
+            "OPERATOR | PELAKSANA": {
+                mesin:
+                    "../public/data-checklist/lkmr/lkmr_operator.html",
+
+                repair:
+                    "../public/data-checklist/lkmr/lkmr_operator_repair.html"
+            },
+
+            "SUPERINTENDENT": {
+                mesin:
+                    "../public/data-checklist/lkmr/lkmr_superintendent.html",
+
+                repair:
+                    "../public/data-checklist/lkmr/lkmr_superintendent_repair.html"
+            }
+
+            // Tambahkan role lain di sini jika diperlukan
+        }
     },
+
+
+    // ==================================================
+    // 5. PREVENTIF MESIN INJECTION
+    // ==================================================
+
+    {
+        title: "Preventif Mesin<br>Injection (clamping)",
+
+        urls: {
+            "OPERATOR | PELAKSANA":
+                "../public/data-checklist/pmi/pmi_pelaksana.html",
+
+            "SUPERVISOR | KOORDINATOR":
+                "../public/data-checklist/pmi/pmi_koordinator.html",
+
+            "SUPERINTENDENT":
+                "../public/data-checklist/pmi/pmi_superintendent.html"
+        }
+    },
+
+
+    // ==================================================
+    // 6. PREVENTIF ROBOT & STAND LABEL
+    // ==================================================
 
     {
         title: "Preventif Robot<br>& Stand Label",
-        url: "prslb_pelaksana.html"
+
+        urls: {
+            "OPERATOR | PELAKSANA":
+                "../public/data-checklist/prslb/prslb_pelaksana.html",
+
+            "SUPERVISOR | KOORDINATOR":
+                "../public/data-checklist/prslb/prslb_koordinator.html",
+
+            "SUPERINTENDENT":
+                "../public/data-checklist/prslb/prslb_superintendent.html"
+        }
     },
 
-    {
-        title: "Laporan perawatan<br>& overhaul tools",
-        url: "pohm_engineer.html"
-    },
+
+    // ==================================================
+    // 7. LAPORAN PERAWATAN & OVERHAUL TOOLS
+    // ==================================================
 
     {
-        title: "Checklist<br>perawatan mold",
-        url: "cplm_operator.html"
+        title: "Laporan Perawatan<br>& Overhaul Tools",
+
+        urls: {
+            "OPERATOR | PELAKSANA":
+                "../public/data-checklist/pohm/pohm_operator.html",
+
+            "SUPERINTENDENT":
+                "../public/data-checklist/pohm/pohm_superintendent.html",
+
+            "MANAGER":
+                "../public/data-checklist/pohm/pohm_manager.html"
+        }
     },
 
+
+    // ==================================================
+    // 8. CHECKLIST PERAWATAN MOLD
+    // ==================================================
+
     {
-        title: "Jadwal perawatan<br>dan overhaul",
-        url: "Jpdo_supervisor.html"
+        title: "Checklist<br>Perawatan Mold",
+
+        urls: {
+            "OPERATOR | PELAKSANA":
+                "../public/data-checklist/cplm/cplm_operator.html",
+
+            "SUPERVISOR | KOORDINATOR":
+                "../public/data-checklist/cplm/cplm_spv.html",
+
+            "SUPERINTENDENT":
+                "../public/data-checklist/cplm/cplm_superintendent.html"
+        }
     },
+
+
+    // ==================================================
+    // 9. JADWAL PERAWATAN DAN OVERHAUL
+    // ==================================================
+
+    {
+        title: "Jadwal Perawatan<br>dan Overhaul",
+
+        urls: {
+            "SUPERVISOR | KOORDINATOR":
+                "../public/data-checklist/jpdo/jpdo_supervisor.html",
+
+            "SUPERINTENDENT":
+                "../public/data-checklist/jpdo/jpdo_superintendent.html",
+
+            "JUNIOR MANAGER PRODUKSI":
+                "../public/data-checklist/jpdo/jpdo_produksi.html",
+
+            "JUNIOR MANAGER PPC":
+                "../public/data-checklist/jpdo/jpdo_ppc.html",
+
+            "MANAGER":
+                "../public/data-checklist/jpdo/jpdo_manager.html"
+        }
+    },
+
+
+    // ==================================================
+    // 10. KARTU RIWAYAT
+    // ==================================================
 
     {
         title: "Kartu<br>Riwayat",
-        url: "kartu_riwayat_pic.html"
+
+        urls: {
+            "OPERATOR | PELAKSANA":
+                "../public/data-checklist/kartu-riwayat/kartu_riwayat_pic.html",
+
+            "SUPERVISOR | KOORDINATOR":
+                "../public/data-checklist/kartu-riwayat/kartu_riwayat_supervisor.html",
+
+            "SUPERINTENDENT":
+                "../public/data-checklist/kartu-riwayat/kartu_riwayat_superintendent.html"
+        }
     },
+
+
+    // ==================================================
+    // 11. DATA GRAFIK
+    // ==================================================
 
     {
         title: "Data Grafik",
-        action: "grafik"
+
+        action: "grafik",
+
+        actionUrls: {
+
+            "OPERATOR | PELAKSANA": {
+                clhmi:
+                    "../public/data-checklist/grafik/grafik_clhmi.html",
+
+                chslr:
+                    "../public/data-checklist/grafik/grafik_chslr.html",
+
+                cplm:
+                    "../public/data-checklist/grafik/grafik_cplm.html",
+
+                pmi:
+                    "../public/data-checklist/grafik/grafik_pmi.html",
+
+                prslb:
+                    "../public/data-checklist/grafik/grafik_prslb.html"
+            },
+
+            "SUPERVISOR | KOORDINATOR": {
+                clhmi:
+                    "../public/data-checklist/grafik/grafik_clhmi.html",
+
+                chslr:
+                    "../public/data-checklist/grafik/grafik_chslr.html",
+
+                cplm:
+                    "../public/data-checklist/grafik/grafik_cplm.html",
+
+                pmi:
+                    "../public/data-checklist/grafik/grafik_pmi.html",
+
+                prslb:
+                    "../public/data-checklist/grafik/grafik_prslb.html"
+            },
+
+            "SUPERINTENDENT": {
+                clhmi:
+                    "../public/data-checklist/grafik/grafik_clhmi.html",
+
+                chslr:
+                    "../public/data-checklist/grafik/grafik_chslr.html",
+
+                cplm:
+                    "../public/data-checklist/grafik/grafik_cplm.html",
+
+                pmi:
+                    "../public/data-checklist/grafik/grafik_pmi.html",
+
+                prslb:
+                    "../public/data-checklist/grafik/grafik_prslb.html"
+            }
+
+            // Tambahkan role lain jika memang punya akses
+        }
     },
+
+
+    // ==================================================
+    // 12. GRAFIK DATA LAPORAN PEKERJA
+    // ==================================================
 
     {
         title: "Grafik Data<br>Laporan Pekerja",
-        action: "grafik-pekerja"
+
+        action: "grafik-pekerja",
+
+        actionUrls: {
+
+            "OPERATOR | PELAKSANA": {
+                repair:
+                    "../public/data-checklist/grafik/pekerja_repair_grafik.html",
+
+                mesin:
+                    "../public/data-checklist/grafik/pekerja_mesin_grafik.html"
+            },
+
+            "SUPERINTENDENT": {
+                repair:
+                    "../public/data-checklist/grafik/pekerja_repair_grafik.html",
+
+                mesin:
+                    "../public/data-checklist/grafik/pekerja_mesin_grafik.html"
+            }
+
+            // Tambahkan role lain jika diperlukan
+        }
     },
+
+
+    // ==================================================
+    // 13. PREVENTIVE MESIN WORKSHOP
+    // ==================================================
 
     {
         title: "Preventive Mesin<br>Workshop",
-        url: "pmw_operator.html"
+
+        urls: {
+            "OPERATOR | PELAKSANA":
+                "../public/data-checklist/pmw/pmw_operator.html",
+
+            "SUPERVISOR | KOORDINATOR":
+                "../public/data-checklist/pmw/pmw_supervisor.html",
+
+            "SUPERINTENDENT":
+                "../public/data-checklist/pmw/pmw_superintendent.html"
+        }
     }
 
 ];
 
 
 // ======================================================
+// HELPER
+// ======================================================
+
+function hasActionAccess(menu, role) {
+
+    const actionUrls = menu.actionUrls?.[role];
+
+    if (!actionUrls) {
+        return false;
+    }
+
+    return Object.values(actionUrls).some(url => Boolean(url));
+}
+
+
+// ======================================================
 // RENDER MENU
 // ======================================================
 
-function renderMenu() {
+function renderMenu(role) {
 
-    const content =
-        document.getElementById("pageContent");
+    const content = document.getElementById("pageContent");
 
-    if (!content) return;
-
+    if (!content) {
+        return;
+    }
 
     content.innerHTML = `
 
         <div class="menu-grid">
 
-            ${MENU_CONFIG.map((menu, index) => `
+            ${MENU_CONFIG.map((menu, index) => {
 
-                ${
-                    menu.action
+                // ======================================
+                // MENU DENGAN ACTION / MODAL
+                // ======================================
 
-                    ?
+                if (menu.action) {
 
-                    `
-                    <button
-                        type="button"
-                        class="menu-card"
-                        data-action="${menu.action}"
-                        style="animation-delay: ${index * 50}ms"
-                    >
+                    // Cek apakah role punya akses
+                    if (!hasActionAccess(menu, role)) {
+                        return "";
+                    }
 
-                        <div class="menu-pill">
-
-                            <h2>
-                                ${menu.title}
-                            </h2>
-
-                        </div>
-
-                    </button>
-                    `
-
-                    :
-
-                    `
-                    <a
-                        href="${menu.url}"
-                        class="menu-card"
-                        style="animation-delay: ${index * 50}ms"
-                    >
-
-                        <div class="menu-pill">
-
-                            <h2>
-                                ${menu.title}
-                            </h2>
-
-                        </div>
-
-                    </a>
-                    `
+                    return `
+                        <button
+                            type="button"
+                            class="menu-card"
+                            data-action="${menu.action}"
+                            style="animation-delay: ${index * 50}ms"
+                        >
+                            <div class="menu-pill">
+                                <h2>${menu.title}</h2>
+                            </div>
+                        </button>
+                    `;
                 }
 
-            `).join("")}
+
+                // ======================================
+                // MENU DENGAN URL BERDASARKAN ROLE
+                // ======================================
+
+                const url = menu.urls?.[role];
+
+                // Role tidak punya akses
+                // → jangan render card sama sekali
+                if (!url) {
+                    return "";
+                }
+
+                return `
+                    <a
+                        href="${url}"
+                        class="menu-card"
+                        style="animation-delay: ${index * 50}ms"
+                    >
+                        <div class="menu-pill">
+                            <h2>${menu.title}</h2>
+                        </div>
+                    </a>
+                `;
+
+            }).join("")}
 
         </div>
 
+
+        <!-- MODAL CONTAINERS -->
 
         <div id="lkmrModalContainer"></div>
 
         <div id="grafikModalContainer"></div>
 
         <div id="grafikPekerjaModalContainer"></div>
-
     `;
 
 
+    // Initialize menu
     initializeMenuCards();
 
-    initializeMenuActions();
-
+    // Initialize actions dengan role
+    initializeMenuActions(role);
 }
 
 
 // ======================================================
-// MENU CARD ANIMATION
+// INITIALIZE MENU CARDS
 // ======================================================
 
 function initializeMenuCards() {
 
-    const cards =
-        document.querySelectorAll(".menu-card");
-
+    const cards = document.querySelectorAll(".menu-card");
 
     cards.forEach((card, index) => {
 
         setTimeout(() => {
-
             card.classList.add("show");
-
         }, index * 50);
 
-
-        card.addEventListener(
-            "mousedown",
-            createRipple
-        );
-
-
-        card.addEventListener(
-            "mousemove",
-            handleMouseMove
-        );
-
-
-        card.addEventListener(
-            "mouseleave",
-            handleMouseLeave
-        );
-
     });
-
 }
 
 
 // ======================================================
-// RIPPLE EFFECT
+// INITIALIZE MENU ACTIONS
 // ======================================================
 
-function createRipple(event) {
+function initializeMenuActions(role) {
 
-    const button =
-        event.currentTarget.querySelector(".menu-pill");
+    const buttons = document.querySelectorAll("[data-action]");
 
-    if (!button) return;
+    buttons.forEach(button => {
 
+        button.addEventListener("click", () => {
 
-    const circle =
-        document.createElement("span");
+            const action = button.dataset.action;
 
 
-    const diameter =
-        Math.max(
-            button.clientWidth,
-            button.clientHeight
-        );
+            // ==========================================
+            // LAPORAN KERJA MAINTENANCE & REPAIR
+            // ==========================================
 
+            if (action === "lkmr") {
+                openLkmrModal(role);
+            }
 
-    const radius =
-        diameter / 2;
 
+            // ==========================================
+            // DATA GRAFIK
+            // ==========================================
 
-    const rect =
-        button.getBoundingClientRect();
+            if (action === "grafik") {
+                openGrafikModal(role);
+            }
 
 
-    const clientX =
-        event.clientX;
+            // ==========================================
+            // GRAFIK DATA LAPORAN PEKERJA
+            // ==========================================
 
-
-    const clientY =
-        event.clientY;
-
-
-    circle.style.width =
-        circle.style.height =
-        `${diameter}px`;
-
-
-    circle.style.left =
-        `${clientX - rect.left - radius}px`;
-
-
-    circle.style.top =
-        `${clientY - rect.top - radius}px`;
-
-
-    circle.classList.add("ripple");
-
-
-    const existingRipple =
-        button.querySelector(".ripple");
-
-
-    if (existingRipple) {
-        existingRipple.remove();
-    }
-
-
-    button.appendChild(circle);
-
-
-    setTimeout(() => {
-
-        circle.remove();
-
-    }, 800);
-
-}
-
-
-// ======================================================
-// 3D EFFECT
-// ======================================================
-
-function handleMouseMove(event) {
-
-    const card =
-        event.currentTarget;
-
-
-    const pill =
-        card.querySelector(".menu-pill");
-
-
-    if (!pill) return;
-
-
-    const rect =
-        card.getBoundingClientRect();
-
-
-    const x =
-        event.clientX - rect.left;
-
-
-    const y =
-        event.clientY - rect.top;
-
-
-    const centerX =
-        rect.width / 2;
-
-
-    const centerY =
-        rect.height / 2;
-
-
-    const rotateX =
-        ((y - centerY) / centerY) * -15;
-
-
-    const rotateY =
-        ((x - centerX) / centerX) * 15;
-
-
-    pill.style.transform = `
-
-        perspective(1000px)
-
-        rotateX(${rotateX}deg)
-
-        rotateY(${rotateY}deg)
-
-        scale3d(1.05, 1.05, 1.05)
-
-    `;
-
-
-    pill.style.setProperty(
-        "--mouse-x",
-        `${x}px`
-    );
-
-
-    pill.style.setProperty(
-        "--mouse-y",
-        `${y}px`
-    );
-
-}
-
-
-function handleMouseLeave(event) {
-
-    const card =
-        event.currentTarget;
-
-
-    const pill =
-        card.querySelector(".menu-pill");
-
-
-    if (!pill) return;
-
-
-    pill.style.transform = `
-
-        perspective(1000px)
-
-        rotateX(0deg)
-
-        rotateY(0deg)
-
-        scale3d(1, 1, 1)
-
-    `;
-
-}
-
-
-// ======================================================
-// MENU ACTIONS
-// ======================================================
-
-function initializeMenuActions() {
-
-    document
-        .querySelectorAll("[data-action]")
-        .forEach(button => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    const action =
-                        button.dataset.action;
-
-
-                    if (action === "lkmr") {
-
-                        openLkmrModal();
-
-                    }
-
-
-                    if (action === "grafik") {
-
-                        openGrafikModal();
-
-                    }
-
-
-                    if (
-                        action === "grafik-pekerja"
-                    ) {
-
-                        openGrafikPekerjaModal();
-
-                    }
-
-                }
-            );
+            if (action === "grafik-pekerja") {
+                openGrafikPekerjaModal(role);
+            }
 
         });
 
+    });
 }
 
 
 // ======================================================
-// LKMR MODAL
+// MODAL — LAPORAN KERJA MAINTENANCE & REPAIR
 // ======================================================
 
-function openLkmrModal() {
+function openLkmrModal(role) {
 
     const container =
-        document.getElementById(
-            "lkmrModalContainer"
-        );
+        document.getElementById("lkmrModalContainer");
+
+    if (!container) {
+        return;
+    }
+
+
+    // Cari menu berdasarkan action
+    const menu = MENU_CONFIG.find(
+        menu => menu.action === "lkmr"
+    );
+
+
+    // Ambil URL berdasarkan role
+    const urls = menu?.actionUrls?.[role];
+
+
+    // Role tidak punya akses
+    if (!urls) {
+        return;
+    }
 
 
     container.innerHTML = `
@@ -445,45 +557,41 @@ function openLkmrModal() {
 
             <div class="choice-box">
 
-                <h3
-                    style="
-                        margin-bottom: 20px;
-                        color: #333;
-                        font-size: 18px;
-                    "
-                >
-                    Pilih Jenis Laporan
-                </h3>
+                <h3>Pilih Jenis Laporan</h3>
 
 
-                <a
-                    href="Lkmr_operator.html"
-                    class="choice-btn btn-mesin"
-                >
-                    Maintenance Mesin
-                </a>
+                ${
+                    urls.mesin
+                        ? `
+                            <a
+                                href="${urls.mesin}"
+                                class="choice-btn btn-mesin"
+                            >
+                                Maintenance Mesin
+                            </a>
+                        `
+                        : ""
+                }
 
 
-                <a
-                    href="Lkmr_operator_repair.html"
-                    class="choice-btn btn-repair"
-                >
-                    Maintenance Repair
-                </a>
+                ${
+                    urls.repair
+                        ? `
+                            <a
+                                href="${urls.repair}"
+                                class="choice-btn btn-repair"
+                            >
+                                Maintenance Repair
+                            </a>
+                        `
+                        : ""
+                }
 
 
                 <button
                     type="button"
+                    class="choice-btn btn-close"
                     id="closeLkmrModal"
-                    style="
-                        margin-top: 15px;
-                        color: #888;
-                        font-size: 14px;
-                        cursor: pointer;
-                        text-decoration: underline;
-                        border: none;
-                        background: transparent;
-                    "
                 >
                     Tutup
                 </button>
@@ -491,250 +599,254 @@ function openLkmrModal() {
             </div>
 
         </div>
-
     `;
 
 
-    const modal =
-        document.getElementById("lkmrModal");
-
-
+    // Close button
     document
         .getElementById("closeLkmrModal")
-        .addEventListener(
-            "click",
-            () => modal.remove()
-        );
+        ?.addEventListener("click", () => {
 
+            container.innerHTML = "";
 
-    modal.addEventListener(
-        "click",
-        event => {
-
-            if (event.target === modal) {
-
-                modal.remove();
-
-            }
-
-        }
-    );
-
+        });
 }
 
 
 // ======================================================
-// GRAFIK MODAL
+// MODAL — DATA GRAFIK
 // ======================================================
 
-function openGrafikModal() {
+function openGrafikModal(role) {
 
     const container =
-        document.getElementById(
-            "grafikModalContainer"
-        );
+        document.getElementById("grafikModalContainer");
+
+    if (!container) {
+        return;
+    }
+
+
+    // Cari menu berdasarkan action
+    const menu = MENU_CONFIG.find(
+        menu => menu.action === "grafik"
+    );
+
+
+    // Ambil URL berdasarkan role
+    const urls = menu?.actionUrls?.[role];
+
+
+    // Role tidak punya akses
+    if (!urls) {
+        return;
+    }
 
 
     container.innerHTML = `
 
         <div
-            class="grafik-modal-overlay active"
+            class="choice-overlay active"
             id="grafikModal"
         >
 
-            <div class="grafik-modal-box">
+            <div class="choice-box">
+
+                <h3>Pilih Data Grafik</h3>
+
+
+                ${
+                    urls.clhmi
+                        ? `
+                            <a
+                                href="${urls.clhmi}"
+                                class="choice-btn"
+                            >
+                                Checklist Harian Mesin Injection
+                            </a>
+                        `
+                        : ""
+                }
+
+
+                ${
+                    urls.chslr
+                        ? `
+                            <a
+                                href="${urls.chslr}"
+                                class="choice-btn"
+                            >
+                                Checklist Harian Stand Label & Robot
+                            </a>
+                        `
+                        : ""
+                }
+
+
+                ${
+                    urls.cplm
+                        ? `
+                            <a
+                                href="${urls.cplm}"
+                                class="choice-btn"
+                            >
+                                Checklist Perawatan Mold
+                            </a>
+                        `
+                        : ""
+                }
+
+
+                ${
+                    urls.pmi
+                        ? `
+                            <a
+                                href="${urls.pmi}"
+                                class="choice-btn"
+                            >
+                                Preventif Mesin Injection
+                            </a>
+                        `
+                        : ""
+                }
+
+
+                ${
+                    urls.prslb
+                        ? `
+                            <a
+                                href="${urls.prslb}"
+                                class="choice-btn"
+                            >
+                                Preventif Robot & Stand Label
+                            </a>
+                        `
+                        : ""
+                }
+
 
                 <button
                     type="button"
-                    class="grafik-modal-close"
+                    class="choice-btn btn-close"
                     id="closeGrafikModal"
                 >
-                    <i class="fa-solid fa-xmark"></i>
+                    Tutup
                 </button>
-
-
-                <div class="grafik-modal-title">
-
-                    <i class="fa-solid fa-chart-simple"></i>
-
-                    Pilih Data Grafik
-
-                </div>
-
-
-                <a
-                    href="grafik_chlmi.html"
-                    class="grafik-link-btn"
-                >
-                    Checklist Harian Mesin Injection
-                </a>
-
-
-                <a
-                    href="grafik_chslr.html"
-                    class="grafik-link-btn"
-                >
-                    Checklist Harian Standlabel & Robot
-                </a>
-
-
-                <a
-                    href="grafik_cplm.html"
-                    class="grafik-link-btn"
-                >
-                    Checklist Perawatan Mold
-                </a>
-
-
-                <a
-                    href="grafik_pmi.html"
-                    class="grafik-link-btn"
-                >
-                    Preventif Mesin Injection (Clamping)
-                </a>
-
-
-                <a
-                    href="grafik_prslb.html"
-                    class="grafik-link-btn"
-                >
-                    Preventif Stand Label & Robot
-                </a>
 
             </div>
 
         </div>
-
     `;
 
 
-    const modal =
-        document.getElementById(
-            "grafikModal"
-        );
-
-
+    // Close button
     document
-        .getElementById(
-            "closeGrafikModal"
-        )
-        .addEventListener(
-            "click",
-            () => modal.remove()
-        );
+        .getElementById("closeGrafikModal")
+        ?.addEventListener("click", () => {
 
+            container.innerHTML = "";
 
-    modal.addEventListener(
-        "click",
-        event => {
-
-            if (event.target === modal) {
-
-                modal.remove();
-
-            }
-
-        }
-    );
-
+        });
 }
 
 
 // ======================================================
-// GRAFIK PEKERJA MODAL
+// MODAL — GRAFIK DATA LAPORAN PEKERJA
 // ======================================================
 
-function openGrafikPekerjaModal() {
+function openGrafikPekerjaModal(role) {
 
     const container =
-        document.getElementById(
-            "grafikPekerjaModalContainer"
-        );
+        document.getElementById("grafikPekerjaModalContainer");
+
+    if (!container) {
+        return;
+    }
+
+
+    // Cari menu berdasarkan action
+    const menu = MENU_CONFIG.find(
+        menu => menu.action === "grafik-pekerja"
+    );
+
+
+    // Ambil URL berdasarkan role
+    const urls = menu?.actionUrls?.[role];
+
+
+    // Role tidak punya akses
+    if (!urls) {
+        return;
+    }
 
 
     container.innerHTML = `
 
         <div
-            class="grafik-modal-overlay active"
+            class="choice-overlay active"
             id="grafikPekerjaModal"
         >
 
-            <div class="grafik-modal-box">
+            <div class="choice-box">
+
+                <h3>Pilih Jenis Laporan Pekerja</h3>
+
+
+                ${
+                    urls.mesin
+                        ? `
+                            <a
+                                href="${urls.mesin}"
+                                class="choice-btn btn-mesin"
+                            >
+                                Maintenance Mesin
+                            </a>
+                        `
+                        : ""
+                }
+
+
+                ${
+                    urls.repair
+                        ? `
+                            <a
+                                href="${urls.repair}"
+                                class="choice-btn btn-repair"
+                            >
+                                Maintenance Repair
+                            </a>
+                        `
+                        : ""
+                }
+
 
                 <button
                     type="button"
-                    class="grafik-modal-close"
+                    class="choice-btn btn-close"
                     id="closeGrafikPekerjaModal"
                 >
-                    <i class="fa-solid fa-xmark"></i>
+                    Tutup
                 </button>
-
-
-                <div class="grafik-modal-title">
-
-                    <i class="fa-solid fa-users"></i>
-
-                    Pilih Jenis Grafik Pekerja
-
-                </div>
-
-
-                <a
-                    href="pekerja_mesin_grafik.html"
-                    class="grafik-link-btn"
-                >
-                    Grafik Pekerja Maintenance Mesin
-                </a>
-
-
-                <a
-                    href="pekerja_repair_grafik.html"
-                    class="grafik-link-btn"
-                >
-                    Grafik Pekerja Maintenance Repair
-                </a>
 
             </div>
 
         </div>
-
     `;
 
 
-    const modal =
-        document.getElementById(
-            "grafikPekerjaModal"
-        );
-
-
+    // Close button
     document
-        .getElementById(
-            "closeGrafikPekerjaModal"
-        )
-        .addEventListener(
-            "click",
-            () => modal.remove()
-        );
+        .getElementById("closeGrafikPekerjaModal")
+        ?.addEventListener("click", () => {
 
+            container.innerHTML = "";
 
-    modal.addEventListener(
-        "click",
-        event => {
-
-            if (event.target === modal) {
-
-                modal.remove();
-
-            }
-
-        }
-    );
-
+        });
 }
 
 
 // ======================================================
-// INITIALIZE
+// INITIALIZE MENU UTAMA
 // ======================================================
 
 async function initMenuUtama() {
@@ -742,27 +854,33 @@ async function initMenuUtama() {
     try {
 
         const {
-            data: {
-                session
-            }
+            data: { session }
         } = await client.auth.getSession();
 
 
+        // ==============================================
+        // BELUM LOGIN
+        // ==============================================
+
         if (!session) {
 
-            window.location.href =
-                "../index.html";
+            window.location.href = "../index.html";
 
             return;
-
         }
 
 
-        const role =
-            await getCurrentRole(
-                session.user.id
-            );
+        // ==============================================
+        // GET USER ROLE
+        // ==============================================
 
+        const role =
+            await getCurrentRole(session.user.id);
+
+
+        // ==============================================
+        // ROLE TIDAK DITEMUKAN
+        // ==============================================
 
         if (!role) {
 
@@ -771,7 +889,6 @@ async function initMenuUtama() {
             );
 
             return;
-
         }
 
 
@@ -781,10 +898,11 @@ async function initMenuUtama() {
         );
 
 
-        // Untuk sekarang SEMUA ROLE
-        // menggunakan 13 menu yang sama.
+        // ==============================================
+        // RENDER MENU
+        // ==============================================
 
-        renderMenu();
+        renderMenu(role);
 
     }
 
@@ -804,18 +922,17 @@ async function initMenuUtama() {
 // PAGE ROUTER
 // ======================================================
 
-// ======================================================
-// PAGE ROUTER
-// ======================================================
-
 document.addEventListener(
     "DOMContentLoaded",
     async () => {
+
         const params =
             new URLSearchParams(
                 window.location.search
             );
 
+
+        // Hanya jalankan halaman menu-utama
         if (
             params.get("page") !==
             "menu-utama"
@@ -823,6 +940,8 @@ document.addEventListener(
             return;
         }
 
+
         await initMenuUtama();
+
     }
 );

@@ -9,7 +9,7 @@ export const ROLE_CONFIG = {
         header: "HOME ADMIN",
         description:
             "Solusi digital untuk monitoring dan perawatan mesin agar operasional tetap optimal dan efisien.",
-        menuUrl: "../menu-utama/MENU_UTAMA_ADMIN.html"
+        menuUrl: "../menu-utama/p"
     },
 
     "OPERATOR | PELAKSANA": {

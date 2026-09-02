@@ -1,4 +1,31 @@
-export function renderHeader(title = "MENU UTAMA") {
+const PAGE_TITLES = {
+    "home": "HOME",
+    "menu-utama": "MENU UTAMA",
+    "download": "UNDUH DATA",
+    "account": "INFORMASI AKUN",
+
+    "chslr": "CHSLR",
+    "clhmi": "CLHMI",
+    "pmi": "PMI",
+    "prslb": "PRSLB"
+};
+
+
+function getCurrentPage() {
+    const params = new URLSearchParams(window.location.search);
+
+    return params.get("page") || "menu-utama";
+}
+
+
+function getHeaderTitle(page = getCurrentPage()) {
+    return PAGE_TITLES[page] || "MENU UTAMA";
+}
+
+
+export function renderHeader() {
+
+    const title = getHeaderTitle();
 
     return `
         <!-- SIDEBAR -->
