@@ -74,7 +74,7 @@ function renderAccountPage() {
 
                     <!-- CATATAN -->
                     <a
-                        href="catatan.html"
+                        href="../public/menu-account/catatan.html"
                         class="action-btn"
                     >
                         <div class="action-icon">
