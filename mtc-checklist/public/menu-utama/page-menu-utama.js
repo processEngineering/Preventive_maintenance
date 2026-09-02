@@ -14,7 +14,7 @@ const MENU_CONFIG = [
 
     {
         title: "Checklist Harian<br>stand label & robot",
-        url: "chslr_pelaksana.html"
+        url: "../public/data-checklist/chslr/form-chslr.html"
     },
 
     {
