@@ -7,53 +7,75 @@ import { supabaseClient as client } from "../../src/supabase/supabase-client.js"
 const DOWNLOAD_CONFIG = [
     {
         title: "Data Checklist Harian<br>Mesin Injection",
-        url: "clhmi_result.html"
+        url: "../public/data-checklist/clhmi/clhmi_result.html",
+        group: "Checklist"
     },
     {
         title: "Data Checklist Harian<br>Stand Label & Robot",
-        url: "chslr_result.html"
+        url: "../public/data-checklist/chslr/chslr_result.html",
+        group: "Checklist"
     },
     {
         title: "Data Pelaksanaan<br>Pekerjaan Workshop",
-        url: "ppw_result.html"
+        url: "../public/data-checklist/ppw/ppw_result.html",
+        group: "Others"
     },
     {
         title: "Data Laporan Kerja<br>Maintenance & Repair",
-        action: "lkmr"
+        action: "lkmr",
+        group: "Laporan Kerja"
     },
     {
         title: "Data Preventif Mesin<br>Injection (Clamping)",
-        url: "pmi_result.html"
+        url: "../public/data-checklist/pmi/pmi_result.html",
+        group: "Preventive"
     },
     {
         title: "Data Preventif Robot<br>& Stand Label",
-        url: "prslb_result.html"
+        url: "../public/data-checklist/prslb/prslb_result.html",
+        group: "Preventive"
     },
     {
         title: "Data Laporan Perawatan<br>& Overhaul Tools",
-        url: "pohm_result.html"
+        url: "../public/data-checklist/pohm/pohm_result.html",
+        group: "Laporan Kerja"
     },
     {
         title: "Data Checklist<br>Perawatan Mold",
-        url: "cplm_result.html"
+        url: "../public/data-checklist/cplm/cplm_result.html",
+        group: "Checklist"
     },
     {
         title: "Data Jadwal Perawatan<br>dan Overhaul",
-        url: "Jpdo_result.html"
+        url: "../public/data-checklist/jpdo/jpdo_result.html",
+        group: "Others"
     },
     {
         title: "Data Kartu<br>Riwayat",
-        url: "kartu_riwayat_result.html"
+        url: "../public/data-checklist/kartu_riwayat/kartu_riwayat_result.html",
+        group: "Others"
     },
     {
         title: "Data Preventive Mesin<br>Workshop",
-        url: "pmw_result.html"
+        url: "../public/data-checklist/pmw/pmw_result.html",
+        group: "Preventive"
     },
     {
         title: "Arsip<br>Data Laporan",
-        url: "arsip_data.html"
+        url: "../public/data-checklist/arsip_data/arsip_data.html",
+        group: "Others"
     }
 ];
+
+const DOWNLOAD_GROUPS = [
+    "Checklist",
+    "Preventive",
+    "Laporan Kerja",
+    "Others"
+].map(title => ({
+    title,
+    items: DOWNLOAD_CONFIG.filter(menu => menu.group === title)
+}));
 
 // ======================================================
 // RENDER DOWNLOAD PAGE
@@ -69,6 +91,54 @@ function renderDownloadPage() {
         return;
     }
 
+    let animationIndex = 0;
+
+    const sections = DOWNLOAD_GROUPS.map(group => {
+
+        const cards = group.items.map(menu => {
+            const currentIndex = animationIndex++;
+
+            if (menu.action) {
+                return `
+                    <button
+                        type="button"
+                        class="menu-card"
+                        data-action="${menu.action}"
+                        style="animation-delay: ${currentIndex * 50}ms"
+                    >
+                        <div class="menu-pill">
+                            <h2>${menu.title}</h2>
+                        </div>
+                    </button>
+                `;
+            }
+
+            return `
+                <a
+                    href="${menu.url}"
+                    class="menu-card"
+                    style="animation-delay: ${currentIndex * 50}ms"
+                >
+                    <div class="menu-pill">
+                        <h2>${menu.title}</h2>
+                    </div>
+                </a>
+            `;
+        }).join("");
+
+        return `
+            <section class="download-section">
+                <div class="download-section-header">
+                    <h2>${group.title}</h2>
+                </div>
+
+                <div class="menu-grid">
+                    ${cards}
+                </div>
+            </section>
+        `;
+    }).join("");
+
     content.innerHTML = `
         <div class="app-container">
 
@@ -79,41 +149,8 @@ function renderDownloadPage() {
                 </p>
             </div>
 
-            <div class="menu-grid">
-
-                ${DOWNLOAD_CONFIG.map((menu, index) => {
-
-                    if (menu.action) {
-
-                        return `
-                            <button
-                                type="button"
-                                class="menu-card"
-                                data-action="${menu.action}"
-                                style="animation-delay: ${index * 50}ms"
-                            >
-                                <div class="menu-pill">
-                                    <h2>${menu.title}</h2>
-                                </div>
-                            </button>
-                        `;
-
-                    }
-
-                    return `
-                        <a
-                            href="${menu.url}"
-                            class="menu-card"
-                            style="animation-delay: ${index * 50}ms"
-                        >
-                            <div class="menu-pill">
-                                <h2>${menu.title}</h2>
-                            </div>
-                        </a>
-                    `;
-
-                }).join("")}
-
+            <div class="download-sections">
+                ${sections}
             </div>
 
             <div id="lkmrModalContainer"></div>
@@ -481,6 +518,8 @@ function openLkmrModal() {
 async function initDownloadPage() {
 
     try {
+
+        document.body.classList.add("page-menu-download");
 
         const {
             data: { session },
