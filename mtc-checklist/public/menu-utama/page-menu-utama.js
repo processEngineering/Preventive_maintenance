@@ -5,342 +5,336 @@ import { getCurrentRole } from "../data-role/role-home.js";
 // MENU CONFIGURATION
 // ======================================================
 
-const MENU_CONFIG = [
+const MENU_GROUPS = [
 
     // ==================================================
-    // 1. CHECKLIST HARIAN MESIN INJECTION
-    // ==================================================
-
-    {
-        title: "Checklist Harian<br>Mesin Injection",
-
-        urls: {
-            "OPERATOR | PELAKSANA":
-                "../public/data-checklist/clhmi/clhmi_pelaksana.html",
-
-            "SUPERVISOR | KOORDINATOR":
-                "../public/data-checklist/clhmi/clhmi_koordinator.html",
-
-            "SUPERINTENDENT":
-                "../public/data-checklist/clhmi/clhmi_superintendent.html"
-        }
-    },
-
-
-    // ==================================================
-    // 2. CHECKLIST HARIAN STAND LABEL & ROBOT
+    // 1. CHECKLIST
     // ==================================================
 
     {
-        title: "Checklist Harian<br>Stand Label & Robot",
+        title: "Checklist",
 
-        urls: {
-            "OPERATOR | PELAKSANA":
-                "../public/data-checklist/chslr/chslr_pelaksana.html",
+        items: [
 
-            "SUPERVISOR | KOORDINATOR":
-                "../public/data-checklist/chslr/chslr_koordinator.html",
+            {
+                title: "Checklist Harian<br>Mesin Injection",
 
-            "SUPERINTENDENT":
-                "../public/data-checklist/chslr/chslr_superintendent.html"
-        }
-    },
+                urls: {
+                    "OPERATOR | PELAKSANA":
+                        "../public/data-checklist/clhmi/clhmi_pelaksana.html",
 
+                    "SUPERVISOR | KOORDINATOR":
+                        "../public/data-checklist/clhmi/clhmi_koordinator.html",
 
-    // ==================================================
-    // 3. PELAKSANAAN PEKERJAAN WORKSHOP
-    // ==================================================
-
-    {
-        title: "Pelaksanaan<br>Pekerjaan Workshop",
-
-        urls: {
-            "OPERATOR | PELAKSANA":
-                "../public/data-checklist/ppw/ppw_operator.html",
-
-            "SUPERVISOR | KOORDINATOR":
-                "../public/data-checklist/ppw/ppw_spv.html",
-
-            "SUPERINTENDENT":
-                "../public/data-checklist/ppw/ppw_superintendent.html"
-        }
-    },
-
-
-    // ==================================================
-    // 4. LAPORAN KERJA MAINTENANCE & REPAIR
-    // ==================================================
-
-    {
-        title: "Laporan Kerja<br>Maintenance & Repair",
-
-        action: "lkmr",
-
-        actionUrls: {
-
-            "OPERATOR | PELAKSANA": {
-                mesin:
-                    "../public/data-checklist/lkmr/lkmr_operator.html",
-
-                repair:
-                    "../public/data-checklist/lkmr/lkmr_operator_repair.html"
+                    "SUPERINTENDENT":
+                        "../public/data-checklist/clhmi/clhmi_superintendent.html"
+                }
             },
 
-            "SUPERINTENDENT": {
-                mesin:
-                    "../public/data-checklist/lkmr/lkmr_superintendent.html",
+            {
+                title: "Checklist Harian<br>Stand Label & Robot",
 
-                repair:
-                    "../public/data-checklist/lkmr/lkmr_superintendent_repair.html"
+                urls: {
+                    "OPERATOR | PELAKSANA":
+                        "../public/data-checklist/chslr/chslr_pelaksana.html",
+
+                    "SUPERVISOR | KOORDINATOR":
+                        "../public/data-checklist/chslr/chslr_koordinator.html",
+
+                    "SUPERINTENDENT":
+                        "../public/data-checklist/chslr/chslr_superintendent.html"
+                }
+            },
+
+            {
+                title: "Checklist<br>Perawatan Mold",
+
+                urls: {
+                    "OPERATOR | PELAKSANA":
+                        "../public/data-checklist/cplm/cplm_operator.html",
+
+                    "SUPERVISOR | KOORDINATOR":
+                        "../public/data-checklist/cplm/cplm_spv.html",
+
+                    "SUPERINTENDENT":
+                        "../public/data-checklist/cplm/cplm_superintendent.html"
+                }
             }
 
-            // Tambahkan role lain di sini jika diperlukan
-        }
+        ]
     },
 
 
     // ==================================================
-    // 5. PREVENTIF MESIN INJECTION
+    // 2. PREVENTIVE
     // ==================================================
 
     {
-        title: "Preventif Mesin<br>Injection (clamping)",
+        title: "Preventive",
 
-        urls: {
-            "OPERATOR | PELAKSANA":
-                "../public/data-checklist/pmi/pmi_pelaksana.html",
+        items: [
 
-            "SUPERVISOR | KOORDINATOR":
-                "../public/data-checklist/pmi/pmi_koordinator.html",
+            {
+                title: "Preventive Mesin<br>Injection (Clamping)",
 
-            "SUPERINTENDENT":
-                "../public/data-checklist/pmi/pmi_superintendent.html"
-        }
-    },
+                urls: {
+                    "OPERATOR | PELAKSANA":
+                        "../public/data-checklist/pmi/pmi_pelaksana.html",
 
+                    "SUPERVISOR | KOORDINATOR":
+                        "../public/data-checklist/pmi/pmi_koordinator.html",
 
-    // ==================================================
-    // 6. PREVENTIF ROBOT & STAND LABEL
-    // ==================================================
-
-    {
-        title: "Preventif Robot<br>& Stand Label",
-
-        urls: {
-            "OPERATOR | PELAKSANA":
-                "../public/data-checklist/prslb/prslb_pelaksana.html",
-
-            "SUPERVISOR | KOORDINATOR":
-                "../public/data-checklist/prslb/prslb_koordinator.html",
-
-            "SUPERINTENDENT":
-                "../public/data-checklist/prslb/prslb_superintendent.html"
-        }
-    },
-
-
-    // ==================================================
-    // 7. LAPORAN PERAWATAN & OVERHAUL TOOLS
-    // ==================================================
-
-    {
-        title: "Laporan Perawatan<br>& Overhaul Tools",
-
-        urls: {
-            "OPERATOR | PELAKSANA":
-                "../public/data-checklist/pohm/pohm_operator.html",
-
-            "SUPERINTENDENT":
-                "../public/data-checklist/pohm/pohm_superintendent.html",
-
-            "MANAGER":
-                "../public/data-checklist/pohm/pohm_manager.html"
-        }
-    },
-
-
-    // ==================================================
-    // 8. CHECKLIST PERAWATAN MOLD
-    // ==================================================
-
-    {
-        title: "Checklist<br>Perawatan Mold",
-
-        urls: {
-            "OPERATOR | PELAKSANA":
-                "../public/data-checklist/cplm/cplm_operator.html",
-
-            "SUPERVISOR | KOORDINATOR":
-                "../public/data-checklist/cplm/cplm_spv.html",
-
-            "SUPERINTENDENT":
-                "../public/data-checklist/cplm/cplm_superintendent.html"
-        }
-    },
-
-
-    // ==================================================
-    // 9. JADWAL PERAWATAN DAN OVERHAUL
-    // ==================================================
-
-    {
-        title: "Jadwal Perawatan<br>dan Overhaul",
-
-        urls: {
-            "SUPERVISOR | KOORDINATOR":
-                "../public/data-checklist/jpdo/jpdo_supervisor.html",
-
-            "SUPERINTENDENT":
-                "../public/data-checklist/jpdo/jpdo_superintendent.html",
-
-            "JUNIOR MANAGER PRODUKSI":
-                "../public/data-checklist/jpdo/jpdo_produksi.html",
-
-            "JUNIOR MANAGER PPC":
-                "../public/data-checklist/jpdo/jpdo_ppc.html",
-
-            "MANAGER":
-                "../public/data-checklist/jpdo/jpdo_manager.html"
-        }
-    },
-
-
-    // ==================================================
-    // 10. KARTU RIWAYAT
-    // ==================================================
-
-    {
-        title: "Kartu<br>Riwayat",
-
-        urls: {
-            "OPERATOR | PELAKSANA":
-                "../public/data-checklist/kartu-riwayat/kartu_riwayat_pic.html",
-
-            "SUPERVISOR | KOORDINATOR":
-                "../public/data-checklist/kartu-riwayat/kartu_riwayat_supervisor.html",
-
-            "SUPERINTENDENT":
-                "../public/data-checklist/kartu-riwayat/kartu_riwayat_superintendent.html"
-        }
-    },
-
-
-    // ==================================================
-    // 11. DATA GRAFIK
-    // ==================================================
-
-    {
-        title: "Data Grafik",
-
-        action: "grafik",
-
-        actionUrls: {
-
-            "OPERATOR | PELAKSANA": {
-                clhmi:
-                    "../public/data-checklist/grafik/grafik_clhmi.html",
-
-                chslr:
-                    "../public/data-checklist/grafik/grafik_chslr.html",
-
-                cplm:
-                    "../public/data-checklist/grafik/grafik_cplm.html",
-
-                pmi:
-                    "../public/data-checklist/grafik/grafik_pmi.html",
-
-                prslb:
-                    "../public/data-checklist/grafik/grafik_prslb.html"
+                    "SUPERINTENDENT":
+                        "../public/data-checklist/pmi/pmi_superintendent.html"
+                }
             },
 
-            "SUPERVISOR | KOORDINATOR": {
-                clhmi:
-                    "../public/data-checklist/grafik/grafik_clhmi.html",
+            {
+                title: "Preventive Robot<br>& Stand Label",
 
-                chslr:
-                    "../public/data-checklist/grafik/grafik_chslr.html",
+                urls: {
+                    "OPERATOR | PELAKSANA":
+                        "../public/data-checklist/prslb/prslb_pelaksana.html",
 
-                cplm:
-                    "../public/data-checklist/grafik/grafik_cplm.html",
+                    "SUPERVISOR | KOORDINATOR":
+                        "../public/data-checklist/prslb/prslb_koordinator.html",
 
-                pmi:
-                    "../public/data-checklist/grafik/grafik_pmi.html",
-
-                prslb:
-                    "../public/data-checklist/grafik/grafik_prslb.html"
+                    "SUPERINTENDENT":
+                        "../public/data-checklist/prslb/prslb_superintendent.html"
+                }
             },
 
-            "SUPERINTENDENT": {
-                clhmi:
-                    "../public/data-checklist/grafik/grafik_clhmi.html",
+            {
+                title: "Preventive Mesin<br>Workshop",
 
-                chslr:
-                    "../public/data-checklist/grafik/grafik_chslr.html",
+                urls: {
+                    "OPERATOR | PELAKSANA":
+                        "../public/data-checklist/pmw/pmw_operator.html",
 
-                cplm:
-                    "../public/data-checklist/grafik/grafik_cplm.html",
+                    "SUPERVISOR | KOORDINATOR":
+                        "../public/data-checklist/pmw/pmw_supervisor.html",
 
-                pmi:
-                    "../public/data-checklist/grafik/grafik_pmi.html",
-
-                prslb:
-                    "../public/data-checklist/grafik/grafik_prslb.html"
+                    "SUPERINTENDENT":
+                        "../public/data-checklist/pmw/pmw_superintendent.html"
+                }
             }
 
-            // Tambahkan role lain jika memang punya akses
-        }
+        ]
     },
 
 
     // ==================================================
-    // 12. GRAFIK DATA LAPORAN PEKERJA
+    // 3. LAPORAN KERJA
     // ==================================================
 
     {
-        title: "Grafik Data<br>Laporan Pekerja",
+        title: "Laporan Kerja",
 
-        action: "grafik-pekerja",
+        items: [
 
-        actionUrls: {
+            {
+                title: "Laporan Kerja<br>Maintenance & Repair",
 
-            "OPERATOR | PELAKSANA": {
-                repair:
-                    "../public/data-checklist/grafik/pekerja_repair_grafik.html",
+                action: "lkmr",
 
-                mesin:
-                    "../public/data-checklist/grafik/pekerja_mesin_grafik.html"
+                actionUrls: {
+
+                    "OPERATOR | PELAKSANA": {
+                        mesin:
+                            "../public/data-checklist/lkmr/lkmr_operator.html",
+
+                        repair:
+                            "../public/data-checklist/lkmr/lkmr_operator_repair.html"
+                    },
+
+                    "SUPERINTENDENT": {
+                        mesin:
+                            "../public/data-checklist/lkmr/lkmr_superintendent.html",
+
+                        repair:
+                            "../public/data-checklist/lkmr/lkmr_superintendent_repair.html"
+                    }
+                }
             },
 
-            "SUPERINTENDENT": {
-                repair:
-                    "../public/data-checklist/grafik/pekerja_repair_grafik.html",
+            {
+                title: "Laporan Perawatan<br>& Overhaul Tools",
 
-                mesin:
-                    "../public/data-checklist/grafik/pekerja_mesin_grafik.html"
+                urls: {
+                    "OPERATOR | PELAKSANA":
+                        "../public/data-checklist/pohm/pohm_operator.html",
+
+                    "SUPERINTENDENT":
+                        "../public/data-checklist/pohm/pohm_superintendent.html",
+
+                    "MANAGER":
+                        "../public/data-checklist/pohm/pohm_manager.html"
+                }
             }
 
-            // Tambahkan role lain jika diperlukan
-        }
+        ]
     },
 
 
     // ==================================================
-    // 13. PREVENTIVE MESIN WORKSHOP
+    // 4. GRAFIK
     // ==================================================
 
     {
-        title: "Preventive Mesin<br>Workshop",
+        title: "Grafik",
 
-        urls: {
-            "OPERATOR | PELAKSANA":
-                "../public/data-checklist/pmw/pmw_operator.html",
+        items: [
 
-            "SUPERVISOR | KOORDINATOR":
-                "../public/data-checklist/pmw/pmw_supervisor.html",
+            {
+                title: "Data Grafik",
 
-            "SUPERINTENDENT":
-                "../public/data-checklist/pmw/pmw_superintendent.html"
-        }
+                action: "grafik",
+
+                actionUrls: {
+
+                    "OPERATOR | PELAKSANA": {
+                        clhmi:
+                            "../public/data-checklist/grafik/grafik_clhmi.html",
+
+                        chslr:
+                            "../public/data-checklist/grafik/grafik_chslr.html",
+
+                        cplm:
+                            "../public/data-checklist/grafik/grafik_cplm.html",
+
+                        pmi:
+                            "../public/data-checklist/grafik/grafik_pmi.html",
+
+                        prslb:
+                            "../public/data-checklist/grafik/grafik_prslb.html"
+                    },
+
+                    "SUPERVISOR | KOORDINATOR": {
+                        clhmi:
+                            "../public/data-checklist/grafik/grafik_clhmi.html",
+
+                        chslr:
+                            "../public/data-checklist/grafik/grafik_chslr.html",
+
+                        cplm:
+                            "../public/data-checklist/grafik/grafik_cplm.html",
+
+                        pmi:
+                            "../public/data-checklist/grafik/grafik_pmi.html",
+
+                        prslb:
+                            "../public/data-checklist/grafik/grafik_prslb.html"
+                    },
+
+                    "SUPERINTENDENT": {
+                        clhmi:
+                            "../public/data-checklist/grafik/grafik_clhmi.html",
+
+                        chslr:
+                            "../public/data-checklist/grafik/grafik_chslr.html",
+
+                        cplm:
+                            "../public/data-checklist/grafik/grafik_cplm.html",
+
+                        pmi:
+                            "../public/data-checklist/grafik/grafik_pmi.html",
+
+                        prslb:
+                            "../public/data-checklist/grafik/grafik_prslb.html"
+                    }
+                }
+            },
+
+            {
+                title: "Grafik Data<br>Laporan Pekerja",
+
+                action: "grafik-pekerja",
+
+                actionUrls: {
+
+                    "OPERATOR | PELAKSANA": {
+                        repair:
+                            "../public/data-checklist/grafik/pekerja_repair_grafik.html",
+
+                        mesin:
+                            "../public/data-checklist/grafik/pekerja_mesin_grafik.html"
+                    },
+
+                    "SUPERINTENDENT": {
+                        repair:
+                            "../public/data-checklist/grafik/pekerja_repair_grafik.html",
+
+                        mesin:
+                            "../public/data-checklist/grafik/pekerja_mesin_grafik.html"
+                    }
+                }
+            }
+
+        ]
+    },
+
+
+    // ==================================================
+    // 5. OTHERS
+    // ==================================================
+
+    {
+        title: "Others",
+
+        items: [
+
+            {
+                title: "Kartu<br>Riwayat",
+
+                urls: {
+                    "OPERATOR | PELAKSANA":
+                        "../public/data-checklist/kartu-riwayat/kartu_riwayat_pic.html",
+
+                    "SUPERVISOR | KOORDINATOR":
+                        "../public/data-checklist/kartu-riwayat/kartu_riwayat_supervisor.html",
+
+                    "SUPERINTENDENT":
+                        "../public/data-checklist/kartu-riwayat/kartu_riwayat_superintendent.html"
+                }
+            },
+
+            {
+                title: "Jadwal Perawatan<br>dan Overhaul",
+
+                urls: {
+                    "SUPERVISOR | KOORDINATOR":
+                        "../public/data-checklist/jpdo/jpdo_supervisor.html",
+
+                    "SUPERINTENDENT":
+                        "../public/data-checklist/jpdo/jpdo_superintendent.html",
+
+                    "JUNIOR MANAGER PRODUKSI":
+                        "../public/data-checklist/jpdo/jpdo_produksi.html",
+
+                    "JUNIOR MANAGER PPC":
+                        "../public/data-checklist/jpdo/jpdo_ppc.html",
+
+                    "MANAGER":
+                        "../public/data-checklist/jpdo/jpdo_manager.html"
+                }
+            },
+
+            {
+                title: "Pelaksanaan<br>Pekerjaan Workshop",
+
+                urls: {
+                    "OPERATOR | PELAKSANA":
+                        "../public/data-checklist/ppw/ppw_operator.html",
+
+                    "SUPERVISOR | KOORDINATOR":
+                        "../public/data-checklist/ppw/ppw_spv.html",
+
+                    "SUPERINTENDENT":
+                        "../public/data-checklist/ppw/ppw_superintendent.html"
+                }
+            }
+
+        ]
     }
 
 ];
@@ -358,7 +352,8 @@ function hasActionAccess(menu, role) {
         return false;
     }
 
-    return Object.values(actionUrls).some(url => Boolean(url));
+    return Object.values(actionUrls)
+        .some(url => Boolean(url));
 }
 
 
@@ -368,69 +363,132 @@ function hasActionAccess(menu, role) {
 
 function renderMenu(role) {
 
-    const content = document.getElementById("pageContent");
+    const content =
+        document.getElementById("pageContent");
 
     if (!content) {
         return;
     }
 
-    content.innerHTML = `
+    let animationIndex = 0;
 
-        <div class="menu-grid">
+    const sections = MENU_GROUPS.map(group => {
 
-            ${MENU_CONFIG.map((menu, index) => {
+        const visibleItems = group.items.filter(menu => {
 
-                // ======================================
-                // MENU DENGAN ACTION / MODAL
-                // ======================================
+            // ------------------------------------------
+            // ACTION MENU
+            // ------------------------------------------
 
-                if (menu.action) {
+            if (menu.action) {
+                return hasActionAccess(menu, role);
+            }
 
-                    // Cek apakah role punya akses
-                    if (!hasActionAccess(menu, role)) {
-                        return "";
-                    }
+            // ------------------------------------------
+            // NORMAL URL MENU
+            // ------------------------------------------
 
-                    return `
-                        <button
-                            type="button"
-                            class="menu-card"
-                            data-action="${menu.action}"
-                            style="animation-delay: ${index * 50}ms"
-                        >
-                            <div class="menu-pill">
-                                <h2>${menu.title}</h2>
-                            </div>
-                        </button>
-                    `;
-                }
+            return Boolean(menu.urls?.[role]);
+
+        });
 
 
-                // ======================================
-                // MENU DENGAN URL BERDASARKAN ROLE
-                // ======================================
+        // No accessible items in this group
+        if (visibleItems.length === 0) {
+            return "";
+        }
 
-                const url = menu.urls?.[role];
 
-                // Role tidak punya akses
-                // → jangan render card sama sekali
-                if (!url) {
-                    return "";
-                }
+        const cards = visibleItems.map(menu => {
+
+            const currentIndex =
+                animationIndex++;
+
+            // ==========================================
+            // ACTION / MODAL CARD
+            // ==========================================
+
+            if (menu.action) {
 
                 return `
-                    <a
-                        href="${url}"
+                    <button
+                        type="button"
                         class="menu-card"
-                        style="animation-delay: ${index * 50}ms"
+                        data-action="${menu.action}"
+                        style="animation-delay: ${currentIndex * 50}ms"
                     >
-                        <div class="menu-pill">
+                        <div class="menu-card-inner">
+
+                            <div class="menu-card-content">
+                                <h2>${menu.title}</h2>
+                            </div>
+
+                            <span class="menu-card-arrow">
+                                →
+                            </span>
+
+                        </div>
+                    </button>
+                `;
+            }
+
+
+            // ==========================================
+            // NORMAL LINK CARD
+            // ==========================================
+
+            const url =
+                menu.urls?.[role];
+
+            if (!url) {
+                return "";
+            }
+
+            return `
+                <a
+                    href="${url}"
+                    class="menu-card"
+                    style="animation-delay: ${currentIndex * 50}ms"
+                >
+                    <div class="menu-card-inner">
+
+                        <div class="menu-card-content">
                             <h2>${menu.title}</h2>
                         </div>
-                    </a>
-                `;
 
-            }).join("")}
+                        <span class="menu-card-arrow">
+                            →
+                        </span>
+
+                    </div>
+                </a>
+            `;
+
+        }).join("");
+
+
+        return `
+            <section class="menu-section">
+
+                <div class="menu-section-header">
+                    <h2>${group.title}</h2>
+                </div>
+
+                <div class="menu-grid">
+                    ${cards}
+                </div>
+
+            </section>
+        `;
+
+    }).join("");
+
+
+    content.innerHTML = `
+
+        <div class="menu-sections">
+
+            ${sections}
 
         </div>
 
@@ -445,10 +503,8 @@ function renderMenu(role) {
     `;
 
 
-    // Initialize menu
     initializeMenuCards();
 
-    // Initialize actions dengan role
     initializeMenuActions(role);
 }
 
@@ -852,6 +908,8 @@ function openGrafikPekerjaModal(role) {
 async function initMenuUtama() {
 
     try {
+
+        document.body.classList.add("page-menu-utama");
 
         const {
             data: { session }
