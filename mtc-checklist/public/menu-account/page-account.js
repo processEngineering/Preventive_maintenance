@@ -628,5 +628,21 @@ async function initAccountPage() {
 }
 
 
-initAccountPage();
+document.addEventListener(
+    'DOMContentLoaded',
+    async () => {
+
+        const params =
+            new URLSearchParams(
+                window.location.search
+            );
+
+        if (params.get('page') !== 'account') {
+            return;
+        }
+
+        await initAccountPage();
+
+    }
+);
 

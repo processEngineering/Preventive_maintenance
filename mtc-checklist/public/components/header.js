@@ -3,6 +3,7 @@ const PAGE_TITLES = {
     "menu-utama": "MENU UTAMA",
     "download": "UNDUH DATA",
     "account": "INFORMASI AKUN",
+    "panduan": "SOP APLIKASI",
 
     "chslr": "CHSLR",
     "clhmi": "CLHMI",

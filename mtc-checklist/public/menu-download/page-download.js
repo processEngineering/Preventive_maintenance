@@ -158,17 +158,6 @@ function renderDownloadPage() {
         </div>
     `;
 
-    const headerTitle =
-        document.querySelector(".header-title-pill");
-
-    if (headerTitle) {
-        headerTitle.textContent = "DOWNLOAD DATA";
-    } else {
-        console.warn(
-            "header-title-pill tidak ditemukan."
-        );
-    }
-
     initializeDownloadCards();
     initializeDownloadActions();
 }
