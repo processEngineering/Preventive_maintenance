@@ -26,7 +26,11 @@ function getHeaderTitle(page = getCurrentPage()) {
 
 export function renderHeader() {
 
-    const title = getHeaderTitle();
+    const currentPage = getCurrentPage();
+    const title = getHeaderTitle(currentPage);
+
+    const isActive = page =>
+        currentPage === page;
 
     return `
         <!-- SIDEBAR -->
@@ -52,7 +56,8 @@ export function renderHeader() {
 
             <a
                 href="base-app.html?page=home"
-                class="nav-item"
+                class="nav-item${isActive("home") ? " active" : ""}"
+                ${isActive("home") ? 'aria-current="page"' : ""}
             >
                 <div class="nav-icon-box">
                     <i class="fa-solid fa-house"></i>
@@ -62,7 +67,8 @@ export function renderHeader() {
 
             <a
                 href="base-app.html?page=menu-utama"
-                class="nav-item"
+                class="nav-item${isActive("menu-utama") ? " active" : ""}"
+                ${isActive("menu-utama") ? 'aria-current="page"' : ""}
             >
                 <div class="nav-icon-box">
                     <i class="fa-solid fa-table-cells-large"></i>
@@ -72,7 +78,8 @@ export function renderHeader() {
 
             <a
                 href="base-app.html?page=download"
-                class="nav-item"
+                class="nav-item${isActive("download") ? " active" : ""}"
+                ${isActive("download") ? 'aria-current="page"' : ""}
             >
                 <div class="nav-icon-box">
                     <i class="fa-solid fa-cloud-arrow-down"></i>
@@ -82,7 +89,8 @@ export function renderHeader() {
 
             <a
                 href="base-app.html?page=account"
-                class="nav-item"
+                class="nav-item${isActive("account") ? " active" : ""}"
+                ${isActive("account") ? 'aria-current="page"' : ""}
             >
                 <div class="nav-icon-box">
                     <i class="fa-solid fa-user"></i>
