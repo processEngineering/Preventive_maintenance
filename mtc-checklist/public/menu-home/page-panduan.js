@@ -12,6 +12,15 @@ function renderPanduan() {
     content.innerHTML = `
         <div class="panduan-content">
 
+            <a
+                href="base-app.html?page=home"
+                class="panduan-back-button"
+                aria-label="Kembali ke halaman utama"
+            >
+                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                Kembali ke Beranda
+            </a>
+
             <!-- INTRO -->
             <div class="sop-intro">
                 <h2>
