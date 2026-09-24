@@ -54,6 +54,7 @@ export function renderSignIn() {
                     <button
                         id="btnLogin"
                         class="btn-text-only"
+                        type="button"
                     >
                         MASUK
                     </button>
@@ -102,9 +103,14 @@ export async function initSignIn() {
     passwordInput.addEventListener("keypress", (event) => {
 
         if (event.key === "Enter") {
+            event.preventDefault();
             prosesLogin();
         }
 
+    });
+
+    btn.addEventListener("click", () => {
+        prosesLogin();
     });
 
     await cekSesi();
