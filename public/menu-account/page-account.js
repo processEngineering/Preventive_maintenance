@@ -2,7 +2,7 @@
 // PAGE ACCOUNT
 // ======================================================
 
-import { supabaseClient } from '../../src/supabase/supabase-client.js';
+import { supabaseClient } from '../src/supabase/supabase-client.js';
 
 
 // ======================================================
@@ -74,7 +74,7 @@ function renderAccountPage() {
 
                     <!-- CATATAN -->
                     <a
-                        href="../public/menu-account/catatan.html"
+                        href="../menu-account/catatan.html"
                         class="action-btn"
                     >
                         <div class="action-icon">

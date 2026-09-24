@@ -1,4 +1,4 @@
-import { supabaseClient as client } from "../../src/supabase/supabase-client.js";
+import { supabaseClient as client } from "../src/supabase/supabase-client.js";
 import { getCurrentRole } from "../data-role/role-home.js";
 
 // ======================================================
@@ -21,13 +21,13 @@ const MENU_GROUPS = [
 
                 urls: {
                     "OPERATOR | PELAKSANA":
-                        "../public/data-checklist/clhmi/clhmi_pelaksana.html",
+                        "../data-checklist/clhmi/clhmi_pelaksana.html",
 
                     "SUPERVISOR | KOORDINATOR":
-                        "../public/data-checklist/clhmi/clhmi_koordinator.html",
+                        "../data-checklist/clhmi/clhmi_koordinator.html",
 
                     "SUPERINTENDENT":
-                        "../public/data-checklist/clhmi/clhmi_superintendent.html"
+                        "../data-checklist/clhmi/clhmi_superintendent.html"
                 }
             },
 
@@ -36,13 +36,13 @@ const MENU_GROUPS = [
 
                 urls: {
                     "OPERATOR | PELAKSANA":
-                        "../public/data-checklist/chslr/chslr_pelaksana.html",
+                        "../data-checklist/chslr/chslr_pelaksana.html",
 
                     "SUPERVISOR | KOORDINATOR":
-                        "../public/data-checklist/chslr/chslr_koordinator.html",
+                        "../data-checklist/chslr/chslr_koordinator.html",
 
                     "SUPERINTENDENT":
-                        "../public/data-checklist/chslr/chslr_superintendent.html"
+                        "../data-checklist/chslr/chslr_superintendent.html"
                 }
             },
 
@@ -51,13 +51,13 @@ const MENU_GROUPS = [
 
                 urls: {
                     "OPERATOR | PELAKSANA":
-                        "../public/data-checklist/cplm/cplm_operator.html",
+                        "../data-checklist/cplm/cplm_operator.html",
 
                     "SUPERVISOR | KOORDINATOR":
-                        "../public/data-checklist/cplm/cplm_spv.html",
+                        "../data-checklist/cplm/cplm_spv.html",
 
                     "SUPERINTENDENT":
-                        "../public/data-checklist/cplm/cplm_superintendent.html"
+                        "../data-checklist/cplm/cplm_superintendent.html"
                 }
             }
 
@@ -79,13 +79,13 @@ const MENU_GROUPS = [
 
                 urls: {
                     "OPERATOR | PELAKSANA":
-                        "../public/data-checklist/pmi/pmi_pelaksana.html",
+                        "../data-checklist/pmi/pmi_pelaksana.html",
 
                     "SUPERVISOR | KOORDINATOR":
-                        "../public/data-checklist/pmi/pmi_koordinator.html",
+                        "../data-checklist/pmi/pmi_koordinator.html",
 
                     "SUPERINTENDENT":
-                        "../public/data-checklist/pmi/pmi_superintendent.html"
+                        "../data-checklist/pmi/pmi_superintendent.html"
                 }
             },
 
@@ -94,13 +94,13 @@ const MENU_GROUPS = [
 
                 urls: {
                     "OPERATOR | PELAKSANA":
-                        "../public/data-checklist/prslb/prslb_pelaksana.html",
+                        "../data-checklist/prslb/prslb_pelaksana.html",
 
                     "SUPERVISOR | KOORDINATOR":
-                        "../public/data-checklist/prslb/prslb_koordinator.html",
+                        "../data-checklist/prslb/prslb_koordinator.html",
 
                     "SUPERINTENDENT":
-                        "../public/data-checklist/prslb/prslb_superintendent.html"
+                        "../data-checklist/prslb/prslb_superintendent.html"
                 }
             },
 
@@ -109,13 +109,13 @@ const MENU_GROUPS = [
 
                 urls: {
                     "OPERATOR | PELAKSANA":
-                        "../public/data-checklist/pmw/pmw_operator.html",
+                        "../data-checklist/pmw/pmw_operator.html",
 
                     "SUPERVISOR | KOORDINATOR":
-                        "../public/data-checklist/pmw/pmw_supervisor.html",
+                        "../data-checklist/pmw/pmw_supervisor.html",
 
                     "SUPERINTENDENT":
-                        "../public/data-checklist/pmw/pmw_superintendent.html"
+                        "../data-checklist/pmw/pmw_superintendent.html"
                 }
             }
 
@@ -141,18 +141,18 @@ const MENU_GROUPS = [
 
                     "OPERATOR | PELAKSANA": {
                         mesin:
-                            "../public/data-checklist/lkmr/lkmr_operator.html",
+                            "../data-checklist/lkmr/lkmr_operator.html",
 
                         repair:
-                            "../public/data-checklist/lkmr/lkmr_operator_repair.html"
+                            "../data-checklist/lkmr/lkmr_operator_repair.html"
                     },
 
                     "SUPERINTENDENT": {
                         mesin:
-                            "../public/data-checklist/lkmr/lkmr_superintendent.html",
+                            "../data-checklist/lkmr/lkmr_superintendent.html",
 
                         repair:
-                            "../public/data-checklist/lkmr/lkmr_superintendent_repair.html"
+                            "../data-checklist/lkmr/lkmr_superintendent_repair.html"
                     }
                 }
             },
@@ -162,13 +162,13 @@ const MENU_GROUPS = [
 
                 urls: {
                     "OPERATOR | PELAKSANA":
-                        "../public/data-checklist/pohm/pohm_operator.html",
+                        "../data-checklist/pohm/pohm_operator.html",
 
                     "SUPERINTENDENT":
-                        "../public/data-checklist/pohm/pohm_superintendent.html",
+                        "../data-checklist/pohm/pohm_superintendent.html",
 
                     "MANAGER":
-                        "../public/data-checklist/pohm/pohm_manager.html"
+                        "../data-checklist/pohm/pohm_manager.html"
                 }
             }
 
@@ -194,53 +194,53 @@ const MENU_GROUPS = [
 
                     "OPERATOR | PELAKSANA": {
                         clhmi:
-                            "../public/data-checklist/grafik/grafik_clhmi.html",
+                            "../data-checklist/grafik/grafik_clhmi.html",
 
                         chslr:
-                            "../public/data-checklist/grafik/grafik_chslr.html",
+                            "../data-checklist/grafik/grafik_chslr.html",
 
                         cplm:
-                            "../public/data-checklist/grafik/grafik_cplm.html",
+                            "../data-checklist/grafik/grafik_cplm.html",
 
                         pmi:
-                            "../public/data-checklist/grafik/grafik_pmi.html",
+                            "../data-checklist/grafik/grafik_pmi.html",
 
                         prslb:
-                            "../public/data-checklist/grafik/grafik_prslb.html"
+                            "../data-checklist/grafik/grafik_prslb.html"
                     },
 
                     "SUPERVISOR | KOORDINATOR": {
                         clhmi:
-                            "../public/data-checklist/grafik/grafik_clhmi.html",
+                            "../data-checklist/grafik/grafik_clhmi.html",
 
                         chslr:
-                            "../public/data-checklist/grafik/grafik_chslr.html",
+                            "../data-checklist/grafik/grafik_chslr.html",
 
                         cplm:
-                            "../public/data-checklist/grafik/grafik_cplm.html",
+                            "../data-checklist/grafik/grafik_cplm.html",
 
                         pmi:
-                            "../public/data-checklist/grafik/grafik_pmi.html",
+                            "../data-checklist/grafik/grafik_pmi.html",
 
                         prslb:
-                            "../public/data-checklist/grafik/grafik_prslb.html"
+                            "../data-checklist/grafik/grafik_prslb.html"
                     },
 
                     "SUPERINTENDENT": {
                         clhmi:
-                            "../public/data-checklist/grafik/grafik_clhmi.html",
+                            "../data-checklist/grafik/grafik_clhmi.html",
 
                         chslr:
-                            "../public/data-checklist/grafik/grafik_chslr.html",
+                            "../data-checklist/grafik/grafik_chslr.html",
 
                         cplm:
-                            "../public/data-checklist/grafik/grafik_cplm.html",
+                            "../data-checklist/grafik/grafik_cplm.html",
 
                         pmi:
-                            "../public/data-checklist/grafik/grafik_pmi.html",
+                            "../data-checklist/grafik/grafik_pmi.html",
 
                         prslb:
-                            "../public/data-checklist/grafik/grafik_prslb.html"
+                            "../data-checklist/grafik/grafik_prslb.html"
                     }
                 }
             },
@@ -254,18 +254,18 @@ const MENU_GROUPS = [
 
                     "OPERATOR | PELAKSANA": {
                         repair:
-                            "../public/data-checklist/grafik/pekerja_repair_grafik.html",
+                            "../data-checklist/grafik/pekerja_repair_grafik.html",
 
                         mesin:
-                            "../public/data-checklist/grafik/pekerja_mesin_grafik.html"
+                            "../data-checklist/grafik/pekerja_mesin_grafik.html"
                     },
 
                     "SUPERINTENDENT": {
                         repair:
-                            "../public/data-checklist/grafik/pekerja_repair_grafik.html",
+                            "../data-checklist/grafik/pekerja_repair_grafik.html",
 
                         mesin:
-                            "../public/data-checklist/grafik/pekerja_mesin_grafik.html"
+                            "../data-checklist/grafik/pekerja_mesin_grafik.html"
                     }
                 }
             }
@@ -288,13 +288,13 @@ const MENU_GROUPS = [
 
                 urls: {
                     "OPERATOR | PELAKSANA":
-                        "../public/data-checklist/kartu-riwayat/kartu_riwayat_pic.html",
+                        "../data-checklist/kartu-riwayat/kartu_riwayat_pic.html",
 
                     "SUPERVISOR | KOORDINATOR":
-                        "../public/data-checklist/kartu-riwayat/kartu_riwayat_supervisor.html",
+                        "../data-checklist/kartu-riwayat/kartu_riwayat_supervisor.html",
 
                     "SUPERINTENDENT":
-                        "../public/data-checklist/kartu-riwayat/kartu_riwayat_superintendent.html"
+                        "../data-checklist/kartu-riwayat/kartu_riwayat_superintendent.html"
                 }
             },
 
@@ -303,19 +303,19 @@ const MENU_GROUPS = [
 
                 urls: {
                     "SUPERVISOR | KOORDINATOR":
-                        "../public/data-checklist/jpdo/jpdo_supervisor.html",
+                        "../data-checklist/jpdo/jpdo_supervisor.html",
 
                     "SUPERINTENDENT":
-                        "../public/data-checklist/jpdo/jpdo_superintendent.html",
+                        "../data-checklist/jpdo/jpdo_superintendent.html",
 
                     "JUNIOR MANAGER PRODUKSI":
-                        "../public/data-checklist/jpdo/jpdo_produksi.html",
+                        "../data-checklist/jpdo/jpdo_produksi.html",
 
                     "JUNIOR MANAGER PPC":
-                        "../public/data-checklist/jpdo/jpdo_ppc.html",
+                        "../data-checklist/jpdo/jpdo_ppc.html",
 
                     "MANAGER":
-                        "../public/data-checklist/jpdo/jpdo_manager.html"
+                        "../data-checklist/jpdo/jpdo_manager.html"
                 }
             },
 
@@ -324,13 +324,13 @@ const MENU_GROUPS = [
 
                 urls: {
                     "OPERATOR | PELAKSANA":
-                        "../public/data-checklist/ppw/ppw_operator.html",
+                        "../data-checklist/ppw/ppw_operator.html",
 
                     "SUPERVISOR | KOORDINATOR":
-                        "../public/data-checklist/ppw/ppw_spv.html",
+                        "../data-checklist/ppw/ppw_spv.html",
 
                     "SUPERINTENDENT":
-                        "../public/data-checklist/ppw/ppw_superintendent.html"
+                        "../data-checklist/ppw/ppw_superintendent.html"
                 }
             }
 

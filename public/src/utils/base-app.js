@@ -1,5 +1,5 @@
-import { renderHeader } from "../../public/components/header.js";
-import { renderFooter, setConnectionStatus} from "../../public/components/footer.js";
+import { renderHeader } from "../../components/header.js";
+import { renderFooter, setConnectionStatus} from "../../components/footer.js";
 
 const app = document.getElementById("mainHeader");
 app.innerHTML = renderHeader("MENU UTAMA");

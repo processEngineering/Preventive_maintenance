@@ -1,4 +1,4 @@
-import { supabaseClient } from '../../src/supabase/supabase-client.js';
+import { supabaseClient } from '../src/supabase/supabase-client.js';
 import { ROLE_CONFIG, getCurrentRole } from '../data-role/role-home.js';
 
 // --- render home page
@@ -29,7 +29,7 @@ function renderHome(config) {
 
             <div class="illustration-side">
                 <div class="illustration-bg"></div>
-                <img src="../public/assets/images/logo-akg.png" alt="PT AKG Maintenance">
+                <img src="../assets/images/logo-akg.png" alt="PT AKG Maintenance">
             </div>
 
             <div class="text-side">

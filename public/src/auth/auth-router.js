@@ -48,7 +48,7 @@ async function router() {
                 renderSignIn,
                 initSignIn
             } = await import(
-                "../../public/auth/sign-in.js"
+                "../../auth/sign-in.js"
             );
 
             renderSignIn();
@@ -65,7 +65,7 @@ async function router() {
         case "register": {
 
             await import(
-                "../../public/auth/sign-up.js"
+                "../../auth/sign-up.js"
             );
 
             break;
@@ -78,7 +78,7 @@ async function router() {
 
         case "forgot": {
             await import(
-                "../../public/auth/password-forget.js"
+                "../../auth/password-forget.js"
             );
 
             break;
@@ -95,7 +95,7 @@ async function router() {
                 renderUpdatePassword,
                 initUpdatePassword
             } = await import(
-                "../../public/auth/password-update.js"
+                "../../auth/password-update.js"
             );
 
             renderUpdatePassword();
@@ -115,7 +115,7 @@ async function router() {
                 renderSuccess,
                 initSuccess
             } = await import(
-                "../../public/auth/success.js"
+                "../../auth/success.js"
             );
 
             renderSuccess();

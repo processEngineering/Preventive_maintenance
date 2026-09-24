@@ -1,5 +1,5 @@
-import { supabaseClient } from '../../src/supabase/supabase-client.js';
-import { render } from '../../src/auth/auth-router.js';
+import { supabaseClient } from '../src/supabase/supabase-client.js';
+import { render } from '../src/auth/auth-router.js';
 
 // --- render password forget form
 render(`

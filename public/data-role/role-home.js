@@ -1,4 +1,4 @@
-import { supabaseClient } from "../../src/supabase/supabase-client.js";
+import { supabaseClient } from "../src/supabase/supabase-client.js";
 
 // --- role configuration
 export const ROLE_CONFIG = {

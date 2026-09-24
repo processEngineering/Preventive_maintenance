@@ -1,4 +1,4 @@
-import { render } from '../../src/auth/auth-router.js';
+import { render } from '../src/auth/auth-router.js';
 
 render(`
     <div class="success-card">
@@ -20,7 +20,7 @@ render(`
         </p>
 
         <a
-            href="../public/auth/sign-in.js"
+            href="../auth/sign-in.js"
             class="btn-3d"
         >
             MASUK KE APLIKASI

@@ -1,4 +1,4 @@
-import { supabaseClient as client } from "../../src/supabase/supabase-client.js";
+import { supabaseClient as client } from "../src/supabase/supabase-client.js";
 
 // ======================================================
 // DOWNLOAD MENU CONFIGURATION
@@ -7,17 +7,17 @@ import { supabaseClient as client } from "../../src/supabase/supabase-client.js"
 const DOWNLOAD_CONFIG = [
     {
         title: "Data Checklist Harian<br>Mesin Injection",
-        url: "../public/data-checklist/clhmi/clhmi_result.html",
+        url: "../data-checklist/clhmi/clhmi_result.html",
         group: "Checklist"
     },
     {
         title: "Data Checklist Harian<br>Stand Label & Robot",
-        url: "../public/data-checklist/chslr/chslr_result.html",
+        url: "../data-checklist/chslr/chslr_result.html",
         group: "Checklist"
     },
     {
         title: "Data Pelaksanaan<br>Pekerjaan Workshop",
-        url: "../public/data-checklist/ppw/ppw_result.html",
+        url: "../data-checklist/ppw/ppw_result.html",
         group: "Others"
     },
     {
@@ -27,42 +27,42 @@ const DOWNLOAD_CONFIG = [
     },
     {
         title: "Data Preventif Mesin<br>Injection (Clamping)",
-        url: "../public/data-checklist/pmi/pmi_result.html",
+        url: "../data-checklist/pmi/pmi_result.html",
         group: "Preventive"
     },
     {
         title: "Data Preventif Robot<br>& Stand Label",
-        url: "../public/data-checklist/prslb/prslb_result.html",
+        url: "../data-checklist/prslb/prslb_result.html",
         group: "Preventive"
     },
     {
         title: "Data Laporan Perawatan<br>& Overhaul Tools",
-        url: "../public/data-checklist/pohm/pohm_result.html",
+        url: "../data-checklist/pohm/pohm_result.html",
         group: "Laporan Kerja"
     },
     {
         title: "Data Checklist<br>Perawatan Mold",
-        url: "../public/data-checklist/cplm/cplm_result.html",
+        url: "../data-checklist/cplm/cplm_result.html",
         group: "Checklist"
     },
     {
         title: "Data Jadwal Perawatan<br>dan Overhaul",
-        url: "../public/data-checklist/jpdo/jpdo_result.html",
+        url: "../data-checklist/jpdo/jpdo_result.html",
         group: "Others"
     },
     {
         title: "Data Kartu<br>Riwayat",
-        url: "../public/data-checklist/kartu_riwayat/kartu_riwayat_result.html",
+        url: "../data-checklist/kartu_riwayat/kartu_riwayat_result.html",
         group: "Others"
     },
     {
         title: "Data Preventive Mesin<br>Workshop",
-        url: "../public/data-checklist/pmw/pmw_result.html",
+        url: "../data-checklist/pmw/pmw_result.html",
         group: "Preventive"
     },
     {
         title: "Arsip<br>Data Laporan",
-        url: "../public/data-checklist/arsip_data/arsip_data.html",
+        url: "../data-checklist/arsip_data/arsip_data.html",
         group: "Others"
     }
 ];

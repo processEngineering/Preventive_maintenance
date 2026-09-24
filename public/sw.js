@@ -2,15 +2,15 @@ const CACHE_NAME = 'akg-maintenance-v1';
 const APP_SHELL = [
   './',
   './index.html',
-  './auth.html',
-  './base-app.html',
+  './view/auth.html',
+  './view/base-app.html',
   './manifest.json',
-  './public/assets/css/auth.css',
-  './public/assets/css/menu-home.css',
-  './public/assets/css/menu-utama.css',
-  './public/assets/css/menu-download.css',
-  './public/assets/css/menu-account.css',
-  './public/assets/images/akg-icon.png'
+  './assets/css/auth.css',
+  './assets/css/menu-home.css',
+  './assets/css/menu-utama.css',
+  './assets/css/menu-download.css',
+  './assets/css/menu-account.css',
+  './assets/images/akg-icon.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -51,7 +51,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           return response;
         })
-        .catch(() => caches.match('./auth.html') || caches.match('./index.html') || caches.match('./base-app.html'))
+        .catch(() => caches.match('./view/auth.html') || caches.match('./index.html') || caches.match('./view/base-app.html'))
     );
     return;
   }
@@ -73,7 +73,7 @@ self.addEventListener('fetch', (event) => {
             caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
             return response;
           })
-          .catch(() => caches.match('./public/assets/images/akg-icon.png'));
+          .catch(() => caches.match('./assets/images/akg-icon.png'));
       })
   );
 });

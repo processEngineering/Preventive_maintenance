@@ -1,5 +1,5 @@
-import { supabaseClient as client } from "../../src/supabase/supabase-client.js";
-import { render } from "../../src/utils/renderer.js";
+import { supabaseClient as client } from "../src/supabase/supabase-client.js";
+import { render } from "../src/utils/renderer.js";
 
 
 // --- render sign-in form
