@@ -33,31 +33,34 @@ export function renderSignIn() {
                     <div id="status-box"></div>
 
 
-                    <input
-                        type="email"
-                        id="email"
-                        class="pill-input"
-                        placeholder="Email Anda"
-                        required
-                    >
+                    <form id="loginForm">
+                        <input
+                            type="email"
+                            id="email"
+                            class="pill-input"
+                            placeholder="Email Anda"
+                            required
+                        >
 
 
-                    <input
-                        type="password"
-                        id="password"
-                        class="pill-input"
-                        placeholder="Kata Sandi"
-                        required
-                    >
+                        <input
+                            type="password"
+                            id="password"
+                            class="pill-input"
+                            placeholder="Kata Sandi"
+                            required
+                        >
 
 
                     <button
                         id="btnLogin"
                         class="btn-text-only"
-                        type="button"
+                        type="submit"
                     >
                         MASUK
                     </button>
+
+                    </form>
 
 
                     <div class="footer-links">
@@ -88,28 +91,20 @@ export async function initSignIn() {
     console.log("Sign-in initialized");
 
     const btn = document.getElementById("btnLogin");
+    const loginForm = document.getElementById("loginForm");
     const emailInput = document.getElementById("email");
     const passwordInput = document.getElementById("password");
     const statusBox = document.getElementById("status-box");
 
     // Pastikan element tersedia
-    if (!btn || !emailInput || !passwordInput || !statusBox) {
+    if (!btn || !loginForm || !emailInput || !passwordInput || !statusBox) {
         console.error("Element sign-in tidak ditemukan.");
         return;
     }
 
 
-    // --- login button click event
-    passwordInput.addEventListener("keypress", (event) => {
-
-        if (event.key === "Enter") {
-            event.preventDefault();
-            prosesLogin();
-        }
-
-    });
-
-    btn.addEventListener("click", () => {
+    loginForm.addEventListener("submit", (event) => {
+        event.preventDefault();
         prosesLogin();
     });
 
