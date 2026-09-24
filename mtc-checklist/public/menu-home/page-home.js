@@ -43,10 +43,39 @@ function renderHome(config) {
                         <i class="fa-solid fa-book-open"></i>
                         Panduan
                     </a>
+
+                    <button id="installAppButton" class="btn btn-install" type="button" hidden>
+                        <i class="fa-solid fa-download"></i>
+                        Install App
+                    </button>
                 </div>
             </div>
         </div>
     `;
+
+    const installButton = document.getElementById('installAppButton');
+    if (!installButton) return;
+
+    let deferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', (event) => {
+        event.preventDefault();
+        deferredPrompt = event;
+        installButton.hidden = false;
+    });
+
+    installButton.addEventListener('click', async () => {
+        if (!deferredPrompt) {
+            alert('Instalasi tidak tersedia di browser ini. Coba gunakan menu install browser Anda.');
+            return;
+        }
+
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log('Install prompt outcome:', outcome);
+        deferredPrompt = null;
+        installButton.hidden = true;
+    });
 }
 
 
