@@ -1,6 +1,22 @@
 import { supabaseClient } from '../src/supabase/supabase-client.js';
 import { ROLE_CONFIG, getCurrentRole } from '../data-role/role-home.js';
 
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    deferredPrompt = event;
+
+    const installButton = document.getElementById('installAppButton');
+    if (installButton) {
+        installButton.hidden = false;
+    }
+});
+
+window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+});
+
 // --- render home page
 function renderHome(config) {
     const header = document.getElementById('mainHeader');
@@ -57,17 +73,15 @@ function renderHome(config) {
     const installButton = document.getElementById('installAppButton');
     if (!installButton) return;
 
-    let deferredPrompt = null;
-
-    window.addEventListener('beforeinstallprompt', (event) => {
-        event.preventDefault();
-        deferredPrompt = event;
-        installButton.hidden = false;
-    });
+    installButton.hidden = !deferredPrompt;
 
     installButton.addEventListener('click', async () => {
         if (!deferredPrompt) {
-            alert('Instalasi tidak tersedia di browser ini. Coba gunakan menu install browser Anda.');
+            const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+            const message = isIOS
+                ? 'Di iPhone/iPad, buka menu Bagikan lalu pilih "Add to Home Screen".'
+                : 'Instalasi otomatis tidak tersedia di browser ini. Buka menu browser lalu pilih "Install app" atau "Add to Home screen".';
+            alert(message);
             return;
         }
 
