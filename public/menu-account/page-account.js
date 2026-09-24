@@ -397,7 +397,7 @@ async function loadData() {
         if (!session) {
 
             window.location.href =
-                'index.html';
+                '../view/auth.html?mode=login';
 
             return;
         }
@@ -517,7 +517,7 @@ async function handleLogout() {
 
 
         window.location.href =
-            'index.html';
+            '../view/auth.html?mode=login';
 
 
     } catch (error) {
