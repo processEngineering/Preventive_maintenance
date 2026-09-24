@@ -53,6 +53,7 @@ function renderHome(config) {
         </div>
     `;
 
+    // --- install app button
     const installButton = document.getElementById('installAppButton');
     if (!installButton) return;
 
