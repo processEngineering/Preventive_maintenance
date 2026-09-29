@@ -162,7 +162,7 @@ const MENU_GROUPS = [
 
                 urls: {
                     "OPERATOR | PELAKSANA":
-                        "../data-checklist/pohm/pohm_operator.html",
+                        "../data-checklist/pohm/pohm_engineer.html",
 
                     "SUPERINTENDENT":
                         "../data-checklist/pohm/pohm_superintendent.html",
@@ -589,9 +589,9 @@ function openLkmrModal(role) {
 
 
     // Cari menu berdasarkan action
-    const menu = MENU_CONFIG.find(
-        menu => menu.action === "lkmr"
-    );
+    const menu = MENU_GROUPS
+        .flatMap(group => group.items)
+        .find(menu => menu.action === "lkmr");
 
 
     // Ambil URL berdasarkan role
@@ -684,9 +684,9 @@ function openGrafikModal(role) {
 
 
     // Cari menu berdasarkan action
-    const menu = MENU_CONFIG.find(
-        menu => menu.action === "grafik"
-    );
+    const menu = MENU_GROUPS
+        .flatMap(group => group.items)
+        .find(menu => menu.action === "grafik");
 
 
     // Ambil URL berdasarkan role
@@ -821,9 +821,9 @@ function openGrafikPekerjaModal(role) {
 
 
     // Cari menu berdasarkan action
-    const menu = MENU_CONFIG.find(
-        menu => menu.action === "grafik-pekerja"
-    );
+    const menu = MENU_GROUPS
+        .flatMap(group => group.items)
+        .find(menu => menu.action === "grafik-pekerja");
 
 
     // Ambil URL berdasarkan role

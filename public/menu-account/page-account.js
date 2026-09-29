@@ -269,35 +269,35 @@ function setupSmartNavigation(profile) {
     const jabatan =
         (profile?.jabatan || '').toUpperCase();
 
-    let homeLink = 'index.html';
-    let menuLink = 'menu_utama.html';
+    let homeLink = 'base-app.html?page=home';
+    let menuLink = 'base-app.html?page=menu-utama';
 
 
     if (jabatan.includes('OPERATOR')) {
 
         homeLink =
-            'OPERATOR_HOME.html';
+            'base-app.html?page=home';
 
         menuLink =
-            'MENU_UTAMA_OPERATOR.html';
+            'base-app.html?page=menu-utama';
 
 
     } else if (jabatan.includes('SUPERVISOR')) {
 
         homeLink =
-            'SUPERVISOR_HOME.html';
+            'base-app.html?page=home';
 
         menuLink =
-            'MENU_UTAMA_SUPERVISOR.html';
+            'base-app.html?page=menu-utama';
 
 
     } else if (jabatan.includes('SUPERINTENDENT')) {
 
         homeLink =
-            'SUPERINTENDENT_HOME.html';
+            'base-app.html?page=home';
 
         menuLink =
-            'MENU_UTAMA_SUPERINTENDENT.html';
+            'base-app.html?page=menu-utama';
 
 
     } else if (
@@ -306,10 +306,10 @@ function setupSmartNavigation(profile) {
     ) {
 
         homeLink =
-            'JUNIOR_MANAGER_PRODUKSI_HOME.html';
+            'base-app.html?page=home';
 
         menuLink =
-            'MENU_UTAMA_JM_PRODUKSI.html';
+            'base-app.html?page=menu-utama';
 
 
     } else if (
@@ -318,10 +318,10 @@ function setupSmartNavigation(profile) {
     ) {
 
         homeLink =
-            'JUNIOR_MANAGER_PPIC_HOME.html';
+            'base-app.html?page=home';
 
         menuLink =
-            'MENU_UTAMA_JM_PPIC.html';
+            'base-app.html?page=menu-utama';
 
 
     } else if (
@@ -330,10 +330,10 @@ function setupSmartNavigation(profile) {
     ) {
 
         homeLink =
-            'MANAGER_HOME.html';
+            'base-app.html?page=home';
 
         menuLink =
-            'MENU_UTAMA_MANAGER.html';
+            'base-app.html?page=menu-utama';
 
     }
 

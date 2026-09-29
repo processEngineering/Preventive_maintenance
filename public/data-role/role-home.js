@@ -18,7 +18,7 @@ export const ROLE_CONFIG = {
         header: "HOME PELAKSANA",
         description:
             "Solusi digital untuk monitoring dan perawatan mesin agar operasional tetap optimal dan efisien.",
-        menuUrl: "../menu-utama/MENU_UTAMA_PELAKSANA.html"
+        menuUrl: "../view/base-app.html?page=menu-utama"
     },
 
     "SUPERVISOR | KOORDINATOR": {
@@ -27,7 +27,7 @@ export const ROLE_CONFIG = {
         header: "HOME KOORDINATOR",
         description:
             "Solusi digital untuk monitoring dan perawatan mesin agar operasional tetap optimal dan efisien.",
-        menuUrl: "../menu-utama/MENU_UTAMA_KOORDINATOR.html"
+        menuUrl: "../view/base-app.html?page=menu-utama"
     },
 
     "SUPERINTENDENT": {
@@ -36,7 +36,7 @@ export const ROLE_CONFIG = {
         header: "HOME SUPERINTENDENT",
         description:
             "Solusi digital untuk monitoring dan perawatan mesin agar operasional tetap optimal dan efisien.",
-        menuUrl: "../menu-utama/MENU_UTAMA_SUPERINTENDENT.html"
+        menuUrl: "../view/base-app.html?page=menu-utama"
     },
 
     "JUNIOR MANAGER PRODUKSI": {
@@ -45,7 +45,7 @@ export const ROLE_CONFIG = {
         header: "HOME JUNIOR MANAGER PRODUKSI",
         description:
             "Solusi digital untuk monitoring dan perawatan mesin agar operasional tetap optimal dan efisien.",
-        menuUrl: "../menu-utama/MENU_UTAMA_JM_PRODUKSI.html"
+        menuUrl: "../view/base-app.html?page=menu-utama"
     },
 
     "JUNIOR MANAGER PPC": {
@@ -54,7 +54,7 @@ export const ROLE_CONFIG = {
         header: "HOME JUNIOR MANAGER PPC",
         description:
             "Solusi digital untuk monitoring dan perawatan mesin agar operasional tetap optimal dan efisien.",
-        menuUrl: "../menu-utama/MENU_UTAMA_JM_PPC.html"
+        menuUrl: "../view/base-app.html?page=menu-utama"
     },
 
     "MANAGER": {
@@ -63,7 +63,7 @@ export const ROLE_CONFIG = {
         header: "HOME MANAGER",
         description:
             "Solusi digital untuk monitoring dan perawatan mesin agar operasional tetap optimal dan efisien.",
-        menuUrl: "../menu-utama/MENU_UTAMA_MANAGER.html"
+        menuUrl: "../view/base-app.html?page=menu-utama"
     }
 
 };
