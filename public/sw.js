@@ -1,4 +1,4 @@
-const CACHE_NAME = 'akg-maintenance-v1';
+const CACHE_NAME = 'akg-maintenance-v2';
 const APP_SHELL = [
   './',
   './index.html',
