@@ -443,14 +443,14 @@ function openLkmrModal() {
                 </h3>
 
                 <a
-                    href="Lkmr_result.html"
+                    href="../data-checklist/lkmr/lkmr_result.html"
                     class="choice-btn btn-mesin"
                 >
                     Data Maintenance Mesin
                 </a>
 
                 <a
-                    href="Lkmr_result_repair.html"
+                    href="../data-checklist/lkmr/lkmr_result_repair.html"
                     class="choice-btn btn-repair"
                 >
                     Data Maintenance Repair
