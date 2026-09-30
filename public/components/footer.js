@@ -1,8 +1,8 @@
+// --- footer.js
+
 export function renderFooter() {
-    // Inject CSS sekali saja
     if (!document.getElementById("footerStyles")) {
         const style = document.createElement("style");
-
         style.id = "footerStyles";
 
         style.textContent = `
@@ -50,7 +50,7 @@ export function renderFooter() {
         document.head.appendChild(style);
     }
 
-    // Render footer
+    // --- render footer
     const footer =
         document.getElementById("footerContainer");
 

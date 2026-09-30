@@ -1,9 +1,6 @@
 import { supabaseClient as client } from "../src/supabase/supabase-client.js";
 
-// ======================================================
-// DOWNLOAD MENU CONFIGURATION
-// ======================================================
-
+// --- download menu configuration
 const DOWNLOAD_CONFIG = [
     {
         title: "Data Checklist Harian<br>Mesin Injection",
@@ -77,27 +74,17 @@ const DOWNLOAD_GROUPS = [
     items: DOWNLOAD_CONFIG.filter(menu => menu.group === title)
 }));
 
-// ======================================================
-// RENDER DOWNLOAD PAGE
-// ======================================================
-
+// --- render download page
 function renderDownloadPage() {
-
-    const content =
-        document.getElementById("pageContent");
-
+    const content = document.getElementById("pageContent");
     if (!content) {
         console.error("pageContent tidak ditemukan.");
         return;
     }
-
     let animationIndex = 0;
-
     const sections = DOWNLOAD_GROUPS.map(group => {
-
         const cards = group.items.map(menu => {
             const currentIndex = animationIndex++;
-
             if (menu.action) {
                 return `
                     <button
@@ -162,17 +149,10 @@ function renderDownloadPage() {
     initializeDownloadActions();
 }
 
-// ======================================================
-// CARD ANIMATION
-// ======================================================
-
+// --- card animation
 function initializeDownloadCards() {
-
-    const cards =
-        document.querySelectorAll(".menu-card");
-
+    const cards = document.querySelectorAll(".menu-card");
     cards.forEach((card, index) => {
-
         setTimeout(() => {
             card.classList.add("show");
         }, index * 50);
@@ -215,68 +195,37 @@ function initializeDownloadCards() {
     });
 }
 
-// ======================================================
-// RIPPLE
-// ======================================================
-
+// --- ripple effect
 function createRipple(event) {
-
-    const button =
-        event.currentTarget.querySelector(".menu-pill");
-
+    const button = event.currentTarget.querySelector(".menu-pill");
     if (!button) return;
-
-    const circle =
-        document.createElement("span");
-
-    const diameter =
-        Math.max(
+    const circle = document.createElement("span");
+    const diameter = Math.max(
             button.clientWidth,
             button.clientHeight
         );
 
-    const radius =
-        diameter / 2;
-
-    const rect =
-        button.getBoundingClientRect();
+    const radius = diameter / 2;
+    const rect = button.getBoundingClientRect();
 
     let clientX;
     let clientY;
 
     if (event.type === "touchstart") {
-
-        clientX =
-            event.touches[0].clientX;
-
-        clientY =
-            event.touches[0].clientY;
-
+        clientX = event.touches[0].clientX;
+        clientY = event.touches[0].clientY;
     } else {
-
-        clientX =
-            event.clientX;
-
-        clientY =
-            event.clientY;
+        clientX = event.clientX;
+        clientY = event.clientY;
     }
-
-    circle.style.width =
-        `${diameter}px`;
-
-    circle.style.height =
-        `${diameter}px`;
-
-    circle.style.left =
-        `${clientX - rect.left - radius}px`;
-
-    circle.style.top =
-        `${clientY - rect.top - radius}px`;
+    circle.style.width = `${diameter}px`;
+    circle.style.height = `${diameter}px`;
+    circle.style.left = `${clientX - rect.left - radius}px`;
+    circle.style.top = `${clientY - rect.top - radius}px`;
 
     circle.classList.add("ripple");
 
-    const existingRipple =
-        button.querySelector(".ripple");
+    const existingRipple = button.querySelector(".ripple");
 
     if (existingRipple) {
         existingRipple.remove();
@@ -289,12 +238,8 @@ function createRipple(event) {
     }, 600);
 }
 
-// ======================================================
-// 3D EFFECT
-// ======================================================
-
+// --- 3d effect
 function handleMouseMove(event) {
-
     apply3DEffect(
         event.currentTarget,
         event.clientX,
@@ -303,10 +248,7 @@ function handleMouseMove(event) {
 }
 
 function handleTouchMove(event) {
-
-    const touch =
-        event.touches[0];
-
+    const touch = event.touches[0];
     apply3DEffect(
         event.currentTarget,
         touch.clientX,
@@ -324,31 +266,17 @@ function apply3DEffect(
     clientY
 ) {
 
-    const pill =
-        card.querySelector(".menu-pill");
+    const pill = card.querySelector(".menu-pill");
 
     if (!pill) return;
 
-    const rect =
-        card.getBoundingClientRect();
-
-    const x =
-        clientX - rect.left;
-
-    const y =
-        clientY - rect.top;
-
-    const centerX =
-        rect.width / 2;
-
-    const centerY =
-        rect.height / 2;
-
-    const rotateX =
-        ((y - centerY) / centerY) * -15;
-
-    const rotateY =
-        ((x - centerX) / centerX) * 15;
+    const rect = card.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateX = ((y - centerY) / centerY) * -15;
+    const rotateY = ((x - centerX) / centerX) * 15;
 
     pill.style.transform = `
         perspective(1000px)
@@ -369,12 +297,8 @@ function apply3DEffect(
 }
 
 function handleMouseLeave(event) {
-
-    const card =
-        event.currentTarget;
-
-    const pill =
-        card.querySelector(".menu-pill");
+    const card = event.currentTarget;
+    const pill = card.querySelector(".menu-pill");
 
     card.classList.remove(
         "active-hover"
@@ -390,39 +314,26 @@ function handleMouseLeave(event) {
     `;
 }
 
-// ======================================================
-// MENU ACTIONS
-// ======================================================
-
+// --- menu actions
 function initializeDownloadActions() {
-
     document
         .querySelectorAll("[data-action]")
         .forEach(button => {
-
             button.addEventListener(
                 "click",
                 () => {
-
                     const action =
                         button.dataset.action;
-
                     if (action === "lkmr") {
                         openLkmrModal();
                     }
-
                 }
             );
-
         });
 }
 
-// ======================================================
-// LKMR MODAL
-// ======================================================
-
+// modal : lkmr
 function openLkmrModal() {
-
     const container =
         document.getElementById(
             "lkmrModalContainer"
@@ -500,16 +411,10 @@ function openLkmrModal() {
     );
 }
 
-// ======================================================
-// INITIALIZE
-// ======================================================
 
 async function initDownloadPage() {
-
     try {
-
         document.body.classList.add("page-menu-download");
-
         const {
             data: { session },
             error
@@ -535,33 +440,23 @@ async function initDownloadPage() {
         renderDownloadPage();
 
     }
-
     catch (error) {
-
         console.error(
             "Download page initialization error:",
             error
         );
-
     }
 }
-
-// ======================================================
-// PAGE ROUTER
-// ======================================================
 
 document.addEventListener(
     "DOMContentLoaded",
     async () => {
-
         const params =
             new URLSearchParams(
                 window.location.search
             );
-
         const page =
             params.get("page");
-
         console.log(
             "Current page:",
             page
@@ -570,9 +465,6 @@ document.addEventListener(
         if (page !== "download") {
             return;
         }
-
         await initDownloadPage();
-
     }
 );
-

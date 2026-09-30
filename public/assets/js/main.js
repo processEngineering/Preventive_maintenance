@@ -3,9 +3,7 @@ import {
     prosesLogin
 } from "../../auth/sign-in.js";
 
-
 document.addEventListener("DOMContentLoaded", () => {
-
     const btnLogin = document.getElementById("btnLogin");
     const passwordInput = document.getElementById("password");
 

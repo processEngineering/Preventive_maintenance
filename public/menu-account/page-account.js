@@ -1,18 +1,8 @@
-// ======================================================
-// PAGE ACCOUNT
-// ======================================================
-
 import { supabaseClient } from '../src/supabase/supabase-client.js';
 
-
-// ======================================================
-// PAGE TEMPLATE
-// ======================================================
-
+// --- page template
 function renderAccountPage() {
-
     const pageContent = document.getElementById('pageContent');
-
     if (!pageContent) {
         console.error('Element #pageContent tidak ditemukan.');
         return false;
@@ -131,12 +121,8 @@ function renderAccountPage() {
 }
 
 
-// ======================================================
-// HEADER TITLE
-// ======================================================
-
+// --- header title
 function setupHeaderTitle() {
-
     const headerTitle =
         document.querySelector('.header-title-pill');
 
@@ -146,30 +132,22 @@ function setupHeaderTitle() {
         );
         return false;
     }
-
     headerTitle.textContent = 'INFORMASI AKUN';
 
     return true;
 }
 
-
-// ======================================================
-// RIPPLE EFFECT
-// ======================================================
-
+// --- ripple effect
 function createRipple(event) {
-
     const button = event.currentTarget;
-
     const existingRipple =
         button.querySelector('.ripple');
 
-    if (existingRipple) {
+        if (existingRipple) {
         existingRipple.remove();
     }
 
-    const circle =
-        document.createElement('span');
+    const circle = document.createElement('span');
 
     const diameter = Math.max(
         button.clientWidth,
@@ -177,61 +155,38 @@ function createRipple(event) {
     );
 
     const radius = diameter / 2;
-
-    const rect =
-        button.getBoundingClientRect();
-
+    const rect = button.getBoundingClientRect();
     let clientX;
     let clientY;
 
     if (event.type === 'touchstart') {
-
-        clientX =
-            event.touches[0].clientX;
-
-        clientY =
-            event.touches[0].clientY;
-
+        clientX =  event.touches[0].clientX;
+        clientY = event.touches[0].clientY;
     } else {
-
         clientX = event.clientX;
         clientY = event.clientY;
-
     }
 
-    circle.style.width =
-        `${diameter}px`;
-
-    circle.style.height =
-        `${diameter}px`;
-
-    circle.style.left =
-        `${clientX - rect.left - radius}px`;
-
-    circle.style.top =
-        `${clientY - rect.top - radius}px`;
+    circle.style.width = `${diameter}px`;
+    circle.style.height = `${diameter}px`;
+    circle.style.left = `${clientX - rect.left - radius}px`;
+    circle.style.top = `${clientY - rect.top - radius}px`;
 
     circle.classList.add('ripple');
-
     button.appendChild(circle);
 
     setTimeout(() => {
-
         if (circle.parentElement) {
             circle.remove();
         }
-
     }, 600);
 }
 
 
 function setupRipple() {
-
     const buttons =
         document.querySelectorAll('.action-btn');
-
     buttons.forEach((button) => {
-
         button.addEventListener(
             'mousedown',
             createRipple
@@ -242,22 +197,13 @@ function setupRipple() {
             createRipple,
             { passive: true }
         );
-
     });
 }
 
-
-// ======================================================
-// SMART NAVIGATION
-// ======================================================
-
+// --- smart navigation
 function setupSmartNavigation(profile) {
-
-    const navHome =
-        document.getElementById('nav-home');
-
-    const navMenu =
-        document.getElementById('nav-menu');
+    const navHome = document.getElementById('nav-home');
+    const navMenu = document.getElementById('nav-menu');
 
     if (!navHome || !navMenu) {
         console.warn(
@@ -266,156 +212,75 @@ function setupSmartNavigation(profile) {
         return;
     }
 
-    const jabatan =
-        (profile?.jabatan || '').toUpperCase();
-
+    const jabatan = (profile?.jabatan || '').toUpperCase();
     let homeLink = 'base-app.html?page=home';
     let menuLink = 'base-app.html?page=menu-utama';
 
-
     if (jabatan.includes('OPERATOR')) {
-
-        homeLink =
-            'base-app.html?page=home';
-
-        menuLink =
-            'base-app.html?page=menu-utama';
-
-
+        homeLink = 'base-app.html?page=home';
+        menuLink = 'base-app.html?page=menu-utama';
     } else if (jabatan.includes('SUPERVISOR')) {
-
-        homeLink =
-            'base-app.html?page=home';
-
-        menuLink =
-            'base-app.html?page=menu-utama';
-
-
+        homeLink = 'base-app.html?page=home';
+        menuLink = 'base-app.html?page=menu-utama';
     } else if (jabatan.includes('SUPERINTENDENT')) {
-
-        homeLink =
-            'base-app.html?page=home';
-
-        menuLink =
-            'base-app.html?page=menu-utama';
-
-
-    } else if (
-        jabatan.includes('JUNIOR MANAGER PRODUKSI') ||
-        jabatan.includes('JM PRODUKSI')
-    ) {
-
-        homeLink =
-            'base-app.html?page=home';
-
-        menuLink =
-            'base-app.html?page=menu-utama';
-
-
-    } else if (
-        jabatan.includes('JUNIOR MANAGER PPIC') ||
-        jabatan.includes('JM PPIC')
-    ) {
-
-        homeLink =
-            'base-app.html?page=home';
-
-        menuLink =
-            'base-app.html?page=menu-utama';
-
-
-    } else if (
-        jabatan.includes('MANAGER') &&
-        !jabatan.includes('JUNIOR')
-    ) {
-
-        homeLink =
-            'base-app.html?page=home';
-
-        menuLink =
-            'base-app.html?page=menu-utama';
-
+        homeLink = 'base-app.html?page=home';
+        menuLink = 'base-app.html?page=menu-utama';
+    } else if ( jabatan.includes('JUNIOR MANAGER PRODUKSI') || jabatan.includes('JM PRODUKSI')) {
+        homeLink = 'base-app.html?page=home';
+        menuLink = 'base-app.html?page=menu-utama';
+    } else if ( jabatan.includes('JUNIOR MANAGER PPIC') ||jabatan.includes('JM PPIC')) {
+        homeLink = 'base-app.html?page=home';
+        menuLink = 'base-app.html?page=menu-utama';
+    } else if ( jabatan.includes('MANAGER') && !jabatan.includes('JUNIOR')) {
+        homeLink = 'base-app.html?page=home';
+        menuLink = 'base-app.html?page=menu-utama';
     }
-
 
     navHome.href = homeLink;
     navMenu.href = menuLink;
 }
 
-
-// ======================================================
-// LOAD USER DATA
-// ======================================================
-
+// --- load data
 async function loadData() {
+    const statusMsg = document.getElementById('status-msg');
+    const displayName = document.getElementById('display-name');
+    const displayRole = document.getElementById('display-role');
+    const displayEmail = document.getElementById('display-email');
 
-    const statusMsg =
-        document.getElementById('status-msg');
-
-    const displayName =
-        document.getElementById('display-name');
-
-    const displayRole =
-        document.getElementById('display-role');
-
-    const displayEmail =
-        document.getElementById('display-email');
-
-
-    // Pastikan elemen sudah benar-benar ada
     if (
         !statusMsg ||
         !displayName ||
         !displayRole ||
         !displayEmail
     ) {
-
         console.error(
             'Elemen halaman Account belum tersedia.'
         );
-
         return;
     }
 
-
     try {
-
         const {
             data: { session },
             error: sessionError
-
         } =
             await supabaseClient.auth.getSession();
-
-
         if (sessionError) {
             throw sessionError;
         }
 
-
-        // Tidak ada session → kembali ke login
         if (!session) {
-
             window.location.href =
                 '../view/auth.html?mode=login';
-
             return;
         }
 
-
-        // ==================================================
-        // EMAIL
-        // ==================================================
-
+        // email
         displayEmail.textContent =
             session.user.email ||
             'Email tidak tersedia';
 
-
-        // ==================================================
-        // PROFILE
-        // ==================================================
-
+        // profile
         const {
             data: profile,
             error: profileError
@@ -427,187 +292,101 @@ async function loadData() {
                 .eq('id', session.user.id)
                 .single();
 
-
         if (profileError) {
-
             console.error(
                 'Gagal mengambil profil:',
                 profileError
             );
-
-            displayName.textContent =
-                'Profil Belum Diisi';
-
-            displayRole.textContent =
-                'Jabatan belum tersedia';
-
+            displayName.textContent = 'Profil Belum Diisi';
+            displayRole.textContent = 'Jabatan belum tersedia';
             return;
         }
 
-
         if (profile) {
+            displayName.textContent = profile.full_name ||'Nama belum tersedia';
+            const jabatan = profile.jabatan || 'Jabatan belum tersedia';
+            const divisi = profile.divisi || 'Divisi belum tersedia';
+            displayRole.textContent = `${jabatan} | ${divisi}`;
 
-            displayName.textContent =
-                profile.full_name ||
-                'Nama belum tersedia';
-
-
-            const jabatan =
-                profile.jabatan ||
-                'Jabatan belum tersedia';
-
-
-            const divisi =
-                profile.divisi ||
-                'Divisi belum tersedia';
-
-
-            displayRole.textContent =
-                `${jabatan} | ${divisi}`;
-
-
-            // Smart navigation
             setupSmartNavigation(profile);
         }
 
-
     } catch (error) {
-
         console.error(
             'Terjadi kesalahan saat memuat data akun:',
             error
         );
 
-
-        statusMsg.textContent =
-            'Gagal memuat informasi akun. Silakan coba lagi.';
-
-        statusMsg.style.display =
-            'block';
+        statusMsg.textContent = 'Gagal memuat informasi akun. Silakan coba lagi.';
+        statusMsg.style.display = 'block';
     }
 }
 
-
-// ======================================================
-// LOGOUT
-// ======================================================
-
+// --- logout handler
 async function handleLogout() {
-
     const confirmed =
         confirm(
             'Apakah anda yakin ingin keluar dari akun ini?'
         );
-
-
     if (!confirmed) {
         return;
     }
-
-
     try {
-
         const { error } =
             await supabaseClient.auth.signOut();
-
-
         if (error) {
             throw error;
         }
-
-
         window.location.href =
             '../view/auth.html?mode=login';
-
-
     } catch (error) {
-
         console.error(
             'Gagal logout:',
             error
         );
 
-
-        const statusMsg =
-            document.getElementById('status-msg');
-
-
+        const statusMsg = document.getElementById('status-msg');
         if (!statusMsg) {
             return;
         }
 
-
-        statusMsg.textContent =
-            'Gagal keluar dari akun. Silakan coba lagi.';
-
-        statusMsg.style.display =
-            'block';
+        statusMsg.textContent = 'Gagal keluar dari akun. Silakan coba lagi.';
+        statusMsg.style.display = 'block';
     }
 }
 
-
-// ======================================================
-// HELP BUTTON
-// ======================================================
-
+// --- help button
 function setupHelpButton() {
-
-    const helpButton =
-        document.getElementById('helpButton');
-
+    const helpButton = document.getElementById('helpButton');
 
     if (!helpButton) {
         return;
     }
 
-
     helpButton.addEventListener(
         'click',
         (event) => {
-
             event.preventDefault();
-
             alert(
                 'Pusat Bantuan akan tersedia pada pembaruan berikutnya.'
             );
-
         }
     );
 }
 
 
-// ======================================================
-// INITIALIZE PAGE
-// ======================================================
-
 async function initAccountPage() {
-
-    // 1. Render isi Account
-    const rendered =
-        renderAccountPage();
-
-
+    const rendered = renderAccountPage();
     if (!rendered) {
         return;
     }
 
-
-    // 2. Setup header
     setupHeaderTitle();
-
-
-    // 3. Setup interaction
     setupRipple();
     setupHelpButton();
 
-
-    // 4. Setup logout
-    const logoutButton =
-        document.getElementById('logoutButton');
-
-
+    const logoutButton = document.getElementById('logoutButton');
     if (logoutButton) {
-
         logoutButton.addEventListener(
             'click',
             handleLogout
@@ -615,34 +394,20 @@ async function initAccountPage() {
 
     }
 
-
-    // 5. Load user data
     await loadData();
-
-
-    // 6. Set header title SEKALI LAGI
-    // untuk memastikan tidak ditimpa oleh
-    // proses render page lain.
     setupHeaderTitle();
-
 }
-
 
 document.addEventListener(
     'DOMContentLoaded',
     async () => {
-
         const params =
             new URLSearchParams(
                 window.location.search
             );
-
         if (params.get('page') !== 'account') {
             return;
         }
-
         await initAccountPage();
-
     }
 );
-
