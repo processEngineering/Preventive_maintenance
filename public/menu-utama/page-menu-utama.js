@@ -1,74 +1,38 @@
 import { supabaseClient as client } from "../src/supabase/supabase-client.js";
 import { getCurrentRole } from "../data-role/role-home.js";
 
-// ======================================================
-// MENU CONFIGURATION
-// ======================================================
-
+// --- menu configuration
 const MENU_GROUPS = [
-
-    // ==================================================
-    // 1. CHECKLIST
-    // ==================================================
-
+    // --- checklist
     {
         title: "Checklist",
-
         items: [
-
             {
                 title: "Checklist Harian<br>Mesin Injection",
-
                 urls: {
-                    "OPERATOR | PELAKSANA":
-                        "../data-checklist/clhmi/clhmi_pelaksana.html",
-
-                    "SUPERVISOR | KOORDINATOR":
-                        "../data-checklist/clhmi/clhmi_koordinator.html",
-
-                    "SUPERINTENDENT":
-                        "../data-checklist/clhmi/clhmi_superintendent.html"
+                    "OPERATOR | PELAKSANA"      : "../data-checklist/clhmi/clhmi_pelaksana.html",
+                    "SUPERVISOR | KOORDINATOR"  : "../data-checklist/clhmi/clhmi_koordinator.html",
+                    "SUPERINTENDENT"            : "../data-checklist/clhmi/clhmi_superintendent.html"
                 }
-            },
-
-            {
+            }, {
                 title: "Checklist Harian<br>Stand Label & Robot",
-
                 urls: {
-                    "OPERATOR | PELAKSANA":
-                        "../data-checklist/chslr/chslr_pelaksana.html",
-
-                    "SUPERVISOR | KOORDINATOR":
-                        "../data-checklist/chslr/chslr_koordinator.html",
-
-                    "SUPERINTENDENT":
-                        "../data-checklist/chslr/chslr_superintendent.html"
+                    "OPERATOR | PELAKSANA"      : "../data-checklist/chslr/chslr_pelaksana.html",
+                    "SUPERVISOR | KOORDINATOR"  : "../data-checklist/chslr/chslr_koordinator.html",
+                    "SUPERINTENDENT"            : "../data-checklist/chslr/chslr_superintendent.html"
                 }
-            },
-
-            {
+            }, {
                 title: "Checklist<br>Perawatan Mold",
-
                 urls: {
-                    "OPERATOR | PELAKSANA":
-                        "../data-checklist/cplm/cplm_operator.html",
-
-                    "SUPERVISOR | KOORDINATOR":
-                        "../data-checklist/cplm/cplm_spv.html",
-
-                    "SUPERINTENDENT":
-                        "../data-checklist/cplm/cplm_superintendent.html"
+                    "OPERATOR | PELAKSANA"      : "../data-checklist/cplm/cplm_operator.html",
+                    "SUPERVISOR | KOORDINATOR"  : "../data-checklist/cplm/cplm_spv.html",
+                    "SUPERINTENDENT"            : "../data-checklist/cplm/cplm_superintendent.html"
                 }
             }
-
         ]
     },
 
-
-    // ==================================================
-    // 2. PREVENTIVE
-    // ==================================================
-
+    // --- preventive
     {
         title: "Preventive",
 
