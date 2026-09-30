@@ -56,11 +56,6 @@ const DOWNLOAD_CONFIG = [
         title: "Data Preventive Mesin<br>Workshop",
         url: "../data-checklist/pmw/pmw_result.html",
         group: "Preventive"
-    },
-    {
-        title: "Arsip<br>Data Laporan",
-        url: "../data-checklist/arsip_data/arsip_data.html",
-        group: "Others"
     }
 ];
 
