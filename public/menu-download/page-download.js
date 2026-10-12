@@ -44,12 +44,12 @@ const DOWNLOAD_CONFIG = [
     },
     {
         title: "Data Jadwal Perawatan<br>dan Overhaul",
-        url: "../data-checklist/jpdo/jpdo_result.html",
+        url: "../data-checklist/jpdo/Jpdo_result.html",
         group: "Others"
     },
     {
         title: "Data Kartu<br>Riwayat",
-        url: "../data-checklist/kartu_riwayat/kartu_riwayat_result.html",
+        url: "../data-checklist/kartu-riwayat/kartu_riwayat_result.html",
         group: "Others"
     },
     {
