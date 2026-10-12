@@ -402,6 +402,8 @@
         window.onload = () => {
             setupDynamicNavigation();
             populateYears(); // Panggil fungsi isi tahun
+            document.getElementById('filterMonth').value = String(new Date().getMonth() + 1).padStart(2, '0');
+            document.getElementById('filterYear').value = String(new Date().getFullYear());
             fetchData();
         };
 
@@ -466,6 +468,25 @@
             }
         }
 
+        function getMonthDateRange(year, month) {
+            const monthNumber = Number(month);
+            const start = `${year}-${month}-01`;
+            const end = monthNumber === 12
+                ? `${Number(year) + 1}-01-01`
+                : `${year}-${String(monthNumber + 1).padStart(2, '0')}-01`;
+            return { start, end };
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, character => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[character]));
+        }
+
         // FETCH DATA
         async function fetchData() {
             const tbody = document.getElementById('tableBody');
@@ -485,20 +506,25 @@
             }
 
             try {
-                let query = client.from('lkmr_repair').select('*');
+                let query = client.from('lkmr_repair').select('tanggal,shift,pic,nama_mold,jenis_problem,deskripsi_masalah,waktu_mulai,waktu_selesai,target_waktu_pm,status,feedback');
 
                 // Logika Query Filter Database
                 if (filterYear !== 'all') {
                     if (filterMonth !== 'all') {
-                        const lastDay = new Date(filterYear, filterMonth, 0).getDate();
-                        const startDate = `${filterYear}-${filterMonth}-01`;
-                        const endDate = `${filterYear}-${filterMonth}-${lastDay}`;
-                        query = query.gte('tanggal', startDate).lte('tanggal', endDate);
+                        const { start, end } = getMonthDateRange(filterYear, filterMonth);
+                        query = query.gte('tanggal', start).lt('tanggal', end);
                     } else {
                         const startDate = `${filterYear}-01-01`;
-                        const endDate = `${filterYear}-12-31`;
-                        query = query.gte('tanggal', startDate).lte('tanggal', endDate);
+                        const endDate = `${Number(filterYear) + 1}-01-01`;
+                        query = query.gte('tanggal', startDate).lt('tanggal', endDate);
                     }
+                } else if (filterMonth !== 'all') {
+                    const currentYear = new Date().getFullYear();
+                    const monthRanges = Array.from(
+                        { length: currentYear - 2020 + 1 },
+                        (_, index) => getMonthDateRange(2020 + index, filterMonth)
+                    ).map(({ start, end }) => `and(tanggal.gte.${start},tanggal.lt.${end})`);
+                    query = query.or(monthRanges.join(','));
                 }
 
                 query = query.order('tanggal', { ascending: false }).order('waktu_mulai', { ascending: false });
@@ -541,21 +567,21 @@
 
                     // Feedback Logic
                     const feedback = item.feedback 
-                        ? `<div class="feedback-text">"${item.feedback}"</div>` 
+                        ? `<div class="feedback-text">"${escapeHtml(item.feedback)}"</div>`
                         : '-';
 
                     // Mapping Data Supabase ke Tabel HTML
                     const row = `
                         <tr>
                             <td>${formattedDate}</td>
-                            <td>${item.shift || '-'}</td>
-                            <td class="highlight-pic">${item.pic || '-'}</td>
-                            <td class="highlight-mesin">${item.nama_mold || '-'}</td> <!-- Mapping Nama Mold -->
-                            <td>${item.jenis_problem || '-'}</td>
-                            <td style="white-space: normal; min-width: 250px;">${item.deskripsi_masalah || '-'}</td>
-                            <td>${item.waktu_mulai || '--:--'}</td>
-                            <td>${item.waktu_selesai || '--:--'}</td>
-                            <td>${item.target_waktu_pm || '-'}</td>
+                            <td>${escapeHtml(item.shift || '-')}</td>
+                            <td class="highlight-pic">${escapeHtml(item.pic || '-')}</td>
+                            <td class="highlight-mesin">${escapeHtml(item.nama_mold || '-')}</td> <!-- Mapping Nama Mold -->
+                            <td>${escapeHtml(item.jenis_problem || '-')}</td>
+                            <td style="white-space: normal; min-width: 250px;">${escapeHtml(item.deskripsi_masalah || '-')}</td>
+                            <td>${escapeHtml(item.waktu_mulai || '--:--')}</td>
+                            <td>${escapeHtml(item.waktu_selesai || '--:--')}</td>
+                            <td>${escapeHtml(item.target_waktu_pm || '-')}</td>
                             <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
                             <td style="white-space: normal;">${feedback}</td>
                         </tr>
