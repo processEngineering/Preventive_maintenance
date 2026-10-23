@@ -555,37 +555,32 @@
             "OK / CEK MAGNETIC TABLE"
         ];
 
-        // Menyimpan data master saat di-load
-        let masterChecklist = [];
+        const masterChecklist = [
+            { prosedur_preventive: 'BODY MESIN', standart: 'BERSIH' },
+            { prosedur_preventive: 'PANEL MESIN', standart: 'BERSIH' },
+            { prosedur_preventive: 'APAR', standart: 'LEVEL WARNA HIJAU' },
+            { prosedur_preventive: 'ELECTRICAL', standart: 'BERFUNGSI BAIK' },
+            { prosedur_preventive: 'INPUT TEGANGAN', standart: 'INPUT TEGANGAN (380V-400V)' },
+            { prosedur_preventive: 'KEBERSIHAN MESIN', standart: 'BERSIH' },
+            { prosedur_preventive: 'LUBRIKASI', standart: 'SIRKULASI BAIK' },
+            { prosedur_preventive: 'MAGNET', standart: '90-100 V DC' },
+            { prosedur_preventive: 'MOTORAN', standart: 'ARUS SESUAI DAYA' },
+            { prosedur_preventive: 'SAFETY', standart: 'BERFUNGSI BAIK' }
+        ];
 
         // --- 2. INITIALIZE DATA ---
         async function loadData() {
             // Set Tanggal Default Hari Ini
             document.getElementById('tanggal').valueAsDate = new Date();
+            renderChecklist(masterChecklist);
 
             try {
                 if (!window.supabase) {
                     throw new Error('Library Supabase tidak berhasil dimuat. Periksa koneksi internet lalu muat ulang halaman.');
                 }
                 supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-                // Pilihan mesin sekarang sudah di-hardcode di HTML, 
-                // jadi tidak perlu lagi ditarik dari database pmw_mesin.
-
-                // B. Tarik Data Master Checklist dari tabel pmw_items
-                const { data: dataItems, error: errItems } = await supabaseClient
-                    .from('pmw_items')
-                    .select('*')
-                    .order('id', { ascending: true });
-                
-                if (errItems) throw errItems;
-
-                masterChecklist = dataItems || []; // Simpan untuk disubmit nanti
-                renderChecklist(dataItems);
-
             } catch (error) {
-                console.error("Gagal memuat data dari Supabase:", error);
-                renderChecklistMessage('Checklist gagal dimuat. Periksa koneksi dan konfigurasi Supabase, lalu muat ulang halaman.');
+                console.error("Gagal menyiapkan koneksi Supabase:", error);
             }
         }
 
@@ -594,11 +589,6 @@
             const tbody = document.getElementById('checklistBody');
             tbody.innerHTML = ''; // Bersihkan dulu
 
-            if (!items || items.length === 0) {
-                renderChecklistMessage('Checklist belum tersedia. Data pada tabel pmw_items kosong atau tidak dapat diakses.');
-                return;
-            }
-            
             items.forEach((item, index) => {
                 const itemNumber = index + 1;
                 const actionTeksRaw = actionTexts[index] || "OK / CEK"; // Ambil string mentah
@@ -642,11 +632,6 @@
                 `;
                 tbody.appendChild(tr);
             });
-        }
-
-        function renderChecklistMessage(message) {
-            document.getElementById('checklistBody').innerHTML =
-                `<tr><td colspan="6">${message}</td></tr>`;
         }
 
         // --- 4. FORM SUBMISSION ---
