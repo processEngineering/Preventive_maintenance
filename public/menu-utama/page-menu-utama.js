@@ -1,5 +1,4 @@
-import { supabaseClient as client } from "../src/supabase/supabase-client.js";
-import { getCurrentRole } from "../data-role/role-home.js";
+import { getCurrentUser } from "../src/auth/api-session.js";
 
 // --- menu configuration
 const MENU_GROUPS = [
@@ -485,19 +484,15 @@ function openGrafikPekerjaModal(role) {
 async function initMenuUtama() {
     try {
         document.body.classList.add("page-menu-utama");
-        const {
-            data: { session }
-        } = await client.auth.getSession();
+        const user = await getCurrentUser();
 
         // belum login
-        if (!session) {
-            window.location.href = "../index.html";
+        if (!user) {
+            window.location.replace("/view/auth.html?mode=login");
             return;
         }
 
-        // get role
-        const role =
-            await getCurrentRole(session.user.id);
+        const role = user.jabatan.toUpperCase().trim();
 
         // role tidak ditemukan
         if (!role) {

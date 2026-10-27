@@ -1,4 +1,4 @@
-import { supabaseClient as client } from "../src/supabase/supabase-client.js";
+import { getCurrentUser } from "../src/auth/api-session.js";
 
 // --- download menu configuration
 const DOWNLOAD_CONFIG = [
@@ -410,26 +410,16 @@ function openLkmrModal() {
 async function initDownloadPage() {
     try {
         document.body.classList.add("page-menu-download");
-        const {
-            data: { session },
-            error
-        } = await client.auth.getSession();
+        const user = await getCurrentUser();
 
-        if (error) {
-            throw error;
-        }
-
-        if (!session) {
-
-            window.location.href =
-                "../index.html";
-
+        if (!user) {
+            window.location.replace("/view/auth.html?mode=login");
             return;
         }
 
         console.log(
             "Download page loaded:",
-            session.user.id
+            user.id
         );
 
         renderDownloadPage();

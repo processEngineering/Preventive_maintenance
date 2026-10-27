@@ -146,6 +146,11 @@ The frontend proxy is not a substitute for approving and securing a production
 network route. Use test data and the restricted test database while using a
 temporary ngrok URL.
 
+After login, the home, main-menu, and download pages validate the PostgreSQL
+session through `/api/auth/me`. They must not use Supabase Auth as the session
+source, or a valid PostgreSQL login can be redirected back to sign-in. The service
+worker cache version is advanced when these session-routing assets change.
+
 ## CHSLR migration slice
 
 The CHSLR pelaksana, coordinator, superintendent, and report pages use the same-origin

@@ -1,5 +1,5 @@
-import { supabaseClient } from '../src/supabase/supabase-client.js';
-import { ROLE_CONFIG, getCurrentRole } from '../data-role/role-home.js';
+import { getCurrentUser } from '../src/auth/api-session.js';
+import { ROLE_CONFIG } from '../data-role/role-home.js';
 
 let deferredPrompt = null;
 
@@ -98,35 +98,22 @@ function renderHome(config) {
 async function initHomePage() {
     try {
         // session
-        const {
-            data: { session },
-            error: sessionError
-        } = await supabaseClient.auth.getSession();
-
-        if (sessionError) {
-            throw sessionError;
-        }
-
-        if (!session) {
+        const user = await getCurrentUser();
+        if (!user) {
             console.warn(
                 "Session tidak ditemukan."
             );
-            window.location.href =
-                '../index.html';
+            window.location.replace('/view/auth.html?mode=login');
             return;
         }
 
         console.log(
             "SESSION USER:",
-            session.user
+            user
         );
 
 
-        // get current role
-        const role =
-            await getCurrentRole(
-                session.user.id
-            );
+        const role = user.jabatan.toUpperCase().trim();
         console.log(
             "CURRENT ROLE:",
             role
