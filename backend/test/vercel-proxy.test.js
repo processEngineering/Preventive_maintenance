@@ -3,7 +3,7 @@
 const assert = require('node:assert/strict');
 const { Readable } = require('node:stream');
 const { test } = require('node:test');
-const { createProxyHandler } = require('../../public/api/[...path]');
+const { createBackendUrl, createProxyHandler } = require('../../public/api');
 
 function createResponse() {
   return {
@@ -49,7 +49,7 @@ test('Vercel API proxy forwards API path, query, cookie, body, and session respo
   });
   const req = Readable.from([Buffer.from('{"email":"user@example.com"}')]);
   req.method = 'POST';
-  req.url = '/api/auth/login?flow=test';
+  req.url = '/api?__proxy_path=auth%2Flogin&flow=test';
   req.headers = {
     accept: 'application/json',
     'content-type': 'application/json',
@@ -109,4 +109,19 @@ test('Vercel API proxy rejects unsupported methods without contacting backend', 
 
   assert.equal(res.statusCode, 405);
   assert.equal(res.headers.Allow, 'GET, HEAD, POST, PATCH, DELETE');
+});
+
+test('Vercel API rewrite path is reconstructed safely with query parameters', () => {
+  const target = createBackendUrl(
+    '/api?__proxy_path=data%2Fchslr_items&select=id&eq%5Bid%5D=42',
+    'https://test-tunnel.example'
+  );
+  assert.equal(
+    target.toString(),
+    'https://test-tunnel.example/api/data/chslr_items?select=id&eq%5Bid%5D=42'
+  );
+  assert.throws(
+    () => createBackendUrl('/api?__proxy_path=..%2Fsecret', 'https://test-tunnel.example'),
+    /Invalid rewritten API path/
+  );
 });

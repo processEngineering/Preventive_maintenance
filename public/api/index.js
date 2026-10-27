@@ -8,27 +8,26 @@ const RESPONSE_HEADERS = [
   'content-type',
   'x-content-type-options'
 ];
+const REWRITE_PATH_PARAMETER = '__proxy_path';
 
-function backendOriginFromEnvironment() {
-  const value = process.env.BACKEND_API_ORIGIN;
-  if (!value) return null;
-
+function validateBackendOrigin(value) {
   let url;
   try {
     url = new URL(value);
   } catch {
     throw new Error('BACKEND_API_ORIGIN must be an HTTPS origin');
   }
-  return validateBackendOrigin(url);
-}
-
-function validateBackendOrigin(value) {
-  const url = value instanceof URL ? value : new URL(value);
   if (url.protocol !== 'https:' || url.username || url.password ||
       url.pathname !== '/' || url.search || url.hash) {
     throw new Error('BACKEND_API_ORIGIN must be an HTTPS origin without a path');
   }
   return url.origin;
+}
+
+function backendOriginFromEnvironment() {
+  const value = process.env.BACKEND_API_ORIGIN;
+  if (!value) return null;
+  return validateBackendOrigin(value);
 }
 
 async function readRequestBody(req) {
@@ -52,6 +51,21 @@ function jsonResponse(res, statusCode, message) {
   res.end(JSON.stringify({ error: message }));
 }
 
+function createBackendUrl(requestUrl, backendOrigin) {
+  const incoming = new URL(requestUrl, 'https://vercel.invalid');
+  const backendPath = incoming.searchParams.get(REWRITE_PATH_PARAMETER);
+  if (!backendPath || backendPath.startsWith('/') ||
+      backendPath.split('/').some((segment) => !segment || segment === '.' || segment === '..')) {
+    throw new Error('Invalid rewritten API path');
+  }
+
+  incoming.searchParams.delete(REWRITE_PATH_PARAMETER);
+  const encodedPath = backendPath.split('/').map(encodeURIComponent).join('/');
+  const target = new URL(`/api/${encodedPath}`, backendOrigin);
+  target.search = incoming.searchParams.toString();
+  return target;
+}
+
 function createProxyHandler({
   getBackendOrigin = backendOriginFromEnvironment,
   fetchImpl = globalThis.fetch
@@ -63,7 +77,6 @@ function createProxyHandler({
       return;
     }
 
-    let backendOrigin;
     let target;
     try {
       const configuredOrigin = getBackendOrigin();
@@ -71,12 +84,8 @@ function createProxyHandler({
         jsonResponse(res, 503, 'Backend API is not configured');
         return;
       }
-      backendOrigin = validateBackendOrigin(configuredOrigin);
-      target = new URL(req.url, `${backendOrigin}/`);
-      if (target.origin !== backendOrigin || !target.pathname.startsWith('/api/')) {
-        jsonResponse(res, 400, 'Invalid API route');
-        return;
-      }
+      const backendOrigin = validateBackendOrigin(configuredOrigin);
+      target = createBackendUrl(req.url, backendOrigin);
     } catch (error) {
       console.error('Vercel API proxy configuration is invalid:', error.message);
       jsonResponse(res, 503, 'Backend API is not configured correctly');
@@ -138,4 +147,5 @@ function createProxyHandler({
 
 module.exports = createProxyHandler();
 module.exports.createProxyHandler = createProxyHandler;
+module.exports.createBackendUrl = createBackendUrl;
 module.exports.config = { api: { bodyParser: false } };

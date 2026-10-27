@@ -130,11 +130,12 @@ bound to loopback.
 
 Set the Vercel project environment variable `BACKEND_API_ORIGIN` to the ngrok HTTPS
 origin only (for example, `https://example.ngrok-free.app`, with no path). The
-`public/api/[...path].js` Vercel function proxies same-origin `/api/*` requests to
-that origin, forwards the browser's session cookie and backend `Set-Cookie` response,
-and bypasses ngrok's browser warning. The browser therefore stays on the Vercel
-origin; the backend does not need CORS enabled. Redeploy after changing the Vercel
-environment variable.
+`public/vercel.json` rewrite sends same-origin `/api/*` requests to the
+`public/api/index.js` Vercel function. That function proxies requests to the
+configured backend origin, forwards the browser's session cookie and backend
+`Set-Cookie` response, and bypasses ngrok's browser warning. The browser therefore
+stays on the Vercel origin; the backend does not need CORS enabled. Redeploy after
+changing the Vercel environment variable.
 
 Set the backend's `PUBLIC_APP_ORIGIN` to the exact HTTPS Vercel frontend origin so
 verification links open the Vercel app. Keep PostgreSQL credentials only in the
