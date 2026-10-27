@@ -16,11 +16,30 @@ const queries = [];
 let authUser;
 const sessions = new Map();
 const setupTokens = new Set();
+const queryValues = [];
+const chslrColumns = {
+  profiles: ['id', 'full_name', 'divisi', 'jabatan'],
+  chslr_items: ['id', 'sort_order'],
+  chslr_log: [
+    'id', 'mesin_id', 'bulan', 'tahun', 'pelaksana_names', 'catatan_pelaksana',
+    'koordinator_nama', 'signature_koordinator', 'status_verifikasi',
+    'remark_koordinator', 'superintendent_nama', 'remark_superintendent',
+    'signature_superintendent', 'status_final', 'created_at'
+  ],
+  chslr_mesin: ['id', 'nama_mesin', 'tonage'],
+  chslr_result: [
+    'id', 'log_id', 'item_id', 'tanggal', 'status', 'input_value', 'keterangan', 'signature'
+  ]
+};
 const pool = {
   async query(sql, values = []) {
     queries.push(sql);
+    queryValues.push(values);
     if (queryError) {
       throw queryError;
+    }
+    if (sql.includes('FROM information_schema.columns')) {
+      return { rows: (chslrColumns[values[0]] || []).map((column_name) => ({ column_name })) };
     }
     if (sql.includes('WITH claimed AS')) {
       if (!setupTokens.delete(values[0])) return { rows: [] };
@@ -48,7 +67,7 @@ const pool = {
           id: profileId,
           full_name: 'Test User',
           divisi: 'Testing',
-          jabatan: 'OPERATOR | PELAKSANA'
+          jabatan: authUser.jabatan
         }] : []
       };
     }
@@ -56,9 +75,25 @@ const pool = {
       sessions.delete(values[0]);
       return { rows: [] };
     }
+    if (sql.includes('INSERT INTO public.app_signature_files')) {
+      return { rows: [{ object_key: values[1] }] };
+    }
+    if (sql.includes('SELECT content_type, file_data')) {
+      return { rows: [{ content_type: 'image/png', file_data: Buffer.from([1, 2, 3]) }] };
+    }
     return { rows: [{ '?column?': 1 }] };
   }
 };
+
+async function createSessionCookie() {
+  const response = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'user@example.com', password: 'test-password-123' })
+  });
+  assert.equal(response.status, 200);
+  return response.headers.get('set-cookie').split(';')[0];
+}
 
 before(async () => {
   publicRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'mtc-api-public-'));
@@ -141,6 +176,124 @@ test('static hosting rejects unknown, hidden, traversal, and write requests', as
   assert.equal(hidden.status, 404);
   assert.equal(traversal.status, 404);
   assert.equal(write.status, 405);
+});
+
+test('CHSLR API requires an authenticated session and only exposes allowlisted tables', async () => {
+  const unauthenticated = await fetch(`${baseUrl}/api/data/chslr_items`);
+  assert.equal(unauthenticated.status, 401);
+
+  const cookie = await createSessionCookie();
+  const unsupported = await fetch(`${baseUrl}/api/data/app_users`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(unsupported.status, 404);
+  assert.deepEqual(await unsupported.json(), {
+    data: null,
+    error: { message: 'Table is not available in the CHSLR API' }
+  });
+});
+
+test('CHSLR queries parameterize filters and force profile reads to the current user', async () => {
+  const cookie = await createSessionCookie();
+  const filter = await fetch(
+    `${baseUrl}/api/data/chslr_mesin?select=id,nama_mesin&ilike[nama_mesin]=%25A%25&order=nama_mesin.asc&limit=5`,
+    { headers: { Cookie: cookie } }
+  );
+  assert.equal(filter.status, 200);
+  const filterSql = queries.findLast((sql) => sql.includes('SELECT "id", "nama_mesin"'));
+  const filterParams = queryValues[queries.indexOf(filterSql)];
+  assert.match(filterSql, /ILIKE \$1/);
+  assert.deepEqual(filterParams, ['%A%', 5]);
+
+  const profile = await fetch(`${baseUrl}/api/data/profiles?select=jabatan`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(profile.status, 200);
+  const profileSql = queries.findLast((sql) => sql.includes('SELECT "jabatan" FROM public."profiles"'));
+  assert.match(profileSql, /WHERE "id" = \$1/);
+  assert.deepEqual(queryValues[queries.indexOf(profileSql)], [authUser.profile_id]);
+
+  const otherProfile = await fetch(
+    `${baseUrl}/api/data/profiles?select=jabatan&eq[id]=00000000-0000-0000-0000-000000000099`,
+    { headers: { Cookie: cookie } }
+  );
+  assert.equal(otherProfile.status, 403);
+});
+
+test('CHSLR writes are parameterized and reject fields outside the current role', async () => {
+  const cookie = await createSessionCookie();
+  const marker = 'value"); DROP TABLE public.profiles; --';
+  const insert = await fetch(`${baseUrl}/api/data/chslr_result`, {
+    method: 'POST',
+    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      log_id: 'log-1',
+      item_id: 'item-1',
+      tanggal: 1,
+      status: 'OK',
+      input_value: null,
+      keterangan: marker,
+      signature: 'sig.png'
+    })
+  });
+  assert.equal(insert.status, 201);
+  const insertSql = queries.findLast((sql) => sql.includes('INSERT INTO public."chslr_result"'));
+  assert.equal(insertSql.includes(marker), false);
+  assert.ok(queryValues[queries.indexOf(insertSql)].includes(marker));
+
+  const forbiddenUpdate = await fetch(`${baseUrl}/api/data/chslr_log?eq[id]=log-1`, {
+    method: 'PATCH',
+    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status_verifikasi: true })
+  });
+  assert.equal(forbiddenUpdate.status, 403);
+});
+
+test('CHSLR approval fields are writable only through the matching workflow roles', async () => {
+  const originalRole = authUser.jabatan;
+  try {
+    authUser.jabatan = 'SUPERVISOR | KOORDINATOR';
+    const supervisorCookie = await createSessionCookie();
+    const coordinatorUpdate = await fetch(`${baseUrl}/api/data/chslr_log?eq[id]=log-1`, {
+      method: 'PATCH',
+      headers: { Cookie: supervisorCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status_verifikasi: true })
+    });
+    assert.equal(coordinatorUpdate.status, 200);
+
+    authUser.jabatan = 'SUPERINTENDENT';
+    const superintendentCookie = await createSessionCookie();
+    const superintendentUpdate = await fetch(`${baseUrl}/api/data/chslr_log?eq[id]=log-1`, {
+      method: 'PATCH',
+      headers: { Cookie: superintendentCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status_final: true })
+    });
+    assert.equal(superintendentUpdate.status, 200);
+  } finally {
+    authUser.jabatan = originalRole;
+  }
+});
+
+test('CHSLR signature endpoints accept only PNG data and serve stored images', async () => {
+  const cookie = await createSessionCookie();
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2]);
+  const upload = await fetch(`${baseUrl}/api/storage/signatures/test-signature.png`, {
+    method: 'POST',
+    headers: { Cookie: cookie, 'Content-Type': 'image/png' },
+    body: png
+  });
+  assert.equal(upload.status, 201);
+  assert.deepEqual(await upload.json(), {
+    data: { path: 'test-signature.png' },
+    error: null
+  });
+
+  const read = await fetch(`${baseUrl}/api/storage/signatures/test-signature.png`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(read.status, 200);
+  assert.equal(read.headers.get('content-type'), 'image/png');
+  assert.deepEqual(Buffer.from(await read.arrayBuffer()), Buffer.from([1, 2, 3]));
 });
 
 test('login creates a seven-day secure, HttpOnly session cookie', async () => {

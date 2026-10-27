@@ -6,6 +6,7 @@ const path = require('node:path');
 const { Pool } = require('pg');
 const nodemailer = require('nodemailer');
 const { handleAuthRequest } = require('./auth');
+const { handleChslrRequest } = require('./api/chslr-api');
 const { createGmailTransport, validateAppOrigin } = require('./email');
 
 const CONTENT_TYPES = new Map([
@@ -90,6 +91,7 @@ function createServer(pool, {
 } = {}) {
   return http.createServer(async (req, res) => {
     if (await handleAuthRequest(req, res, pool, { mailer, fromEmail, publicAppOrigin })) return;
+    if (await handleChslrRequest(req, res, pool)) return;
 
     if (req.url.startsWith('/api/')) {
       res.writeHead(404, {

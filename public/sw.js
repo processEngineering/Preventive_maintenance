@@ -1,4 +1,4 @@
-const CACHE_NAME = 'akg-maintenance-v3';
+const CACHE_NAME = 'akg-maintenance-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -57,6 +57,11 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (!isSameOrigin) {
+    return;
+  }
+
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(fetch(request));
     return;
   }
 

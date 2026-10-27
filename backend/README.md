@@ -1,14 +1,12 @@
-# MTC API authentication prototype
+# MTC PostgreSQL application migration
 
-This is a Node.js prototype for PostgreSQL-backed registration, email verification,
-login/session design, and one-time password setup. For this test package, it serves
-a limited test page and password-setup page from the sibling `public` folder.
-Supabase-backed application pages are deliberately excluded. This is not a completed
-application migration.
+This Node.js application provides PostgreSQL-backed registration, email verification,
+login/session handling, and one-time password setup. The first application workflow
+migrated from Supabase is CHSLR; the rest of the application has not yet been migrated.
 
 ## Requirements
 
-- Node.js 20 or later
+- Node.js 20.6 or later (`npm start` uses Node's `--env-file` option)
 - Network access from this machine to the PostgreSQL test database
 - The restricted `mtc_api_auth_test` PostgreSQL role described below
 
@@ -28,29 +26,24 @@ The tests use a stub database client and do not connect to PostgreSQL.
 
 ## Run on PE-SERVER2
 
-Extract the complete test package so `backend` and `public` are sibling folders.
-It contains only a test notice and the password-setup page; it does not contain the
-existing Supabase-backed app pages. Open PowerShell on PE-SERVER2 and run the
-following from the `backend` folder:
+Deploy the complete `backend` and `public` folders as siblings. The current source
+includes the application pages, but only the CHSLR workflow has been migrated from
+Supabase so far. Open PowerShell on PE-SERVER2 and run the following from the
+`backend` folder.
+The `start` script loads settings from the local `.env` file in this directory.
+Keep that file out of source control and restrict access to it:
 
 ```powershell
 npm.cmd ci
 npm.cmd test
 
-$env:PGHOST = '127.0.0.1'
-$env:PGPORT = '5432'
-$env:PGDATABASE = 'mtc_migration_test2'
-$env:PGUSER = 'mtc_api_auth_test'
-$securePassword = Read-Host 'Test-only PostgreSQL password' -AsSecureString
-$passwordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
-try {
-    $env:PGPASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($passwordPointer)
-} finally {
-    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($passwordPointer)
-}
-
 npm.cmd start
 ```
+
+Start the PostgreSQL Windows service separately before starting the API. Find the
+installed service name with `Get-Service *postgres*`, then start the matching
+service from an elevated PowerShell session if it is stopped. Do not start a
+second PostgreSQL instance or change its network exposure as part of this test.
 
 Use only the limited `mtc_api_auth_test` role; never use a superuser for the API.
 If PostgreSQL is not listening on `127.0.0.1:5432`, use the approved host and port
@@ -74,20 +67,17 @@ While `npm.cmd start` is running, open this address in a browser on PE-SERVER2:
 http://127.0.0.1:3000/
 ```
 
-The page should say that this test site does not include the Supabase-backed app.
-The password-setup page is at `/auth/setup-password.html`. The API and test pages
-share the same address. To check the database from a second
+The application and API share the same origin. The password-setup page is at
+`/auth/setup-password.html`. To check the database from a second
 PowerShell window, run `Invoke-RestMethod http://127.0.0.1:3000/readyz`; expect
 `status: ready` and `database: connected`. A `503` means the API cannot complete
 its database query; check the local API log and confirm the test role, database
-name, host, port, and permissions. Do not paste credentials or personal data into
-chat. Stop the API with Ctrl+C, then clear its environment variables:
+name, host, port, and permissions. Do not paste credentials or personal data into chat. Stop the API with Ctrl+C.
+The API reads the private `.env` file only when it starts; no environment cleanup
+is needed for values loaded from that file.
 
 ```powershell
-'PGHOST', 'PGPORT', 'PGDATABASE', 'PGUSER', 'PGPASSWORD' | ForEach-Object {
-    Remove-Item "Env:$_" -ErrorAction SilentlyContinue
-}
-Remove-Variable securePassword, passwordPointer -ErrorAction SilentlyContinue
+Get-Service *postgres*
 ```
 
 ## Endpoints
@@ -97,9 +87,7 @@ Remove-Variable securePassword, passwordPointer -ErrorAction SilentlyContinue
   `{"status":"ready","database":"connected"}` on success. It returns a generic
   `503` response on connection/query failure and does not return database details.
 - `GET /` and other frontend paths serve files from the sibling `public` folder.
-  The test package includes only a test notice and password-setup page, not the
-  existing Supabase-backed application. Directory listings and file-write routes
-  are not provided.
+  Directory listings and file-write routes are not provided.
 - `POST /api/auth/login` checks a pre-provisioned, email-verified account and creates
   a seven-day server-side session. Passwords are verified using Node.js scrypt.
 - `POST /api/auth/register` creates a profile and auth record in one transaction,
@@ -114,6 +102,11 @@ Remove-Variable securePassword, passwordPointer -ErrorAction SilentlyContinue
   marks the account email verified, and creates a session in one database operation.
 - `GET /api/auth/me` checks the session cookie and returns the signed-in profile.
 - `POST /api/auth/logout` revokes the server-side session and clears the cookie.
+- `GET`, `POST`, `PATCH`, and `DELETE /api/data/{table}` provide the authenticated
+  CHSLR data API. The endpoint permits only the CHSLR tables and fields required by
+  the four CHSLR pages; profile reads are restricted to the signed-in user.
+- `GET` and `POST /api/storage/signatures/{filename}` read and store authenticated
+  PNG signatures in PostgreSQL.
 - `backend/scripts/send-password-setup.js` supports a one-account pilot with
   `--check-test` (verifies the test setup without creating tokens or sending email),
   `--send-test`, and a separately guarded 22-account send with `--send-all`.
@@ -124,8 +117,58 @@ Remove-Variable securePassword, passwordPointer -ErrorAction SilentlyContinue
   test database; it creates no users, tokens, sessions, or emails.
 
 Login uses an `HttpOnly`, `Secure`, `SameSite=Lax` cookie. Only a hash of the random
-session token is stored in PostgreSQL. The `jabatan` value is returned as profile
-information; it does not grant different API permissions.
+session token is stored in PostgreSQL. For CHSLR, `jabatan` gates which workflow
+fields an authenticated user may write; it is not used to grant access to other
+application APIs.
+
+## Vercel frontend and server API
+
+The frontend can be deployed from the `public` directory as the Vercel project root.
+The Node.js API remains on PE-SERVER2 beside PostgreSQL. For temporary testing, run
+ngrok separately on that server and forward it to `127.0.0.1:3000`; keep the backend
+bound to loopback.
+
+Set the Vercel project environment variable `BACKEND_API_ORIGIN` to the ngrok HTTPS
+origin only (for example, `https://example.ngrok-free.app`, with no path). The
+`public/api/[...path].js` Vercel function proxies same-origin `/api/*` requests to
+that origin, forwards the browser's session cookie and backend `Set-Cookie` response,
+and bypasses ngrok's browser warning. The browser therefore stays on the Vercel
+origin; the backend does not need CORS enabled. Redeploy after changing the Vercel
+environment variable.
+
+Set the backend's `PUBLIC_APP_ORIGIN` to the exact HTTPS Vercel frontend origin so
+verification links open the Vercel app. Keep PostgreSQL credentials only in the
+backend's private `.env`; do not add them to Vercel. The tunnel URL is not a permanent
+company address and must remain active during testing.
+
+The frontend proxy is not a substitute for approving and securing a production
+network route. Use test data and the restricted test database while using a
+temporary ngrok URL.
+
+## CHSLR migration slice
+
+The CHSLR pelaksana, coordinator, superintendent, and report pages use the same-origin
+PostgreSQL API instead of the Supabase client. Signatures are stored as PNG bytes in
+`public.app_signature_files`; the storage migration is `sql/004_signature_files.sql`.
+This migration has **not** been applied, and the API has not been tested against the
+live PostgreSQL database.
+
+Before enabling these pages on a database:
+
+1. Confirm the CHSLR tables and columns match the existing application.
+2. Apply `sql/004_signature_files.sql` to the intended test database only.
+3. Grant the runtime role `SELECT` on `profiles`, `chslr_items`, `chslr_mesin`,
+   `chslr_log`, and `chslr_result`; grant `INSERT` on `chslr_log` and
+   `chslr_result`; grant `DELETE` on `chslr_result`; and grant `INSERT` and `SELECT`
+   on `app_signature_files`. Grant `UPDATE` on `chslr_log` only for the pelaksana,
+   coordinator, and superintendent columns used by the API.
+4. Keep the existing restricted database name and loopback binding. Do not apply
+   the migration or grants to production without approval.
+
+The CHSLR API validates identifiers against PostgreSQL metadata, parameterizes
+filter values, restricts profile reads to the current session, and constrains writes
+by workflow role. It requires a verified `mtc_session`. Other application pages still
+use Supabase and are not changed by this migration slice.
 
 ## Authentication prototype limitations
 
@@ -144,8 +187,7 @@ information; it does not grant different API permissions.
   `app_users`, `UPDATE (email_verified_at)` on `app_users`, and `SELECT`, `INSERT`,
   `UPDATE`, and `DELETE` on `app_email_verification_tokens`. Do not apply it to
   production. The runtime role also needs its existing login/session privileges.
-- The limited test pages are served by the same Node.js process as the API; the
-  existing Supabase-backed application pages are deliberately excluded. External
+- Application pages are served by the same Node.js process as the API. External
   HTTPS access has not yet been tested. The user selected the company-approved
   ngrok tunnel on PE-SERVER2 for a brief test. If used, point it only at port 3000
   and keep it open only during the approved test.
