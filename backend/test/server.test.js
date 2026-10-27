@@ -403,6 +403,20 @@ test('registration excludes ADMIN and verifies new email with a single-use token
     assert.equal(forbiddenRole.status, 400);
     assert.equal(transactionQueries.length, 0);
 
+    const shortPassword = await fetch(registrationUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        full_name: 'Test User',
+        divisi: 'Testing',
+        jabatan: 'OPERATOR | PELAKSANA',
+        email: 'new@example.com',
+        password: 'abc12'
+      })
+    });
+    assert.equal(shortPassword.status, 400);
+    assert.equal(transactionQueries.length, 0);
+
     const registration = await fetch(registrationUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -411,7 +425,7 @@ test('registration excludes ADMIN and verifies new email with a single-use token
         divisi: 'Testing',
         jabatan: 'OPERATOR | PELAKSANA',
         email: 'new@example.com',
-        password: 'a-secure-test-password'
+        password: 'Abc123'
       })
     });
     assert.equal(registration.status, 202);
@@ -419,7 +433,7 @@ test('registration excludes ADMIN and verifies new email with a single-use token
     const profileInsert = transactionQueries.find(({ sql }) => sql.includes('INSERT INTO public.profiles'));
     const userInsert = transactionQueries.find(({ sql }) => sql.includes('INSERT INTO public.app_users'));
     assert.equal(profileInsert.values[3], 'OPERATOR | PELAKSANA');
-    assert.equal(await verifyPassword('a-secure-test-password', userInsert.values[2]), true);
+    assert.equal(await verifyPassword('Abc123', userInsert.values[2]), true);
     assert.equal(deliveries.length, 1);
     assert.match(deliveries[0].text, /https:\/\/mtc-test\.example\.com\/auth\/verify-email\.html#token=/);
 
@@ -510,7 +524,7 @@ test('password setup consumes a one-time token and creates a session atomically'
   const response = await fetch(`${baseUrl}/api/auth/setup-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, password: 'new-secure-password-123' })
+    body: JSON.stringify({ token, password: 'Abc123' })
   });
   const cookie = response.headers.get('set-cookie');
 
@@ -529,6 +543,22 @@ test('password setup consumes a one-time token and creates a session atomically'
     body: JSON.stringify({ token, password: 'another-secure-password-456' })
   });
   assert.equal(replay.status, 400);
+});
+
+test('password setup rejects passwords shorter than six characters', async () => {
+  const token = 'setup-token-short-password-123456789012345';
+  setupTokens.add(hashSessionToken(token));
+  const response = await fetch(`${baseUrl}/api/auth/setup-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, password: 'abc12' })
+  });
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    error: 'Password must be at least 6 characters'
+  });
+  assert.equal(setupTokens.has(hashSessionToken(token)), true);
 });
 
 test('password setup rejects an expired or malformed token', async () => {

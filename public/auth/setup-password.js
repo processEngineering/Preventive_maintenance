@@ -21,8 +21,8 @@ form.addEventListener('submit', async (event) => {
         status.textContent = 'Kata sandi tidak cocok.';
         return;
     }
-    if (passwordInput.value.length < 12) {
-        status.textContent = 'Kata sandi harus minimal 12 karakter.';
+    if (passwordInput.value.length < 6) {
+        status.textContent = 'Kata sandi harus minimal 6 karakter.';
         return;
     }
 

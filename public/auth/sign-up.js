@@ -101,8 +101,8 @@ render( `
             <input
                 type="password"
                 id="password"
-                placeholder="minimal 12 karakter"
-                minlength="12"
+                placeholder="minimal 6 karakter"
+                minlength="6"
                 required
             >
         </div>
@@ -195,9 +195,9 @@ async function registerUser() {
         return;
     }
 
-    if (password.length < 12) {
+    if (password.length < 6) {
         alert(
-            "Kata sandi minimal 12 karakter!"
+            "Kata sandi minimal 6 karakter!"
         );
         return;
     }

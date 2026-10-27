@@ -191,10 +191,10 @@ async function handleAuthRequest(req, res, pool, {
       !fullName || fullName.length > 160 ||
       !divisi || divisi.length > 160 ||
       !REGISTRATION_ROLES.has(jabatan) ||
-      password.length < 12 || password.length > 1024
+      password.length < 6 || password.length > 1024
     ) {
       jsonResponse(res, 400, {
-        error: 'Check the registration details. Passwords must be at least 12 characters.'
+        error: 'Check the registration details. Passwords must be at least 6 characters.'
       });
       return true;
     }
@@ -476,8 +476,8 @@ async function handleAuthRequest(req, res, pool, {
       jsonResponse(res, 400, { error: 'Setup link is invalid or expired' });
       return true;
     }
-    if (password.length < 12 || password.length > 1024) {
-      jsonResponse(res, 400, { error: 'Password must be at least 12 characters' });
+    if (password.length < 6 || password.length > 1024) {
+      jsonResponse(res, 400, { error: 'Password must be at least 6 characters' });
       return true;
     }
 
