@@ -1,4 +1,3 @@
-import { supabaseClient as client } from "../src/supabase/supabase-client.js";
 import { render } from "../src/utils/renderer.js";
 
 
@@ -134,43 +133,30 @@ export async function initSignIn() {
         btn.disabled = true;
 
         try {
-            // --- sign in with supabase
-            const {
-                data,
-                error
-            } = await client.auth.signInWithPassword({
-                email: email,
-                password: password
-
+            const response = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "ngrok-skip-browser-warning": "true"
+                },
+                credentials: "same-origin",
+                body: JSON.stringify({ email, password })
             });
-
-            if (error) {
-                if (
-                    error.message.includes(
-                        "Email not confirmed"
-                    )
-                ) {
-
-                    throw new Error(
-                        "Email belum diverifikasi. Silakan cek inbox email Anda."
-                    );
-                }
-                throw error;
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(
+                    response.status === 401
+                        ? "Email atau kata sandi salah, atau email belum diverifikasi."
+                        : result.error || "Login gagal. Silakan coba lagi."
+                );
             }
 
-            // --- login successful
             tampilkanPesan(
                 "Login Berhasil! Mengarahkan...",
                 "success"
             );
 
-            if (data.user) {
-                setTimeout(() => {
-                    cekJabatanDanRedirect(
-                        data.user.id
-                    );
-                }, 1000);
-            }
+            setTimeout(() => redirectToApp(result.user), 1000);
 
         } catch (error) {
             console.error(
@@ -204,19 +190,13 @@ export async function initSignIn() {
     // --- cek sesi function
     async function cekSesi() {
         try {
-            const {
-                data: {
-                    session
-                }
-            } = await client.auth.getSession();
-
-            if (session) {
-                console.log(
-                    "Session ditemukan, cek jabatan..."
-                );
-                await cekJabatanDanRedirect(
-                    session.user.id
-                );
+            const response = await fetch("/api/auth/me", {
+                credentials: "same-origin",
+                headers: { "ngrok-skip-browser-warning": "true" }
+            });
+            if (response.ok) {
+                const result = await response.json();
+                redirectToApp(result.user);
             }
         } catch (error) {
             console.error(
@@ -226,58 +206,17 @@ export async function initSignIn() {
         }
     }
 
-    // --- cek jabatan dan redirect function
-   async function cekJabatanDanRedirect(userId) {
-    try {
-        const {
-            data: profile,
-            error
-        } = await client
-            .from("profiles")
-            .select("jabatan")
-            .eq("id", userId)
-            .single();
-
-        // --- profile check
-        if (error || !profile) {
+    function redirectToApp(user) {
+        if (!user || !user.jabatan) {
             tampilkanPesan(
-                "Profil tidak ditemukan. Hubungi Admin.",
+                "Profil tidak ditemukan atau belum memiliki jabatan. Hubungi Admin.",
                 "error"
             );
             return;
         }
-
-        // --- role check
-        const jabatan =
-            (profile.jabatan || "")
-                .toUpperCase()
-                .trim();
-        console.log(
-            "Jabatan User:",
-            jabatan
-        );
-
-        if (!jabatan) {
-            tampilkanPesan(
-                "Jabatan user belum terdaftar. Hubungi Admin.",
-                "error"
-            );
-            return;
-        }
-        window.location.href =
-            "base-app.html?page=home";
+        window.location.href = "/view/base-app.html?page=home";
     }
-    catch (error) {
-        console.error(
-            "Gagal cek jabatan:",
-            error
-        );
-        tampilkanPesan(
-            "Terjadi kesalahan sistem.",
-            "error"
-        );
-    }
-}
+
     // --- show status message function
     function tampilkanPesan(
         pesan,

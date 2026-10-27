@@ -1,0 +1,462 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
+const { after, before, test } = require('node:test');
+const { hashPassword, hashSessionToken, verifyPassword } = require('../auth');
+const { createServer, validateDatabaseEnvironment } = require('../server');
+
+let server;
+let baseUrl;
+let publicRoot;
+let queryError;
+const queries = [];
+let authUser;
+const sessions = new Map();
+const setupTokens = new Set();
+const pool = {
+  async query(sql, values = []) {
+    queries.push(sql);
+    if (queryError) {
+      throw queryError;
+    }
+    if (sql.includes('WITH claimed AS')) {
+      if (!setupTokens.delete(values[0])) return { rows: [] };
+      sessions.set(values[2], authUser.profile_id);
+      return {
+        rows: [{
+          id: authUser.profile_id,
+          full_name: authUser.full_name,
+          divisi: authUser.divisi,
+          jabatan: authUser.jabatan
+        }]
+      };
+    }
+    if (sql.includes('FROM public.app_users u')) {
+      return { rows: authUser ? [authUser] : [] };
+    }
+    if (sql.includes('INSERT INTO public.app_sessions')) {
+      sessions.set(values[0], values[1]);
+      return { rows: [] };
+    }
+    if (sql.includes('FROM public.app_sessions s')) {
+      const profileId = sessions.get(values[0]);
+      return {
+        rows: profileId ? [{
+          id: profileId,
+          full_name: 'Test User',
+          divisi: 'Testing',
+          jabatan: 'OPERATOR | PELAKSANA'
+        }] : []
+      };
+    }
+    if (sql.includes('DELETE FROM public.app_sessions')) {
+      sessions.delete(values[0]);
+      return { rows: [] };
+    }
+    return { rows: [{ '?column?': 1 }] };
+  }
+};
+
+before(async () => {
+  publicRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'mtc-api-public-'));
+  await fs.mkdir(path.join(publicRoot, 'auth'));
+  await fs.writeFile(path.join(publicRoot, 'index.html'), '<h1>MTC test site</h1>');
+  await fs.writeFile(
+    path.join(publicRoot, 'auth', 'setup-password.html'),
+    '<h1>Set password</h1>'
+  );
+  authUser = {
+    profile_id: '00000000-0000-0000-0000-000000000001',
+    password_hash: await hashPassword('test-password-123'),
+    email_verified_at: new Date(),
+    full_name: 'Test User',
+    divisi: 'Testing',
+    jabatan: 'OPERATOR | PELAKSANA'
+  };
+  server = createServer(pool, { publicRoot });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  baseUrl = `http://127.0.0.1:${server.address().port}`;
+});
+
+after(async () => {
+  await new Promise((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
+  await fs.rm(publicRoot, { recursive: true, force: true });
+});
+
+test('health endpoint reports process status without querying the database', async () => {
+  const response = await fetch(`${baseUrl}/healthz`);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { status: 'ok' });
+  assert.equal(queries.length, 0);
+});
+
+test('readiness endpoint performs only the intended profiles existence query', async () => {
+  const response = await fetch(`${baseUrl}/readyz`);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { status: 'ready', database: 'connected' });
+  assert.equal(queries.at(-1), 'SELECT 1 FROM public.profiles LIMIT 1');
+});
+
+test('readiness endpoint does not expose database errors', async () => {
+  queryError = new Error('internal database detail');
+  const response = await fetch(`${baseUrl}/readyz`);
+  queryError = undefined;
+
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { status: 'unavailable' });
+});
+
+test('only GET requests are accepted', async () => {
+  const response = await fetch(`${baseUrl}/readyz`, { method: 'POST' });
+
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get('allow'), 'GET');
+});
+
+test('static frontend is served from the same origin as the API', async () => {
+  const home = await fetch(`${baseUrl}/`);
+  const setupPage = await fetch(`${baseUrl}/auth/setup-password.html`);
+
+  assert.equal(home.status, 200);
+  assert.match(home.headers.get('content-type'), /text\/html/);
+  assert.equal(await home.text(), '<h1>MTC test site</h1>');
+  assert.equal(setupPage.status, 200);
+  assert.equal(await setupPage.text(), '<h1>Set password</h1>');
+});
+
+test('static hosting rejects unknown, hidden, traversal, and write requests', async () => {
+  const missing = await fetch(`${baseUrl}/not-a-route`);
+  const hidden = await fetch(`${baseUrl}/.env`);
+  const traversal = await fetch(`${baseUrl}/%2e%2e%5csecret.txt`);
+  const write = await fetch(`${baseUrl}/index.html`, { method: 'POST' });
+
+  assert.equal(missing.status, 404);
+  assert.equal(hidden.status, 404);
+  assert.equal(traversal.status, 404);
+  assert.equal(write.status, 405);
+});
+
+test('login creates a seven-day secure, HttpOnly session cookie', async () => {
+  const response = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: ' USER@EXAMPLE.COM ', password: 'test-password-123' })
+  });
+  const cookie = response.headers.get('set-cookie');
+
+  assert.equal(response.status, 200);
+  assert.match(cookie, /HttpOnly/);
+  assert.match(cookie, /Secure/);
+  assert.match(cookie, /SameSite=Lax/);
+  assert.match(cookie, /Max-Age=604800/);
+  assert.deepEqual(await response.json(), {
+    user: {
+      id: '00000000-0000-0000-0000-000000000001',
+      full_name: 'Test User',
+      divisi: 'Testing',
+      jabatan: 'OPERATOR | PELAKSANA'
+    }
+  });
+});
+
+test('login rejects wrong passwords and unverified accounts without revealing which failed', async () => {
+  const wrongPassword = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'user@example.com', password: 'wrong-password' })
+  });
+  authUser.email_verified_at = null;
+  const unverified = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'user@example.com', password: 'test-password-123' })
+  });
+  authUser.email_verified_at = new Date();
+
+  assert.equal(wrongPassword.status, 401);
+  assert.deepEqual(await wrongPassword.json(), { error: 'Email or password is incorrect' });
+  assert.equal(unverified.status, 401);
+  assert.deepEqual(await unverified.json(), { error: 'Email or password is incorrect' });
+});
+
+test('registration excludes ADMIN and verifies new email with a single-use token', async () => {
+  const tokenHashes = new Set();
+  const transactionQueries = [];
+  const deliveries = [];
+  let emailVerified = false;
+  const registrationPool = {
+    async connect() {
+      return {
+        async query(sql, values = []) {
+          transactionQueries.push({ sql, values });
+          if (sql.includes('SELECT profile_id, email')) {
+            return {
+              rows: emailVerified
+                ? []
+                : [{
+                  profile_id: '00000000-0000-0000-0000-000000000002',
+                  email: 'new@example.com'
+                }]
+            };
+          }
+          if (sql.includes('DELETE FROM public.app_email_verification_tokens')) {
+            tokenHashes.clear();
+          }
+          if (sql.includes('INSERT INTO public.app_email_verification_tokens')) {
+            tokenHashes.add(values[0]);
+          }
+          return { rows: [] };
+        },
+        release() {}
+      };
+    },
+    async query(sql, values = []) {
+      if (sql.includes('WITH claimed AS')) {
+        if (!tokenHashes.delete(values[0])) return { rows: [] };
+        emailVerified = true;
+        return { rows: [{ profile_id: '00000000-0000-0000-0000-000000000002' }] };
+      }
+      return { rows: [] };
+    }
+  };
+  const registrationServer = createServer(registrationPool, {
+    publicRoot,
+    mailer: { async sendMail(message) { deliveries.push(message); } },
+    fromEmail: 'department@example.com',
+    publicAppOrigin: 'https://mtc-test.example.com'
+  });
+  await new Promise((resolve) => registrationServer.listen(0, '127.0.0.1', resolve));
+  const registrationUrl = `http://127.0.0.1:${registrationServer.address().port}/api/auth/register`;
+
+  try {
+    const forbiddenRole = await fetch(registrationUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        full_name: 'Test User',
+        divisi: 'Testing',
+        jabatan: 'ADMIN',
+        email: 'new@example.com',
+        password: 'a-secure-test-password'
+      })
+    });
+    assert.equal(forbiddenRole.status, 400);
+    assert.equal(transactionQueries.length, 0);
+
+    const registration = await fetch(registrationUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        full_name: 'Test User',
+        divisi: 'Testing',
+        jabatan: 'OPERATOR | PELAKSANA',
+        email: 'new@example.com',
+        password: 'a-secure-test-password'
+      })
+    });
+    assert.equal(registration.status, 202);
+    assert.equal(transactionQueries.at(-1).sql, 'COMMIT');
+    const profileInsert = transactionQueries.find(({ sql }) => sql.includes('INSERT INTO public.profiles'));
+    const userInsert = transactionQueries.find(({ sql }) => sql.includes('INSERT INTO public.app_users'));
+    assert.equal(profileInsert.values[3], 'OPERATOR | PELAKSANA');
+    assert.equal(await verifyPassword('a-secure-test-password', userInsert.values[2]), true);
+    assert.equal(deliveries.length, 1);
+    assert.match(deliveries[0].text, /https:\/\/mtc-test\.example\.com\/auth\/verify-email\.html#token=/);
+
+    const firstUrl = new URL(deliveries[0].html.match(/href="([^"]+)"/)[1]);
+    const firstToken = new URLSearchParams(firstUrl.hash.slice(1)).get('token');
+    const resend = await fetch(
+      `http://127.0.0.1:${registrationServer.address().port}/api/auth/resend-verification`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'new@example.com' })
+      }
+    );
+    assert.equal(resend.status, 202);
+    assert.equal(deliveries.length, 2);
+
+    const secondUrl = new URL(deliveries[1].html.match(/href="([^"]+)"/)[1]);
+    const token = new URLSearchParams(secondUrl.hash.slice(1)).get('token');
+    const verify = await fetch(
+      `http://127.0.0.1:${registrationServer.address().port}/api/auth/verify-email`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      }
+    );
+    assert.equal(verify.status, 200);
+    assert.deepEqual(await verify.json(), { status: 'verified' });
+
+    const expiredLink = await fetch(
+      `http://127.0.0.1:${registrationServer.address().port}/api/auth/verify-email`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: firstToken })
+      }
+    );
+    assert.equal(expiredLink.status, 400);
+
+    const replay = await fetch(
+      `http://127.0.0.1:${registrationServer.address().port}/api/auth/verify-email`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      }
+    );
+    assert.equal(replay.status, 400);
+  } finally {
+    await new Promise((resolve, reject) => {
+      registrationServer.close((error) => (error ? reject(error) : resolve()));
+    });
+  }
+});
+
+test('session lookup requires a valid session and logout revokes it', async () => {
+  const login = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'user@example.com', password: 'test-password-123' })
+  });
+  const cookie = login.headers.get('set-cookie').split(';')[0];
+
+  const session = await fetch(`${baseUrl}/api/auth/me`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(session.status, 200);
+  assert.equal((await session.json()).user.id, authUser.profile_id);
+
+  const logout = await fetch(`${baseUrl}/api/auth/logout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: '{}'
+  });
+  assert.equal(logout.status, 200);
+  assert.match(logout.headers.get('set-cookie'), /Max-Age=0/);
+
+  const expiredSession = await fetch(`${baseUrl}/api/auth/me`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(expiredSession.status, 401);
+});
+
+test('password setup consumes a one-time token and creates a session atomically', async () => {
+  const sessionsBeforeSetup = sessions.size;
+  const token = 'setup-token-value-123456789012345678901234';
+  setupTokens.add(hashSessionToken(token));
+  const response = await fetch(`${baseUrl}/api/auth/setup-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, password: 'new-secure-password-123' })
+  });
+  const cookie = response.headers.get('set-cookie');
+
+  assert.equal(response.status, 200);
+  assert.match(cookie, /HttpOnly/);
+  assert.match(cookie, /Secure/);
+  assert.deepEqual((await response.json()).user.id, authUser.profile_id);
+  assert.match(queries.at(-1), /UPDATE public\.app_setup_tokens/);
+  assert.match(queries.at(-1), /UPDATE public\.app_users/);
+  assert.match(queries.at(-1), /INSERT INTO public\.app_sessions/);
+  assert.equal(sessions.size, sessionsBeforeSetup + 1);
+
+  const replay = await fetch(`${baseUrl}/api/auth/setup-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, password: 'another-secure-password-456' })
+  });
+  assert.equal(replay.status, 400);
+});
+
+test('password setup rejects an expired or malformed token', async () => {
+  const response = await fetch(`${baseUrl}/api/auth/setup-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: 'not-a-setup-token', password: 'new-secure-password-123' })
+  });
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: 'Setup link is invalid or expired' });
+});
+
+test('login rejects non-JSON requests and malformed JSON', async () => {
+  const wrongContentType = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    body: 'email=user@example.com'
+  });
+  const malformed = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: 'null'
+  });
+
+  assert.equal(wrongContentType.status, 415);
+  assert.equal(malformed.status, 400);
+});
+
+test('database configuration must be explicit and use a valid port', () => {
+  assert.throws(
+    () => validateDatabaseEnvironment({}),
+    /PGHOST, PGDATABASE, PGUSER, PGPASSWORD/
+  );
+  assert.throws(
+    () => validateDatabaseEnvironment({
+      PGHOST: 'localhost',
+      PGDATABASE: 'mtc',
+      PGUSER: 'mtc_api',
+      PGPASSWORD: 'test-only'
+    }),
+    /PGDATABASE must be mtc_migration_test2/
+  );
+  assert.deepEqual(
+    validateDatabaseEnvironment({
+      PGHOST: 'localhost',
+      PGDATABASE: 'mtc_migration_test2',
+      PGUSER: 'mtc_api',
+      PGPASSWORD: 'test-only',
+      PGPORT: '5432'
+    }),
+    { port: 5432, host: '127.0.0.1' }
+  );
+  assert.deepEqual(
+    validateDatabaseEnvironment({
+      PGHOST: 'localhost',
+      PGDATABASE: 'mtc_migration_test2',
+      PGUSER: 'mtc_api',
+      PGPASSWORD: 'test-only',
+      PGPORT: '5432',
+      API_HOST: '0.0.0.0'
+    }),
+    { port: 5432, host: '0.0.0.0' }
+  );
+  assert.throws(
+    () => validateDatabaseEnvironment({
+      PGHOST: 'localhost',
+      PGDATABASE: 'mtc_migration_test2',
+      PGUSER: 'mtc_api',
+      PGPASSWORD: 'test-only',
+      PGPORT: '70000'
+    }),
+    /PGPORT/
+  );
+  assert.throws(
+    () => validateDatabaseEnvironment({
+      PGHOST: 'localhost',
+      PGDATABASE: 'mtc_migration_test2',
+      PGUSER: 'mtc_api',
+      PGPASSWORD: 'test-only',
+      API_HOST: '192.168.4.240'
+    }),
+    /API_HOST/
+  );
+});

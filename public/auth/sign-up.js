@@ -1,4 +1,3 @@
-import { supabaseClient } from "../src/supabase/supabase-client.js";
 import { render } from '../src/auth/auth-router.js';
 
 // --- render sign-up form
@@ -54,10 +53,6 @@ render( `
                     -- PILIH JABATAN --
                 </option>
 
-                <option value="ADMIN">
-                    ADMIN
-                </option>
-
                 <option value="OPERATOR | PELAKSANA">
                     OPERATOR | PELAKSANA
                 </option>
@@ -106,10 +101,13 @@ render( `
             <input
                 type="password"
                 id="password"
-                placeholder="minimal 6 karakter"
+                placeholder="minimal 12 karakter"
+                minlength="12"
                 required
             >
         </div>
+
+        <p id="register-status" role="status" aria-live="polite"></p>
 
         <button
             type="button"
@@ -117,11 +115,18 @@ render( `
         >
             DAFTAR SEKARANG
         </button>
+
+        <p class="footer-link">
+            Belum menerima email verifikasi?
+            <button type="button" id="btnResend" disabled>
+                KIRIM ULANG
+            </button>
+        </p>
     </main>
 
     <p class="footer-link">
         Sudah punya akun?
-        <a href="index.html">
+        <a href="../view/auth.html?mode=login">
             Masuk di sini
         </a>
     </p>
@@ -145,12 +150,17 @@ const passwordInput =
 
 const btnDaftar =
     document.getElementById("btnDaftar");
+const btnResend =
+    document.getElementById("btnResend");
+const statusBox =
+    document.getElementById("register-status");
 
 // -- register event
 btnDaftar.addEventListener(
     "click",
     registerUser
 );
+btnResend.addEventListener("click", resendVerification);
 
 // --- register user function
 async function registerUser() {
@@ -185,9 +195,9 @@ async function registerUser() {
         return;
     }
 
-    if (password.length < 6) {
+    if (password.length < 12) {
         alert(
-            "Password minimal 6 karakter!"
+            "Kata sandi minimal 12 karakter!"
         );
         return;
     }
@@ -196,108 +206,68 @@ async function registerUser() {
     btnDaftar.disabled = true;
     btnDaftar.textContent =
         "SEDANG PROSES";
+    statusBox.textContent = "";
 
     try {
-        // --- create auth account
-        const {
-            data: authData,
-            error: authError
-        } = await supabaseClient.auth.signUp({
-            email,
-            password,
-            options: {
-                emailRedirectTo:
-                    "https://amarilyspm.vercel.app/auth.html?page=success",
-
-                data: {
-                    full_name:
-                        fullname,
-                    divisi,
-                    jabatan
-                }
-            }
+        const response = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "ngrok-skip-browser-warning": "true"
+            },
+            credentials: "same-origin",
+            body: JSON.stringify({
+                full_name: fullname,
+                divisi,
+                jabatan,
+                email,
+                password
+            })
         });
-        if (authError) {
-            throw authError;
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || "Pendaftaran gagal. Silakan coba lagi.");
         }
-
-        // --- save profile data
-        if (authData.user) {
-
-            const {
-                error: profileError
-            } = await supabaseClient
-                .from("profiles")
-                .upsert([
-
-                    {
-                        id:
-                            authData.user.id,
-
-                        full_name:
-                            fullname,
-
-                        divisi,
-
-                        jabatan
-                    }
-
-                ]);
-
-
-            if (profileError) {
-
-                console.error(
-                    "Gagal simpan profil:",
-                    profileError
-                );
-
-                alert(
-                    "Akun Auth berhasil, tapi gagal " +
-                    "simpan data profil.\n\n" +
-                    "Error: " +
-                    profileError.message
-                );
-
-                return;
-            }
-
-
-            await supabaseClient.auth.signOut();
-
-            // --- show success message and redirect
-            alert(
-                "PENDAFTARAN BERHASIL!\n\n" +
-                "Silakan cek inbox/spam email Anda " +
-                "untuk verifikasi, lalu login."
-            );
-
-
-            window.location.href =
-                "../../view/auth.html?mode=login";
-        }
-
+        statusBox.textContent =
+            "Jika email dapat didaftarkan, tautan verifikasi akan dikirim. Periksa inbox dan folder spam.";
+        btnResend.disabled = false;
     } catch (error) {
-
         console.error(
-            "Error Utama:",
+            "Registration error:",
             error
         );
-
-
-        alert(
-            "Gagal Mendaftar: " +
-            (
-                error.message ||
-                "Terjadi kesalahan sistem."
-            )
-        );
-
+        statusBox.textContent = error.message || "Terjadi kesalahan sistem.";
+        btnResend.disabled = false;
     } finally {
-
         btnDaftar.disabled = false;
-
         btnDaftar.textContent =
             "DAFTAR SEKARANG";
+    }
+}
+
+async function resendVerification() {
+    btnResend.disabled = true;
+    statusBox.textContent = "";
+    try {
+        const response = await fetch("/api/auth/resend-verification", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "ngrok-skip-browser-warning": "true"
+            },
+            credentials: "same-origin",
+            body: JSON.stringify({ email: emailInput.value.trim() })
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || "Tidak dapat mengirim ulang tautan.");
+        }
+        statusBox.textContent =
+            "Jika ada akun yang belum terverifikasi untuk email tersebut, tautan baru akan dikirim.";
+    } catch (error) {
+        console.error("Verification resend error:", error);
+        statusBox.textContent = error.message || "Terjadi kesalahan sistem.";
+    } finally {
+        btnResend.disabled = false;
     }
 }

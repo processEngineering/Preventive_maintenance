@@ -1,0 +1,237 @@
+MTC APPLICATION - COMPACT SUPABASE DEPENDENCY AUDIT
+Audit date: 2026-10-26
+Status: Source audit complete. The isolated self-hosted test package has been run on
+PE-SERVER2: all 16 tests passed, the temporary test page returned HTTP 200, and the
+readiness endpoint connected to mtc_migration_test2. No production system changed.
+No application data, Supabase accounts, or production systems have been changed.
+
+SUMMARY
+The frontend is directly coupled to Supabase for database reads/writes, authentication
+and sessions, profile/role lookups, and public signature-image URLs. A database restore
+alone does not replace these services. The detailed source-match inventory is in
+mtc-supabase-audit-detail.txt.
+
+APPLICATION DEPENDENCIES
+
+1. Supabase client setup
+- A shared client is configured in public/src/supabase/supabase-client.js.
+- Checklist pages also initialize their own Supabase clients and load the Supabase JS
+  library in the browser. The project URL and client key are therefore frontend-facing.
+- Direct client initialization was found in 55 checklist HTML pages.
+
+2. Authentication, sessions, and profiles
+- Sign-in uses Auth password login and session checks.
+- Registration creates an Auth account, requests email verification with a redirect,
+  stores full_name/divisi/jabatan in Auth metadata, and upserts the matching profiles
+  row using the Auth user ID. It then signs out.
+- Password recovery sends a reset email; the password-update page changes the Auth
+  password.
+- Application pages check the current Auth session and read profiles for user details
+  and role/permission-related behavior. Account pages also support sign-out/profile
+  updates.
+- Auth behavior to replace: sign-in, registration, email verification, session
+  persistence/checks, sign-out, password-reset email, and password update.
+
+3. Database access
+- Direct Supabase .from(...) access occurs in 60 source files, including checklist
+  entry, approval, result, history, and chart pages, plus authentication, role, and
+  account flows.
+- Referenced database tables (exact identifiers found in source):
+  profiles;
+  chslr_items, chslr_log, chslr_mesin, chslr_result;
+  clhmi, clhmi_items, clhmi_machine, clhmi_results;
+  clpm_items, clpm_log, clpm_result;
+  jpdo_approval, jpdo_approval_manager, jpdo_approval_ppc,
+  jpdo_approval_produksi, jpdo_log, jpdo_result;
+  kartu_riwayat_items;
+  Lkmr_result, lkmr_repair;
+  pmi_header, pmi_item_fields, pmi_items, pmi_machines, pmi_results;
+  pmw_log, pmw_reports;
+  pohm_items, pohm_log, pohm_machine;
+  ppw_log;
+  prslb_items, prslb_log, prslb_mesin, prslb_result.
+- Schema check against mtc_migration_test2: all 36 referenced database tables exist
+  in public with exact name and capitalization. Lkmr_result is mixed-case in both
+  source and database.
+- The profiles table has 22 rows. Its columns are id (UUID primary key),
+  full_name, divisi, jabatan, and created_at; it contains no email column.
+- An aggregate check in the Supabase project confirmed 22 profiles, 22 matching Auth
+  user IDs, and 22 matching accounts with email addresses. This confirms the profile
+  IDs can be preserved; the private email-to-ID list must remain with the authorized
+  administrator and must not be pasted into chat or committed.
+- The schema comparison initially included "signatures" as a presumed table, but
+  source inspection confirms its .from('signatures') calls are Storage bucket calls,
+  not database-table queries. No missing database table was identified.
+
+4. Supabase Storage
+- CHSLR and CLHMI result pages call getPublicUrl() for objects in the "signatures"
+  bucket and display those images.
+- CHSLR coordinator, pelaksana, and superintendent flows upload new signature PNGs
+  to that bucket; result pages read public URLs.
+- The source audit cannot confirm whether the bucket contains required files, its
+  access policy, or whether referenced paths are stored as object keys or URLs.
+
+5. Other Supabase features
+- No RPC, Realtime channel, or Supabase Functions calls were found in the searched
+  application source.
+
+REPLACEMENT-BACKEND IMPLICATIONS
+- The API must cover the table reads/writes and workflow transitions used by the
+  checklist, approval, result, history, chart, and profile flows.
+- The backend must replace Supabase Auth and enforce identity, session expiry, and
+  role/permission checks server-side; frontend-only gating is not a substitute.
+- Email verification and password recovery need an explicit replacement flow.
+- Signature images need a planned storage location and access strategy, including
+  validating whether the existing Supabase bucket contains files still in use.
+
+PROPOSED BACKEND ARCHITECTURE
+- Updated test direction (user choice): serve the Node.js API and a limited test
+  frontend together from PE-SERVER2, removing the need for a Vercel-to-API rewrite
+  during this test. The test package deliberately excludes the current
+  Supabase-backed application screens. It serves only a test notice and the
+  password-setup page. PostgreSQL remains private to the backend. Existing
+  operational frontend features still call Supabase and are not migrated.
+- This self-hosted test uses free Node.js software. Remote access still requires a
+  company-approved HTTPS route; a free tunnel may have a changing address and must
+  not be treated as production-ready without IT/security approval.
+- The initial connectivity API was copied to
+  C:\Apps\mtc-backend-connectivity-20261026 on PE-SERVER2. Node.js v24.19.0 was
+  available; npm ci succeeded and all six original unit tests passed there.
+- The auth prototype was later copied to C:\Apps\mtc-backend-auth-20261026 on
+  PE-SERVER2; npm ci and all ten auth/API unit tests passed there.
+- A PostgreSQL login role named mtc_api_connectivity was created for this test.
+  It was granted CONNECT on mtc_migration_test2, USAGE on public, and SELECT on
+  public.profiles only. No table data was changed. The temporary API process was
+  stopped after testing, and its database environment variables were cleared.
+- The earlier API was tested on loopback only. The user confirmed ngrok is approved
+  for testing, but no tunnel was opened and whether its public HTTPS address is fixed
+  is unknown.
+- Chosen test connectivity: browser -> company-approved ngrok HTTPS endpoint ->
+  Node.js on PE-SERVER2 serving the limited test page and API -> local PostgreSQL.
+  The user selected running the tunnel agent on PE-SERVER2. The tunnel should expose
+  only Node API port 3000; PostgreSQL remains inaccessible from the public internet.
+  The frontend already calls `/api/auth/setup-password` with a relative URL, so
+  opening the page through ngrok keeps page and API same-origin and needs no separate
+  API-base config or cross-origin cookie settings.
+- The one-time setup email link must use the active ngrok HTTPS URL, not an HTTP LAN
+  address. The link is valid for 24 hours but will stop working if a temporary ngrok
+  URL changes or the tunnel is stopped. Keep the tunnel active only as needed for an
+  approved one-account test. No setup email has been sent.
+- Treat ngrok as a test/development option until its stable-URL availability, company
+  IT/security approval, free-tier limits, and production reliability are confirmed.
+  Keep tunnel credentials outside source control. A production tunnel/HTTPS route
+  needs an explicit operational decision.
+- Finish authentication, sessions, and server-side authorization before moving
+  operational features. Confirm API hostname, frontend origin, and session-cookie
+  behavior before deployment.
+- For the 22 existing users who need sign-in, preserve profile IDs and deliver a
+  one-time password-setup link. Never import or store plaintext passwords. The
+  department Gmail sender is available, but its App Password has not been configured.
+  Never put it in chat, frontend settings, or source control.
+- The local prototype supports password login, profile/session lookup, logout, and
+  initial password setup with seven-day server-side sessions. Passwords use scrypt
+  hashes; session cookies are HttpOnly, Secure, and SameSite=Lax, and only
+  session-token hashes are stored. Sixteen local unit tests pass using a stub
+  database client. Setup-token consumption, password update, and session creation
+  are performed in a single database statement.
+- The Node.js server now serves static files from a sibling public folder. Tests
+  verify same-origin delivery and reject missing paths, hidden files, traversal
+  requests, and write requests. The isolated v4 test package on PE-SERVER2 contains
+  only a test notice and password-setup page, not existing Supabase-backed app pages.
+  All 16 unit tests passed on PE-SERVER2; the notice returned HTTP 200 and /readyz
+  returned ready/connected for the test database.
+- The prototype schema in backend/sql/001_auth.sql has been applied to
+  mtc_migration_test2, creating empty app_users and app_sessions tables. A separate
+  mtc_api_auth_test login was created with access limited to profiles/app_users
+  reads and app_sessions read/insert/delete. No profile or checklist rows were changed.
+- On PE-SERVER2, /readyz returned HTTP 200 after connecting with the new test role.
+  A fake login returned the expected HTTP 401, confirming the API could query the
+  account table without finding a user. No real account was provisioned and no
+  successful database-backed login/session has been tested.
+- The password-setup schema migration (002) has been applied to
+  mtc_migration_test2. The mtc_api_auth_test role has the necessary token-read,
+  token-consume, and password-setup column grants; zero-row permission checks
+  confirmed them without changing data. No separate provisioning role exists.
+- The setup page and API are same-origin in the test package. No external HTTPS
+  route has been configured, and the setup script has not sent emails; do not run
+  it yet. It supports an explicitly selected one-user pilot and guards the all-22
+  send behind a separate confirmation setting.
+- The user selected their own authorized test profile and an email account they
+  control for a future single-account test. No profile/email mapping has been
+  shared. The user reports creating the department Gmail App Password; it has not
+  been configured on PE-SERVER2 or used to send email. Never request or accept it
+  in chat.
+- The user confirmed the private profile/email mapping corresponds to their
+  authorized test account and a mailbox they control. It was created locally on
+  PE-SERVER2 and has not been shared. The department Gmail App Password has been
+  created but is not configured on the server.
+- The pilot file initially had an invalid profile UUID; the user corrected it
+  privately and confirmed the validated file was saved. It has not yet been checked
+  against the test database by the preflight.
+- A separate `mtc_setup_provision_test` login was created for the one-account pilot
+  on `mtc_migration_test2`. The user set its password privately. Read-only
+  permission checks showed it is not a superuser and confirmed database connect,
+  schema usage, profile-id read, app-user insert, setup-token column inserts/reads,
+  and token deletion permissions. The pilot mapping is not yet prepared; no
+  accounts or tokens have been provisioned and no setup emails have been sent.
+- The latest local change adds a `--check-test` preflight mode: it verifies SMTP,
+  the target profile, and absence of an existing app_users row without creating a
+  token or sending mail. The latest local package passes 18 tests and npm audit
+  reports no vulnerabilities. V9 was copied to PE-SERVER2 and all 18 tests passed
+  there. The preflight was run on PE-SERVER2 and passed: SMTP verification and
+  private mapping/test-database checks succeeded, with no account, token, or email
+  created. The Gmail credentials were entered only into process environment for
+  that check and then cleared. No email has been sent and no account has been
+  provisioned.
+- The user then authorized the one-account setup email attempt. PE-SERVER2 reported
+  `permission denied for table app_users`. The transaction is designed to roll
+  back before email delivery on provisioning errors; verify account/token state
+  before retrying and do not rerun the send command yet. The local script now uses
+  a transaction-scoped advisory lock instead of `SELECT ... FOR UPDATE`, which
+  requires `UPDATE` privilege; this avoids broadening the temporary role. The new
+  focused test passes, and all 19 local backend tests pass. The updated package
+  has not yet been copied to PE-SERVER2 or tested there. The current API/tunnel
+  state on PE-SERVER2 is unknown; stop both until a retry is explicitly prepared.
+- ngrok 3.39.13 was extracted to C:\Apps\ngrok-cli on PE-SERVER2 and its version
+  command succeeded. The approved account configuration was added locally on
+  PE-SERVER2 and `ngrok config check` returned valid. No tunnel is running. The
+  first authtoken was inadvertently pasted into chat and the user confirmed it
+  was revoked and replaced; never share the replacement token. Keep the API bound to
+  127.0.0.1; the same-machine ngrok agent can forward to loopback, so no LAN bind
+  or firewall change is necessary. The current v5 package defaults to loopback;
+  do not set API_HOST to 0.0.0.0.
+- During the approved ngrok test, the HTTPS setup page returned HTTP 200 and
+  `/readyz` returned ready/connected when called with the `ngrok-skip-browser-warning`
+  header. The setup page's browser POST now includes that header to bypass ngrok's
+  free-tier interstitial for its API request. This updated v6 package passed all
+  16 local tests and dependency audit; it was transferred to PE-SERVER2. V7 adds
+  tests for HTTPS-only email origins and refuses a pilot if its profile already has
+  an app_users row. V7 was transferred to PE-SERVER2 and all 17 tests passed there.
+  No dependency vulnerabilities were reported. The API and ngrok were stopped after
+  the page test.
+- Users/password hashes are not imported. There is no public signup, password reset,
+  login rate limiting, or operational-feature authorization. Do not expose the API
+  via ngrok except for the brief, approved connectivity test.
+- Signup policy decision: public signup remains. Users may choose their job-title
+  label, but it is not an authorization grant; all email-verified accounts have the
+  same backend permissions. Do not use the self-selected jabatan value to authorize
+  privileged actions. If role-specific permissions are needed later, add trusted
+  administrator assignment and approval before enabling them.
+- Migrate one workflow at a time against mtc_migration_test2, starting with a small,
+  self-contained feature. Test before proceeding to checklist and approval workflows.
+- Before cutover, verify stored signature files and test the complete application.
+- Successful login with a provisioned account and session persistence have not been
+  integration-tested. The password-setup flow has only been unit-tested; no email
+  has been sent. Operational APIs are not implemented. This is not a production
+  deployment.
+BEGIN;
+AUDIT BOUNDARIES
+- The application audit was a static source review. A user-run aggregate query in the
+  Supabase project confirmed profile/Auth ID and email counts; no personal account
+  records were shared. No Auth account contents, email-provider, RLS-policy, or
+  Storage-bucket configuration was inspected. Database checks were run by the user.
+- The successful PostgreSQL migration test remains a database-only validation. The
+  production databases and application traffic have not been changed. The only
+  database-side changes in these test steps were the auth prototype's two empty
+  tables and restricted test logins/grants in mtc_migration_test2, plus the earlier
+  read-only mtc_api_connectivity login. Production databases and traffic are unchanged.
