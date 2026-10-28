@@ -165,10 +165,10 @@ the restricted test database.
 Before enabling these pages on a database:
 
 1. Confirm all CHSLR and CLHMI table columns and the CLHMI foreign keys
-   (`clhmi.machine_id` to `clhmi_machine.id` and
+   (`clhmi.machine_id` to `clhmi_machines.id` and
    `clhmi_results.item_id` to `clhmi_items.id`) on the test database.
 2. Grant the runtime role `SELECT` on `profiles`, all four CHSLR tables, and
-   `clhmi`, `clhmi_machine`, `clhmi_items`, and `clhmi_results`.
+   `clhmi`, `clhmi_machines`, `clhmi_items`, and `clhmi_results`.
 3. Grant `INSERT` on `chslr_log`, `chslr_result`, `clhmi`, and `clhmi_results`;
    `DELETE` on `chslr_result`; and `INSERT` and `SELECT` on
    `app_signature_files`. Grant `UPDATE` only on workflow columns: CHSLR log

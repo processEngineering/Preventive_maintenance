@@ -9,14 +9,14 @@ const DATA_TABLES = new Set([
   'chslr_mesin',
   'chslr_result',
   'clhmi',
-  'clhmi_machine',
+  'clhmi_machines',
   'clhmi_items',
   'clhmi_results'
 ]);
 const FILTER_OPERATORS = new Set(['eq', 'neq', 'is', 'ilike', 'gte', 'lte', 'in']);
 const RELATIONS = {
   clhmi: {
-    clhmi_machine: {
+    clhmi_machines: {
       foreignKey: 'machine_id',
       referencedKey: 'id',
       existenceKey: 'id'
