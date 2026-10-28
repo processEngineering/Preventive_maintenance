@@ -245,6 +245,31 @@ test('CHSLR API requires an authenticated session and only exposes allowlisted t
   assert.equal(wrongClhmiTable.status, 404);
 });
 
+test('batch checklist tables are allowlisted separately from database privilege checks', async () => {
+  const cookie = await createSessionCookie();
+  const tables = [
+    'clpm_items',
+    'pmw_reports',
+    'Lkmr_result',
+    'lkmr_repair',
+    'pohm_machine',
+    'kartu_riwayat_items',
+    'pmi_machines',
+    'prslb_mesin'
+  ];
+
+  for (const table of tables) {
+    const response = await fetch(`${baseUrl}/api/data/${encodeURIComponent(table)}`, {
+      headers: { Cookie: cookie }
+    });
+    assert.equal(response.status, 503, `${table} should be allowlisted but unavailable in this test schema`);
+    assert.deepEqual(await response.json(), {
+      data: null,
+      error: { message: 'Checklist database table is unavailable to the API role' }
+    });
+  }
+});
+
 test('CHSLR queries parameterize filters and force profile reads to the current user', async () => {
   const cookie = await createSessionCookie();
   const filter = await fetch(
