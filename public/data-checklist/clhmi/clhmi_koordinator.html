@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Verifikasi Koordinator - AKG Maintenance</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../src/api/chslr-api-client.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -502,10 +502,7 @@
             sidebar.classList.toggle('active');
             overlay.classList.toggle('active');
         }
-
-        const _URL = "https://dsyvlavphvrdidmodokd.supabase.co";
-        const _KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
-        const sb = supabase.createClient(_URL, _KEY);
+        const sb = window.mtcApiClient;
         
         let activeHdr = null, scanner = null, sigPadKoor = null;
 
@@ -642,6 +639,11 @@
 
             loader.classList.add("hidden");
 
+            if (error) {
+                console.error("Gagal memuat antrean CLHMI:", error);
+                container.innerHTML = `<p class="text-center py-10 text-red-600">Gagal memuat antrean: ${error.message}</p>`;
+                return;
+            }
             if (!data || data.length === 0) {
                 container.innerHTML = `<div class="text-center py-20 opacity-50"><i class="fa-regular fa-folder-open text-5xl mb-4 text-gray-400"></i><p class="text-xs font-bold uppercase tracking-widest text-gray-500">Tidak ada antrean</p></div>`;
                 return;
@@ -689,12 +691,17 @@
             const container = document.getElementById("findings-container");
             container.innerHTML = `<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-primary"></i></div>`;
 
-            const { data: results } = await sb.from('clhmi_results')
+            const { data: results, error } = await sb.from('clhmi_results')
                 .select('status, catatan_item, clhmi_items(nama_pengecekan)')
                 .eq('clhmi_id', activeHdr.id)
                 .or('status.eq.NG,status.eq.NA,status.eq.MT');
 
             container.innerHTML = "";
+            if (error) {
+                console.error("Gagal memuat temuan CLHMI:", error);
+                container.innerHTML = `<p class="text-red-600">Gagal memuat temuan: ${error.message}</p>`;
+                return;
+            }
 
             if (!results || results.length === 0) {
                 container.innerHTML = `

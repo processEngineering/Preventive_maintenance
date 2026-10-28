@@ -6,7 +6,7 @@
     <title>Superintendent (CLHMI) - AKG Maintenance</title>
     
     <!-- Dependencies -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../src/api/chslr-api-client.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     
     <!-- Fonts & Icons & Tailwind -->
@@ -491,10 +491,7 @@
             sidebar.classList.toggle('active');
             overlay.classList.toggle('active');
         }
-
-        const SB_URL = "https://dsyvlavphvrdidmodokd.supabase.co";
-        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E";
-        const sb = supabase.createClient(SB_URL, SB_KEY);
+        const sb = window.mtcApiClient;
         
         let sigPad, reportsToApprove = [];
 
@@ -502,10 +499,15 @@
             setupDynamicNavigation();
             
             // Ambil daftar mesin dari clhmi_machine
-            const { data } = await sb.from('clhmi_machine').select('*').order('merk_mesin');
+            const { data, error } = await sb.from('clhmi_machine').select('*').order('merk_mesin');
+            if (error) {
+                console.error("Gagal memuat daftar mesin CLHMI:", error);
+                alert("Gagal memuat daftar mesin: " + error.message);
+                return;
+            }
             const select = document.getElementById('filter-mesin');
             select.innerHTML = '<option value="">-- Pilih Mesin --</option>';
-            if(data) data.forEach(m => { select.add(new Option(m.merk_mesin, m.id)); });
+            data.forEach(m => { select.add(new Option(m.merk_mesin, m.id)); });
 
             // Init Signature
             const canvas = document.getElementById('sig-canvas');
@@ -593,6 +595,13 @@
                 .order('tanggal_isi');
 
             list.innerHTML = "";
+            if(error) {
+                console.error("Gagal memuat laporan CLHMI:", error);
+                list.innerHTML = `<p class="text-center py-10 text-red-600">Gagal memuat laporan: ${error.message}</p>`;
+                reportsToApprove = [];
+                document.getElementById('approval-box').classList.add('hidden');
+                return;
+            }
             reportsToApprove = data || [];
 
             if(reportsToApprove.length === 0) {

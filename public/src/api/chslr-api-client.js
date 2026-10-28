@@ -49,6 +49,22 @@
                 state.filters.push(["ilike", column, value]);
                 return this;
             },
+            gte(column, value) {
+                state.filters.push(["gte", column, value]);
+                return this;
+            },
+            lte(column, value) {
+                state.filters.push(["lte", column, value]);
+                return this;
+            },
+            in(column, values) {
+                state.filters.push(["in", column, values]);
+                return this;
+            },
+            or(expression) {
+                state.filters.push(["or", expression]);
+                return this;
+            },
             order(column, options = {}) {
                 state.options.order = `${column}.${options.ascending === false ? "desc" : "asc"}`;
                 return this;
@@ -80,9 +96,15 @@
             url.searchParams.set(key, value);
         }
         for (const [operator, column, value] of state.filters) {
+            if (operator === "or") {
+                url.searchParams.set("or", column);
+                continue;
+            }
             url.searchParams.append(
                 `${operator}[${column}]`,
-                value === null ? "null" : String(value)
+                operator === "in"
+                    ? `(${value.map((item) => String(item)).join(",")})`
+                    : value === null ? "null" : String(value)
             );
         }
 
@@ -98,9 +120,17 @@
             });
             const result = await response.json();
             if (!response.ok) {
+                const apiError = result.error;
                 return {
                     data: null,
-                    error: result.error || { message: "PostgreSQL request failed" }
+                    error: typeof apiError === "string"
+                        ? { message: apiError }
+                        : apiError?.message
+                            ? apiError
+                            : {
+                                message: result.message ||
+                                    `PostgreSQL request failed (${response.status})`
+                            }
                 };
             }
 

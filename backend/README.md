@@ -1,8 +1,9 @@
 # MTC PostgreSQL application migration
 
 This Node.js application provides PostgreSQL-backed registration, email verification,
-login/session handling, and one-time password setup. The first application workflow
-migrated from Supabase is CHSLR; the rest of the application has not yet been migrated.
+login/session handling, and one-time password setup. The CHSLR and CLHMI checklist
+workflows use the PostgreSQL data API; the rest of the application has not yet been
+migrated.
 
 ## Requirements
 
@@ -27,8 +28,8 @@ The tests use a stub database client and do not connect to PostgreSQL.
 ## Run on PE-SERVER2
 
 Deploy the complete `backend` and `public` folders as siblings. The current source
-includes the application pages, but only the CHSLR workflow has been migrated from
-Supabase so far. Open PowerShell on PE-SERVER2 and run the following from the
+includes the application pages, with CHSLR and CLHMI migrated from Supabase so far.
+Open PowerShell on PE-SERVER2 and run the following from the
 `backend` folder.
 The `start` script loads settings from the local `.env` file in this directory.
 Keep that file out of source control and restrict access to it:
@@ -103,8 +104,8 @@ Get-Service *postgres*
 - `GET /api/auth/me` checks the session cookie and returns the signed-in profile.
 - `POST /api/auth/logout` revokes the server-side session and clears the cookie.
 - `GET`, `POST`, `PATCH`, and `DELETE /api/data/{table}` provide the authenticated
-  CHSLR data API. The endpoint permits only the CHSLR tables and fields required by
-  the four CHSLR pages; profile reads are restricted to the signed-in user.
+  checklist data API. The endpoint permits only the CHSLR and CLHMI tables and
+  role-authorized fields; profile reads are restricted to the signed-in user.
 - `GET` and `POST /api/storage/signatures/{filename}` read and store authenticated
   PNG signatures in PostgreSQL.
 - `backend/scripts/send-password-setup.js` supports a one-account pilot with
@@ -117,9 +118,9 @@ Get-Service *postgres*
   test database; it creates no users, tokens, sessions, or emails.
 
 Login uses an `HttpOnly`, `Secure`, `SameSite=Lax` cookie. Only a hash of the random
-session token is stored in PostgreSQL. For CHSLR, `jabatan` gates which workflow
-fields an authenticated user may write; it is not used to grant access to other
-application APIs.
+session token is stored in PostgreSQL. For checklist workflows, `jabatan` gates
+which workflow fields an authenticated user may write; it is not used to grant
+access to other application APIs.
 
 ## Vercel frontend and server API
 
@@ -151,30 +152,36 @@ session through `/api/auth/me`. They must not use Supabase Auth as the session
 source, or a valid PostgreSQL login can be redirected back to sign-in. The service
 worker cache version is advanced when these session-routing assets change.
 
-## CHSLR migration slice
+## Checklist migration slices
 
-The CHSLR pelaksana, coordinator, superintendent, and report pages use the same-origin
-PostgreSQL API instead of the Supabase client. Signatures are stored as PNG bytes in
-`public.app_signature_files`; the storage migration is `sql/004_signature_files.sql`.
-This migration has **not** been applied, and the API has not been tested against the
-live PostgreSQL database.
+The CHSLR pelaksana, coordinator, superintendent, and report pages, and the
+corresponding CLHMI pages, use the same-origin PostgreSQL API instead of the
+Supabase client. CHSLR signatures are stored as PNG bytes in
+`public.app_signature_files`; `sql/004_signature_files.sql` describes that table.
+Check whether the table already exists before applying the SQL to avoid duplicate
+table errors. CLHMI has been wired to the API but still needs to be tested against
+the restricted test database.
 
 Before enabling these pages on a database:
 
-1. Confirm the CHSLR tables and columns match the existing application.
-2. Apply `sql/004_signature_files.sql` to the intended test database only.
-3. Grant the runtime role `SELECT` on `profiles`, `chslr_items`, `chslr_mesin`,
-   `chslr_log`, and `chslr_result`; grant `INSERT` on `chslr_log` and
-   `chslr_result`; grant `DELETE` on `chslr_result`; and grant `INSERT` and `SELECT`
-   on `app_signature_files`. Grant `UPDATE` on `chslr_log` only for the pelaksana,
-   coordinator, and superintendent columns used by the API.
+1. Confirm all CHSLR and CLHMI table columns and the CLHMI foreign keys
+   (`clhmi.machine_id` to `clhmi_machine.id` and
+   `clhmi_results.item_id` to `clhmi_items.id`) on the test database.
+2. Grant the runtime role `SELECT` on `profiles`, all four CHSLR tables, and
+   `clhmi`, `clhmi_machine`, `clhmi_items`, and `clhmi_results`.
+3. Grant `INSERT` on `chslr_log`, `chslr_result`, `clhmi`, and `clhmi_results`;
+   `DELETE` on `chslr_result`; and `INSERT` and `SELECT` on
+   `app_signature_files`. Grant `UPDATE` only on workflow columns: CHSLR log
+   approval/operator fields and CLHMI `status_form`, signature, and approval-note
+   fields. Grant sequence usage if any inserted IDs use PostgreSQL sequences.
 4. Keep the existing restricted database name and loopback binding. Do not apply
    the migration or grants to production without approval.
 
-The CHSLR API validates identifiers against PostgreSQL metadata, parameterizes
-filter values, restricts profile reads to the current session, and constrains writes
-by workflow role. It requires a verified `mtc_session`. Other application pages still
-use Supabase and are not changed by this migration slice.
+The API validates identifiers against PostgreSQL metadata, parameterizes filter
+values, supports only explicit CLHMI table relations, restricts profile reads to the
+current session, and constrains writes by workflow role. It requires a verified
+`mtc_session`. Other application pages still use Supabase and are not changed by
+these migration slices.
 
 ## Authentication prototype limitations
 

@@ -29,6 +29,17 @@ const chslrColumns = {
   chslr_mesin: ['id', 'nama_mesin', 'tonage'],
   chslr_result: [
     'id', 'log_id', 'item_id', 'tanggal', 'status', 'input_value', 'keterangan', 'signature'
+  ],
+  clhmi_machine: ['id', 'merk_mesin', 'serial_no', 'tonage'],
+  clhmi_items: ['id', 'aktif', 'urutan', 'item_kode', 'nama_pengecekan'],
+  clhmi: [
+    'id', 'machine_id', 'merk_mesin', 'serial_no', 'pelaksana', 'paraf', 'status_form',
+    'tanggal_isi', 'bulan', 'tahun', 'catatan_pelaksana', 'tonage', 'created_at',
+    'paraf_coord', 'catatan_umum', 'verified_by', 'catatan_super', 'paraf_super'
+  ],
+  clhmi_results: [
+    'id', 'clhmi_id', 'item_id', 'item_kode', 'status', 'value', 'temperature_oli',
+    'catatan_item', 'pelaksana'
   ]
 };
 const pool = {
@@ -189,7 +200,7 @@ test('CHSLR API requires an authenticated session and only exposes allowlisted t
   assert.equal(unsupported.status, 404);
   assert.deepEqual(await unsupported.json(), {
     data: null,
-    error: { message: 'Table is not available in the CHSLR API' }
+    error: { message: 'Table is not available in the checklist API' }
   });
 });
 
@@ -200,7 +211,7 @@ test('CHSLR queries parameterize filters and force profile reads to the current 
     { headers: { Cookie: cookie } }
   );
   assert.equal(filter.status, 200);
-  const filterSql = queries.findLast((sql) => sql.includes('SELECT "id", "nama_mesin"'));
+  const filterSql = queries.findLast((sql) => sql.includes('SELECT "chslr_mesin"."id", "chslr_mesin"."nama_mesin"'));
   const filterParams = queryValues[queries.indexOf(filterSql)];
   assert.match(filterSql, /ILIKE \$1/);
   assert.deepEqual(filterParams, ['%A%', 5]);
@@ -209,8 +220,8 @@ test('CHSLR queries parameterize filters and force profile reads to the current 
     headers: { Cookie: cookie }
   });
   assert.equal(profile.status, 200);
-  const profileSql = queries.findLast((sql) => sql.includes('SELECT "jabatan" FROM public."profiles"'));
-  assert.match(profileSql, /WHERE "id" = \$1/);
+  const profileSql = queries.findLast((sql) => sql.includes('SELECT "profiles"."jabatan" FROM public."profiles"'));
+  assert.match(profileSql, /WHERE "profiles"\."id" = \$1/);
   assert.deepEqual(queryValues[queries.indexOf(profileSql)], [authUser.profile_id]);
 
   const otherProfile = await fetch(
@@ -218,6 +229,81 @@ test('CHSLR queries parameterize filters and force profile reads to the current 
     { headers: { Cookie: cookie } }
   );
   assert.equal(otherProfile.status, 403);
+});
+
+test('CLHMI API supports safe filters, related selections, and role-scoped writes', async () => {
+  const operatorCookie = await createSessionCookie();
+  const queue = await fetch(
+    `${baseUrl}/api/data/clhmi?select=*,clhmi_machine(merk_mesin)&eq[status_form]=submitted&order=created_at.desc`,
+    { headers: { Cookie: operatorCookie } }
+  );
+  assert.equal(queue.status, 200);
+  const queueSql = queries.findLast((sql) => sql.includes('jsonb_build_object') && sql.includes('public."clhmi"'));
+  assert.match(queueSql, /LEFT JOIN public\."clhmi_machine"/);
+  assert.match(queueSql, /"clhmi"\."status_form" = \$1/);
+  assert.deepEqual(queryValues[queries.indexOf(queueSql)], ['submitted']);
+
+  const findings = await fetch(
+    `${baseUrl}/api/data/clhmi_results?select=status,catatan_item,clhmi_items(nama_pengecekan)&eq[clhmi_id]=report-1&or=status.eq.NG%2Cstatus.eq.NA%2Cstatus.eq.MT`,
+    { headers: { Cookie: operatorCookie } }
+  );
+  assert.equal(findings.status, 200);
+  const findingsSql = queries.findLast((sql) => sql.includes('public."clhmi_results"') && sql.includes('jsonb_build_object'));
+  assert.match(findingsSql, /"clhmi_results"\."clhmi_id" = \$1/);
+  assert.match(findingsSql, /"clhmi_results"\."status" = \$2 OR "clhmi_results"\."status" = \$3 OR "clhmi_results"\."status" = \$4/);
+  assert.deepEqual(queryValues[queries.indexOf(findingsSql)], ['report-1', 'NG', 'NA', 'MT']);
+
+  const header = await fetch(`${baseUrl}/api/data/clhmi`, {
+    method: 'POST',
+    headers: { Cookie: operatorCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      machine_id: 'machine-1',
+      status_form: 'submitted',
+      bulan: 6,
+      tahun: 2026
+    })
+  });
+  assert.equal(header.status, 201);
+
+  const forbiddenOperatorUpdate = await fetch(`${baseUrl}/api/data/clhmi?eq[id]=report-1`, {
+    method: 'PATCH',
+    headers: { Cookie: operatorCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status_form: 'approved' })
+  });
+  assert.equal(forbiddenOperatorUpdate.status, 403);
+
+  const originalRole = authUser.jabatan;
+  try {
+    authUser.jabatan = 'SUPERVISOR | KOORDINATOR';
+    const supervisorCookie = await createSessionCookie();
+    const update = await fetch(`${baseUrl}/api/data/clhmi?eq[id]=report-1`, {
+      method: 'PATCH',
+      headers: { Cookie: supervisorCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status_form: 'approved', paraf_coord: 'signature-data' })
+    });
+    assert.equal(update.status, 200);
+
+    const forbiddenSupervisorUpdate = await fetch(`${baseUrl}/api/data/clhmi?eq[id]=report-1`, {
+      method: 'PATCH',
+      headers: { Cookie: supervisorCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paraf_super: 'signature-data' })
+    });
+    assert.equal(forbiddenSupervisorUpdate.status, 403);
+
+    authUser.jabatan = 'SUPERINTENDENT';
+    const superintendentCookie = await createSessionCookie();
+    const close = await fetch(`${baseUrl}/api/data/clhmi?in[id]=(report-1%2Creport-2)`, {
+      method: 'PATCH',
+      headers: { Cookie: superintendentCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status_form: 'closed', verified_by: 'Test' })
+    });
+    assert.equal(close.status, 200);
+    const updateSql = queries.findLast((sql) => sql.includes('UPDATE public."clhmi"'));
+    assert.match(updateSql, /"clhmi"\."id" IN \(\$1, \$2\)/);
+    assert.deepEqual(queryValues[queries.indexOf(updateSql)], ['report-1', 'report-2', 'closed', 'Test']);
+  } finally {
+    authUser.jabatan = originalRole;
+  }
 });
 
 test('CHSLR writes are parameterized and reject fields outside the current role', async () => {
