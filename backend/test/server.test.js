@@ -270,6 +270,29 @@ test('batch checklist tables are allowlisted separately from database privilege 
   }
 });
 
+test('test-database grant script covers every allowlisted data table and signatures', async () => {
+  const [apiSource, grantSource] = await Promise.all([
+    fs.readFile(path.join(__dirname, '..', 'api', 'chslr-api.js'), 'utf8'),
+    fs.readFile(path.join(__dirname, '..', 'sql', 'checklist-api-grants.sql'), 'utf8')
+  ]);
+  const allowlist = apiSource.match(/const DATA_TABLES = new Set\(\[([\s\S]*?)\]\);/);
+  const selectGrant = grantSource.match(/GRANT SELECT ON TABLE([\s\S]*?)TO mtc_api_auth_test;/);
+  assert.ok(allowlist);
+  assert.ok(selectGrant);
+
+  const allowedTables = [...allowlist[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
+  const grantedTables = new Set(
+    [...selectGrant[1].matchAll(/public\."?([A-Za-z_][A-Za-z_0-9]*)"?/g)]
+      .map((match) => match[1])
+  );
+  assert.deepEqual(allowedTables.filter((table) => !grantedTables.has(table)), []);
+  assert.match(grantSource, /GRANT USAGE ON SCHEMA public TO mtc_api_auth_test;/);
+  assert.match(
+    grantSource,
+    /GRANT SELECT, INSERT ON TABLE public\.app_signature_files TO mtc_api_auth_test;/
+  );
+});
+
 test('CHSLR queries parameterize filters and force profile reads to the current user', async () => {
   const cookie = await createSessionCookie();
   const filter = await fetch(

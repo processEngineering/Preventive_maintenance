@@ -132,9 +132,9 @@ access to other application APIs.
 The allowlist and field policies are defined in `backend/api/chslr-api.js`. The
 additive grant script at `backend/sql/checklist-api-grants.sql` grants the test API
 role only the `SELECT`, column-level `INSERT`/`UPDATE`, `DELETE` (CHSLR results),
-and generated-sequence privileges used by those workflows. It refuses to run in
-any database other than `mtc_migration_test2`. The script is not run by the
-application or test suite.
+`public` schema usage, signature-file `SELECT`/`INSERT`, and generated-sequence
+privileges used by those workflows. It refuses to run in any database other than
+`mtc_migration_test2`. The script is not run by the application or test suite.
 
 Review the script, back up the test database, then run it manually from the
 repository root while connected to `mtc_migration_test2` with a database role

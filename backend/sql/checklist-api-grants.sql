@@ -14,6 +14,8 @@ BEGIN
 END;
 $$;
 
+GRANT USAGE ON SCHEMA public TO mtc_api_auth_test;
+
 GRANT SELECT ON TABLE
   public.profiles,
   public.chslr_items,
@@ -52,6 +54,8 @@ GRANT SELECT ON TABLE
   public.prslb_mesin,
   public.prslb_result
 TO mtc_api_auth_test;
+
+GRANT SELECT, INSERT ON TABLE public.app_signature_files TO mtc_api_auth_test;
 
 GRANT INSERT (
   mesin_id, bulan, tahun, pelaksana_names, catatan_pelaksana
