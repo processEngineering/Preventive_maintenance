@@ -30,7 +30,7 @@ const chslrColumns = {
   chslr_result: [
     'id', 'log_id', 'item_id', 'tanggal', 'status', 'input_value', 'keterangan', 'signature'
   ],
-  clhmi_machines: ['id', 'merk_mesin', 'serial_no', 'tonage'],
+  clhmi_machine: ['id', 'merk_mesin', 'serial_no', 'tonage'],
   clhmi_items: ['id', 'aktif', 'urutan', 'item_kode', 'nama_pengecekan'],
   clhmi: [
     'id', 'machine_id', 'merk_mesin', 'serial_no', 'pelaksana', 'paraf', 'status_form',
@@ -202,6 +202,20 @@ test('CHSLR API requires an authenticated session and only exposes allowlisted t
     data: null,
     error: { message: 'Table is not available in the checklist API' }
   });
+
+  const clhmiMachines = await fetch(`${baseUrl}/api/data/clhmi_machine?select=id,merk_mesin`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(clhmiMachines.status, 200);
+  const clhmiMachineSql = queries.findLast((sql) =>
+    sql.includes('SELECT "clhmi_machine"."id", "clhmi_machine"."merk_mesin"')
+  );
+  assert.ok(clhmiMachineSql);
+
+  const wrongClhmiTable = await fetch(`${baseUrl}/api/data/clhmi_machines`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(wrongClhmiTable.status, 404);
 });
 
 test('CHSLR queries parameterize filters and force profile reads to the current user', async () => {
@@ -234,12 +248,12 @@ test('CHSLR queries parameterize filters and force profile reads to the current 
 test('CLHMI API supports safe filters, related selections, and role-scoped writes', async () => {
   const operatorCookie = await createSessionCookie();
   const queue = await fetch(
-    `${baseUrl}/api/data/clhmi?select=*,clhmi_machines(merk_mesin)&eq[status_form]=submitted&order=created_at.desc`,
+    `${baseUrl}/api/data/clhmi?select=*,clhmi_machine(merk_mesin)&eq[status_form]=submitted&order=created_at.desc`,
     { headers: { Cookie: operatorCookie } }
   );
   assert.equal(queue.status, 200);
   const queueSql = queries.findLast((sql) => sql.includes('jsonb_build_object') && sql.includes('public."clhmi"'));
-  assert.match(queueSql, /LEFT JOIN public\."clhmi_machines"/);
+  assert.match(queueSql, /LEFT JOIN public\."clhmi_machine"/);
   assert.match(queueSql, /"clhmi"\."status_form" = \$1/);
   assert.deepEqual(queryValues[queries.indexOf(queueSql)], ['submitted']);
 
