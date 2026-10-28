@@ -8,8 +8,9 @@ PPW, PRSLB, and Grafik use the restricted PostgreSQL data API.
 ## Requirements
 
 - Node.js 20.6 or later (`npm start` uses Node's `--env-file` option)
-- Network access from this machine to the PostgreSQL test database
+- Network access from this machine to the PostgreSQL test or production database
 - The restricted `mtc_api_auth_test` PostgreSQL role described below
+- PM2 installed globally on PE-SERVER2 for production process management
 
 Do not use a PostgreSQL superuser. Do not commit database credentials or place them
 in this repository.
@@ -25,14 +26,15 @@ npm.cmd test
 
 The tests use a stub database client and do not connect to PostgreSQL.
 
-## Run on PE-SERVER2
+## Run the test deployment on PE-SERVER2
 
 Deploy the complete `backend` and `public` folders as siblings. The checklist pages
 load the shared `public/src/api/chslr-api-client.js` adapter and call the backend;
 they no longer connect directly to Supabase.
 Open PowerShell on PE-SERVER2 and run the following from the
 `backend` folder.
-The `start` script loads settings from the local `.env` file in this directory.
+The `start` script loads settings from the local `.env` file in this directory and
+defaults to test mode.
 Keep that file out of source control and restrict access to it:
 
 ```powershell
@@ -50,7 +52,7 @@ second PostgreSQL instance or change its network exposure as part of this test.
 Use only the limited `mtc_api_auth_test` role; never use a superuser for the API.
 If PostgreSQL is not listening on `127.0.0.1:5432`, use the approved host and port
 for the test instance. The app refuses to start if `PGDATABASE` is not exactly
-`mtc_migration_test2`.
+`mtc_migration_test2` or `PGUSER` is not exactly `mtc_api_auth_test`.
 The API listens on `127.0.0.1` by default. Keep it bound to this loopback address:
 the ngrok agent running on PE-SERVER2 can forward to
 `http://127.0.0.1:3000` without exposing the API on the company network interface.
@@ -81,6 +83,74 @@ is needed for values loaded from that file.
 ```powershell
 Get-Service *postgres*
 ```
+
+## Prepare the production deployment with PM2
+
+The production target is database `mtc` and the separate login role is
+`mtc_api_runtime`. Do not reuse the test role, a provisioning role, or a PostgreSQL
+superuser. The production schemas and workflow data were reported ready; this setup
+does not create or migrate production tables or copy accounts.
+
+Have the DBA create the dedicated role and set its password in a private `psql`
+session (do not put the password in a SQL file, source control, or chat):
+
+```sql
+CREATE ROLE mtc_api_runtime LOGIN NOINHERIT;
+\password mtc_api_runtime
+```
+
+If that role already exists, inspect it rather than running `CREATE ROLE` again.
+Then review and run `sql/production-api-grants.sql` connected to `mtc` as an
+authorized grantor. The script refuses to run in any other database and checks
+that `mtc_api_runtime` exists, can log in, is not a superuser, uses `NOINHERIT`,
+and is not a member of another role:
+
+```powershell
+psql -d mtc -v ON_ERROR_STOP=1 -f .\sql\production-api-grants.sql
+```
+
+Before starting the production process, create a private `.env` in the deployed
+`backend` folder with the actual approved connection and email settings. At minimum:
+
+```dotenv
+APP_ENVIRONMENT=production
+PGHOST=127.0.0.1
+PGPORT=5432
+PGDATABASE=mtc
+PGUSER=mtc_api_runtime
+PGPASSWORD=<set privately; do not use this literal value>
+API_HOST=127.0.0.1
+API_PORT=3000
+PUBLIC_APP_ORIGIN=<approved HTTPS frontend origin>
+GMAIL_ADDRESS=<approved sender account>
+GMAIL_APP_PASSWORD=<approved secret>
+```
+
+Use the approved database host if PostgreSQL is not local. Protect `.env` with
+server permissions and confirm it is excluded by `backend/.gitignore`. PM2's
+ecosystem file loads it with Node's `--env-file`; production mode additionally
+requires the exact database and role above and loopback binding.
+
+Stop any manually started API before launching PM2 to avoid a port conflict. From
+the deployed `backend` folder:
+
+```powershell
+npm.cmd run pm2:start
+npm.cmd run pm2:status
+npm.cmd run pm2:logs
+```
+
+Verify `http://127.0.0.1:3000/api/version` and `/readyz`, then smoke-test login,
+email verification, checklist reads, and submissions against production with
+approved accounts before changing the frontend proxy's backend origin. Review
+`/readyz` for `status: ready` and `database: connected`; do not share database
+credentials or user data in logs or chat. Restart after private `.env` changes with
+`npm.cmd run pm2:restart`.
+
+The requested reboot procedure is manual: after PE-SERVER2 reboots, open PowerShell
+in the deployed `backend` folder and run `npm.cmd run pm2:start`, then check
+`npm.cmd run pm2:status`. This configuration does not install a Windows service or
+Task Scheduler entry and does not automatically start PM2 after reboot.
 
 ## Endpoints
 
@@ -135,6 +205,12 @@ role only the `SELECT`, column-level `INSERT`/`UPDATE`, `DELETE` (CHSLR results)
 `public` schema usage, signature-file `SELECT`/`INSERT`, and generated-sequence
 privileges used by those workflows. It refuses to run in any database other than
 `mtc_migration_test2`. The script is not run by the application or test suite.
+
+The separate `backend/sql/production-api-grants.sql` is restricted to database
+`mtc` and role `mtc_api_runtime`. It includes the corresponding workflow privileges
+plus the required authentication, session, verification-token, setup-token, and
+signature-file privileges. Review and apply it only with an authorized production
+grantor. Do not change the test script's database or role guard.
 
 Review the script, back up the test database, then run it manually from the
 repository root while connected to `mtc_migration_test2` with a database role
@@ -204,8 +280,10 @@ application instructions are in the Checklist database privileges section above.
 
 ## Authentication prototype limitations
 
-- The schema in `sql/001_auth.sql` has been applied once to `mtc_migration_test2` on
-  PE-SERVER2. Do not run it again there; it is not an idempotent migration.
+- The authentication schemas in `sql/001_auth.sql` through
+  `sql/004_signature_files.sql` exist in the reported production setup. Verify the
+  actual production schema before cutover; do not re-run these one-time migrations
+  where their tables already exist.
 - Existing Supabase user IDs and emails have not been imported. Keep any account
   export private; do not put it in the repository or send it in chat.
 - The department Gmail sender has not been configured. Never paste its App Password
@@ -213,12 +291,10 @@ application instructions are in the Checklist database privileges section above.
 - The setup-token schema in `sql/002_setup_tokens.sql` has been applied to
   `mtc_migration_test2`. The `mtc_api_auth_test` role has been granted the
   required setup-token and account-column permissions. No setup-token data exists.
-- The email-verification schema in `sql/003_email_verification.sql` has not been
-  applied. Apply it only to the test database with an administrator-controlled
-  session, then grant the runtime role `INSERT` on `profiles`, `INSERT` on
-  `app_users`, `UPDATE (email_verified_at)` on `app_users`, and `SELECT`, `INSERT`,
-  `UPDATE`, and `DELETE` on `app_email_verification_tokens`. Do not apply it to
-  production. The runtime role also needs its existing login/session privileges.
+- Confirm production contains the expected login/session, setup-token,
+  email-verification, and signature tables and that intended production accounts
+  have been provisioned before sending links or switching live traffic. The grants
+  script does not create schema objects or account records.
 - Application pages are served by the same Node.js process as the API. External
   HTTPS access has not yet been tested. The user selected the company-approved
   ngrok tunnel on PE-SERVER2 for a brief test. If used, point it only at port 3000
@@ -242,6 +318,9 @@ application instructions are in the Checklist database privileges section above.
   controlled by the tester. Keep its `{profile_id,email}` input file private on
   PE-SERVER2. The script refuses to run unless the selected profile has no existing
   `app_users` row and the database is `mtc_migration_test2`.
+- Public production signup remains enabled by decision. It accepts all current
+  non-`ADMIN` roles; anyone who can reach signup may create an operational account.
+  Review this exposure before directing public users to the production service.
 - Password reset, login/registration rate limiting, and operational-feature
   authorization are not implemented. Registration can create every current
   non-`ADMIN` role; the application must not treat the profile's `jabatan` value as
@@ -272,10 +351,11 @@ The setup-token migration has been applied to `mtc_migration_test2`, and the
 runtime role has been granted only the additional permissions needed to read setup
 tokens, update `consumed_at`, update `password_hash` and `email_verified_at`, and
 insert sessions. These permissions were checked with zero-row updates; no user data
-was changed. The separate setup-email script needs a different, temporary provisioning role
-that can verify profiles, create `app_users` entries, and create/delete setup tokens.
-Do not use a PostgreSQL superuser for either role or put its credentials in source
-control. Do not apply either migration to production.
+was changed. The separate setup-email script needs a different, temporary
+provisioning role that can verify profiles, create `app_users` entries, and
+create/delete setup tokens. Do not use a PostgreSQL superuser for either role or
+put its credentials in source control.
 
-Do not grant the API role table ownership, schema creation, or access to production.
-Do not put credentials in this repository.
+Do not grant the API role table ownership or schema creation. The production grant
+script is the only supported source of production API privileges. Do not put
+credentials in this repository.

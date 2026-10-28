@@ -270,26 +270,52 @@ test('batch checklist tables are allowlisted separately from database privilege 
   }
 });
 
-test('test-database grant script covers every allowlisted data table and signatures', async () => {
-  const [apiSource, grantSource] = await Promise.all([
+test('database grant scripts are isolated and cover their required privileges', async () => {
+  const [apiSource, grantSource, productionGrantSource] = await Promise.all([
     fs.readFile(path.join(__dirname, '..', 'api', 'chslr-api.js'), 'utf8'),
-    fs.readFile(path.join(__dirname, '..', 'sql', 'checklist-api-grants.sql'), 'utf8')
+    fs.readFile(path.join(__dirname, '..', 'sql', 'checklist-api-grants.sql'), 'utf8'),
+    fs.readFile(path.join(__dirname, '..', 'sql', 'production-api-grants.sql'), 'utf8')
   ]);
   const allowlist = apiSource.match(/const DATA_TABLES = new Set\(\[([\s\S]*?)\]\);/);
   const selectGrant = grantSource.match(/GRANT SELECT ON TABLE([\s\S]*?)TO mtc_api_auth_test;/);
+  const productionSelectGrant = productionGrantSource.match(
+    /GRANT SELECT ON TABLE\s+public\.profiles,([\s\S]*?)TO mtc_api_runtime;/
+  );
   assert.ok(allowlist);
   assert.ok(selectGrant);
+  assert.ok(productionSelectGrant);
 
   const allowedTables = [...allowlist[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
-  const grantedTables = new Set(
+  const grantedTestTables = new Set(
     [...selectGrant[1].matchAll(/public\."?([A-Za-z_][A-Za-z_0-9]*)"?/g)]
       .map((match) => match[1])
   );
-  assert.deepEqual(allowedTables.filter((table) => !grantedTables.has(table)), []);
+  const grantedProductionTables = new Set([
+    'profiles',
+    ...[...productionSelectGrant[1].matchAll(/public\."?([A-Za-z_][A-Za-z_0-9]*)"?/g)]
+      .map((match) => match[1])
+  ]);
+  assert.deepEqual(allowedTables.filter((table) => !grantedTestTables.has(table)), []);
+  assert.deepEqual(allowedTables.filter((table) => !grantedProductionTables.has(table)), []);
   assert.match(grantSource, /GRANT USAGE ON SCHEMA public TO mtc_api_auth_test;/);
   assert.match(
     grantSource,
     /GRANT SELECT, INSERT ON TABLE public\.app_signature_files TO mtc_api_auth_test;/
+  );
+  assert.match(grantSource, /current_database\(\) <> 'mtc_migration_test2'/);
+  assert.doesNotMatch(grantSource, /mtc_api_runtime/);
+  assert.match(productionGrantSource, /current_database\(\) <> 'mtc'/);
+  assert.doesNotMatch(productionGrantSource, /mtc_migration_test2|mtc_api_auth_test/);
+  assert.match(productionGrantSource, /GRANT CONNECT ON DATABASE mtc TO mtc_api_runtime;/);
+  assert.match(productionGrantSource, /rolcanlogin, rolsuper, rolinherit/);
+  assert.match(productionGrantSource, /must not be a member of another role/);
+  assert.match(productionGrantSource, /app_email_verification_tokens TO mtc_api_runtime/);
+  assert.match(productionGrantSource, /app_setup_tokens TO mtc_api_runtime/);
+  assert.match(productionGrantSource, /app_sessions TO mtc_api_runtime/);
+  assert.match(productionGrantSource, /app_users TO mtc_api_runtime/);
+  assert.match(
+    productionGrantSource,
+    /GRANT SELECT, INSERT ON TABLE public\.app_signature_files TO mtc_api_runtime;/
   );
 });
 
@@ -870,16 +896,16 @@ test('database configuration must be explicit and use a valid port', () => {
     () => validateDatabaseEnvironment({
       PGHOST: 'localhost',
       PGDATABASE: 'mtc',
-      PGUSER: 'mtc_api',
+      PGUSER: 'mtc_api_auth_test',
       PGPASSWORD: 'test-only'
     }),
-    /PGDATABASE must be mtc_migration_test2/
+    /PGDATABASE=mtc_migration_test2 and PGUSER=mtc_api_auth_test/
   );
   assert.deepEqual(
     validateDatabaseEnvironment({
       PGHOST: 'localhost',
       PGDATABASE: 'mtc_migration_test2',
-      PGUSER: 'mtc_api',
+      PGUSER: 'mtc_api_auth_test',
       PGPASSWORD: 'test-only',
       PGPORT: '5432'
     }),
@@ -889,7 +915,7 @@ test('database configuration must be explicit and use a valid port', () => {
     validateDatabaseEnvironment({
       PGHOST: 'localhost',
       PGDATABASE: 'mtc_migration_test2',
-      PGUSER: 'mtc_api',
+      PGUSER: 'mtc_api_auth_test',
       PGPASSWORD: 'test-only',
       PGPORT: '5432',
       API_HOST: '0.0.0.0'
@@ -900,7 +926,7 @@ test('database configuration must be explicit and use a valid port', () => {
     () => validateDatabaseEnvironment({
       PGHOST: 'localhost',
       PGDATABASE: 'mtc_migration_test2',
-      PGUSER: 'mtc_api',
+      PGUSER: 'mtc_api_auth_test',
       PGPASSWORD: 'test-only',
       PGPORT: '70000'
     }),
@@ -910,10 +936,51 @@ test('database configuration must be explicit and use a valid port', () => {
     () => validateDatabaseEnvironment({
       PGHOST: 'localhost',
       PGDATABASE: 'mtc_migration_test2',
-      PGUSER: 'mtc_api',
+      PGUSER: 'mtc_api_auth_test',
       PGPASSWORD: 'test-only',
       API_HOST: '192.168.4.240'
     }),
     /API_HOST/
+  );
+  assert.throws(
+    () => validateDatabaseEnvironment({
+      PGHOST: 'localhost',
+      PGDATABASE: 'mtc_migration_test2',
+      PGUSER: 'mtc_api_auth_test',
+      PGPASSWORD: 'test-only',
+      APP_ENVIRONMENT: 'staging'
+    }),
+    /APP_ENVIRONMENT must be test or production/
+  );
+  assert.deepEqual(
+    validateDatabaseEnvironment({
+      PGHOST: 'localhost',
+      PGDATABASE: 'mtc',
+      PGUSER: 'mtc_api_runtime',
+      PGPASSWORD: 'test-only',
+      APP_ENVIRONMENT: 'production'
+    }),
+    { port: 5432, host: '127.0.0.1' }
+  );
+  assert.throws(
+    () => validateDatabaseEnvironment({
+      PGHOST: 'localhost',
+      PGDATABASE: 'mtc_migration_test2',
+      PGUSER: 'mtc_api_auth_test',
+      PGPASSWORD: 'test-only',
+      APP_ENVIRONMENT: 'production'
+    }),
+    /PGDATABASE=mtc and PGUSER=mtc_api_runtime/
+  );
+  assert.throws(
+    () => validateDatabaseEnvironment({
+      PGHOST: 'localhost',
+      PGDATABASE: 'mtc',
+      PGUSER: 'mtc_api_runtime',
+      PGPASSWORD: 'test-only',
+      APP_ENVIRONMENT: 'production',
+      API_HOST: '0.0.0.0'
+    }),
+    /Production API_HOST must be 127.0.0.1/
   );
 });

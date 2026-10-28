@@ -165,8 +165,21 @@ function validateDatabaseEnvironment(env) {
     throw new Error(`Missing required database environment variables: ${missing.join(', ')}`);
   }
 
-  if (env.PGDATABASE !== 'mtc_migration_test2') {
-    throw new Error('PGDATABASE must be mtc_migration_test2 for this connectivity proof');
+  const environment = env.APP_ENVIRONMENT || 'test';
+  if (!['test', 'production'].includes(environment)) {
+    throw new Error('APP_ENVIRONMENT must be test or production');
+  }
+  if (environment === 'test' &&
+      (env.PGDATABASE !== 'mtc_migration_test2' || env.PGUSER !== 'mtc_api_auth_test')) {
+    throw new Error(
+      'Test mode requires PGDATABASE=mtc_migration_test2 and PGUSER=mtc_api_auth_test'
+    );
+  }
+  if (environment === 'production' &&
+      (env.PGDATABASE !== 'mtc' || env.PGUSER !== 'mtc_api_runtime')) {
+    throw new Error(
+      'Production mode requires PGDATABASE=mtc and PGUSER=mtc_api_runtime'
+    );
   }
 
   const port = env.PGPORT ? Number(env.PGPORT) : 5432;
@@ -177,6 +190,9 @@ function validateDatabaseEnvironment(env) {
   const host = env.API_HOST || '127.0.0.1';
   if (!['127.0.0.1', '0.0.0.0'].includes(host)) {
     throw new Error('API_HOST must be 127.0.0.1 or 0.0.0.0');
+  }
+  if (environment === 'production' && host !== '127.0.0.1') {
+    throw new Error('Production API_HOST must be 127.0.0.1');
   }
 
   return { port, host };
