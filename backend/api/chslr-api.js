@@ -17,7 +17,7 @@ const FILTER_OPERATORS = new Set(['eq', 'neq', 'is', 'ilike', 'gte', 'lte', 'in'
 const RELATIONS = {
   clhmi: {
     clhmi_machine: {
-      foreignKey: 'merk_mesin',
+      foreignKey: 'machine_id',
       referencedKey: 'id',
       existenceKey: 'id'
     }
