@@ -847,20 +847,50 @@
                 // --- SELESAI UPLOAD ---
 
 
-                let { data: log } = await _sb.from('chslr_log').select('*').eq('mesin_id', currentMachineId).eq('bulan', m).eq('tahun', y).maybeSingle();
+                let { data: log, error: logLookupError } = await _sb.from('chslr_log')
+                    .select('*')
+                    .eq('mesin_id', currentMachineId)
+                    .eq('bulan', m)
+                    .eq('tahun', y)
+                    .maybeSingle();
+                if (logLookupError) {
+                    throw new Error("Gagal mencari laporan CHSLR: " + logLookupError.message);
+                }
                 
                 if(!log) {
-                    const { data: nLog } = await _sb.from('chslr_log').insert({ 
-                        mesin_id: currentMachineId, bulan: m, tahun: y, 
-                        pelaksana_names: [name], catatan_pelaksana: generalNote
-                    }).select().single();
+                    const { data: nLog, error: logInsertError } = await _sb.from('chslr_log')
+                        .insert({
+                            mesin_id: currentMachineId,
+                            bulan: m,
+                            tahun: y,
+                            pelaksana_names: [name],
+                            catatan_pelaksana: generalNote
+                        })
+                        .select()
+                        .single();
+                    if (logInsertError) {
+                        throw new Error("Gagal membuat laporan CHSLR: " + logInsertError.message);
+                    }
                     log = nLog;
+                    if (!log?.id) {
+                        throw new Error("Laporan CHSLR tidak menghasilkan ID. Periksa skema tabel chslr_log.");
+                    }
                 } else {
                     let updatedNames = log.pelaksana_names || [];
                     if(!updatedNames.includes(name)) updatedNames.push(name);
-                    await _sb.from('chslr_log').update({ 
-                        pelaksana_names: updatedNames, catatan_pelaksana: generalNote 
-                    }).eq('id', log.id);
+                    const { error: logUpdateError } = await _sb.from('chslr_log')
+                        .update({
+                            pelaksana_names: updatedNames,
+                            catatan_pelaksana: generalNote
+                        })
+                        .eq('id', log.id);
+                    if (logUpdateError) {
+                        throw new Error("Gagal memperbarui laporan CHSLR: " + logUpdateError.message);
+                    }
+                }
+
+                if (!log?.id) {
+                    throw new Error("ID laporan CHSLR tidak tersedia. Periksa skema tabel chslr_log.");
                 }
 
                 // --- UBAH PAYLOAD DATABASE ---
@@ -875,7 +905,13 @@
                     signature: sigFileName // <- KEAJAIBAN TERJADI DI SINI
                 }));
 
-                await _sb.from('chslr_result').delete().eq('log_id', log.id).eq('tanggal', d);
+                const { error: deleteError } = await _sb.from('chslr_result')
+                    .delete()
+                    .eq('log_id', log.id)
+                    .eq('tanggal', d);
+                if (deleteError) {
+                    throw new Error("Gagal mengganti hasil checklist hari ini: " + deleteError.message);
+                }
                 const { error } = await _sb.from('chslr_result').insert(payload);
 
                 if(error) throw error;
