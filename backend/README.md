@@ -131,14 +131,22 @@ server permissions and confirm it is excluded by `backend/.gitignore`. PM2's
 ecosystem file loads it with Node's `--env-file`; production mode additionally
 requires the exact database and role above and loopback binding.
 
-Stop any manually started API before launching PM2 to avoid a port conflict. From
-the deployed `backend` folder:
+Stop any manually started API and ngrok process before launching PM2 to avoid port
+or tunnel conflicts. From the deployed `backend` folder, start both managed apps:
 
 ```powershell
 npm.cmd run pm2:start
 npm.cmd run pm2:status
 npm.cmd run pm2:logs
 ```
+
+The `mtc-ngrok` process uses
+`C:\Maintenance App\python program\ngrok.exe http 3000`; ngrok credentials must
+already be configured privately for the Windows account running PM2. The tunnel
+forwards only to the API's loopback listener on port 3000. An ephemeral ngrok URL
+can change when the tunnel restarts; update Vercel's `BACKEND_API_ORIGIN` and the
+backend's `PUBLIC_APP_ORIGIN` before relying on proxy requests or sending email
+links. Do not treat an ephemeral tunnel as a permanent production endpoint.
 
 Verify `http://127.0.0.1:3000/api/version` and `/readyz`, then smoke-test login,
 email verification, checklist reads, and submissions against production with
@@ -149,8 +157,9 @@ credentials or user data in logs or chat. Restart after private `.env` changes w
 
 The requested reboot procedure is manual: after PE-SERVER2 reboots, open PowerShell
 in the deployed `backend` folder and run `npm.cmd run pm2:start`, then check
-`npm.cmd run pm2:status`. This configuration does not install a Windows service or
-Task Scheduler entry and does not automatically start PM2 after reboot.
+`npm.cmd run pm2:status` to confirm both `mtc-api` and `mtc-ngrok` are online. This
+configuration does not install a Windows service or Task Scheduler entry and does
+not automatically start PM2 after reboot.
 
 ## Endpoints
 
