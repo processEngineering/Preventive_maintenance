@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <!-- Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../src/api/chslr-api-client.js"></script>
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -221,9 +221,7 @@
 
     <script>
         // Setup Supabase
-        const SUPABASE_URL = 'https://dsyvlavphvrdidmodokd.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeXZsYXZwaHZyZGlkbW9kb2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNzI5NjMsImV4cCI6MjA4MTg0ODk2M30.mLmyZMUPtCaQl5Vck-Y7nImDFQuVWN_Mk6PrE-miP2E';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const mtcApi = window.mtcApiClient;
 
         let chartInstance = null;
 
@@ -242,9 +240,9 @@
 
         async function setupDynamicNavigation() {
             try {
-                const { data: { session } } = await supabaseClient.auth.getSession();
+                const { data: { session } } = await mtcApi.auth.getSession();
                 if (!session) return;
-                const { data: profile } = await supabaseClient.from('profiles').select('jabatan').eq('id', session.user.id).single();
+                const { data: profile } = await mtcApi.from('profiles').select('jabatan').eq('id', session.user.id).single();
                 if (profile) {
                     const jabatan = profile.jabatan.toUpperCase();
                     const navHome = document.getElementById('nav-home');
@@ -273,7 +271,7 @@
             try {
                 // 1. Ambil DATA MESIN dari tabel pmi_machines
                 // Ini memastikan semua mesin pasti tampil dan kita punya referensi nama_mesin yang pasti
-                const { data: machines, error: mErr } = await supabaseClient
+                const { data: machines, error: mErr } = await mtcApi
                     .from('pmi_machines')
                     .select('id, nama_mesin');
 
@@ -290,7 +288,7 @@
                 // 2. Ambil HEADER (pmi_header) secara manual tanpa join bawaan
                 let headers = [];
                 // Coba ambil berdasarkan kolom bulan/tahun
-                const { data: hData1 } = await supabaseClient
+                const { data: hData1 } = await mtcApi
                     .from('pmi_header')
                     .select('*')
                     .eq('bulan', bulan)
@@ -305,7 +303,7 @@
                     const lastDay = new Date(tahun, bulan, 0).getDate();
                     const endDate = `${tahun}-${monthPadded}-${lastDay}T23:59:59.999Z`;
 
-                    const { data: hData2 } = await supabaseClient
+                    const { data: hData2 } = await mtcApi
                         .from('pmi_header')
                         .select('*')
                         .gte('created_at', startDate)
@@ -321,7 +319,7 @@
 
                 // 3. Ambil data STATUS dari pmi_results
                 const headerIds = headers.map(h => h.id);
-                const { data: results, error: rErr } = await supabaseClient
+                const { data: results, error: rErr } = await mtcApi
                     .from('pmi_results')
                     .select('pmi_header_id, status')
                     .in('pmi_header_id', headerIds);

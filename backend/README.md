@@ -1,9 +1,9 @@
 # MTC PostgreSQL application migration
 
 This Node.js application provides PostgreSQL-backed registration, email verification,
-login/session handling, and one-time password setup. The CHSLR and CLHMI checklist
-workflows use the PostgreSQL data API; the rest of the application has not yet been
-migrated.
+login/session handling, one-time password setup, and checklist workflows. The
+checklist pages in CHSLR, CLHMI, CPLM, JPDO, Kartu Riwayat, LKMR, PMI, PMW, POHM,
+PPW, PRSLB, and Grafik use the restricted PostgreSQL data API.
 
 ## Requirements
 
@@ -27,8 +27,9 @@ The tests use a stub database client and do not connect to PostgreSQL.
 
 ## Run on PE-SERVER2
 
-Deploy the complete `backend` and `public` folders as siblings. The current source
-includes the application pages, with CHSLR and CLHMI migrated from Supabase so far.
+Deploy the complete `backend` and `public` folders as siblings. The checklist pages
+load the shared `public/src/api/chslr-api-client.js` adapter and call the backend;
+they no longer connect directly to Supabase.
 Open PowerShell on PE-SERVER2 and run the following from the
 `backend` folder.
 The `start` script loads settings from the local `.env` file in this directory.
@@ -85,8 +86,8 @@ Get-Service *postgres*
 
 - `GET /healthz` checks that the process is running.
 - `GET /api/version` identifies the running API build without querying the database.
-  During the CLHMI machine-table rollout it should return
-  `{"service":"mtc-postgres-api","build":"clhmi-machine-2026-10-28"}` through Vercel.
+  The batch checklist build should return
+  `{"service":"mtc-postgres-api","build":"checklist-batch-2026-10-28"}` through Vercel.
 - `GET /readyz` runs only `SELECT 1 FROM public.profiles LIMIT 1` and returns
   `{"status":"ready","database":"connected"}` on success. It returns a generic
   `503` response on connection/query failure and does not return database details.
@@ -107,8 +108,9 @@ Get-Service *postgres*
 - `GET /api/auth/me` checks the session cookie and returns the signed-in profile.
 - `POST /api/auth/logout` revokes the server-side session and clears the cookie.
 - `GET`, `POST`, `PATCH`, and `DELETE /api/data/{table}` provide the authenticated
-  checklist data API. The endpoint permits only the CHSLR and CLHMI tables and
-  role-authorized fields; profile reads are restricted to the signed-in user.
+  checklist data API. It permits only explicitly allowlisted workflow tables,
+  parameterized filters, and declared foreign-key selections. Writes are restricted
+  by workflow role and field; profile reads are restricted to the signed-in user.
 - `GET` and `POST /api/storage/signatures/{filename}` read and store authenticated
   PNG signatures in PostgreSQL.
 - `backend/scripts/send-password-setup.js` supports a one-account pilot with
@@ -124,6 +126,37 @@ Login uses an `HttpOnly`, `Secure`, `SameSite=Lax` cookie. Only a hash of the ra
 session token is stored in PostgreSQL. For checklist workflows, `jabatan` gates
 which workflow fields an authenticated user may write; it is not used to grant
 access to other application APIs.
+
+## Checklist database privileges
+
+The allowlist and field policies are defined in `backend/api/chslr-api.js`. The
+additive grant script at `backend/sql/checklist-api-grants.sql` grants the test API
+role only the `SELECT`, column-level `INSERT`/`UPDATE`, `DELETE` (CHSLR results),
+and generated-sequence privileges used by those workflows. It refuses to run in
+any database other than `mtc_migration_test2`. The script is not run by the
+application or test suite.
+
+Review the script, back up the test database, then run it manually from the
+repository root while connected to `mtc_migration_test2` with a database role
+authorized to grant these privileges. For example:
+
+```powershell
+psql -d mtc_migration_test2 -v ON_ERROR_STOP=1 -f backend/sql/checklist-api-grants.sql
+```
+
+The grants do not create or alter tables, sequences, triggers, or row-level security
+policies. Some workflow `id` columns were reported without a default in the schema
+inventory, while their forms omit `id` on insert. Confirm that each writable table
+has a working default or a trigger that generates its ID before testing submissions;
+otherwise inserts into that table will fail and require a schema-specific correction.
+Do not use `MAX(id) + 1` or broaden the runtime role to work around missing ID
+generation.
+
+After applying grants, restart the API from the deployed `backend` folder and check
+`/api/version` for `checklist-batch-2026-10-28`. Then smoke-test one read and one
+submission per workflow against the test database before considering the migration
+complete. The automated test suite uses a stub pool and does not apply or validate
+database grants.
 
 ## Vercel frontend and server API
 
@@ -155,36 +188,19 @@ session through `/api/auth/me`. They must not use Supabase Auth as the session
 source, or a valid PostgreSQL login can be redirected back to sign-in. The service
 worker cache version is advanced when these session-routing assets change.
 
-## Checklist migration slices
+## Checklist migration
 
-The CHSLR pelaksana, coordinator, superintendent, and report pages, and the
-corresponding CLHMI pages, use the same-origin PostgreSQL API instead of the
-Supabase client. CHSLR signatures are stored as PNG bytes in
-`public.app_signature_files`; `sql/004_signature_files.sql` describes that table.
-Check whether the table already exists before applying the SQL to avoid duplicate
-table errors. CLHMI has been wired to the API but still needs to be tested against
-the restricted test database.
+The original CHSLR and CLHMI workflows and the 47 additional checklist and chart
+pages now use the same-origin PostgreSQL API instead of the Supabase client.
+CHSLR signatures remain stored as PNG bytes in `public.app_signature_files`;
+`sql/004_signature_files.sql` describes that table. The frontend adapter preserves
+the form query style while routing requests through the backend.
 
-Before enabling these pages on a database:
-
-1. Confirm all CHSLR and CLHMI table columns and the CLHMI foreign keys
-   (`clhmi.machine_id` to `clhmi_machine.id` and
-   `clhmi_results.item_id` to `clhmi_items.id`) on the test database.
-2. Grant the runtime role `SELECT` on `profiles`, all four CHSLR tables, and
-   `clhmi`, `clhmi_machine`, `clhmi_items`, and `clhmi_results`.
-3. Grant `INSERT` on `chslr_log`, `chslr_result`, `clhmi`, and `clhmi_results`;
-   `DELETE` on `chslr_result`; and `INSERT` and `SELECT` on
-   `app_signature_files`. Grant `UPDATE` only on workflow columns: CHSLR log
-   approval/operator fields and CLHMI `status_form`, signature, and approval-note
-   fields. Grant sequence usage if any inserted IDs use PostgreSQL sequences.
-4. Keep the existing restricted database name and loopback binding. Do not apply
-   the migration or grants to production without approval.
-
-The API validates identifiers against PostgreSQL metadata, parameterizes filter
-values, supports only explicit CLHMI table relations, restricts profile reads to the
-current session, and constrains writes by workflow role. It requires a verified
-`mtc_session`. Other application pages still use Supabase and are not changed by
-these migration slices.
+The backend restricts table names and foreign-key selections to explicit mappings,
+parameterizes filter values, supports the date and compound filters used by JPDO
+and LKMR, and constrains writes by workflow role and permitted columns. It requires
+a verified `mtc_session`. The complete test-database grant script and its manual
+application instructions are in the Checklist database privileges section above.
 
 ## Authentication prototype limitations
 
@@ -230,10 +246,10 @@ these migration slices.
   authorization are not implemented. Registration can create every current
   non-`ADMIN` role; the application must not treat the profile's `jabatan` value as
   authorization for protected operations.
-- The sign-in and sign-up pages use the PostgreSQL API, but the rest of the
-  application data layer and password-reset pages still use Supabase. The pages in
-  this test package intentionally exclude the full app, so this is not yet a
-  complete Supabase removal or production-ready deployment.
+- The sign-in and sign-up pages use the PostgreSQL API, but some application
+  features outside the checklist workflows and password-reset pages still use
+  Supabase. This is not yet a complete Supabase removal or production-ready
+  deployment.
 - Do not open an ngrok tunnel or expose this prototype externally except for the
   brief approved test. Keep the API bound to loopback and forward only to port 3000.
 

@@ -11,23 +11,369 @@ const DATA_TABLES = new Set([
   'clhmi',
   'clhmi_machine',
   'clhmi_items',
-  'clhmi_results'
+  'clhmi_results',
+  'clpm_items',
+  'clpm_log',
+  'clpm_result',
+  'jpdo_approval',
+  'jpdo_approval_manager',
+  'jpdo_approval_ppc',
+  'jpdo_approval_produksi',
+  'jpdo_log',
+  'jpdo_result',
+  'kartu_riwayat_items',
+  'Lkmr_result',
+  'lkmr_repair',
+  'pmi_header',
+  'pmi_item_fields',
+  'pmi_items',
+  'pmi_machines',
+  'pmi_results',
+  'pmw_log',
+  'pmw_reports',
+  'pohm_items',
+  'pohm_log',
+  'pohm_machine',
+  'ppw_log',
+  'prslb_items',
+  'prslb_log',
+  'prslb_mesin',
+  'prslb_result'
 ]);
-const FILTER_OPERATORS = new Set(['eq', 'neq', 'is', 'ilike', 'gte', 'lte', 'in']);
+const FILTER_OPERATORS = new Set(['eq', 'neq', 'is', 'ilike', 'gte', 'lte', 'lt', 'gt', 'in']);
 const RELATIONS = {
   clhmi: {
     clhmi_machine: {
       foreignKey: 'machine_id',
       referencedKey: 'id',
-      existenceKey: 'id'
+      cardinality: 'one'
+    }
+  },
+  clhmi_machine: {
+    clhmi: {
+      foreignKey: 'id',
+      referencedKey: 'machine_id',
+      cardinality: 'many'
+    }
+  },
+  clhmi_items: {
+    clhmi_results: {
+      foreignKey: 'id',
+      referencedKey: 'item_id',
+      cardinality: 'many'
     }
   },
   clhmi_results: {
     clhmi_items: {
       foreignKey: 'item_id',
       referencedKey: 'id',
-      existenceKey: 'id'
+      cardinality: 'one'
     }
+  },
+  clpm_log: {
+    clpm_result: {
+      foreignKey: 'id',
+      referencedKey: 'log_id',
+      cardinality: 'many'
+    }
+  },
+  clpm_result: {
+    clpm_log: {
+      foreignKey: 'log_id',
+      referencedKey: 'id',
+      cardinality: 'one'
+    }
+  },
+  jpdo_log: {
+    jpdo_result: {
+      foreignKey: 'id',
+      referencedKey: 'log_id',
+      cardinality: 'many'
+    }
+  },
+  jpdo_result: {
+    jpdo_log: {
+      foreignKey: 'log_id',
+      referencedKey: 'id',
+      cardinality: 'one'
+    }
+  },
+  pmi_header: {
+    pmi_machines: {
+      foreignKey: 'machine_id',
+      referencedKey: 'id',
+      cardinality: 'one'
+    },
+    pmi_results: {
+      foreignKey: 'id',
+      referencedKey: 'pmi_header_id',
+      cardinality: 'many'
+    }
+  },
+  pmi_machines: {
+    pmi_header: {
+      foreignKey: 'id',
+      referencedKey: 'machine_id',
+      cardinality: 'many'
+    }
+  },
+  pmi_items: {
+    pmi_item_fields: {
+      foreignKey: 'id',
+      referencedKey: 'pmi_item_id',
+      cardinality: 'many'
+    },
+    pmi_results: {
+      foreignKey: 'id',
+      referencedKey: 'pmi_item_id',
+      cardinality: 'many'
+    }
+  },
+  pmi_item_fields: {
+    pmi_items: {
+      foreignKey: 'pmi_item_id',
+      referencedKey: 'id',
+      cardinality: 'one'
+    },
+    pmi_results: {
+      foreignKey: 'id',
+      referencedKey: 'pmi_item_field_id',
+      cardinality: 'many'
+    }
+  },
+  pmi_results: {
+    pmi_header: {
+      foreignKey: 'pmi_header_id',
+      referencedKey: 'id',
+      cardinality: 'one'
+    },
+    pmi_items: {
+      foreignKey: 'pmi_item_id',
+      referencedKey: 'id',
+      cardinality: 'one'
+    },
+    pmi_item_fields: {
+      foreignKey: 'pmi_item_field_id',
+      referencedKey: 'id',
+      cardinality: 'one'
+    }
+  },
+  pohm_items: {
+    pohm_log: {
+      foreignKey: 'id',
+      referencedKey: 'item_id',
+      cardinality: 'many'
+    }
+  },
+  pohm_log: {
+    pohm_items: {
+      foreignKey: 'item_id',
+      referencedKey: 'id',
+      cardinality: 'one'
+    }
+  },
+  prslb_mesin: {
+    prslb_log: {
+      foreignKey: 'nama_mesin',
+      referencedKey: 'mesin_id',
+      cardinality: 'many'
+    }
+  },
+  prslb_log: {
+    prslb_mesin: {
+      foreignKey: 'mesin_id',
+      referencedKey: 'nama_mesin',
+      cardinality: 'one'
+    },
+    prslb_result: {
+      foreignKey: 'id',
+      referencedKey: 'log_id',
+      cardinality: 'many'
+    }
+  },
+  prslb_result: {
+    prslb_log: {
+      foreignKey: 'log_id',
+      referencedKey: 'id',
+      cardinality: 'one'
+    },
+    prslb_items: {
+      foreignKey: 'item_id',
+      referencedKey: 'id',
+      cardinality: 'one'
+    }
+  },
+  prslb_items: {
+    prslb_result: {
+      foreignKey: 'id',
+      referencedKey: 'item_id',
+      cardinality: 'many'
+    }
+  }
+};
+const WRITE_POLICIES = {
+  chslr_log: {
+    POST: [{ roles: ['OPERATOR'], columns: ['mesin_id', 'bulan', 'tahun', 'pelaksana_names', 'catatan_pelaksana'] }],
+    PATCH: [
+      { roles: ['OPERATOR'], columns: ['pelaksana_names', 'catatan_pelaksana'] },
+      { roles: ['SUPERVISOR'], columns: ['koordinator_nama', 'signature_koordinator', 'status_verifikasi', 'remark_koordinator'] },
+      { roles: ['SUPERINTENDENT'], columns: ['superintendent_nama', 'remark_superintendent', 'signature_superintendent', 'status_final'] }
+    ]
+  },
+  chslr_result: {
+    POST: [{ roles: ['OPERATOR'], columns: ['log_id', 'item_id', 'tanggal', 'status', 'input_value', 'keterangan', 'signature'] }],
+    DELETE: [{ roles: ['OPERATOR'], columns: [] }]
+  },
+  clhmi: {
+    POST: [{
+      roles: ['OPERATOR'],
+      columns: ['machine_id', 'merk_mesin', 'serial_no', 'pelaksana', 'paraf', 'status_form', 'tanggal_isi', 'bulan', 'tahun', 'catatan_pelaksana', 'tonage']
+    }],
+    PATCH: [
+      { roles: ['SUPERVISOR', 'KOORDINATOR'], columns: ['paraf_coord', 'status_form', 'catatan_umum'] },
+      { roles: ['SUPERINTENDENT'], columns: ['status_form', 'verified_by', 'catatan_super', 'paraf_super'] }
+    ]
+  },
+  clhmi_results: {
+    POST: [{
+      roles: ['OPERATOR'],
+      columns: ['clhmi_id', 'item_id', 'item_kode', 'status', 'value', 'temperature_oli', 'catatan_item', 'pelaksana']
+    }]
+  },
+  clpm_log: {
+    POST: [{
+      roles: ['OPERATOR'],
+      columns: ['kode_mold', 'tanggal_perawatan', 'produk', 'material_mold', 'type_mold', 'tanggal_akhir_shot', 'pic_perawatan', 'paraf_operator']
+    }],
+    PATCH: [
+      { roles: ['SUPERVISOR'], columns: ['nama_spv', 'catatan_spv', 'paraf_spv', 'tanggal_validasi_spv'] },
+      { roles: ['SUPERINTENDENT'], columns: ['nama_superintendent', 'catatan_superintendent', 'paraf_superintendent', 'tanggal_validasi_superintendent'] }
+    ]
+  },
+  clpm_result: {
+    POST: [{
+      roles: ['OPERATOR'],
+      columns: ['log_id', 'no_item', 'item_check', 'standart', 'kondisi', 'catatan', 'catatan_kondisi_mould']
+    }]
+  },
+  jpdo_log: {
+    POST: [{
+      roles: ['SUPERVISOR'],
+      columns: ['tanggal', 'status_hari', 'nama_supervisor', 'nama_mesin', 'nama_pic', 'tanda_tangan']
+    }]
+  },
+  jpdo_result: {
+    POST: [{ roles: ['SUPERVISOR'], columns: ['log_id', 'plan_status', 'actual_status'] }]
+  },
+  jpdo_approval: {
+    POST: [{ roles: ['SUPERINTENDENT'], columns: ['bulan', 'nama_superintendent', 'catatan_superintendent', 'tanda_tangan_superintendent'] }]
+  },
+  jpdo_approval_manager: {
+    POST: [{ roles: ['MANAGER'], columns: ['bulan', 'nama_manager', 'catatan_manager', 'tanda_tangan_manager'] }]
+  },
+  jpdo_approval_ppc: {
+    POST: [{ roles: ['PPC'], columns: ['bulan', 'nama_ppc', 'catatan_ppc', 'tanda_tangan_ppc'] }]
+  },
+  jpdo_approval_produksi: {
+    POST: [{ roles: ['PRODUKSI'], columns: ['bulan', 'nama_produksi', 'catatan_produksi', 'tanda_tangan_produksi'] }]
+  },
+  kartu_riwayat_items: {
+    POST: [{
+      roles: ['PIC', 'OPERATOR'],
+      columns: ['no_mesin', 'lokasi_mesin', 'tahun_pembuatan', 'machine_name', 'entry_date', 'problem_desc', 'action_taken', 'spare_parts', 'remarks', 'pic_name', 'pic_signature']
+    }],
+    PATCH: [
+      { roles: ['SUPERVISOR'], columns: ['spv_name', 'spv_signature', 'spv_note'] },
+      { roles: ['SUPERINTENDENT'], columns: ['superintendent_name', 'superintendent_signature', 'superintendent_note'] }
+    ]
+  },
+  Lkmr_result: {
+    POST: [{
+      roles: ['OPERATOR'],
+      columns: ['tanggal', 'bulan', 'shift', 'pic', 'jenis_problem', 'deskripsi_masalah', 'waktu_mulai', 'waktu_selesai', 'target_waktu_pm', 'nama_mesin']
+    }],
+    PATCH: [{ roles: ['SUPERINTENDENT'], columns: ['feedback', 'superintendent_name', 'status'] }]
+  },
+  lkmr_repair: {
+    POST: [{
+      roles: ['OPERATOR'],
+      columns: ['tanggal', 'shift', 'pic', 'nama_mold', 'code_mold', 'tipe_mold', 'jenis_problem', 'deskripsi_masalah', 'waktu_mulai', 'waktu_selesai', 'target_waktu_pm']
+    }],
+    PATCH: [{ roles: ['SUPERINTENDENT'], columns: ['feedback', 'superintendent_name', 'status'] }]
+  },
+  pmi_header: {
+    POST: [{
+      roles: ['OPERATOR'],
+      columns: ['machine_id', 'nama_pelaksana', 'tanggal', 'tahun', 'target_selesai', 'start_jam', 'finish_jam', 'running_hours', 'signature_pelaksana', 'status_verifikasi']
+    }],
+    PATCH: [
+      { roles: ['SUPERVISOR', 'KOORDINATOR'], columns: ['nama_koordinator', 'catatan_koordinator', 'signature_koordinator', 'status_verifikasi', 'verified_at'] },
+      { roles: ['SUPERINTENDENT'], columns: ['nama_superintendent', 'signature_superintendent', 'catatan_superintendent', 'status_verifikasi'] }
+    ]
+  },
+  pmi_results: {
+    POST: [{
+      roles: ['OPERATOR'],
+      columns: ['pmi_header_id', 'pmi_item_id', 'pmi_item_field_id', 'status', 'nilai_aktual', 'keterangan']
+    }]
+  },
+  pmw_log: {
+    POST: [{ roles: ['OPERATOR'], columns: ['tanggal', 'mesin', 'pic', 'ttd_operator'] }],
+    PATCH: [
+      { roles: ['SUPERVISOR'], columns: ['spv_name', 'ttd_spv'] },
+      { roles: ['SUPERINTENDENT'], columns: ['supt_name', 'ttd_supt'] }
+    ]
+  },
+  pmw_reports: {
+    POST: [{
+      roles: ['OPERATOR'],
+      columns: ['catatan', 'mesin', 'dept', 'tanggal', 'prosedur_preventive', 'standart', 'kondisi', 'action_text']
+    }]
+  },
+  pohm_items: {
+    POST: [{
+      roles: ['ENGINEER'],
+      columns: ['machine_name', 'work_type', 'start_time', 'end_time', 'problem_desc', 'action_taken', 'spare_parts', 'recommendations', 'engineer_name', 'engineer_signature']
+    }],
+    PATCH: [
+      { roles: ['SUPERVISOR', 'SUPERINTENDENT'], columns: ['spv_name', 'spv_signature'] },
+      { roles: ['MANAGER'], columns: ['manager_name', 'manager_signature'] }
+    ]
+  },
+  pohm_log: {
+    POST: [{ roles: ['ENGINEER'], columns: ['item_id', 'engineer_status', 'engineer_note'] }],
+    PATCH: [
+      { roles: ['SUPERVISOR', 'SUPERINTENDENT'], columns: ['spv_status', 'spv_note', 'manager_status'] },
+      { roles: ['MANAGER'], columns: ['manager_status', 'manager_note'] }
+    ]
+  },
+  ppw_log: {
+    POST: [{
+      roles: ['SUPERVISOR'],
+      columns: [
+        'nama_operator', 'status_hasil', 'qc_check', 'keterangan', 'nama_spv',
+        'catatan_akhir', 'ttd_spv', 'bagian', 'tanggal', 'nama_part', 'job_desc',
+        'estimasi_waktu'
+      ]
+    }],
+    PATCH: [
+      { roles: ['OPERATOR'], columns: ['waktu_mulai', 'waktu_selesai', 'nama_operator', 'keterangan', 'status_hasil'] },
+      { roles: ['SUPERINTENDENT'], columns: ['nama_superintendent', 'catatan_superintendent', 'ttd_superintendent', 'status_approval'] }
+    ]
+  },
+  prslb_log: {
+    POST: [{
+      roles: ['OPERATOR'],
+      columns: ['mesin_id', 'pelaksana_nama', 'signature_pelaksana', 'start_jam', 'finish_jam', 'running_hours', 'target_selesai']
+    }],
+    PATCH: [
+      { roles: ['SUPERVISOR', 'KOORDINATOR'], columns: ['koordinator_nama', 'koordinator_note', 'status_verifikasi', 'signature_koordinator'] },
+      { roles: ['SUPERINTENDENT'], columns: ['superintendent_nama', 'superintendent_note', 'status_final', 'signature_superintendent', 'updated_at'] }
+    ]
+  },
+  prslb_result: {
+    POST: [{ roles: ['OPERATOR'], columns: ['log_id', 'item_id', 'status', 'keterangan'] }],
+    PATCH: [{ roles: ['SUPERVISOR', 'KOORDINATOR'], columns: ['status_koordinator', 'keterangan_koordinator'] }]
   }
 };
 const SESSION_COOKIE = 'mtc_session';
@@ -129,7 +475,7 @@ function qualifiedColumn(table, column) {
 function addFilters(searchParams, table, columns, values) {
   const clauses = [];
   for (const [key, value] of searchParams) {
-    const match = /^(eq|neq|is|ilike|gte|lte|in)\[([a-z_][a-z0-9_]*)\]$/i.exec(key);
+    const match = /^(eq|neq|is|ilike|gte|lte|lt|gt|in)\[([a-z_][a-z0-9_]*)\]$/i.exec(key);
     if (!match) {
       if (key === 'or') {
         clauses.push(addOrFilter(value, table, columns, values));
@@ -165,7 +511,8 @@ function addFilters(searchParams, table, columns, values) {
     } else {
       values.push(value);
       const sqlOperator = {
-        eq: '=', neq: '<>', is: 'IS', ilike: 'ILIKE', gte: '>=', lte: '<='
+        eq: '=', neq: '<>', is: 'IS', ilike: 'ILIKE',
+        gte: '>=', lte: '<=', lt: '<', gt: '>'
       }[operator.toLowerCase()];
       clauses.push(`${qualifiedColumn(table, column)} ${sqlOperator} $${values.length}`);
     }
@@ -174,64 +521,154 @@ function addFilters(searchParams, table, columns, values) {
 }
 
 function addOrFilter(value, table, columns, values) {
-  const clauses = value.split(',').map((condition) => {
-    const match = /^([a-z_][a-z0-9_]*)\.(eq|neq)\.([A-Za-z0-9 _-]+)$/i.exec(condition);
-    if (!match || !columns.has(match[1])) {
-      const error = new Error('Unsupported OR filter');
-      error.status = 400;
-      throw error;
-    }
-    values.push(match[3]);
-    return `${qualifiedColumn(table, match[1])} ${match[2].toLowerCase() === 'eq' ? '=' : '<>'} $${values.length}`;
-  });
-  if (clauses.length === 0 || clauses.length > 20) {
+  const terms = splitTopLevel(value);
+  if (!terms || terms.length < 1 || terms.length > 20) {
     const error = new Error('Invalid OR filter');
     error.status = 400;
     throw error;
   }
-  return `(${clauses.join(' OR ')})`;
+  let conditionCount = 0;
+  const expression = `(${terms.map((term) =>
+    parseFilterExpression(term, table, columns, values, 0, () => {
+      conditionCount += 1;
+      if (conditionCount > 200) {
+        const error = new Error('Invalid OR filter');
+        error.status = 400;
+        throw error;
+      }
+    })
+  ).join(' OR ')})`;
+  return expression;
 }
 
-function splitSelection(value) {
+function splitTopLevel(value, separator = ',') {
   const parts = [];
   let depth = 0;
   let start = 0;
+  let quote = null;
   for (let index = 0; index < value.length; index += 1) {
-    if (value[index] === '(') depth += 1;
-    if (value[index] === ')') depth -= 1;
+    const character = value[index];
+    if (quote) {
+      if (character === '\\') {
+        index += 1;
+        continue;
+      }
+      if (character === quote) {
+        if (value[index + 1] === quote) {
+          index += 1;
+          continue;
+        }
+        quote = null;
+      }
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+    } else if (character === '(') {
+      depth += 1;
+    } else if (character === ')') {
+      depth -= 1;
+    }
     if (depth < 0) return null;
-    if (value[index] === ',' && depth === 0) {
+    if (character === separator && depth === 0) {
       parts.push(value.slice(start, index).trim());
       start = index + 1;
     }
   }
-  if (depth !== 0) return null;
+  if (depth !== 0 || quote) return null;
   parts.push(value.slice(start).trim());
   return parts;
 }
 
-async function parseSelection(pool, table, value, columns) {
-  if (!value || value === '*') return { sql: '*', joins: '' };
-  const parts = splitSelection(value);
+function parseFilterExpression(value, table, columns, values, depth, countCondition) {
+  if (depth > 8 || value.length > 4000) {
+    const error = new Error('OR filter is too complex');
+    error.status = 400;
+    throw error;
+  }
+
+  const group = /^(and|or)\((.*)\)$/i.exec(value);
+  if (group) {
+    const terms = splitTopLevel(group[2]);
+    if (!terms || terms.length < 1 || terms.length > 20) {
+      const error = new Error('Invalid OR filter');
+      error.status = 400;
+      throw error;
+    }
+    const operator = group[1].toLowerCase() === 'and' ? ' AND ' : ' OR ';
+    return `(${terms.map((term) =>
+      parseFilterExpression(term, table, columns, values, depth + 1, countCondition)
+    ).join(operator)})`;
+  }
+
+  const match = /^([a-z_][a-z0-9_]*)\.(eq|neq|is|ilike|gte|lte|lt|gt)\.(.*)$/i.exec(value);
+  if (!match || !columns.has(match[1]) || !match[3]) {
+    const error = new Error('Unsupported OR filter');
+    error.status = 400;
+    throw error;
+  }
+
+  countCondition();
+  const [, column, operatorValue] = match;
+  const operator = operatorValue.toLowerCase();
+  let filterValue = match[3];
+  if ((filterValue.startsWith('"') && filterValue.endsWith('"')) ||
+      (filterValue.startsWith("'") && filterValue.endsWith("'"))) {
+    filterValue = filterValue.slice(1, -1).replace(/\\(["'])/g, '$1');
+  }
+  if (operator === 'is' && filterValue === 'null') {
+    return `${qualifiedColumn(table, column)} IS NULL`;
+  }
+  if (operator === 'neq' && filterValue === 'null') {
+    return `${qualifiedColumn(table, column)} IS NOT NULL`;
+  }
+  values.push(filterValue);
+  const sqlOperator = {
+    eq: '=', neq: '<>', is: 'IS', ilike: 'ILIKE',
+    gte: '>=', lte: '<=', lt: '<', gt: '>'
+  }[operator];
+  return `${qualifiedColumn(table, column)} ${sqlOperator} $${values.length}`;
+}
+
+function relationSubquery(relation, alias, config, parentAlias, jsonObject) {
+  const from = ` FROM public.${quoteIdentifier(relation)} AS ${quoteIdentifier(alias)}`;
+  const where = ` WHERE ${qualifiedColumn(alias, config.referencedKey)} = ` +
+    qualifiedColumn(parentAlias, config.foreignKey);
+  if (config.cardinality === 'many') {
+    return `(SELECT COALESCE(jsonb_agg(related_rows.relation_data), '[]'::jsonb) ` +
+      `FROM (SELECT ${jsonObject} AS relation_data${from}${where}) AS related_rows)`;
+  }
+  return `(SELECT ${jsonObject}${from}${where} LIMIT 1)`;
+}
+
+async function buildJsonSelection(pool, table, alias, value, depth = 0) {
+  if (depth > 4) {
+    const error = new Error('Related selection is too deep');
+    error.status = 400;
+    throw error;
+  }
+  const columns = await getColumns(pool, table);
+  const parts = splitTopLevel(value || '*');
   if (!parts) {
     const error = new Error('Unsupported selected column');
     error.status = 400;
     throw error;
   }
   const expressions = [];
-  const joins = [];
   for (const part of parts) {
-    const relationMatch = /^([a-z_][a-z0-9_]*)\(([^()]*)\)$/i.exec(part);
+    const relationMatch = /^([a-z_][a-z0-9_]*)\((.*)\)$/i.exec(part);
     if (!relationMatch) {
       if (part === '*') {
-        expressions.push(`${quoteIdentifier(table)}.*`);
+        for (const column of columns) {
+          expressions.push(`'${column}', ${qualifiedColumn(alias, column)}`);
+        }
       } else {
         if (!columns.has(part)) {
           const error = new Error('Unsupported selected column');
           error.status = 400;
           throw error;
         }
-        expressions.push(`${quoteIdentifier(table)}.${quoteIdentifier(part)}`);
+        expressions.push(`'${part}', ${qualifiedColumn(alias, part)}`);
       }
       continue;
     }
@@ -243,28 +680,82 @@ async function parseSelection(pool, table, value, columns) {
       error.status = 400;
       throw error;
     }
-    const relationColumns = await getColumns(pool, relation);
-    const relationColumnsSelected = relationColumnsValue.split(',').map((column) => column.trim());
-    if (relationColumnsSelected.length === 0 ||
-        relationColumnsSelected.some((column) => !relationColumns.has(column))) {
-      const error = new Error('Unsupported related column selection');
-      error.status = 400;
-      throw error;
-    }
-    const relationAlias = quoteIdentifier(relation);
-    joins.push(
-      `LEFT JOIN public.${relationAlias} ON ${quoteIdentifier(table)}.${quoteIdentifier(relationConfig.foreignKey)} = ` +
-      `${relationAlias}.${quoteIdentifier(relationConfig.referencedKey)}`
+    const relationAlias = `r${depth}_${relation}`;
+    const relationSelection = await buildJsonSelection(
+      pool,
+      relation,
+      relationAlias,
+      relationColumnsValue,
+      depth + 1
     );
-    const jsonFields = relationColumnsSelected.map(
-      (column) => `'${column.replace(/'/g, "''")}', ${relationAlias}.${quoteIdentifier(column)}`
+    const jsonObject = `jsonb_build_object(${relationSelection})`;
+    const relationValue = relationSubquery(
+      relation,
+      relationAlias,
+      relationConfig,
+      alias,
+      jsonObject
     );
-    expressions.push(
-      `CASE WHEN ${relationAlias}.${quoteIdentifier(relationConfig.existenceKey)} IS NULL THEN NULL ` +
-      `ELSE jsonb_build_object(${jsonFields.join(', ')}) END AS ${relationAlias}`
-    );
+    expressions.push(`'${relation}', ${relationValue}`);
   }
-  return { sql: expressions.join(', '), joins: [...new Set(joins)].join(' ') };
+  return expressions.join(', ');
+}
+
+async function parseSelection(pool, table, value, columns) {
+  if (!value || value === '*') return '*';
+  const parts = splitTopLevel(value);
+  if (!parts) {
+    const error = new Error('Unsupported selected column');
+    error.status = 400;
+    throw error;
+  }
+  const expressions = [];
+  for (const part of parts) {
+    const relationMatch = /^([a-z_][a-z0-9_]*)\((.*)\)$/i.exec(part);
+    if (part === '*') {
+      expressions.push(`${quoteIdentifier(table)}.*`);
+    } else if (relationMatch) {
+      const [, relation] = relationMatch;
+      const relationConfig = RELATIONS[table]?.[relation];
+      if (!relationConfig) {
+        const error = new Error('Unsupported related table selection');
+        error.status = 400;
+        throw error;
+      }
+      const relationAlias = `r0_${relation}`;
+      const relationSelection = await buildJsonSelection(
+        pool,
+        relation,
+        relationAlias,
+        relationMatch[2]
+      );
+      const jsonObject = `jsonb_build_object(${relationSelection})`;
+      const relationValue = relationSubquery(
+        relation,
+        relationAlias,
+        relationConfig,
+        table,
+        jsonObject
+      );
+      expressions.push(`${relationValue} AS ${quoteIdentifier(relation)}`);
+    } else {
+      if (!columns.has(part)) {
+        const error = new Error('Unsupported selected column');
+        error.status = 400;
+        throw error;
+      }
+      expressions.push(qualifiedColumn(table, part));
+    }
+  }
+  return expressions.join(', ');
+}
+
+function policyAllows(table, method, role, columns) {
+  const policies = WRITE_POLICIES[table]?.[method] || [];
+  return policies.some((policy) =>
+    policy.roles.some((requiredRole) => role.includes(requiredRole)) &&
+    columns.every((column) => policy.columns.includes(column))
+  );
 }
 
 async function handleTableRequest(req, res, pool, url, profile, table) {
@@ -303,21 +794,30 @@ async function handleTableRequest(req, res, pool, url, profile, table) {
   let result;
 
   if (req.method === 'GET') {
-    const { sql: selection, joins } = await parseSelection(
+    const selection = await parseSelection(
       pool,
       table,
       url.searchParams.get('select'),
       columns
     );
+    const orderClauses = [];
+    for (const orderValue of url.searchParams.getAll('order')) {
+      for (const orderPart of orderValue.split(',')) {
+        const [column, direction = 'asc'] = orderPart.split('.');
+        if (!columns.has(column) || !['asc', 'desc'].includes(direction.toLowerCase())) {
+          response(res, 400, { error: 'Unsupported ordering' });
+          return;
+        }
+        orderClauses.push(`${qualifiedColumn(table, column)} ${direction.toUpperCase()}`);
+      }
+    }
     let order = '';
-    const orderValue = url.searchParams.get('order');
-    if (orderValue) {
-      const [column, direction = 'asc'] = orderValue.split('.');
-      if (!columns.has(column) || !['asc', 'desc'].includes(direction.toLowerCase())) {
-        response(res, 400, { error: 'Unsupported ordering' });
+    if (orderClauses.length) {
+      if (orderClauses.length > 10) {
+        response(res, 400, { error: 'Too many ordering columns' });
         return;
       }
-      order = ` ORDER BY ${qualifiedColumn(table, column)} ${direction.toUpperCase()}`;
+      order = ` ORDER BY ${orderClauses.join(', ')}`;
     }
     const limitValue = url.searchParams.get('limit');
     let limit = '';
@@ -331,7 +831,7 @@ async function handleTableRequest(req, res, pool, url, profile, table) {
       limit = ` LIMIT $${values.length}`;
     }
     result = await pool.query(
-      `SELECT ${selection} FROM public.${quoteIdentifier(table)} AS ${quoteIdentifier(table)} ${joins}${where}${order}${limit}`,
+      `SELECT ${selection} FROM public.${quoteIdentifier(table)} AS ${quoteIdentifier(table)}${where}${order}${limit}`,
       values
     );
     response(res, 200, { data: result.rows, error: null });
@@ -360,22 +860,7 @@ async function handleTableRequest(req, res, pool, url, profile, table) {
       response(res, 400, { data: null, error: { message: 'Insert rows must use the same columns' } });
       return;
     }
-    const allowedInsertColumns = table === 'chslr_log' && role.includes('OPERATOR')
-      ? new Set(['mesin_id', 'bulan', 'tahun', 'pelaksana_names', 'catatan_pelaksana'])
-      : table === 'chslr_result' && role.includes('OPERATOR')
-        ? new Set(['log_id', 'item_id', 'tanggal', 'status', 'input_value', 'keterangan', 'signature'])
-        : table === 'clhmi' && role.includes('OPERATOR')
-          ? new Set([
-            'machine_id', 'merk_mesin', 'serial_no', 'pelaksana', 'paraf', 'status_form',
-            'tanggal_isi', 'bulan', 'tahun', 'catatan_pelaksana', 'tonage'
-          ])
-          : table === 'clhmi_results' && role.includes('OPERATOR')
-            ? new Set([
-              'clhmi_id', 'item_id', 'item_kode', 'status', 'value',
-              'temperature_oli', 'catatan_item', 'pelaksana'
-            ])
-            : null;
-    if (!allowedInsertColumns || rowColumns.some((column) => !allowedInsertColumns.has(column))) {
+    if (!policyAllows(table, 'POST', role, rowColumns)) {
       response(res, 403, { data: null, error: { message: 'This role cannot insert these checklist fields' } });
       return;
     }
@@ -409,18 +894,7 @@ async function handleTableRequest(req, res, pool, url, profile, table) {
       response(res, 400, { data: null, error: { message: 'Update requires valid columns and filters' } });
       return;
     }
-    const allowedPatchColumns = table === 'chslr_log' && role.includes('OPERATOR')
-      ? new Set(['pelaksana_names', 'catatan_pelaksana'])
-      : table === 'chslr_log' && role.includes('SUPERVISOR')
-        ? new Set(['koordinator_nama', 'signature_koordinator', 'status_verifikasi', 'remark_koordinator'])
-        : table === 'chslr_log' && role.includes('SUPERINTENDENT')
-          ? new Set(['superintendent_nama', 'remark_superintendent', 'signature_superintendent', 'status_final'])
-          : table === 'clhmi' && role.includes('SUPERVISOR')
-            ? new Set(['paraf_coord', 'status_form', 'catatan_umum'])
-            : table === 'clhmi' && role.includes('SUPERINTENDENT')
-              ? new Set(['status_form', 'verified_by', 'catatan_super', 'paraf_super'])
-              : null;
-    if (!allowedPatchColumns || patchColumns.some((column) => !allowedPatchColumns.has(column))) {
+    if (!policyAllows(table, 'PATCH', role, patchColumns)) {
       response(res, 403, { data: null, error: { message: 'This role cannot update these checklist fields' } });
       return;
     }
@@ -439,7 +913,7 @@ async function handleTableRequest(req, res, pool, url, profile, table) {
   }
 
   if (req.method === 'DELETE') {
-    if (table !== 'chslr_result' || !role.includes('OPERATOR')) {
+    if (!policyAllows(table, 'DELETE', role, [])) {
       response(res, 403, { data: null, error: { message: 'This role cannot delete checklist records' } });
       return;
     }

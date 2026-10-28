@@ -101,7 +101,7 @@ function createServer(pool, {
         'Cache-Control': 'no-store',
         'X-Content-Type-Options': 'nosniff'
       });
-      res.end(JSON.stringify({ service: 'mtc-postgres-api', build: 'clhmi-machine-2026-10-28' }));
+      res.end(JSON.stringify({ service: 'mtc-postgres-api', build: 'checklist-batch-2026-10-28' }));
       return;
     }
 

@@ -40,6 +40,21 @@ const chslrColumns = {
   clhmi_results: [
     'id', 'clhmi_id', 'item_id', 'item_kode', 'status', 'value', 'temperature_oli',
     'catatan_item', 'pelaksana'
+  ],
+  jpdo_log: [
+    'id', 'tanggal', 'status_hari', 'nama_supervisor', 'nama_mesin',
+    'catatan_supervisor', 'tanda_tangan', 'nama_pic', 'created_at'
+  ],
+  jpdo_result: ['id', 'log_id', 'plan_status', 'actual_status'],
+  jpdo_approval: [
+    'id', 'bulan', 'nama_superintendent', 'catatan_superintendent',
+    'tanda_tangan_superintendent', 'created_at'
+  ],
+  ppw_log: [
+    'id', 'nama_operator', 'status_hasil', 'qc_check', 'keterangan', 'nama_spv',
+    'catatan_akhir', 'ttd_spv', 'bagian', 'tanggal', 'nama_part', 'job_desc',
+    'estimasi_waktu', 'waktu_mulai', 'waktu_selesai', 'nama_superintendent',
+    'catatan_superintendent', 'ttd_superintendent', 'status_approval', 'created_at'
   ]
 };
 const pool = {
@@ -148,7 +163,7 @@ test('API version endpoint identifies the backend build without database access'
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
     service: 'mtc-postgres-api',
-    build: 'clhmi-machine-2026-10-28'
+    build: 'checklist-batch-2026-10-28'
   });
   assert.equal(response.headers.get('cache-control'), 'no-store');
   assert.equal(queries.length, 0);
@@ -265,7 +280,8 @@ test('CLHMI API supports safe filters, related selections, and role-scoped write
   );
   assert.equal(queue.status, 200);
   const queueSql = queries.findLast((sql) => sql.includes('jsonb_build_object') && sql.includes('public."clhmi"'));
-  assert.match(queueSql, /LEFT JOIN public\."clhmi_machine"/);
+  assert.match(queueSql, /FROM public\."clhmi_machine" AS "r0_clhmi_machine"/);
+  assert.match(queueSql, /"r0_clhmi_machine"\."id" = "clhmi"\."machine_id"/);
   assert.match(queueSql, /"clhmi"\."status_form" = \$1/);
   assert.deepEqual(queryValues[queries.indexOf(queueSql)], ['submitted']);
 
@@ -327,6 +343,104 @@ test('CLHMI API supports safe filters, related selections, and role-scoped write
     const updateSql = queries.findLast((sql) => sql.includes('UPDATE public."clhmi"'));
     assert.match(updateSql, /"clhmi"\."id" IN \(\$1, \$2\)/);
     assert.deepEqual(queryValues[queries.indexOf(updateSql)], ['report-1', 'report-2', 'closed', 'Test']);
+  } finally {
+    authUser.jabatan = originalRole;
+  }
+});
+
+test('checklist API supports compound date filters, repeated ordering, one-to-many relations, and role policies', async () => {
+  const originalRole = authUser.jabatan;
+  const cookie = await createSessionCookie();
+  const url = new URL(`${baseUrl}/api/data/jpdo_log`);
+  url.searchParams.set('select', '*,jpdo_result(id,plan_status,actual_status)');
+  url.searchParams.set('lt[tanggal]', '2026-10-01');
+  url.searchParams.set(
+    'or',
+    'and(tanggal.gte.2026-01-01,tanggal.lt.2026-02-01),and(tanggal.gte.2026-03-01,tanggal.lt.2026-04-01)'
+  );
+  url.searchParams.append('order', 'tanggal.asc');
+  url.searchParams.append('order', 'created_at.desc');
+
+  try {
+    const list = await fetch(url, { headers: { Cookie: cookie } });
+    assert.equal(list.status, 200);
+    const sql = queries.findLast((query) =>
+      query.includes('public."jpdo_log"') && query.includes('jsonb_agg')
+    );
+    assert.match(sql, /jsonb_agg\(related_rows\.relation_data\)/);
+    assert.match(sql, /"jpdo_log"\."tanggal" < \$1/);
+    assert.match(sql, /"jpdo_log"\."tanggal" >= \$2 AND "jpdo_log"\."tanggal" < \$3/);
+    assert.match(sql, /"jpdo_log"\."tanggal" >= \$4 AND "jpdo_log"\."tanggal" < \$5/);
+    assert.match(sql, /ORDER BY "jpdo_log"\."tanggal" ASC, "jpdo_log"\."created_at" DESC/);
+    assert.deepEqual(queryValues[queries.indexOf(sql)], [
+      '2026-10-01',
+      '2026-01-01',
+      '2026-02-01',
+      '2026-03-01',
+      '2026-04-01'
+    ]);
+
+    authUser.jabatan = 'SUPERVISOR';
+    const supervisorCookie = await createSessionCookie();
+    const logInsert = await fetch(`${baseUrl}/api/data/jpdo_log`, {
+      method: 'POST',
+      headers: { Cookie: supervisorCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tanggal: '2026-10-28',
+        status_hari: 'normal',
+        nama_supervisor: 'Test',
+        nama_mesin: 'M-1',
+        nama_pic: 'Operator',
+        tanda_tangan: 'sig.png'
+      })
+    });
+    assert.equal(logInsert.status, 201);
+
+    const ppwInsert = await fetch(`${baseUrl}/api/data/ppw_log`, {
+      method: 'POST',
+      headers: { Cookie: supervisorCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nama_operator: 'Operator',
+        status_hasil: 'pending',
+        qc_check: false,
+        keterangan: '',
+        nama_spv: 'Test',
+        catatan_akhir: '',
+        ttd_spv: 'sig.png',
+        bagian: 'Assembly',
+        tanggal: '2026-10-28',
+        nama_part: 'Part',
+        job_desc: 'Preventive check',
+        estimasi_waktu: '30 menit'
+      })
+    });
+    assert.equal(ppwInsert.status, 201);
+
+    const forbiddenApproval = await fetch(`${baseUrl}/api/data/jpdo_approval`, {
+      method: 'POST',
+      headers: { Cookie: supervisorCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bulan: '2026-10',
+        nama_superintendent: 'Test',
+        catatan_superintendent: 'Approved',
+        tanda_tangan_superintendent: 'sig.png'
+      })
+    });
+    assert.equal(forbiddenApproval.status, 403);
+
+    authUser.jabatan = 'SUPERINTENDENT';
+    const superintendentCookie = await createSessionCookie();
+    const approvalInsert = await fetch(`${baseUrl}/api/data/jpdo_approval`, {
+      method: 'POST',
+      headers: { Cookie: superintendentCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bulan: '2026-10',
+        nama_superintendent: 'Test',
+        catatan_superintendent: 'Approved',
+        tanda_tangan_superintendent: 'sig.png'
+      })
+    });
+    assert.equal(approvalInsert.status, 201);
   } finally {
     authUser.jabatan = originalRole;
   }

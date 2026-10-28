@@ -57,6 +57,14 @@
                 state.filters.push(["lte", column, value]);
                 return this;
             },
+            lt(column, value) {
+                state.filters.push(["lt", column, value]);
+                return this;
+            },
+            gt(column, value) {
+                state.filters.push(["gt", column, value]);
+                return this;
+            },
             in(column, values) {
                 state.filters.push(["in", column, values]);
                 return this;
@@ -66,7 +74,8 @@
                 return this;
             },
             order(column, options = {}) {
-                state.options.order = `${column}.${options.ascending === false ? "desc" : "asc"}`;
+                if (!state.options.order) state.options.order = [];
+                state.options.order.push(`${column}.${options.ascending === false ? "desc" : "asc"}`);
                 return this;
             },
             limit(count) {
@@ -93,11 +102,15 @@
     async function executeQuery(table, state) {
         const url = new URL(`/api/data/${encodeURIComponent(table)}`, window.location.origin);
         for (const [key, value] of Object.entries(state.options)) {
-            url.searchParams.set(key, value);
+            if (key === "order") {
+                for (const order of value) url.searchParams.append(key, order);
+            } else {
+                url.searchParams.set(key, value);
+            }
         }
         for (const [operator, column, value] of state.filters) {
             if (operator === "or") {
-                url.searchParams.set("or", column);
+                url.searchParams.append("or", column);
                 continue;
             }
             url.searchParams.append(
