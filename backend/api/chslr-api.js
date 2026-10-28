@@ -536,6 +536,7 @@ async function handleChslrRequest(req, res, pool) {
     if (url.pathname.startsWith('/api/data/')) {
       const table = decodeURIComponent(url.pathname.slice('/api/data/'.length));
       if (!DATA_TABLES.has(table)) {
+        console.warn('Checklist API rejected unlisted table:', table);
         response(res, 404, { data: null, error: { message: 'Table is not available in the checklist API' } });
         return true;
       }

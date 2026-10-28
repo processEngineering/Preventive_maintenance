@@ -84,6 +84,9 @@ Get-Service *postgres*
 ## Endpoints
 
 - `GET /healthz` checks that the process is running.
+- `GET /api/version` identifies the running API build without querying the database.
+  During the CLHMI machine-table rollout it should return
+  `{"service":"mtc-postgres-api","build":"clhmi-machine-2026-10-28"}` through Vercel.
 - `GET /readyz` runs only `SELECT 1 FROM public.profiles LIMIT 1` and returns
   `{"status":"ready","database":"connected"}` on success. It returns a generic
   `503` response on connection/query failure and does not return database details.

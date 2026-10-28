@@ -90,6 +90,21 @@ function createServer(pool, {
   publicAppOrigin = null
 } = {}) {
   return http.createServer(async (req, res) => {
+    if (req.url === '/api/version') {
+      if (req.method !== 'GET') {
+        res.writeHead(405, { Allow: 'GET' });
+        res.end();
+        return;
+      }
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      res.end(JSON.stringify({ service: 'mtc-postgres-api', build: 'clhmi-machine-2026-10-28' }));
+      return;
+    }
+
     if (await handleAuthRequest(req, res, pool, { mailer, fromEmail, publicAppOrigin })) return;
     if (await handleChslrRequest(req, res, pool)) return;
 

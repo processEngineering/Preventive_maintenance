@@ -142,6 +142,18 @@ test('health endpoint reports process status without querying the database', asy
   assert.equal(queries.length, 0);
 });
 
+test('API version endpoint identifies the backend build without database access', async () => {
+  const response = await fetch(`${baseUrl}/api/version`);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    service: 'mtc-postgres-api',
+    build: 'clhmi-machine-2026-10-28'
+  });
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(queries.length, 0);
+});
+
 test('readiness endpoint performs only the intended profiles existence query', async () => {
   const response = await fetch(`${baseUrl}/readyz`);
 
