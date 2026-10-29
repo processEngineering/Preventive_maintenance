@@ -233,11 +233,11 @@ npm.cmd run pm2:logs
 ```
 
 The `mtc-ngrok` process uses
-`C:\Maintenance App\python program\ngrok.exe http --domain=generic-karol-translucently.ngrok-free.dev 3000`;
+`C:\Maintenance App\python program\ngrok.exe http --domain=unretired-skewer-driven.ngrok-free.dev 3000`;
 ngrok credentials and ownership of this reserved domain must already be configured
 for the Windows account running PM2. The tunnel forwards only to the API's loopback
 listener on port 3000. Because this is a fixed domain, Vercel's `BACKEND_API_ORIGIN`
-can remain set to `https://generic-karol-translucently.ngrok-free.dev` across
+can remain set to `https://unretired-skewer-driven.ngrok-free.dev` across
 restarts. Keep the backend's `PUBLIC_APP_ORIGIN` set to the frontend origin.
 
 Verify `http://127.0.0.1:3000/api/version` and `/readyz`, then smoke-test login,
