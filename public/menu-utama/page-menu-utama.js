@@ -95,21 +95,21 @@ const MENU_GROUPS = [
                 action: "grafik",
                 actionUrls: {
                     "OPERATOR | PELAKSANA": {
-                        clhmi   : "../data-checklist/grafik/grafik_clhmi.html",
+                        clhmi   : "../data-checklist/grafik/grafik_chlmi.html",
                         chslr   : "../data-checklist/grafik/grafik_chslr.html",
                         cplm    : "../data-checklist/grafik/grafik_cplm.html",
                         pmi     : "../data-checklist/grafik/grafik_pmi.html",
                         prslb   : "../data-checklist/grafik/grafik_prslb.html"
                     },
                     "SUPERVISOR | KOORDINATOR": {
-                        clhmi   : "../data-checklist/grafik/grafik_clhmi.html",
+                        clhmi   : "../data-checklist/grafik/grafik_chlmi.html",
                         chslr   : "../data-checklist/grafik/grafik_chslr.html",
                         cplm    : "../data-checklist/grafik/grafik_cplm.html",
                         pmi     : "../data-checklist/grafik/grafik_pmi.html",
                         prslb   : "../data-checklist/grafik/grafik_prslb.html"
                     },
                     "SUPERINTENDENT": {
-                        clhmi   : "../data-checklist/grafik/grafik_clhmi.html",
+                        clhmi   : "../data-checklist/grafik/grafik_chlmi.html",
                         chslr   : "../data-checklist/grafik/grafik_chslr.html",
                         cplm    : "../data-checklist/grafik/grafik_cplm.html",
                         pmi     : "../data-checklist/grafik/grafik_pmi.html",
