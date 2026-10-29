@@ -284,11 +284,14 @@ not automatically start PM2 after reboot.
   by workflow role and field; profile reads are restricted to the signed-in user.
 - `GET` and `POST /api/storage/signatures/{filename}` read and store authenticated
   PNG signatures in PostgreSQL.
-- `backend/scripts/send-password-setup.js` supports a one-account pilot with
-  `--check-test` (verifies the test setup without creating tokens or sending email),
-  `--send-test`, and a separately guarded 22-account send with `--send-all`.
-  Neither mode is ready to run until the HTTPS route and a separate,
-  least-privilege provisioning role have been configured and tested.
+- `backend/scripts/send-password-setup.js --send-one-production` sends one
+  password-setup email to one approved existing profile per invocation. It requires
+  the dedicated `mtc_api_provisioner` role, a matching explicit email confirmation,
+  and refuses to replace an established password. See the on-demand provisioning
+  instructions below.
+- `--check-test`, `--send-test`, and `--send-all` are test-database modes only;
+  they refuse to run unless connected to `mtc_migration_test2`. The mass-send mode
+  is not the production onboarding path.
 - The `--check-test` preflight does not require an active ngrok address. It only
   verifies the configured SMTP account and checks the private mapping against the
   test database; it creates no users, tokens, sessions, or emails.
@@ -297,6 +300,80 @@ Login uses an `HttpOnly`, `Secure`, `SameSite=Lax` cookie. Only a hash of the ra
 session token is stored in PostgreSQL. For checklist workflows, `jabatan` gates
 which workflow fields an authenticated user may write; it is not used to grant
 access to other application APIs.
+
+## On-demand production account setup
+
+The production restore intentionally did not copy `app_users` or password-setup
+tokens. When an existing profile owner asks to sign in, send only that user a
+one-time setup link. Do not send invitations in bulk or use the test mass-send mode
+for production.
+
+An authorized DBA creates the separate least-privilege provisioner role once and
+sets its password interactively:
+
+```sql
+CREATE ROLE mtc_api_provisioner LOGIN NOINHERIT;
+\password mtc_api_provisioner
+```
+
+If it already exists, inspect it rather than creating it again. As an authorized
+grantor connected to `mtc`, apply the one-user provisioning privileges:
+
+```powershell
+& "C:\Program Files\PostgreSQL\16\bin\psql.exe" `
+  -h 127.0.0.1 -p 5432 -U postgres -W `
+  -d mtc -v ON_ERROR_STOP=1 `
+  -f .\sql\production-provisioner-grants.sql
+```
+
+The script is restricted to `mtc`; it verifies that the provisioner is a non-superuser
+`LOGIN NOINHERIT` role without memberships. It grants only profile ID lookup,
+limited account lookup/insertion, and setup-token creation/deletion. It does not
+grant checklist access or alter tables. Keep the provisioner password separate from
+the API's `mtc_api_runtime` credentials.
+
+Create a separate, access-restricted `.env.provisioner` file in the backend folder.
+It must contain the production database connection using `PGUSER=mtc_api_provisioner`,
+that role's `PGPASSWORD`, and the approved `GMAIL_ADDRESS`,
+`GMAIL_APP_PASSWORD`, and `PUBLIC_APP_ORIGIN=https://amarilyspm.vercel.app`. Also
+set `APP_ENVIRONMENT=production` and `PGDATABASE=mtc`. Do not replace the API's
+`.env`, commit this file, or expose its secrets. The repository ignores `.env.*`.
+
+For each individual invitation, independently confirm the requestor's identity,
+their intended email address, and the exact existing profile ID. Save a private JSON
+file outside the repository, for example
+`$env:USERPROFILE\mtc-setup-user.json`, with exactly one record:
+
+```json
+[
+  {
+    "profile_id": "approved-existing-profile-uuid",
+    "email": "the-approved-user@example.com"
+  }
+]
+```
+
+Set the recipient confirmation in the same PowerShell session, then send exactly
+one email:
+
+```powershell
+$env:CONFIRM_PRODUCTION_SETUP_EMAIL = 'the-approved-user@example.com'
+node --env-file=.env.provisioner `
+  .\scripts\send-password-setup.js `
+  --send-one-production `
+  "$env:USERPROFILE\mtc-setup-user.json"
+Remove-Item Env:\CONFIRM_PRODUCTION_SETUP_EMAIL
+```
+
+The script requires `APP_ENVIRONMENT=production`, `PGDATABASE=mtc`, and
+`PGUSER=mtc_api_provisioner`; it validates exactly one profile/email pair and
+requires the confirmation variable to match that recipient. It verifies the
+profile exists, creates no more than one account/setup token, and refuses to send
+if the profile already has a different account email or an established password.
+The setup link expires after 24 hours. If delivery fails, the unused token is
+removed. Never paste the private JSON, setup link, token, or credentials into chat.
+After the user completes setup, they can sign in normally. Use the same procedure
+only when another approved user requests access.
 
 ## Checklist database privileges
 

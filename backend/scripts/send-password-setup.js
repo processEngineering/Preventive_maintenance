@@ -13,6 +13,8 @@ const {
 
 const EXPECTED_USERS = 22;
 const SETUP_TOKEN_HOURS = 24;
+const PRODUCTION_DATABASE = 'mtc';
+const PRODUCTION_PROVISIONER = 'mtc_api_provisioner';
 
 function validateUsers(users, expectedCount = EXPECTED_USERS) {
   if (!Array.isArray(users) || users.length !== expectedCount) {
@@ -43,6 +45,37 @@ function validateUsers(users, expectedCount = EXPECTED_USERS) {
     profile_id: user.profile_id.toLowerCase(),
     email: user.email.trim()
   }));
+}
+
+function validateProvisioningEnvironment(mode, env) {
+  if (mode === '--send-one-production') {
+    if (
+      env.APP_ENVIRONMENT !== 'production' ||
+      env.PGDATABASE !== PRODUCTION_DATABASE ||
+      env.PGUSER !== PRODUCTION_PROVISIONER
+    ) {
+      throw new Error(
+        `Production provisioning requires APP_ENVIRONMENT=production, ` +
+        `PGDATABASE=${PRODUCTION_DATABASE}, and PGUSER=${PRODUCTION_PROVISIONER}`
+      );
+    }
+    return;
+  }
+
+  if (env.PGDATABASE !== 'mtc_migration_test2') {
+    throw new Error('PGDATABASE must be mtc_migration_test2');
+  }
+}
+
+function validateProductionRecipientConfirmation(user, env) {
+  if (
+    !env.CONFIRM_PRODUCTION_SETUP_EMAIL ||
+    user.email.toLowerCase() !== env.CONFIRM_PRODUCTION_SETUP_EMAIL.trim().toLowerCase()
+  ) {
+    throw new Error(
+      'CONFIRM_PRODUCTION_SETUP_EMAIL must exactly match the single production recipient'
+    );
+  }
 }
 
 async function createSetupToken(pool, user) {
@@ -107,19 +140,21 @@ async function createSetupToken(pool, user) {
 async function main() {
   const mode = process.argv[2];
   const usersPathArgument = process.argv[3];
-  if (!['--check-test', '--send-test', '--send-all'].includes(mode) || !usersPathArgument) {
+  if (
+    !['--check-test', '--send-test', '--send-all', '--send-one-production'].includes(mode) ||
+    !usersPathArgument
+  ) {
     throw new Error(
       'Usage: node scripts/send-password-setup.js --check-test <private-user.json>, ' +
       '--send-test <private-user.json>, ' +
-      'or --send-all <private-users.json>'
+      '--send-all <private-users.json>, or ' +
+      '--send-one-production <private-user.json>'
     );
   }
   if (mode === '--send-all' && process.env.CONFIRM_SEND_ALL !== String(EXPECTED_USERS)) {
     throw new Error(`Set CONFIRM_SEND_ALL=${EXPECTED_USERS} to authorize all-user email delivery`);
   }
-  if (process.env.PGDATABASE !== 'mtc_migration_test2') {
-    throw new Error('PGDATABASE must be mtc_migration_test2');
-  }
+  validateProvisioningEnvironment(mode, process.env);
 
   const appOrigin = mode === '--check-test'
     ? null
@@ -133,10 +168,14 @@ async function main() {
   );
   if (
     mode !== '--send-all' &&
+    mode !== '--send-one-production' &&
     (!process.env.SETUP_TEST_EMAIL ||
       users[0].email.toLowerCase() !== process.env.SETUP_TEST_EMAIL.trim().toLowerCase())
   ) {
     throw new Error('SETUP_TEST_EMAIL must match the single test recipient in the private input file');
+  }
+  if (mode === '--send-one-production') {
+    validateProductionRecipientConfirmation(users[0], process.env);
   }
   const transport = createGmailTransport(process.env, nodemailer);
   await transport.verify();
@@ -159,14 +198,26 @@ async function main() {
       [profileIds]
     );
     if (existingProfiles.rowCount !== users.length) {
-      throw new Error('The input profile IDs do not all match profiles in the test database');
+      throw new Error('The input profile ID does not match a profile in the selected database');
     }
 
     const appUsers = await pool.query(
-      'SELECT profile_id FROM public.app_users WHERE profile_id = ANY($1::uuid[])',
+      `SELECT profile_id, email_normalized, password_hash
+       FROM public.app_users
+       WHERE profile_id = ANY($1::uuid[])`,
       [profileIds]
     );
-    if (appUsers.rowCount !== 0) {
+    if (
+      mode === '--send-one-production' &&
+      appUsers.rows.some((account) =>
+        account.email_normalized !== users[0].email.toLowerCase() || account.password_hash
+      )
+    ) {
+      throw new Error(
+        'The profile already has a different email or an established password; no email was sent'
+      );
+    }
+    if (mode !== '--send-one-production' && appUsers.rowCount !== 0) {
       throw new Error('Test profile already has a provisioned app user');
     }
 
@@ -196,7 +247,7 @@ async function main() {
         throw error;
       }
     }
-    console.log(`Sent ${sent} password setup emails.`);
+    console.log(`Sent ${sent} password setup email${sent === 1 ? '' : 's'}.`);
   } finally {
     await pool.end();
     transport.close();
@@ -210,4 +261,10 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createSetupToken, validateAppOrigin, validateUsers };
+module.exports = {
+  createSetupToken,
+  validateAppOrigin,
+  validateProductionRecipientConfirmation,
+  validateProvisioningEnvironment,
+  validateUsers
+};

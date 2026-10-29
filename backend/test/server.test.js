@@ -271,10 +271,17 @@ test('batch checklist tables are allowlisted separately from database privilege 
 });
 
 test('database scripts are isolated and cover production and staging requirements', async () => {
-  const [apiSource, grantSource, productionGrantSource, stagingCleanupSource] = await Promise.all([
+  const [
+    apiSource,
+    grantSource,
+    productionGrantSource,
+    provisionerGrantSource,
+    stagingCleanupSource
+  ] = await Promise.all([
     fs.readFile(path.join(__dirname, '..', 'api', 'chslr-api.js'), 'utf8'),
     fs.readFile(path.join(__dirname, '..', 'sql', 'checklist-api-grants.sql'), 'utf8'),
     fs.readFile(path.join(__dirname, '..', 'sql', 'production-api-grants.sql'), 'utf8'),
+    fs.readFile(path.join(__dirname, '..', 'sql', 'production-provisioner-grants.sql'), 'utf8'),
     fs.readFile(path.join(__dirname, '..', 'sql', 'staging-clean-2026-10-28.sql'), 'utf8')
   ]);
   const allowlist = apiSource.match(/const DATA_TABLES = new Set\(\[([\s\S]*?)\]\);/);
@@ -319,6 +326,13 @@ test('database scripts are isolated and cover production and staging requirement
     productionGrantSource,
     /GRANT SELECT, INSERT ON TABLE public\.app_signature_files TO mtc_api_runtime;/
   );
+  assert.match(provisionerGrantSource, /current_database\(\) <> 'mtc'/);
+  assert.doesNotMatch(provisionerGrantSource, /mtc_api_runtime|mtc_migration_test2/);
+  assert.match(provisionerGrantSource, /GRANT CONNECT ON DATABASE mtc TO mtc_api_provisioner;/);
+  assert.match(provisionerGrantSource, /GRANT SELECT \(id\) ON TABLE public\.profiles/);
+  assert.match(provisionerGrantSource, /GRANT INSERT \(profile_id, email\)/);
+  assert.match(provisionerGrantSource, /GRANT DELETE ON TABLE public\.app_setup_tokens/);
+  assert.match(provisionerGrantSource, /rolcanlogin, rolsuper, rolinherit/);
   assert.match(stagingCleanupSource, /current_database\(\) <> 'mtc_migration_backup'/);
   assert.match(stagingCleanupSource, /TIMESTAMPTZ '2026-10-28 00:00:00\+07'/);
   assert.match(stagingCleanupSource, /TIMESTAMPTZ '2026-10-29 00:00:00\+07'/);

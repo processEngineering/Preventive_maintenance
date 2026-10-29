@@ -10,6 +10,8 @@ const {
 const {
   createSetupToken,
   validateAppOrigin,
+  validateProductionRecipientConfirmation,
+  validateProvisioningEnvironment,
   validateUsers
 } = require('../scripts/send-password-setup');
 
@@ -115,6 +117,53 @@ test('one-account pilot mapping accepts exactly one unique profile and recipient
     profile_id: '00000000-0000-0000-0000-000000000002',
     email: 'second@example.com'
   }], 1), /exactly 1/);
+});
+
+test('production setup email mode requires the dedicated production provisioner', () => {
+  const productionEnv = {
+    APP_ENVIRONMENT: 'production',
+    PGDATABASE: 'mtc',
+    PGUSER: 'mtc_api_provisioner'
+  };
+  assert.doesNotThrow(() => validateProvisioningEnvironment('--send-one-production', productionEnv));
+  assert.throws(
+    () => validateProvisioningEnvironment('--send-one-production', {
+      ...productionEnv,
+      PGDATABASE: 'mtc_migration_test2'
+    }),
+    /PGDATABASE=mtc/
+  );
+  assert.throws(
+    () => validateProvisioningEnvironment('--send-one-production', {
+      ...productionEnv,
+      PGUSER: 'mtc_api_runtime'
+    }),
+    /PGUSER=mtc_api_provisioner/
+  );
+  assert.doesNotThrow(() => validateProvisioningEnvironment('--send-test', {
+    PGDATABASE: 'mtc_migration_test2'
+  }));
+  assert.throws(
+    () => validateProvisioningEnvironment('--send-test', { PGDATABASE: 'mtc' }),
+    /PGDATABASE must be mtc_migration_test2/
+  );
+});
+
+test('production setup email requires an exact single-recipient confirmation', () => {
+  const user = { profile_id: '00000000-0000-0000-0000-000000000001', email: 'pilot@example.com' };
+  assert.doesNotThrow(() => validateProductionRecipientConfirmation(user, {
+    CONFIRM_PRODUCTION_SETUP_EMAIL: 'PILOT@example.com'
+  }));
+  assert.throws(
+    () => validateProductionRecipientConfirmation(user, {
+      CONFIRM_PRODUCTION_SETUP_EMAIL: 'other@example.com'
+    }),
+    /must exactly match/
+  );
+  assert.throws(
+    () => validateProductionRecipientConfirmation(user, {}),
+    /must exactly match/
+  );
 });
 
 test('setup token provisioning serializes by profile without requiring row-update rights', async () => {
