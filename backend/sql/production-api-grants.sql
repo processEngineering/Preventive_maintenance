@@ -47,9 +47,6 @@ GRANT SELECT, INSERT, UPDATE, DELETE
   ON TABLE public.app_email_verification_tokens TO mtc_api_runtime;
 GRANT SELECT, INSERT (token_hash, profile_id, expires_at), UPDATE (consumed_at), DELETE
   ON TABLE public.app_setup_tokens TO mtc_api_runtime;
-GRANT SELECT, INSERT (token_hash, profile_id, email, expires_at),
-  UPDATE (consumed_at), DELETE
-  ON TABLE public.app_activation_requests TO mtc_api_runtime;
 GRANT SELECT, INSERT, DELETE
   ON TABLE public.app_sessions TO mtc_api_runtime;
 GRANT SELECT ON TABLE public.app_users TO mtc_api_runtime;

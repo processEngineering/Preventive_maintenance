@@ -3,7 +3,6 @@ const APP_SHELL = [
   './',
   './index.html',
   './view/auth.html',
-  './auth/approve-activation.html',
   './view/base-app.html',
   './manifest.json',
   './assets/css/auth.css',

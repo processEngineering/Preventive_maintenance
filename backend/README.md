@@ -115,7 +115,6 @@ $validatedDump = Join-Path $env:USERPROFILE 'mtc-migration-backup-validated.dump
   --exclude-table-data=public.app_sessions `
   --exclude-table-data=public.app_setup_tokens `
   --exclude-table-data=public.app_email_verification_tokens `
-  --exclude-table-data=public.app_activation_requests `
   --exclude-table-data=public.app_signature_files `
   -f $sourceDump
 if ($LASTEXITCODE -ne 0) { throw 'Source database dump failed; stop here.' }
@@ -199,14 +198,8 @@ that `mtc_api_runtime` exists, can log in, is not a superuser, uses `NOINHERIT`,
 and is not a member of another role:
 
 ```powershell
-psql -d mtc -v ON_ERROR_STOP=1 -f .\sql\005_activation_requests.sql
 psql -d mtc -v ON_ERROR_STOP=1 -f .\sql\production-api-grants.sql
 ```
-
-The activation migration creates the one-time approval-request table and must be
-applied once before granting access to that table. Back up `mtc` first and verify
-that the production `profiles` table has the legacy `email` column used to match
-requests. Do not rerun this migration if the table already exists.
 
 Before starting the production process, create a private `.env` in the deployed
 `backend` folder with the actual approved connection and email settings. At minimum:
@@ -278,14 +271,6 @@ not automatically start PM2 after reboot.
   current roles except `ADMIN`; the backend enforces this independently of the UI.
 - `POST /api/auth/resend-verification` sends a new link for an unverified account
   without disclosing whether an email address is registered.
-- `POST /api/auth/request-activation` sends an on-demand request to the configured
-  department Gmail address for admin review. Its response does not reveal whether
-  the address matches an eligible profile. Requests are limited in process memory to
-  three per email and 20 total per hour; limits reset when the API restarts.
-- `POST /api/auth/approve-activation` redeems the one-time approval link from the
-  admin email, provisions only the matching profile with no established password,
-  and sends that user a 24-hour password-setup link. Approval links expire after
-  24 hours and are consumed once; opening the link alone does not approve it.
 - `POST /api/auth/verify-email` consumes the single-use token and marks the email
   verified. The token is stored as a SHA-256 hash and passed to the verification
   page in the URL fragment, not sent in the initial page request.
@@ -316,16 +301,14 @@ session token is stored in PostgreSQL. For checklist workflows, `jabatan` gates
 which workflow fields an authenticated user may write; it is not used to grant
 access to other application APIs.
 
-## On-demand production account setup
+## Production account setup
 
 The production restore intentionally did not copy `app_users` or password-setup
-tokens. When an existing profile owner requests activation, the configured Gmail
-mailbox receives a one-time approval link. Verify the requester and confirm their
-email matches the existing profile before opening the link and pressing
-**SETUJUI DAN KIRIM TAUTAN SETUP**. This creates the login record and emails the
-user a one-time password-setup link. The user must set a password before signing
-in; the previous Supabase password was not migrated. Do not approve unverified
-requests, send invitations in bulk, or use the test mass-send mode for production.
+tokens. The selected onboarding policy for past users is to register as a new user.
+This creates a new profile; historical checklist records remain attached to the old
+profile and are not automatically linked. Existing-profile password setup below is
+for exceptional, individually verified cases where an administrator has a trusted
+profile ID/email match. The previous Supabase password was not migrated.
 
 An authorized DBA creates the separate least-privilege provisioner role once and
 sets its password interactively:
@@ -358,7 +341,7 @@ that role's `PGPASSWORD`, and the approved `GMAIL_ADDRESS`,
 set `APP_ENVIRONMENT=production` and `PGDATABASE=mtc`. Do not replace the API's
 `.env`, commit this file, or expose its secrets. The repository ignores `.env.*`.
 
-For each individual invitation, independently confirm the requestor's identity,
+For each exceptional one-user setup, independently confirm the requestor's identity,
 their intended email address, and the exact existing profile ID. Save a private JSON
 file outside the repository, for example
 `$env:USERPROFILE\mtc-setup-user.json`, with exactly one record:
@@ -484,25 +467,18 @@ application instructions are in the Checklist database privileges section above.
   source login accounts, sessions, setup/email-verification tokens, and signatures.
   Verify the restored production schema before applying grants. Apply any later
   authentication migration only once, as documented above.
-- Supabase passwords and login-account records were not imported; retained profile
-  email addresses are used to match legacy activation requests. Keep any account
+- Supabase passwords and login-account records were not imported. Keep any account
   export private; do not put it in the repository or send it in chat.
-- A legacy profile holder can request activation from the sign-in page after a
-  failed login. The department mailbox receives an expiring approval link; a
-  deliberate confirmation provisions the matching profile and emails a password
-  setup link. The admin approval link is a bearer capability: anyone who can access
-  the admin mailbox can approve it, so verify the requester before confirming. The
-  request limiter is process-local and is not durable abuse protection.
-- Activation email delivery requires the department Gmail sender and App Password
+- A past user who registers under the selected new-account policy receives a new
+  profile. Historical checklist records remain associated with the previous profile
+  and are not automatically transferred. Do not imply that re-registration restores
+  access to old-profile records.
+- Signup and verification email delivery require the department Gmail sender and App Password
   to be configured privately. Never paste the App Password into chat, source code,
   a frontend setting, or the repository.
 - The setup-token schema in `sql/002_setup_tokens.sql` has been applied to
   `mtc_migration_test2`. The `mtc_api_auth_test` role has been granted the
   required setup-token and account-column permissions. No setup-token data exists.
-- Before enabling production activation approvals, apply
-  `sql/005_activation_requests.sql` once and rerun
-  `sql/production-api-grants.sql` to grant the API role access to its request and
-  setup-token operations.
 - Confirm production contains the expected login/session, setup-token,
   email-verification, and signature tables and that intended production accounts
   have been provisioned before sending links or switching live traffic. The grants

@@ -4,7 +4,6 @@ const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const {
   createGmailTransport,
-  sendActivationRequestEmail,
   sendEmailVerification,
   sendPasswordSetupEmail
 } = require('../email');
@@ -82,51 +81,6 @@ test('verification email requires HTTPS and delivers the confirmation link', asy
   });
   assert.equal(message.subject, 'Verify your MTC account email');
   assert.match(message.text, /https:\/\/example\.com\/auth\/verify-email\.html#token=abc/);
-});
-
-test('activation request email gives the admin a secure approval link', async () => {
-  let message;
-  await sendActivationRequestEmail({
-    transport: {
-      async sendMail(value) {
-        message = value;
-      }
-    },
-    from: 'admin@example.com',
-    to: 'admin@example.com',
-    requesterEmail: '<svg>@example.com',
-    approvalUrl: 'https://mtc-test.example.com/auth/approve-activation.html#token=abc'
-  });
-
-  assert.equal(message.to, 'admin@example.com');
-  assert.equal(message.subject, 'Permintaan aktivasi akun MTC');
-  assert.match(message.text, /<svg>@example\.com/);
-  assert.match(message.html, /Tinjau dan setujui aktivasi akun/);
-  assert.match(message.html, /&lt;svg&gt;@example\.com/);
-  assert.doesNotMatch(message.html, /<svg>/);
-  assert.match(message.html, /https:\/\/mtc-test\.example\.com\/auth\/approve-activation\.html#token=abc/);
-  assert.match(message.html, /membuat kata sandi sebelum dapat masuk/i);
-  await assert.rejects(
-    sendActivationRequestEmail({
-      transport: { async sendMail() {} },
-      from: 'admin@example.com',
-      to: 'admin@example.com',
-      requesterEmail: 'requester@example.com',
-      approvalUrl: 'http://mtc-test.example.com/auth/approve-activation.html'
-    }),
-    /HTTPS/
-  );
-
-  await assert.rejects(
-    sendActivationRequestEmail({
-      transport: { async sendMail() { throw new Error('SMTP failure'); } },
-      from: 'admin@example.com',
-      to: 'admin@example.com',
-      requesterEmail: 'requester@example.com',
-      approvalUrl: 'https://mtc-test.example.com/auth/approve-activation.html#token=abc'
-    }),
-    /Could not send activation request email/
-  );
 });
 
 test('account input requires the selected count and unique profile/email pairs', () => {

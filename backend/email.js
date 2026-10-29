@@ -84,54 +84,8 @@ async function sendEmailVerification({ transport, from, to, verificationUrl }) {
   }
 }
 
-async function sendActivationRequestEmail({ transport, from, to, requesterEmail, approvalUrl }) {
-  if (!from || !to || !requesterEmail || !approvalUrl) {
-    throw new Error('Sender, admin recipient, requester email, and approval link are required');
-  }
-
-  const parsedApprovalUrl = new URL(approvalUrl);
-  if (parsedApprovalUrl.protocol !== 'https:') {
-    throw new Error('Activation approval links must use HTTPS');
-  }
-  const escapeHtml = (value) => value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-
-  try {
-    await transport.sendMail({
-      from,
-      to,
-      subject: 'Permintaan aktivasi akun MTC',
-      text: [
-        'Permintaan aktivasi akun berikut diterima:',
-        '',
-        requesterEmail,
-        '',
-        'Tinjau dan setujui permintaan ini untuk mengirim tautan setup kata sandi kepada pemohon.',
-        'Jangan setujui jika Anda tidak mengenali atau tidak dapat memverifikasi pemohon.',
-        '',
-        `Tinjau permintaan: ${approvalUrl}`
-      ].join('\n'),
-      html: [
-        '<h2>Permintaan aktivasi akun berikut</h2>',
-        `<p><strong>${escapeHtml(requesterEmail)}</strong></p>`,
-        '<p>Tinjau dan setujui permintaan ini untuk mengirim tautan setup kata sandi kepada pemohon.</p>',
-        '<p>Jangan setujui jika Anda tidak mengenali atau tidak dapat memverifikasi pemohon.</p>',
-        `<p><a href="${escapeHtml(approvalUrl)}">Tinjau dan setujui aktivasi akun</a></p>`,
-        '<p>Pengguna harus membuat kata sandi sebelum dapat masuk.</p>'
-      ].join('')
-    });
-  } catch {
-    throw new Error('Could not send activation request email');
-  }
-}
-
 module.exports = {
   createGmailTransport,
-  sendActivationRequestEmail,
   sendEmailVerification,
   sendPasswordSetupEmail,
   validateAppOrigin

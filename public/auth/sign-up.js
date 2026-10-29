@@ -5,7 +5,8 @@ render( `
     <header class="app-header">
         <h2>DAFTAR AKUN</h2>
         <p>
-            Lengkapi data untuk akses sistem
+            Lengkapi data untuk membuat akun dan profil baru. Riwayat checklist dari
+            profil lama tidak otomatis terhubung ke akun ini.
         </p>
     </header>
 

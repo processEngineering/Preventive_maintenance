@@ -60,13 +60,17 @@ export function renderSignIn() {
                     </form>
 
                     <button
-                        id="requestActivation"
+                        id="registerNewAccount"
                         class="btn-text-only"
                         type="button"
                         hidden
                     >
-                        MINTA AKTIVASI AKUN PENGGUNA LAMA
+                        DAFTAR AKUN BARU
                     </button>
+                    <p id="newAccountNotice" hidden>
+                        Pendaftaran membuat profil baru. Data checklist dari profil lama
+                        tidak otomatis terhubung.
+                    </p>
 
 
                     <div class="footer-links">
@@ -101,11 +105,12 @@ export async function initSignIn() {
     const emailInput = document.getElementById("email");
     const passwordInput = document.getElementById("password");
     const statusBox = document.getElementById("status-box");
-    const requestActivationButton = document.getElementById("requestActivation");
+    const registerNewAccountButton = document.getElementById("registerNewAccount");
+    const newAccountNotice = document.getElementById("newAccountNotice");
 
     // Pastikan element tersedia
     if (!btn || !loginForm || !emailInput || !passwordInput || !statusBox ||
-        !requestActivationButton) {
+        !registerNewAccountButton || !newAccountNotice) {
         console.error("Element sign-in tidak ditemukan.");
         return;
     }
@@ -115,7 +120,9 @@ export async function initSignIn() {
         event.preventDefault();
         prosesLogin();
     });
-    requestActivationButton.addEventListener("click", requestActivation);
+    registerNewAccountButton.addEventListener("click", () => {
+        window.location.href = "auth.html?mode=register";
+    });
 
     await cekSesi();
 
@@ -128,7 +135,8 @@ export async function initSignIn() {
         // reset status
         statusBox.style.display = "none";
         statusBox.className = "";
-        requestActivationButton.hidden = true;
+        registerNewAccountButton.hidden = true;
+        newAccountNotice.hidden = true;
 
        // --- validasi input
         if (!email || !password) {
@@ -161,11 +169,12 @@ export async function initSignIn() {
             }
             if (!response.ok) {
                 if (response.status === 401) {
-                    requestActivationButton.hidden = false;
+                    registerNewAccountButton.hidden = false;
+                    newAccountNotice.hidden = false;
                 }
                 throw new Error(
                     response.status === 401
-                        ? "Email atau kata sandi salah, atau email belum diverifikasi."
+                        ? "Email atau kata sandi salah, atau email belum diverifikasi. Pengguna lama tanpa akun MTC dapat mendaftar sebagai pengguna baru."
                         : result.error || "Login gagal. Silakan coba lagi."
                 );
             }
@@ -205,49 +214,6 @@ export async function initSignIn() {
         }
     }
 
-    async function requestActivation() {
-        const email = emailInput.value.trim();
-        if (!email || !emailInput.validity.valid) {
-            tampilkanPesan("Masukkan email yang valid untuk meminta aktivasi.", "error");
-            emailInput.focus();
-            return;
-        }
-
-        requestActivationButton.disabled = true;
-        let requestAccepted = false;
-        try {
-            const response = await fetch("/api/auth/request-activation", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "ngrok-skip-browser-warning": "true"
-                },
-                credentials: "same-origin",
-                body: JSON.stringify({ email })
-            });
-            let result;
-            try {
-                result = await response.json();
-            } catch {
-                throw new Error("Permintaan aktivasi gagal dikirim. Silakan coba lagi nanti.");
-            }
-            if (!response.ok) {
-                throw new Error(result.error || "Permintaan aktivasi gagal dikirim.");
-            }
-            requestAccepted = true;
-            tampilkanPesan(
-                result.message ||
-                    "Permintaan diteruskan ke admin untuk ditinjau. Admin akan mengirim tautan setup jika akun disetujui.",
-                "success"
-            );
-        } catch (error) {
-            tampilkanPesan(error.message, "error");
-        } finally {
-            requestActivationButton.disabled = requestAccepted;
-        }
-    }
-
-    
     // --- cek sesi function
     async function cekSesi() {
         try {
