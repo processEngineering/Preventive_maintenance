@@ -414,7 +414,7 @@
                     <div class="info-item"><span class="info-label">TARGET</span><input type="time" id="h_target" class="header-input"></div>
                     <div class="info-item"><span class="info-label">TONAGE</span><input type="text" id="h_ton" class="header-input" readonly></div>
                     <div class="info-item"><span class="info-label">START</span><input type="time" id="h_start" class="header-input"></div>
-                    <div class="info-item"><span class="info-label">TANGGAL</span><input type="date" id="h_tanggal" class="header-input" readonly></div>
+                    <div class="info-item"><span class="info-label">TANGGAL</span><input type="date" id="h_tanggal" class="header-input" required></div>
                     <div class="info-item"><span class="info-label">FINISH</span><input type="time" id="h_finish" class="header-input"></div>
                     <div class="info-item"><span class="info-label">TAHUN</span><input type="number" id="h_tahun" class="header-input" readonly></div>
                     <div class="info-item"><span class="info-label">RUNNING HOURS</span><input type="number" id="h_run_hours" class="header-input" placeholder="000.0" step="0.1"></div>
@@ -461,8 +461,12 @@
         setupDynamicNavigation();
 
         const now = new Date();
-        document.getElementById('h_tanggal').valueAsDate = now;
+        const dateInput = document.getElementById('h_tanggal');
+        dateInput.valueAsDate = now;
         document.getElementById('h_tahun').value = now.getFullYear();
+        dateInput.addEventListener('change', () => {
+            document.getElementById('h_tahun').value = dateInput.value ? dateInput.value.slice(0, 4) : '';
+        });
         const timeString = now.toTimeString().substring(0,5);
         document.getElementById('h_start').value = timeString;
         document.getElementById('h_target').value = timeString; 
@@ -610,9 +614,15 @@
     async function submitData() {
         const nama = document.getElementById('nama_pelaksana').value.trim();
         const runHours = document.getElementById('h_run_hours').value;
+        const tanggal = document.getElementById('h_tanggal').value;
         let finishInput = document.getElementById('h_finish').value || new Date().toTimeString().substring(0,5);
 
         if(!nama || !runHours || signaturePad.isEmpty()) return alert("Ã¢Å¡Â Ã¯Â¸Â MOHON LENGKAPI NAMA, RUNNING HOURS, & PARAF!");
+        if(!tanggal) {
+            alert("Mohon pilih tanggal pengisian!");
+            document.getElementById('h_tanggal').focus();
+            return;
+        }
         
         const btn = document.getElementById('btnSave');
         const originalHtml = btn.innerHTML;
@@ -623,8 +633,8 @@
             const { data: head, error: errHead } = await _sb.from('pmi_header').insert({
                 machine_id: currentMachineId,
                 nama_pelaksana: nama,
-                tanggal: document.getElementById('h_tanggal').value,
-                tahun: parseInt(document.getElementById('h_tahun').value),
+                tanggal,
+                tahun: Number(tanggal.slice(0, 4)),
                 target_selesai: document.getElementById('h_target').value,
                 start_jam: document.getElementById('h_start').value,
                 finish_jam: finishInput,

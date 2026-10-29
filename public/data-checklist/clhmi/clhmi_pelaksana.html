@@ -368,6 +368,16 @@
             color: #fff;
         }
 
+        .machine-item input[type="date"] {
+            width: 100%;
+            border: 0;
+            padding: 0;
+            background: transparent;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 800;
+        }
+
         /* Section Title */
         .section-title {
             font-size: 11px;
@@ -756,7 +766,7 @@
                 <div class="machine-item"><span>Mesin</span><strong id="m_merk">-</strong></div>
                 <div class="machine-item"><span>Serial No.</span><strong id="m_serial">-</strong></div>
                 <div class="machine-item"><span>Tonnage</span><strong id="m_ton">-</strong></div>
-                <div class="machine-item"><span>Tanggal</span><strong id="m_date">-</strong></div>
+                <div class="machine-item"><span>Tanggal Pengisian</span><input type="date" id="tanggal-isi" required></div>
             </div>
         </div>
 
@@ -807,6 +817,12 @@
 
     window.onload = function() {
         setupDynamicNavigation();
+        const today = new Date();
+        document.getElementById("tanggal-isi").value = [
+            today.getFullYear(),
+            String(today.getMonth() + 1).padStart(2, '0'),
+            String(today.getDate()).padStart(2, '0')
+        ].join('-');
         initScanner();
     };
 
@@ -905,7 +921,6 @@
         document.getElementById("m_merk").innerText = mData.merk_mesin;
         document.getElementById("m_serial").innerText = mData.serial_no;
         document.getElementById("m_ton").innerText = (mData.tonage || "-") + " T";
-        document.getElementById("m_date").innerText = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 
         const container = document.getElementById("dynamic-checklist");
         container.innerHTML = ''; 
@@ -1015,8 +1030,14 @@
     async function processSubmit() {
         const nama = document.getElementById("nama_pelaksana").value.trim();
         const btn = document.getElementById("btnSubmit");
+        const tanggalIsi = document.getElementById("tanggal-isi").value;
         
         if (!nama) return alert("Mohon isi Nama Pelaksana!");
+        if (!tanggalIsi) {
+            alert("Mohon pilih tanggal pengisian!");
+            document.getElementById("tanggal-isi").focus();
+            return;
+        }
         // Cek canvas kosong (simple check)
         const blank = document.createElement('canvas');
         blank.width = cvs.width; blank.height = cvs.height;
@@ -1024,9 +1045,7 @@
 
         btn.disabled = true; btn.innerText = "MENGIRIM...";
 
-        const now = new Date();
-        const bln = now.getMonth() + 1;
-        const thn = now.getFullYear();
+        const [thn, bln] = tanggalIsi.split('-').map(Number);
 
         try {
             const isAman = document.getElementById("container_catatan_aman").style.display !== "none";
@@ -1040,7 +1059,7 @@
                 pelaksana: nama, 
                 paraf: cvs.toDataURL(), 
                 status_form: 'submitted',
-                tanggal_isi: now.toISOString().split('T')[0],
+                tanggal_isi: tanggalIsi,
                 bulan: bln, 
                 tahun: thn,
                 catatan_pelaksana: catatan_aman,
