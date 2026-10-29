@@ -84,8 +84,57 @@ async function sendEmailVerification({ transport, from, to, verificationUrl }) {
   }
 }
 
+async function sendActivationRequestEmail({ transport, from, to, requesterEmail }) {
+  if (!from || !to || !requesterEmail) {
+    throw new Error('Sender, admin recipient, and requester email are required');
+  }
+
+  const replyUrl = new URL(`mailto:${encodeURIComponent(requesterEmail)}`);
+  replyUrl.searchParams.set('subject', 'Aktivasi akun MTC');
+  replyUrl.searchParams.set(
+    'body',
+    'Permintaan aktivasi akun MTC Anda sedang diverifikasi oleh admin. ' +
+      'Setelah akun disiapkan, Anda akan menerima email terpisah berisi tautan untuk mengatur kata sandi.'
+  );
+  const escapeHtml = (value) => value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
+  try {
+    await transport.sendMail({
+      from,
+      to,
+      subject: 'Permintaan aktivasi akun MTC',
+      text: [
+        'Permintaan aktivasi akun berikut diterima:',
+        '',
+        requesterEmail,
+        '',
+        'Verifikasi identitas dan kecocokan dengan profil yang ada sebelum memprosesnya.',
+        'Setelah disetujui, gunakan prosedur setup satu pengguna untuk mengirim tautan password.',
+        '',
+        `Balas kepada pemohon: ${replyUrl.toString()}`
+      ].join('\n'),
+      html: [
+        '<h2>Permintaan aktivasi akun berikut</h2>',
+        `<p><strong>${escapeHtml(requesterEmail)}</strong></p>`,
+        '<p>Verifikasi identitas dan kecocokan dengan profil yang ada sebelum memprosesnya.</p>',
+        '<p>Setelah disetujui, gunakan prosedur setup satu pengguna untuk mengirim tautan password.</p>',
+        `<p><a href="${escapeHtml(replyUrl.toString())}">Aktivasi akun berikut</a></p>`,
+        '<p>Tautan ini hanya membuka email balasan kepada pemohon; aktivasi tetap harus diproses admin.</p>'
+      ].join('')
+    });
+  } catch {
+    throw new Error('Could not send activation request email');
+  }
+}
+
 module.exports = {
   createGmailTransport,
+  sendActivationRequestEmail,
   sendEmailVerification,
   sendPasswordSetupEmail,
   validateAppOrigin

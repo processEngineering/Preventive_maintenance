@@ -8,13 +8,18 @@ const {
   timingSafeEqual
 } = require('node:crypto');
 const { promisify } = require('node:util');
-const { sendEmailVerification } = require('./email');
+const { sendActivationRequestEmail, sendEmailVerification } = require('./email');
 
 const scrypt = promisify(scryptCallback);
 const SESSION_COOKIE = 'mtc_session';
 const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 const SETUP_TOKEN_TTL_HOURS = 24;
 const EMAIL_VERIFICATION_TOKEN_TTL_HOURS = 24;
+const ACTIVATION_REQUEST_WINDOW_MS = 60 * 60 * 1000;
+const ACTIVATION_REQUEST_LIMIT_PER_EMAIL = 3;
+const ACTIVATION_REQUEST_GLOBAL_LIMIT = 20;
+const activationRequestsByEmail = new Map();
+let activationRequestTimes = [];
 const PASSWORD_HASH_VERSION = 'scrypt';
 const PASSWORD_SCRYPT_OPTIONS = { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 const PASSWORD_KEY_LENGTH = 64;
@@ -34,6 +39,28 @@ const REGISTRATION_RESPONSE = {
 
 function isValidEmail(email) {
   return email.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function allowActivationRequest(email, now = Date.now()) {
+  const cutoff = now - ACTIVATION_REQUEST_WINDOW_MS;
+  activationRequestTimes = activationRequestTimes.filter((timestamp) => timestamp > cutoff);
+  for (const [address, timestamps] of activationRequestsByEmail) {
+    const activeTimestamps = timestamps.filter((timestamp) => timestamp > cutoff);
+    if (activeTimestamps.length === 0) {
+      activationRequestsByEmail.delete(address);
+    } else {
+      activationRequestsByEmail.set(address, activeTimestamps);
+    }
+  }
+
+  if (activationRequestTimes.length >= ACTIVATION_REQUEST_GLOBAL_LIMIT) return false;
+  const emailTimestamps = activationRequestsByEmail.get(email) || [];
+  if (emailTimestamps.length >= ACTIVATION_REQUEST_LIMIT_PER_EMAIL) return false;
+  if (activationRequestsByEmail.size >= 5000) return false;
+
+  activationRequestTimes.push(now);
+  activationRequestsByEmail.set(email, [...emailTimestamps, now]);
+  return true;
 }
 
 function verificationUrl(publicAppOrigin, token) {
@@ -176,6 +203,44 @@ async function handleAuthRequest(req, res, pool, {
 } = {}) {
   const url = new URL(req.url, 'http://localhost');
   if (!url.pathname.startsWith('/api/auth/')) return false;
+
+  if (url.pathname === '/api/auth/request-activation' && req.method === 'POST') {
+    const body = await readJsonBody(req, res);
+    if (!body) return true;
+
+    const email = typeof body.email === 'string' ? body.email.trim() : '';
+    if (!isValidEmail(email)) {
+      jsonResponse(res, 400, { error: 'Enter a valid email address' });
+      return true;
+    }
+    if (!mailer || !fromEmail) {
+      console.error('Activation request email is unavailable because email is not configured');
+      jsonResponse(res, 503, { error: 'Layanan permintaan aktivasi sementara tidak tersedia' });
+      return true;
+    }
+    if (!allowActivationRequest(email.toLowerCase())) {
+      jsonResponse(res, 429, {
+        error: 'Terlalu banyak permintaan aktivasi. Silakan coba kembali nanti.'
+      });
+      return true;
+    }
+
+    try {
+      await sendActivationRequestEmail({
+        transport: mailer,
+        from: fromEmail,
+        to: fromEmail,
+        requesterEmail: email
+      });
+      jsonResponse(res, 202, {
+        message: 'Jika alamat ini sesuai dengan profil yang ada, admin akan meninjau permintaan aktivasi.'
+      });
+    } catch (error) {
+      console.error('Activation request email delivery failed:', error.message);
+      jsonResponse(res, 503, { error: 'Permintaan aktivasi tidak dapat dikirim saat ini' });
+    }
+    return true;
+  }
 
   if (url.pathname === '/api/auth/register' && req.method === 'POST') {
     const body = await readJsonBody(req, res);

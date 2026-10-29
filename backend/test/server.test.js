@@ -668,6 +668,92 @@ test('login rejects wrong passwords and unverified accounts without revealing wh
   assert.deepEqual(await unverified.json(), { error: 'Email or password is incorrect' });
 });
 
+test('activation requests notify the configured admin without querying or revealing account existence', async () => {
+  const deliveries = [];
+  const activationServer = createServer({
+    async query() {
+      throw new Error('Activation requests must not query user accounts');
+    }
+  }, {
+    publicRoot,
+    mailer: { async sendMail(message) { deliveries.push(message); } },
+    fromEmail: 'admin@example.com',
+    publicAppOrigin: 'https://mtc-test.example.com'
+  });
+  await new Promise((resolve) => activationServer.listen(0, '127.0.0.1', resolve));
+
+  try {
+    const url = `http://127.0.0.1:${activationServer.address().port}/api/auth/request-activation`;
+    const invalid = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'not-an-email' })
+    });
+    assert.equal(invalid.status, 400);
+    assert.equal(deliveries.length, 0);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'legacy.user@example.com' })
+    });
+
+    assert.equal(response.status, 202);
+    assert.match((await response.json()).message, /admin akan meninjau/i);
+    assert.equal(deliveries.length, 1);
+    assert.equal(deliveries[0].to, 'admin@example.com');
+    assert.match(deliveries[0].text, /legacy\.user@example\.com/);
+
+    for (let request = 0; request < 2; request += 1) {
+      const additionalRequest = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'legacy.user@example.com' })
+      });
+      assert.equal(additionalRequest.status, 202);
+    }
+    const throttled = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'legacy.user@example.com' })
+    });
+    assert.equal(throttled.status, 429);
+    assert.equal(deliveries.length, 3);
+  } finally {
+    await new Promise((resolve, reject) => {
+      activationServer.close((error) => (error ? reject(error) : resolve()));
+    });
+  }
+});
+
+test('activation requests return an explicit service error when email is not configured', async () => {
+  const activationServer = createServer({
+    async query() {
+      throw new Error('Activation requests must not query user accounts');
+    }
+  }, { publicRoot });
+  await new Promise((resolve) => activationServer.listen(0, '127.0.0.1', resolve));
+
+  try {
+    const response = await fetch(
+      `http://127.0.0.1:${activationServer.address().port}/api/auth/request-activation`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'unconfigured@example.com' })
+      }
+    );
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), {
+      error: 'Layanan permintaan aktivasi sementara tidak tersedia'
+    });
+  } finally {
+    await new Promise((resolve, reject) => {
+      activationServer.close((error) => (error ? reject(error) : resolve()));
+    });
+  }
+});
+
 test('registration excludes ADMIN and verifies new email with a single-use token', async () => {
   const tokenHashes = new Set();
   const transactionQueries = [];

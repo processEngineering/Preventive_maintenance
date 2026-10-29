@@ -271,6 +271,10 @@ not automatically start PM2 after reboot.
   current roles except `ADMIN`; the backend enforces this independently of the UI.
 - `POST /api/auth/resend-verification` sends a new link for an unverified account
   without disclosing whether an email address is registered.
+- `POST /api/auth/request-activation` sends an on-demand request to the configured
+  department Gmail address for admin review. It does not check whether the email
+  exists or activate/create an account. Requests are limited in process memory to
+  three per email and 20 total per hour; limits reset when the API restarts.
 - `POST /api/auth/verify-email` consumes the single-use token and marks the email
   verified. The token is stored as a SHA-256 hash and passed to the verification
   page in the URL fragment, not sent in the initial page request.
@@ -467,6 +471,12 @@ application instructions are in the Checklist database privileges section above.
   re-run one-time authentication migrations after restoring these definitions.
 - Existing Supabase user IDs and emails have not been imported. Keep any account
   export private; do not put it in the repository or send it in chat.
+- A legacy profile holder without an `app_users` row can request activation from the
+  sign-in page after a failed login. The department mailbox receives the request;
+  an administrator must verify the requester against an existing profile and
+  manually run the one-user password-setup procedure. The email action only opens a
+  reply to the requester; it does not activate the account. The request limiter is
+  process-local and is not durable abuse protection.
 - The department Gmail sender has not been configured. Never paste its App Password
   into chat, source code, a frontend setting, or the repository.
 - The setup-token schema in `sql/002_setup_tokens.sql` has been applied to

@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const {
   createGmailTransport,
+  sendActivationRequestEmail,
   sendEmailVerification,
   sendPasswordSetupEmail
 } = require('../email');
@@ -81,6 +82,39 @@ test('verification email requires HTTPS and delivers the confirmation link', asy
   });
   assert.equal(message.subject, 'Verify your MTC account email');
   assert.match(message.text, /https:\/\/example\.com\/auth\/verify-email\.html#token=abc/);
+});
+
+test('activation request email notifies the configured admin and provides a manual reply action', async () => {
+  let message;
+  await sendActivationRequestEmail({
+    transport: {
+      async sendMail(value) {
+        message = value;
+      }
+    },
+    from: 'admin@example.com',
+    to: 'admin@example.com',
+    requesterEmail: '<svg>@example.com'
+  });
+
+  assert.equal(message.to, 'admin@example.com');
+  assert.equal(message.subject, 'Permintaan aktivasi akun MTC');
+  assert.match(message.text, /<svg>@example\.com/);
+  assert.match(message.html, /Aktivasi akun berikut/);
+  assert.match(message.html, /&lt;svg&gt;@example\.com/);
+  assert.doesNotMatch(message.html, /<svg>/);
+  assert.match(message.html, /mailto:%3Csvg%3E%40example\.com/);
+  assert.match(message.html, /aktivasi tetap harus diproses admin/i);
+
+  await assert.rejects(
+    sendActivationRequestEmail({
+      transport: { async sendMail() { throw new Error('SMTP failure'); } },
+      from: 'admin@example.com',
+      to: 'admin@example.com',
+      requesterEmail: 'requester@example.com'
+    }),
+    /Could not send activation request email/
+  );
 });
 
 test('account input requires the selected count and unique profile/email pairs', () => {
