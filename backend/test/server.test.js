@@ -276,13 +276,15 @@ test('database scripts are isolated and cover production and staging requirement
     grantSource,
     productionGrantSource,
     provisionerGrantSource,
-    stagingCleanupSource
+    stagingCleanupSource,
+    ecosystemConfigSource
   ] = await Promise.all([
     fs.readFile(path.join(__dirname, '..', 'api', 'chslr-api.js'), 'utf8'),
     fs.readFile(path.join(__dirname, '..', 'sql', 'checklist-api-grants.sql'), 'utf8'),
     fs.readFile(path.join(__dirname, '..', 'sql', 'production-api-grants.sql'), 'utf8'),
     fs.readFile(path.join(__dirname, '..', 'sql', 'production-provisioner-grants.sql'), 'utf8'),
-    fs.readFile(path.join(__dirname, '..', 'sql', 'staging-clean-2026-10-28.sql'), 'utf8')
+    fs.readFile(path.join(__dirname, '..', 'sql', 'staging-clean-2026-10-28.sql'), 'utf8'),
+    fs.readFile(path.join(__dirname, '..', 'ecosystem.config.js'), 'utf8')
   ]);
   const allowlist = apiSource.match(/const DATA_TABLES = new Set\(\[([\s\S]*?)\]\);/);
   const selectGrant = grantSource.match(/GRANT SELECT ON TABLE([\s\S]*?)TO mtc_api_auth_test;/);
@@ -313,6 +315,7 @@ test('database scripts are isolated and cover production and staging requirement
   assert.match(grantSource, /current_database\(\) <> 'mtc_migration_test2'/);
   assert.doesNotMatch(grantSource, /mtc_api_runtime/);
   assert.match(productionGrantSource, /current_database\(\) <> 'mtc'/);
+  assert.match(ecosystemConfigSource, /PUBLIC_APP_ORIGIN: 'https:\/\/amarilyspm\.vercel\.app'/);
   assert.doesNotMatch(productionGrantSource, /mtc_migration_test2|mtc_api_auth_test/);
   assert.match(productionGrantSource, /GRANT CONNECT ON DATABASE mtc TO mtc_api_runtime;/);
   assert.match(productionGrantSource, /GRANT USAGE ON SCHEMA extensions TO mtc_api_runtime;/);

@@ -58,12 +58,12 @@ the ngrok agent running on PE-SERVER2 can forward to
 `http://127.0.0.1:3000` without exposing the API on the company network interface.
 Do not set `API_HOST` to `0.0.0.0`, create a firewall rule, or forward PostgreSQL.
 
-For registration and verification email, configure `PUBLIC_APP_ORIGIN` as the
-externally reachable HTTPS origin that serves both the app pages and API, and set
-`GMAIL_ADDRESS` and `GMAIL_APP_PASSWORD` using the approved secret-management
-process. Do not put an ngrok address in source code; if it changes, update the
-environment value before sending links. Registration returns `503` until all
-three values are configured. The origin must be an origin only (no path or query).
+For registration and verification email, production `PUBLIC_APP_ORIGIN` is pinned
+in the PM2 ecosystem config to `https://amarilyspm.vercel.app`, so email links open
+the Vercel frontend. Keep `GMAIL_ADDRESS` and `GMAIL_APP_PASSWORD` in the private
+environment using the approved secret-management process. `PUBLIC_APP_ORIGIN` must
+be an HTTPS origin only (no path or query); local/test environments can use their
+own HTTPS frontend origin.
 
 While `npm.cmd start` is running, open this address in a browser on PE-SERVER2:
 
@@ -213,7 +213,7 @@ PGUSER=mtc_api_runtime
 PGPASSWORD=<set privately; do not use this literal value>
 API_HOST=127.0.0.1
 API_PORT=3000
-PUBLIC_APP_ORIGIN=<approved HTTPS frontend origin>
+PUBLIC_APP_ORIGIN=https://amarilyspm.vercel.app
 GMAIL_ADDRESS=<approved sender account>
 GMAIL_APP_PASSWORD=<approved secret>
 ```
@@ -238,7 +238,8 @@ ngrok credentials and ownership of this reserved domain must already be configur
 for the Windows account running PM2. The tunnel forwards only to the API's loopback
 listener on port 3000. Because this is a fixed domain, Vercel's `BACKEND_API_ORIGIN`
 can remain set to `https://unretired-skewer-driven.ngrok-free.dev` across
-restarts. Keep the backend's `PUBLIC_APP_ORIGIN` set to the frontend origin.
+restarts. The separate `PUBLIC_APP_ORIGIN` setting is pinned to the Vercel
+frontend, so verification links do not use the ngrok address.
 
 Verify `http://127.0.0.1:3000/api/version` and `/readyz`, then smoke-test login,
 email verification, checklist reads, and submissions against production with
@@ -432,10 +433,12 @@ configured backend origin, forwards the browser's session cookie and backend
 stays on the Vercel origin; the backend does not need CORS enabled. Redeploy after
 changing the Vercel environment variable.
 
-Set the backend's `PUBLIC_APP_ORIGIN` to the exact HTTPS Vercel frontend origin so
-verification links open the Vercel app. Keep PostgreSQL credentials only in the
-backend's private `.env`; do not add them to Vercel. The tunnel URL is not a permanent
-company address and must remain active during testing.
+The backend's production `PUBLIC_APP_ORIGIN` is
+`https://amarilyspm.vercel.app`, so verification links open the Vercel app and its
+same-origin API proxy forwards verification requests to ngrok. Keep
+`BACKEND_API_ORIGIN` pointed at the ngrok HTTPS origin. Keep PostgreSQL credentials
+only in the backend's private `.env`; do not add them to Vercel. The tunnel URL is
+not a permanent company address and must remain active during testing.
 
 The frontend proxy is not a substitute for approving and securing a production
 network route. Use test data and the restricted test database while using a

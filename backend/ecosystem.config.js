@@ -18,7 +18,8 @@ module.exports = {
       env_production: {
         APP_ENVIRONMENT: 'production',
         NODE_ENV: 'production',
-        API_HOST: '127.0.0.1'
+        API_HOST: '127.0.0.1',
+        PUBLIC_APP_ORIGIN: 'https://amarilyspm.vercel.app'
       }
     },
     {
