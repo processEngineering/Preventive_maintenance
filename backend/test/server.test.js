@@ -276,13 +276,15 @@ test('database scripts are isolated and cover production and staging requirement
     grantSource,
     productionGrantSource,
     provisionerGrantSource,
-    stagingCleanupSource
+    stagingCleanupSource,
+    activationMigrationSource
   ] = await Promise.all([
     fs.readFile(path.join(__dirname, '..', 'api', 'chslr-api.js'), 'utf8'),
     fs.readFile(path.join(__dirname, '..', 'sql', 'checklist-api-grants.sql'), 'utf8'),
     fs.readFile(path.join(__dirname, '..', 'sql', 'production-api-grants.sql'), 'utf8'),
     fs.readFile(path.join(__dirname, '..', 'sql', 'production-provisioner-grants.sql'), 'utf8'),
-    fs.readFile(path.join(__dirname, '..', 'sql', 'staging-clean-2026-10-28.sql'), 'utf8')
+    fs.readFile(path.join(__dirname, '..', 'sql', 'staging-clean-2026-10-28.sql'), 'utf8'),
+    fs.readFile(path.join(__dirname, '..', 'sql', '005_activation_requests.sql'), 'utf8')
   ]);
   const allowlist = apiSource.match(/const DATA_TABLES = new Set\(\[([\s\S]*?)\]\);/);
   const selectGrant = grantSource.match(/GRANT SELECT ON TABLE([\s\S]*?)TO mtc_api_auth_test;/);
@@ -320,6 +322,9 @@ test('database scripts are isolated and cover production and staging requirement
   assert.match(productionGrantSource, /must not be a member of another role/);
   assert.match(productionGrantSource, /app_email_verification_tokens TO mtc_api_runtime/);
   assert.match(productionGrantSource, /app_setup_tokens TO mtc_api_runtime/);
+  assert.match(productionGrantSource, /app_activation_requests TO mtc_api_runtime/);
+  assert.match(activationMigrationSource, /CREATE TABLE public\.app_activation_requests/);
+  assert.match(activationMigrationSource, /REFERENCES public\.profiles\(id\)/);
   assert.match(productionGrantSource, /app_sessions TO mtc_api_runtime/);
   assert.match(productionGrantSource, /app_users TO mtc_api_runtime/);
   assert.match(
@@ -668,13 +673,75 @@ test('login rejects wrong passwords and unverified accounts without revealing wh
   assert.deepEqual(await unverified.json(), { error: 'Email or password is incorrect' });
 });
 
-test('activation requests notify the configured admin without querying or revealing account existence', async () => {
+test('activation requests stay generic and admin approval sends a one-time password setup link', async () => {
   const deliveries = [];
-  const activationServer = createServer({
-    async query() {
-      throw new Error('Activation requests must not query user accounts');
+  const activationTokens = new Map();
+  const setupTokenHashes = new Set();
+  let createdAccount = null;
+  const profile = {
+    id: '00000000-0000-0000-0000-000000000003',
+    email: 'legacy.user@example.com'
+  };
+  const activationPool = {
+    async connect() {
+      return {
+        async query(sql, values = []) {
+          if (sql.includes('SELECT id, email') && sql.includes('FROM public.profiles')) {
+            const rows = values[0] === profile.email
+              ? [{ ...profile }]
+              : [];
+            return {
+              rowCount: rows.length,
+              rows
+            };
+          }
+          if (sql.includes('SELECT profile_id') && sql.includes('FROM public.app_users')) {
+            const rows = createdAccount ? [{ profile_id: profile.id }] : [];
+            return { rowCount: rows.length, rows };
+          }
+          if (sql.includes('DELETE FROM public.app_activation_requests')) {
+            activationTokens.clear();
+          }
+          if (sql.includes('INSERT INTO public.app_activation_requests')) {
+            activationTokens.set(values[0], {
+              profile_id: values[1],
+              email: values[2],
+              consumed: false
+            });
+          }
+          if (sql.includes('SELECT activation_request.profile_id')) {
+            const activation = activationTokens.get(values[0]);
+            return {
+              rowCount: activation && !activation.consumed ? 1 : 0,
+              rows: activation && !activation.consumed
+                ? [{ profile_id: activation.profile_id, email: activation.email }]
+                : []
+            };
+          }
+          if (sql.includes('INSERT INTO public.app_users')) {
+            createdAccount ||= {
+              profile_id: values[0],
+              email_normalized: values[1].toLowerCase(),
+              password_hash: null
+            };
+          }
+          if (sql.includes('SELECT email_normalized, password_hash')) {
+            return { rowCount: createdAccount ? 1 : 0, rows: createdAccount ? [createdAccount] : [] };
+          }
+          if (sql.includes('INSERT INTO public.app_setup_tokens')) {
+            setupTokenHashes.add(values[0]);
+          }
+          if (sql.includes('UPDATE public.app_activation_requests')) {
+            const activation = activationTokens.get(values[0]);
+            if (activation) activation.consumed = true;
+          }
+          return { rows: [] };
+        },
+        release() {}
+      };
     }
-  }, {
+  };
+  const activationServer = createServer(activationPool, {
     publicRoot,
     mailer: { async sendMail(message) { deliveries.push(message); } },
     fromEmail: 'admin@example.com',
@@ -690,6 +757,15 @@ test('activation requests notify the configured admin without querying or reveal
       body: JSON.stringify({ email: 'not-an-email' })
     });
     assert.equal(invalid.status, 400);
+    assert.equal(deliveries.length, 0);
+
+    const unknownProfile = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'unknown@example.com' })
+    });
+    assert.equal(unknownProfile.status, 202);
+    assert.match((await unknownProfile.json()).message, /admin akan meninjau/i);
     assert.equal(deliveries.length, 0);
 
     const response = await fetch(url, {
@@ -719,6 +795,34 @@ test('activation requests notify the configured admin without querying or reveal
     });
     assert.equal(throttled.status, 429);
     assert.equal(deliveries.length, 3);
+
+    const approvalUrl = new URL(deliveries[2].text.match(/https:\/\/\S+/)[0]);
+    const approvalToken = new URLSearchParams(approvalUrl.hash.slice(1)).get('token');
+    const approved = await fetch(
+      `http://127.0.0.1:${activationServer.address().port}/api/auth/approve-activation`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: approvalToken })
+      }
+    );
+    assert.equal(approved.status, 200);
+    assert.match((await approved.json()).message, /tautan untuk membuat kata sandi/i);
+    assert.equal(deliveries.length, 4);
+    assert.equal(deliveries[3].to, profile.email);
+    assert.match(deliveries[3].text, /setup-password\.html#token=/);
+    assert.equal(setupTokenHashes.size, 1);
+
+    const repeatedApproval = await fetch(
+      `http://127.0.0.1:${activationServer.address().port}/api/auth/approve-activation`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: approvalToken })
+      }
+    );
+    assert.equal(repeatedApproval.status, 400);
+    assert.equal(deliveries.length, 4);
   } finally {
     await new Promise((resolve, reject) => {
       activationServer.close((error) => (error ? reject(error) : resolve()));

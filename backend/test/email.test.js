@@ -84,7 +84,7 @@ test('verification email requires HTTPS and delivers the confirmation link', asy
   assert.match(message.text, /https:\/\/example\.com\/auth\/verify-email\.html#token=abc/);
 });
 
-test('activation request email notifies the configured admin and provides a manual reply action', async () => {
+test('activation request email gives the admin a secure approval link', async () => {
   let message;
   await sendActivationRequestEmail({
     transport: {
@@ -94,24 +94,36 @@ test('activation request email notifies the configured admin and provides a manu
     },
     from: 'admin@example.com',
     to: 'admin@example.com',
-    requesterEmail: '<svg>@example.com'
+    requesterEmail: '<svg>@example.com',
+    approvalUrl: 'https://mtc-test.example.com/auth/approve-activation.html#token=abc'
   });
 
   assert.equal(message.to, 'admin@example.com');
   assert.equal(message.subject, 'Permintaan aktivasi akun MTC');
   assert.match(message.text, /<svg>@example\.com/);
-  assert.match(message.html, /Aktivasi akun berikut/);
+  assert.match(message.html, /Tinjau dan setujui aktivasi akun/);
   assert.match(message.html, /&lt;svg&gt;@example\.com/);
   assert.doesNotMatch(message.html, /<svg>/);
-  assert.match(message.html, /mailto:%3Csvg%3E%40example\.com/);
-  assert.match(message.html, /aktivasi tetap harus diproses admin/i);
+  assert.match(message.html, /https:\/\/mtc-test\.example\.com\/auth\/approve-activation\.html#token=abc/);
+  assert.match(message.html, /membuat kata sandi sebelum dapat masuk/i);
+  await assert.rejects(
+    sendActivationRequestEmail({
+      transport: { async sendMail() {} },
+      from: 'admin@example.com',
+      to: 'admin@example.com',
+      requesterEmail: 'requester@example.com',
+      approvalUrl: 'http://mtc-test.example.com/auth/approve-activation.html'
+    }),
+    /HTTPS/
+  );
 
   await assert.rejects(
     sendActivationRequestEmail({
       transport: { async sendMail() { throw new Error('SMTP failure'); } },
       from: 'admin@example.com',
       to: 'admin@example.com',
-      requesterEmail: 'requester@example.com'
+      requesterEmail: 'requester@example.com',
+      approvalUrl: 'https://mtc-test.example.com/auth/approve-activation.html#token=abc'
     }),
     /Could not send activation request email/
   );

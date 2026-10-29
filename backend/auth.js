@@ -8,13 +8,18 @@ const {
   timingSafeEqual
 } = require('node:crypto');
 const { promisify } = require('node:util');
-const { sendActivationRequestEmail, sendEmailVerification } = require('./email');
+const {
+  sendActivationRequestEmail,
+  sendEmailVerification,
+  sendPasswordSetupEmail
+} = require('./email');
 
 const scrypt = promisify(scryptCallback);
 const SESSION_COOKIE = 'mtc_session';
 const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 const SETUP_TOKEN_TTL_HOURS = 24;
 const EMAIL_VERIFICATION_TOKEN_TTL_HOURS = 24;
+const ACTIVATION_REQUEST_TOKEN_TTL_HOURS = 24;
 const ACTIVATION_REQUEST_WINDOW_MS = 60 * 60 * 1000;
 const ACTIVATION_REQUEST_LIMIT_PER_EMAIL = 3;
 const ACTIVATION_REQUEST_GLOBAL_LIMIT = 20;
@@ -65,6 +70,12 @@ function allowActivationRequest(email, now = Date.now()) {
 
 function verificationUrl(publicAppOrigin, token) {
   const url = new URL('/auth/verify-email.html', publicAppOrigin);
+  url.hash = new URLSearchParams({ token }).toString();
+  return url.toString();
+}
+
+function activationApprovalUrl(publicAppOrigin, token) {
+  const url = new URL('/auth/approve-activation.html', publicAppOrigin);
   url.hash = new URLSearchParams({ token }).toString();
   return url.toString();
 }
@@ -213,7 +224,7 @@ async function handleAuthRequest(req, res, pool, {
       jsonResponse(res, 400, { error: 'Enter a valid email address' });
       return true;
     }
-    if (!mailer || !fromEmail) {
+    if (!mailer || !fromEmail || !publicAppOrigin) {
       console.error('Activation request email is unavailable because email is not configured');
       jsonResponse(res, 503, { error: 'Layanan permintaan aktivasi sementara tidak tersedia' });
       return true;
@@ -225,19 +236,220 @@ async function handleAuthRequest(req, res, pool, {
       return true;
     }
 
+    const token = randomBytes(32).toString('base64url');
+    const tokenHash = hashSessionToken(token);
+    let client;
+    let requestCreated = false;
     try {
-      await sendActivationRequestEmail({
+      client = await pool.connect();
+      await client.query('BEGIN');
+      const profiles = await client.query(
+        `SELECT id, email
+         FROM public.profiles
+         WHERE lower(btrim(email)) = $1
+         LIMIT 2`,
+        [email.toLowerCase()]
+      );
+      if (profiles.rowCount !== 1) {
+        await client.query('ROLLBACK');
+        jsonResponse(res, 202, {
+          message: 'Jika alamat ini sesuai dengan profil yang ada, admin akan meninjau permintaan aktivasi.'
+        });
+        return true;
+      }
+
+      const profile = profiles.rows[0];
+      await client.query(
+        'SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))',
+        [profile.id]
+      );
+      const account = await client.query(
+        `SELECT email_normalized, password_hash
+         FROM public.app_users
+         WHERE profile_id = $1`,
+        [profile.id]
+      );
+      if (
+        account.rowCount > 0 &&
+        (
+          account.rows[0].email_normalized !== email.toLowerCase() ||
+          account.rows[0].password_hash
+        )
+      ) {
+        await client.query('ROLLBACK');
+        jsonResponse(res, 202, {
+          message: 'Jika alamat ini sesuai dengan profil yang ada, admin akan meninjau permintaan aktivasi.'
+        });
+        return true;
+      }
+
+      await client.query(
+        `DELETE FROM public.app_activation_requests
+         WHERE profile_id = $1 AND consumed_at IS NULL`,
+        [profile.id]
+      );
+      await client.query(
+        `INSERT INTO public.app_activation_requests
+           (token_hash, profile_id, email, expires_at)
+         VALUES ($1, $2, $3, now() + ($4 * interval '1 hour'))`,
+        [
+          tokenHash,
+          profile.id,
+          profile.email.trim().toLowerCase(),
+          ACTIVATION_REQUEST_TOKEN_TTL_HOURS
+        ]
+      );
+      await client.query('COMMIT');
+      requestCreated = true;
+    } catch (error) {
+      if (client) {
+        try {
+          await client.query('ROLLBACK');
+        } catch (rollbackError) {
+          console.error('Activation request rollback failed:', rollbackError.message);
+        }
+      }
+      console.error('Activation request lookup failed:', error.message);
+      jsonResponse(res, 503, { error: 'Permintaan aktivasi tidak dapat diproses saat ini' });
+      return true;
+    } finally {
+      if (client) client.release();
+    }
+
+    if (requestCreated) {
+      try {
+        await sendActivationRequestEmail({
+          transport: mailer,
+          from: fromEmail,
+          to: fromEmail,
+          requesterEmail: email,
+          approvalUrl: activationApprovalUrl(publicAppOrigin, token)
+        });
+      } catch (error) {
+        try {
+          await pool.query(
+            'DELETE FROM public.app_activation_requests WHERE token_hash = $1 AND consumed_at IS NULL',
+            [tokenHash]
+          );
+        } catch (cleanupError) {
+          console.error('Activation request cleanup failed:', cleanupError.message);
+        }
+        console.error('Activation request email delivery failed:', error.message);
+        jsonResponse(res, 503, { error: 'Permintaan aktivasi tidak dapat dikirim saat ini' });
+        return true;
+      }
+    }
+
+    jsonResponse(res, 202, {
+      message: 'Jika alamat ini sesuai dengan profil yang ada, admin akan meninjau permintaan aktivasi.'
+    });
+    return true;
+  }
+
+  if (url.pathname === '/api/auth/approve-activation' && req.method === 'POST') {
+    const body = await readJsonBody(req, res);
+    if (!body) return true;
+
+    const token = typeof body.token === 'string' ? body.token : '';
+    if (!/^[A-Za-z0-9_-]{40,50}$/.test(token)) {
+      jsonResponse(res, 400, { error: 'Tautan persetujuan tidak valid atau kedaluwarsa' });
+      return true;
+    }
+    if (!mailer || !fromEmail || !publicAppOrigin) {
+      console.error('Activation approval is unavailable because email is not configured');
+      jsonResponse(res, 503, { error: 'Persetujuan aktivasi sementara tidak tersedia' });
+      return true;
+    }
+
+    const setupToken = randomBytes(32).toString('base64url');
+    const setupTokenHash = hashSessionToken(setupToken);
+    let client;
+    try {
+      client = await pool.connect();
+      await client.query('BEGIN');
+      const activation = await client.query(
+        `SELECT activation_request.profile_id, activation_request.email
+         FROM public.app_activation_requests activation_request
+         JOIN public.profiles profile ON profile.id = activation_request.profile_id
+         WHERE activation_request.token_hash = $1
+           AND activation_request.consumed_at IS NULL
+           AND activation_request.expires_at > now()
+           AND lower(btrim(profile.email)) = activation_request.email
+         FOR UPDATE OF activation_request`,
+        [hashSessionToken(token)]
+      );
+      const request = activation.rows[0];
+      if (activation.rowCount !== 1) {
+        await client.query('ROLLBACK');
+        jsonResponse(res, 400, { error: 'Tautan persetujuan tidak valid atau kedaluwarsa' });
+        return true;
+      }
+
+      await client.query(
+        `INSERT INTO public.app_users (profile_id, email)
+         VALUES ($1, $2)
+         ON CONFLICT (profile_id) DO NOTHING`,
+        [request.profile_id, request.email]
+      );
+      const account = await client.query(
+        `SELECT email_normalized, password_hash
+         FROM public.app_users
+         WHERE profile_id = $1
+         FOR UPDATE`,
+        [request.profile_id]
+      );
+      if (
+        account.rowCount !== 1 ||
+        account.rows[0].email_normalized !== request.email.toLowerCase() ||
+        account.rows[0].password_hash
+      ) {
+        await client.query('ROLLBACK');
+        jsonResponse(res, 409, {
+          error: 'Akun ini sudah disiapkan atau email profil berubah; hubungi administrator'
+        });
+        return true;
+      }
+
+      await client.query(
+        `DELETE FROM public.app_setup_tokens
+         WHERE profile_id = $1 AND consumed_at IS NULL`,
+        [request.profile_id]
+      );
+      await client.query(
+        `INSERT INTO public.app_setup_tokens (token_hash, profile_id, expires_at)
+         VALUES ($1, $2, now() + ($3 * interval '1 hour'))`,
+        [setupTokenHash, request.profile_id, SETUP_TOKEN_TTL_HOURS]
+      );
+      const setupUrl = new URL('/auth/setup-password.html', publicAppOrigin);
+      setupUrl.hash = new URLSearchParams({ token: setupToken }).toString();
+      await sendPasswordSetupEmail({
         transport: mailer,
         from: fromEmail,
-        to: fromEmail,
-        requesterEmail: email
+        to: request.email,
+        setupUrl: setupUrl.toString()
       });
-      jsonResponse(res, 202, {
-        message: 'Jika alamat ini sesuai dengan profil yang ada, admin akan meninjau permintaan aktivasi.'
+      await client.query(
+        `UPDATE public.app_activation_requests
+         SET consumed_at = now()
+         WHERE token_hash = $1`,
+        [hashSessionToken(token)]
+      );
+      await client.query('COMMIT');
+      jsonResponse(res, 200, {
+        message: 'Persetujuan berhasil. Tautan untuk membuat kata sandi telah dikirim kepada pengguna.'
       });
     } catch (error) {
-      console.error('Activation request email delivery failed:', error.message);
-      jsonResponse(res, 503, { error: 'Permintaan aktivasi tidak dapat dikirim saat ini' });
+      if (client) {
+        try {
+          await client.query('ROLLBACK');
+        } catch (rollbackError) {
+          console.error('Activation approval rollback failed:', rollbackError.message);
+        }
+      }
+      console.error('Activation approval failed:', error.message);
+      jsonResponse(res, 503, { error: 'Persetujuan aktivasi gagal diproses saat ini' });
+    } finally {
+      if (client) client.release();
     }
     return true;
   }
