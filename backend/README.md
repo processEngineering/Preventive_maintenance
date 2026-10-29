@@ -88,8 +88,100 @@ Get-Service *postgres*
 
 The production target is database `mtc` and the separate login role is
 `mtc_api_runtime`. Do not reuse the test role, a provisioning role, or a PostgreSQL
-superuser. The production schemas and workflow data were reported ready; this setup
-does not create or migrate production tables or copy accounts.
+superuser. The verified source candidate is `mtc_migration_test2`; `mtc` was
+confirmed empty on PostgreSQL `127.0.0.1:5432`. Keep the source database unchanged.
+
+### Stage the production data copy
+
+The staging database name selected for this cutover is `mtc_migration_backup`.
+Confirm it does not already exist before creating it; do not overwrite or drop an
+existing database. Store both dump files in a private, access-controlled location:
+they contain checklist and profile data. The source dump excludes login accounts,
+sessions, setup/email-verification tokens, and signatures. It retains profiles and
+workflow records.
+
+On PE-SERVER2, use the PostgreSQL 16 command-line tools. The following commands
+prompt for the PostgreSQL administrator password; do not put passwords in command
+arguments or share them:
+
+```powershell
+$pgBin = 'C:\Program Files\PostgreSQL\16\bin'
+$sourceDump = Join-Path $env:USERPROFILE 'mtc-migration-test2-cutover.dump'
+$validatedDump = Join-Path $env:USERPROFILE 'mtc-migration-backup-validated.dump'
+
+& "$pgBin\pg_dump.exe" -h 127.0.0.1 -p 5432 -U postgres -W `
+  -Fc -d mtc_migration_test2 `
+  --exclude-table-data=public.app_users `
+  --exclude-table-data=public.app_sessions `
+  --exclude-table-data=public.app_setup_tokens `
+  --exclude-table-data=public.app_email_verification_tokens `
+  --exclude-table-data=public.app_signature_files `
+  -f $sourceDump
+if ($LASTEXITCODE -ne 0) { throw 'Source database dump failed; stop here.' }
+```
+
+In `psql`, confirm `mtc_migration_backup` is absent before creating it:
+
+```sql
+SELECT datname FROM pg_database WHERE datname = 'mtc_migration_backup';
+```
+
+Only if that returns zero rows, create the staging database and restore the dump:
+
+```powershell
+& "$pgBin\createdb.exe" -h 127.0.0.1 -p 5432 -U postgres -W mtc_migration_backup
+if ($LASTEXITCODE -ne 0) { throw 'Staging database creation failed; stop here.' }
+
+& "$pgBin\pg_restore.exe" -h 127.0.0.1 -p 5432 -U postgres -W `
+  --no-owner --no-acl --exit-on-error `
+  -d mtc_migration_backup $sourceDump
+if ($LASTEXITCODE -ne 0) { throw 'Staging restore failed; stop here.' }
+```
+
+Verify staging tables and counts before cleanup. The supplied counts showed Oct 28,
+2026 test rows in `Lkmr_result`, `chslr_log`, `chslr_result`, `clhmi`,
+`clhmi_results`, `clpm_log`, and `kartu_riwayat_items`. Run the dated cleanup only
+against the staging database; it has a database-name guard and deletes child rows
+before their parents:
+
+```powershell
+& "$pgBin\psql.exe" -h 127.0.0.1 -p 5432 -U postgres -W `
+  -d mtc_migration_backup -v ON_ERROR_STOP=1 `
+  -f .\sql\staging-clean-2026-10-28.sql
+if ($LASTEXITCODE -ne 0) { throw 'Staging cleanup failed; stop and inspect staging.' }
+```
+
+Review the `DELETE` counts and rerun the read-only row-count/date checks. Confirm no
+Oct 28 test rows remain in the identified tables and verify that table totals,
+profiles, reference data, and checklist history are otherwise as expected. Keep
+`mtc_migration_test2` unchanged. Once staging is approved, make a final dump:
+
+```powershell
+& "$pgBin\pg_dump.exe" -h 127.0.0.1 -p 5432 -U postgres -W `
+  -Fc -d mtc_migration_backup -f $validatedDump
+if ($LASTEXITCODE -ne 0) { throw 'Validated staging dump failed; stop here.' }
+```
+
+### Restore the approved staging copy to production
+
+Stop the API and ngrok PM2 apps during the production restore. Confirm the verified
+restorable backup of `mtc` is available, and recheck that `mtc` still has no user
+tables. Do not use `--clean` or drop/rename either database. Restore only after
+reviewing the staging counts and confirming the target is still the expected empty
+production database:
+
+```powershell
+& "$pgBin\pg_restore.exe" -h 127.0.0.1 -p 5432 -U postgres -W `
+  --no-owner --no-acl --exit-on-error `
+  -d mtc $validatedDump
+if ($LASTEXITCODE -ne 0) { throw 'Production restore failed; stop and inspect.' }
+```
+
+Verify production table names and row counts against the approved staging results
+before applying runtime grants or starting the API. The source login account and
+signature files were excluded; provision approved production accounts separately.
+Sessions and one-time tokens are also excluded. Do not expose the API through ngrok
+until the restore, grants, `/readyz`, and approved-account smoke tests succeed.
 
 Have the DBA create the dedicated role and set its password in a private `psql`
 session (do not put the password in a SQL file, source control, or chat):
@@ -218,8 +310,10 @@ privileges used by those workflows. It refuses to run in any database other than
 The separate `backend/sql/production-api-grants.sql` is restricted to database
 `mtc` and role `mtc_api_runtime`. It includes the corresponding workflow privileges
 plus the required authentication, session, verification-token, setup-token, and
-signature-file privileges. Review and apply it only with an authorized production
-grantor. Do not change the test script's database or role guard.
+signature-file privileges. It also grants schema `extensions` usage because the
+PRSLB UUID defaults call `extensions.uuid_generate_v4()`. Review and apply it only
+with an authorized production grantor. Do not change the test script's database or
+role guard.
 
 Review the script, back up the test database, then run it manually from the
 repository root while connected to `mtc_migration_test2` with a database role
@@ -289,10 +383,11 @@ application instructions are in the Checklist database privileges section above.
 
 ## Authentication prototype limitations
 
-- The authentication schemas in `sql/001_auth.sql` through
-  `sql/004_signature_files.sql` exist in the reported production setup. Verify the
-  actual production schema before cutover; do not re-run these one-time migrations
-  where their tables already exist.
+- The production database `mtc` was found empty during cutover preparation. The
+  approved staging copy includes authentication table definitions but excludes
+  source login accounts, sessions, setup/email-verification tokens, and signatures.
+  Verify the restored production schema before applying grants; do not separately
+  re-run one-time authentication migrations after restoring these definitions.
 - Existing Supabase user IDs and emails have not been imported. Keep any account
   export private; do not put it in the repository or send it in chat.
 - The department Gmail sender has not been configured. Never paste its App Password

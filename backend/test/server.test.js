@@ -270,11 +270,12 @@ test('batch checklist tables are allowlisted separately from database privilege 
   }
 });
 
-test('database grant scripts are isolated and cover their required privileges', async () => {
-  const [apiSource, grantSource, productionGrantSource] = await Promise.all([
+test('database scripts are isolated and cover production and staging requirements', async () => {
+  const [apiSource, grantSource, productionGrantSource, stagingCleanupSource] = await Promise.all([
     fs.readFile(path.join(__dirname, '..', 'api', 'chslr-api.js'), 'utf8'),
     fs.readFile(path.join(__dirname, '..', 'sql', 'checklist-api-grants.sql'), 'utf8'),
-    fs.readFile(path.join(__dirname, '..', 'sql', 'production-api-grants.sql'), 'utf8')
+    fs.readFile(path.join(__dirname, '..', 'sql', 'production-api-grants.sql'), 'utf8'),
+    fs.readFile(path.join(__dirname, '..', 'sql', 'staging-clean-2026-10-28.sql'), 'utf8')
   ]);
   const allowlist = apiSource.match(/const DATA_TABLES = new Set\(\[([\s\S]*?)\]\);/);
   const selectGrant = grantSource.match(/GRANT SELECT ON TABLE([\s\S]*?)TO mtc_api_auth_test;/);
@@ -307,6 +308,7 @@ test('database grant scripts are isolated and cover their required privileges', 
   assert.match(productionGrantSource, /current_database\(\) <> 'mtc'/);
   assert.doesNotMatch(productionGrantSource, /mtc_migration_test2|mtc_api_auth_test/);
   assert.match(productionGrantSource, /GRANT CONNECT ON DATABASE mtc TO mtc_api_runtime;/);
+  assert.match(productionGrantSource, /GRANT USAGE ON SCHEMA extensions TO mtc_api_runtime;/);
   assert.match(productionGrantSource, /rolcanlogin, rolsuper, rolinherit/);
   assert.match(productionGrantSource, /must not be a member of another role/);
   assert.match(productionGrantSource, /app_email_verification_tokens TO mtc_api_runtime/);
@@ -316,6 +318,19 @@ test('database grant scripts are isolated and cover their required privileges', 
   assert.match(
     productionGrantSource,
     /GRANT SELECT, INSERT ON TABLE public\.app_signature_files TO mtc_api_runtime;/
+  );
+  assert.match(stagingCleanupSource, /current_database\(\) <> 'mtc_migration_backup'/);
+  assert.match(stagingCleanupSource, /TIMESTAMPTZ '2026-10-28 00:00:00\+07'/);
+  assert.match(stagingCleanupSource, /TIMESTAMPTZ '2026-10-29 00:00:00\+07'/);
+  assert.doesNotMatch(stagingCleanupSource, /DELETE FROM public\.(app_users|app_sessions|app_setup_tokens|app_email_verification_tokens|app_signature_files)/);
+  assert.ok(
+    stagingCleanupSource.indexOf('DELETE FROM public.chslr_result') <
+      stagingCleanupSource.indexOf('DELETE FROM public.chslr_log')
+  );
+  const clhmiDeleteIndex = stagingCleanupSource.search(/DELETE FROM public\.clhmi\r?\n/);
+  assert.ok(
+    stagingCleanupSource.indexOf('DELETE FROM public.clhmi_results') <
+      clhmiDeleteIndex
   );
 });
 

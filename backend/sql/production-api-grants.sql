@@ -39,6 +39,7 @@ $$;
 GRANT CONNECT ON DATABASE mtc TO mtc_api_runtime;
 
 GRANT USAGE ON SCHEMA public TO mtc_api_runtime;
+GRANT USAGE ON SCHEMA extensions TO mtc_api_runtime;
 
 GRANT INSERT (id, full_name, divisi, jabatan)
   ON TABLE public.profiles TO mtc_api_runtime;
