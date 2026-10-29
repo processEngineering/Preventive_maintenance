@@ -24,7 +24,7 @@ module.exports = {
     {
       name: 'mtc-ngrok',
       script: 'C:\\Maintenance App\\python program\\ngrok.exe',
-      args: 'http 3000',
+      args: 'http --domain=generic-karol-translucently.ngrok-free.dev 3000',
       cwd: __dirname,
       interpreter: 'none',
       autorestart: true,
