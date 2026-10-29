@@ -441,7 +441,7 @@ async function handleAuthRequest(req, res, pool, {
 
     try {
       const result = await pool.query(
-        `SELECT p.id, p.full_name, p.divisi, p.jabatan
+        `SELECT p.id, p.full_name, p.divisi, p.jabatan, u.email
          FROM public.app_sessions s
          JOIN public.app_users u ON u.profile_id = s.profile_id
          JOIN public.profiles p ON p.id = s.profile_id

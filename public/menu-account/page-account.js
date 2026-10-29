@@ -1,4 +1,4 @@
-import { supabaseClient } from '../src/supabase/supabase-client.js';
+import { getCurrentUser } from '../src/auth/api-session.js';
 
 // --- page template
 function renderAccountPage() {
@@ -260,56 +260,19 @@ async function loadData() {
     }
 
     try {
-        const {
-            data: { session },
-            error: sessionError
-        } =
-            await supabaseClient.auth.getSession();
-        if (sessionError) {
-            throw sessionError;
-        }
-
-        if (!session) {
+        const user = await getCurrentUser();
+        if (!user) {
             window.location.href =
                 '../view/auth.html?mode=login';
             return;
         }
 
-        // email
-        displayEmail.textContent =
-            session.user.email ||
-            'Email tidak tersedia';
-
-        // profile
-        const {
-            data: profile,
-            error: profileError
-
-        } =
-            await supabaseClient
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
-
-        if (profileError) {
-            console.error(
-                'Gagal mengambil profil:',
-                profileError
-            );
-            displayName.textContent = 'Profil Belum Diisi';
-            displayRole.textContent = 'Jabatan belum tersedia';
-            return;
-        }
-
-        if (profile) {
-            displayName.textContent = profile.full_name ||'Nama belum tersedia';
-            const jabatan = profile.jabatan || 'Jabatan belum tersedia';
-            const divisi = profile.divisi || 'Divisi belum tersedia';
-            displayRole.textContent = `${jabatan} | ${divisi}`;
-
-            setupSmartNavigation(profile);
-        }
+        displayEmail.textContent = user.email || 'Email tidak tersedia';
+        displayName.textContent = user.full_name || 'Nama belum tersedia';
+        const jabatan = user.jabatan || 'Jabatan belum tersedia';
+        const divisi = user.divisi || 'Divisi belum tersedia';
+        displayRole.textContent = `${jabatan} | ${divisi}`;
+        setupSmartNavigation(user);
 
     } catch (error) {
         console.error(
@@ -332,10 +295,18 @@ async function handleLogout() {
         return;
     }
     try {
-        const { error } =
-            await supabaseClient.auth.signOut();
-        if (error) {
-            throw error;
+        const response = await fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
+            credentials: 'same-origin',
+            body: '{}'
+        });
+        if (!response.ok) {
+            const result = await response.json();
+            throw new Error(result.error || 'Logout gagal.');
         }
         window.location.href =
             '../view/auth.html?mode=login';

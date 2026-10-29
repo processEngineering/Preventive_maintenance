@@ -93,7 +93,8 @@ const pool = {
           id: profileId,
           full_name: 'Test User',
           divisi: 'Testing',
-          jabatan: authUser.jabatan
+          jabatan: authUser.jabatan,
+          email: authUser.email
         }] : []
       };
     }
@@ -133,6 +134,7 @@ before(async () => {
     profile_id: '00000000-0000-0000-0000-000000000001',
     password_hash: await hashPassword('test-password-123'),
     email_verified_at: new Date(),
+    email: 'user@example.com',
     full_name: 'Test User',
     divisi: 'Testing',
     jabatan: 'OPERATOR | PELAKSANA'
@@ -833,7 +835,13 @@ test('session lookup requires a valid session and logout revokes it', async () =
     headers: { Cookie: cookie }
   });
   assert.equal(session.status, 200);
-  assert.equal((await session.json()).user.id, authUser.profile_id);
+  assert.deepEqual((await session.json()).user, {
+    id: authUser.profile_id,
+    full_name: authUser.full_name,
+    divisi: authUser.divisi,
+    jabatan: authUser.jabatan,
+    email: authUser.email
+  });
 
   const logout = await fetch(`${baseUrl}/api/auth/logout`, {
     method: 'POST',
