@@ -30,16 +30,6 @@ export function renderSignIn() {
 
 
                     <div id="status-box"></div>
-                    <button
-                        id="requestActivation"
-                        class="btn-text-only"
-                        type="button"
-                        hidden
-                    >
-                        MINTA AKTIVASI AKUN PENGGUNA LAMA
-                    </button>
-
-
                     <form id="loginForm">
                         <input
                             type="email"
@@ -68,6 +58,15 @@ export function renderSignIn() {
                     </button>
 
                     </form>
+
+                    <button
+                        id="requestActivation"
+                        class="btn-text-only"
+                        type="button"
+                        hidden
+                    >
+                        MINTA AKTIVASI AKUN PENGGUNA LAMA
+                    </button>
 
 
                     <div class="footer-links">
